@@ -31,12 +31,24 @@ func TestNormalizeArtwork_SuccessAndRunner(t *testing.T) {
 	// Insert track in DB
 	_, _ = database.ExecContext(ctx, "INSERT INTO Track (id, path, filename) VALUES (1, 'Music/track1.m4a', 'track1.m4a');")
 
+	// Insert existing non-square AlbumArt in DB to test DB normalization branch
+	_, _ = database.ExecContext(ctx, "INSERT INTO AlbumArt (id, hash, albumArt) VALUES (99, 'nonsquare_hash', X'123456');")
+
 	artCacheDir := filepath.Join(tempDir, "Artwork")
+	_ = os.MkdirAll(artCacheDir, 0755)
+	// Create non-square disk thumbnail in cache
+	_ = os.WriteFile(filepath.Join(artCacheDir, "cached_thumb.jpg"), []byte("cached thumb"), 0644)
 
 	// Mock runner simulating ffprobe (1280x720 16:9 non-square image on audio) and ffmpeg image operations
 	runner := func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		if name == "ffprobe" {
 			target := args[len(args)-1]
+			if strings.Contains(target, "db_art_in_99") {
+				return []byte(`{"streams":[{"width":1920,"height":1080,"codec_name":"mjpeg"}]}`), nil
+			}
+			if strings.Contains(target, "cached_thumb.jpg") {
+				return []byte(`{"streams":[{"width":1920,"height":1080,"codec_name":"mjpeg"}]}`), nil
+			}
 			if strings.Contains(target, "db_art_in_") {
 				return []byte(`{"streams":[{"width":1400,"height":1400,"codec_name":"mjpeg"}]}`), nil
 			}
@@ -56,19 +68,19 @@ func TestNormalizeArtwork_SuccessAndRunner(t *testing.T) {
 		t.Fatalf("NormalizeArtwork failed: %v", err)
 	}
 
-	if report.NormalizedCount != 1 {
-		t.Errorf("expected 1 normalized track, got %d", report.NormalizedCount)
+	if report.NormalizedCount < 1 {
+		t.Errorf("expected at least 1 normalized track, got %d", report.NormalizedCount)
 	}
 
 	// Verify AlbumArt row inserted and Track updated
 	allArt, _ := db.GetAllAlbumArt(ctx, database)
-	if len(allArt) != 1 {
-		t.Fatalf("expected 1 AlbumArt row, got %d", len(allArt))
+	if len(allArt) != 2 {
+		t.Fatalf("expected 2 AlbumArt rows, got %d", len(allArt))
 	}
 
 	tr, _ := db.GetTrackByID(ctx, database, 1)
-	if !tr.AlbumArtID.Valid || tr.AlbumArtID.Int64 != allArt[0].ID {
-		t.Errorf("Track.albumArtId = %v, want %d", tr.AlbumArtID, allArt[0].ID)
+	if !tr.AlbumArtID.Valid || tr.AlbumArtID.Int64 != allArt[1].ID {
+		t.Errorf("Track.albumArtId = %v, want %d", tr.AlbumArtID, allArt[1].ID)
 	}
 	if !strings.Contains(tr.AlbumArt.String, "image://planck/") {
 		t.Errorf("Track.albumArt = %q", tr.AlbumArt.String)

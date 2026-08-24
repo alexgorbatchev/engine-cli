@@ -2,7 +2,9 @@ package playlist
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dj/engine-cli/internal/db"
@@ -64,6 +66,225 @@ func TestGetPlaylistHierarchy(t *testing.T) {
 	_, err = InspectPlaylist(ctx, database, 9999)
 	if err == nil {
 		t.Error("expected error for non-existent playlist ID")
+	}
+}
+
+func TestFormatPlaylistTree(t *testing.T) {
+	tests := []struct {
+		name  string
+		nodes []PlaylistNode
+		want  string
+	}{
+		{
+			name:  "empty",
+			nodes: []PlaylistNode{},
+			want:  "",
+		},
+		{
+			name: "single root no children",
+			nodes: []PlaylistNode{
+				{ID: 1, Title: "Inbox", TrackCount: 5},
+			},
+			want: strings.Join([]string{
+				"Collection",
+				"└── Inbox [id:1 tracks:5]",
+				"",
+			}, "\n"),
+		},
+		{
+			name: "single root with children",
+			nodes: []PlaylistNode{
+				{
+					ID:         1,
+					Title:      "EDM",
+					TrackCount: 0,
+					Children: []PlaylistNode{
+						{ID: 2, Title: "House", TrackCount: 10},
+						{ID: 3, Title: "Techno", TrackCount: 15},
+					},
+				},
+			},
+			want: strings.Join([]string{
+				"Collection",
+				"└── EDM [id:1 tracks:0]",
+				"    ├── House [id:2 tracks:10]",
+				"    └── Techno [id:3 tracks:15]",
+				"",
+			}, "\n"),
+		},
+		{
+			name: "multiple top level playlists",
+			nodes: []PlaylistNode{
+				{
+					ID:         1,
+					Title:      "EDM",
+					TrackCount: 0,
+					Children: []PlaylistNode{
+						{ID: 2, Title: "House", TrackCount: 10},
+					},
+				},
+				{
+					ID:         3,
+					Title:      "Inbox",
+					TrackCount: 5,
+				},
+			},
+			want: strings.Join([]string{
+				"Collection",
+				"├── EDM [id:1 tracks:0]",
+				"│   └── House [id:2 tracks:10]",
+				"└── Inbox [id:3 tracks:5]",
+				"",
+			}, "\n"),
+		},
+		{
+			name: "deep nested hierarchy",
+			nodes: []PlaylistNode{
+				{
+					ID:         1,
+					Title:      "Main",
+					TrackCount: 0,
+					Children: []PlaylistNode{
+						{
+							ID:         2,
+							Title:      "Level1-A",
+							TrackCount: 1,
+							Children: []PlaylistNode{
+								{ID: 3, Title: "Level2-A1", TrackCount: 2},
+								{ID: 4, Title: "Level2-A2", TrackCount: 3},
+							},
+						},
+						{
+							ID:         5,
+							Title:      "Level1-B",
+							TrackCount: 4,
+						},
+					},
+				},
+			},
+			want: strings.Join([]string{
+				"Collection",
+				"└── Main [id:1 tracks:0]",
+				"    ├── Level1-A [id:2 tracks:1]",
+				"    │   ├── Level2-A1 [id:3 tracks:2]",
+				"    │   └── Level2-A2 [id:4 tracks:3]",
+				"    └── Level1-B [id:5 tracks:4]",
+				"",
+			}, "\n"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatPlaylistTree(tt.nodes)
+			if got != tt.want {
+				t.Errorf("FormatPlaylistTree() got:\n%s\nwant:\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatPlaylistBulletList(t *testing.T) {
+	tests := []struct {
+		name  string
+		nodes []PlaylistNode
+		want  string
+	}{
+		{
+			name:  "empty",
+			nodes: []PlaylistNode{},
+			want:  "",
+		},
+		{
+			name: "single root no children",
+			nodes: []PlaylistNode{
+				{ID: 1, Title: "Inbox", TrackCount: 5},
+			},
+			want: strings.Join([]string{
+				"- Collection",
+				"  - Inbox [id:1 tracks:5]",
+				"",
+			}, "\n"),
+		},
+		{
+			name: "nested hierarchy",
+			nodes: []PlaylistNode{
+				{
+					ID:         1,
+					Title:      "EDM",
+					TrackCount: 0,
+					Children: []PlaylistNode{
+						{ID: 2, Title: "House", TrackCount: 10},
+					},
+				},
+				{
+					ID:         3,
+					Title:      "Inbox",
+					TrackCount: 5,
+				},
+			},
+			want: strings.Join([]string{
+				"- Collection",
+				"  - EDM [id:1 tracks:0]",
+				"    - House [id:2 tracks:10]",
+				"  - Inbox [id:3 tracks:5]",
+				"",
+			}, "\n"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatPlaylistBulletList(tt.nodes)
+			if got != tt.want {
+				t.Errorf("FormatPlaylistBulletList() got:\n%s\nwant:\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatTrackLine(t *testing.T) {
+	tests := []struct {
+		name  string
+		track db.Track
+		want  string
+	}{
+		{
+			name: "artist and title with length",
+			track: db.Track{
+				ID:     1,
+				Artist: sql.NullString{String: "Artist Name", Valid: true},
+				Title:  sql.NullString{String: "Track Title", Valid: true},
+				Length: sql.NullInt64{Int64: 305, Valid: true},
+			},
+			want: "Artist Name - Track Title [id:1 5:05]",
+		},
+		{
+			name: "title only without artist",
+			track: db.Track{
+				ID:     2,
+				Title:  sql.NullString{String: "Only Title", Valid: true},
+				Length: sql.NullInt64{Int64: 60, Valid: true},
+			},
+			want: "Only Title [id:2 1:00]",
+		},
+		{
+			name: "filename fallback when title empty",
+			track: db.Track{
+				ID:       3,
+				Filename: sql.NullString{String: "song.mp3", Valid: true},
+			},
+			want: "song.mp3 [id:3 0:00]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatTrackLine(tt.track)
+			if got != tt.want {
+				t.Errorf("FormatTrackLine() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

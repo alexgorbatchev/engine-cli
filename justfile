@@ -1,30 +1,38 @@
-# engine-cli justfile
+set dotenv-load := false
 
-# Default recipe: list available recipes
-default:
-    @just --list
+# Run CLI in human mode (default)
+run *args:
+    go run ./cmd/engine-cli {{args}}
 
-# Build the engine-cli binary in bin/
-build:
-	mkdir -p bin
-	go build -o bin/engine-cli ./cmd/engine-cli
+# Run CLI in agent-facing mode
+run-ai *args:
+    AGENT=1 go run ./cmd/engine-cli {{args}}
 
-# Install engine-cli binary to GOPATH bin directory
-install:
-    go install ./cmd/engine-cli
-
-# Run all unit tests with coverage
+# Run test suite
 test:
     go test -v ./...
 
-# Run static code analysis
-vet:
+# Build binary into bin/
+build:
+    mkdir -p bin
+    go build -o bin/engine-cli ./cmd/engine-cli
+
+# Run static analysis and vet
+lint:
     go vet ./...
+
+# Alias for lint
+vet: lint
 
 # Format Go code
 fmt:
     go fmt ./...
 
+# Run static analysis and test suite in sequence
+check:
+    go vet ./...
+    go test -v ./...
+
 # Clean up build binaries and temporary files
 clean:
-	rm -rf bin coverage.out .tmp
+    rm -rf bin coverage.out .tmp

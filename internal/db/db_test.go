@@ -199,6 +199,12 @@ func TestAlbumArtOperations(t *testing.T) {
 		t.Fatalf("unexpected AlbumArt records: %v", records)
 	}
 
+	// 3b. UpdateAlbumArtByID
+	err = UpdateAlbumArtByID(ctx, database, id, "updated_hash", []byte("direct update blob"))
+	if err != nil {
+		t.Fatalf("UpdateAlbumArtByID error: %v", err)
+	}
+
 	// 4. DeleteAlbumArt
 	err = DeleteAlbumArt(ctx, database, id)
 	if err != nil {
@@ -260,5 +266,8 @@ func TestDB_ClosedErrors(t *testing.T) {
 	}
 	if err := DeleteAlbumArt(ctx, database, 1); err == nil {
 		t.Error("expected error on closed db DeleteAlbumArt")
+	}
+	if err := UpdateAlbumArtByID(ctx, database, 1, "h", []byte{1}); err == nil {
+		t.Error("expected error on closed db UpdateAlbumArtByID")
 	}
 }

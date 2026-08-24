@@ -1,85 +1,82 @@
-# engine-cli
+A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchronize, and back up Engine DJ collection databases (`m.db`) and artwork caches.
 
-`engine-cli` is a high-performance Go command-line tool designed for DJs to manage, audit, repair, synchronize, and back up Engine DJ collection databases (`m.db`) and album artwork caches.
+# What It Does
 
-## What It Does
+- Audits Engine DJ SQLite collection databases for missing audio files, file size mismatches, and broken playlist links.
+- Extracts and center-crops embedded album artwork to 1:1 square (1400x1400) for crisp jog wheel and media player displays.
+- Prunes unreferenced artwork database records and stale thumbnail cache files to reclaim storage space.
+- Synchronizes on-disk audio metadata tags and file sizes with database track records.
+- Creates timestamped atomic backup snapshots of collection databases and artwork caches with one-command restore.
+- Visualizes nested playlist and folder hierarchies with track counts and durations.
 
-- **Integrity Auditing (`verify`)**: Finds missing audio files on disk, file size (`fileBytes`) mismatches, orphaned playlist records, and tracks with missing album artwork.
-- **1:1 Square Artwork Normalization (`artwork normalize`)**: Extracts embedded album art, center-crops non-square 16:9 thumbnails and gatefold scans to 1:1 square (1400x1400), and writes clean SHA-1 BLOBs directly to the `AlbumArt` database table and disk cache.
-- **Artwork Cache Pruning (`artwork prune`)**: Removes unreferenced `AlbumArt` table rows and stale cached thumbnail files on disk.
-- **Database & Tag Synchronization (`sync`)**: Scans on-disk audio tags and file sizes, updating `Track` records in `m.db` while detecting unindexed audio files.
-- **Atomic Backups & Restore (`backup` / `restore`)**: Creates timestamped snapshot archives of `Database2/` databases, root databases, and `Artwork/` cache with one-command restoration.
-- **Playlist Inspection (`playlist`)**: Visualizes full nested playlist and folder hierarchies with track counts and durations.
+# How It Works
 
-## Prerequisites
+- Scans your Engine DJ library directory on internal storage or external USB/SD drives.
+- Inspects SQLite database tables to detect corrupt file paths, size discrepancies, and missing artwork.
+- Normalizes non-square album covers to 1:1 square dimensions without re-encoding your audio files.
+- Updates database track records from modified on-disk tags and discovers unindexed music files.
+- Automatically saves a safety backup snapshot before performing any database-modifying operation.
 
-- [Go](https://golang.org/dl/) (version 1.26 or newer)
-- [`ffmpeg`](https://ffmpeg.org/download.html) (version 4.4 or newer, including `ffprobe`)
-- [`just`](https://github.com/casey/just) (task automation)
+# How it Really Works
 
-## Installation
+- Connects to SQLite collection databases (`Database2/m.db`, `Database2/p.db`) using modern zero-CGO SQLite drivers.
+- Executes `ffprobe` JSON stream analysis to detect attached picture stream dimensions and extract audio tags.
+- Invokes `ffmpeg` with `-c:a copy` to ensure zero lossy-to-lossy audio transcoding during metadata operations.
+- Generates SHA-1 binary BLOB hashes and writes raw URL-safe Base64 thumbnail files into the `Artwork/` cache directory.
+- Manages nested playlist trees through recursive foreign key traversal on `Playlist` and `PlaylistEntity` tables.
+- Packages database directories into timestamped XDG backup snapshots with atomic directory replacement on restore.
+
+# Prerequisites
+
+- [`ffmpeg` & `ffprobe`](https://ffmpeg.org/download.html) - Version 4.4 or newer required for audio tag probing and artwork processing.
+- [GitHub CLI (`gh`)](https://cli.github.com/) - Optional, for automated binary updates.
+
+# Installation
+
+Download the latest prebuilt binary from GitHub Releases:
 
 ```bash
-cd engine-cli
-just build
+# Using GitHub CLI
+gh release download --repo alexgorbatchev/engine-cli --pattern 'engine-cli-*' --output engine-cli
+chmod +x engine-cli
+mv engine-cli ~/.local/bin/
 ```
 
-The compiled binary will be placed into `bin/engine-cli`.
-
-## Quick Start
-
-### 1. Verify Library Health
+Or via direct download:
 
 ```bash
+curl -sSL https://github.com/alexgorbatchev/engine-cli/releases/latest/download/engine-cli-darwin-arm64 -o ~/.local/bin/engine-cli
+chmod +x ~/.local/bin/engine-cli
+```
+
+# Quick Start
+
+```bash
+# Verify library health and check for missing files
 engine-cli verify
-```
 
-Sample Output:
-```
-=== Engine DJ Library Integrity Report ===
-  Total Tracks in DB:   943
-  Total Playlists:      41
-  Missing Files on Disk:0
-  File Size Mismatches: 0
-  Missing Album Art:    0
-  Orphaned Entities:    0
-  Empty Playlists:      0
-
-STATUS: Library is 100% HEALTHY.
-```
-
-### 2. Normalize Cover Art to 1:1 Square
-
-```bash
+# Normalize cover artwork to 1:1 square
 engine-cli artwork normalize
-```
 
-### 3. Create a Backup Snapshot
-
-```bash
-engine-cli backup
-```
-
-### 4. Sync On-Disk Audio Tags into Database
-
-```bash
+# Synchronize on-disk audio tags into database
 engine-cli sync
-```
 
-### 5. Inspect Playlist Hierarchy
-
-```bash
+# Display playlist hierarchy tree
 engine-cli playlist list
 ```
 
-## Options & Flags
+# Options & Flags
 
 | Flag | Short | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--lib-dir` | `-l` | `~/Music/Engine Library` | Path to the Engine DJ Library directory |
-| `--help` | `-h` | | Help for engine-cli |
-| `--version` | `-v` | | Show version |
+| `--lib-dir <path>` | `-l` | `~/Music/Engine Library` | Path to the Engine Library directory |
+| `--no-backup` | `-` | `false` | Disable automatic backup snapshot before modifying database |
+| `--json` | `-` | `false` | Output verification report in JSON format |
+| `--out-dir <path>` | `-o` | `~/.local/share/engine-cli/backups` | Destination directory for backup snapshots |
+| `--list` | `-` | `false` | List available backup snapshots without creating a new backup |
+| `--version` | `-v` | `false` | Print version information and exit |
+| `--help` | `-h` | `false` | Print command line help |
 
-## License
+# License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT License (c) 2026 Alex Gorbatchev

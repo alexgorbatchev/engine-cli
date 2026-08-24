@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dj/engine-cli/internal/db"
@@ -71,6 +72,7 @@ func executeCommand(args ...string) (string, error) {
 }
 
 func TestRootCommand_HelpAndVersion(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	out, err := executeCommand("--help")
 	if err != nil {
 		t.Fatalf("help failed: %v", err)
@@ -91,6 +93,7 @@ func TestRootCommand_HelpAndVersion(t *testing.T) {
 }
 
 func TestBackupAndRestoreCommand(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	libDir := createTestLibrary(t)
 	backupOutDir := filepath.Join(t.TempDir(), "Backups")
 
@@ -101,9 +104,12 @@ func TestBackupAndRestoreCommand(t *testing.T) {
 	}
 
 	// 2. Backup create
-	_, err = executeCommand("-l", libDir, "backup", "-o", backupOutDir)
+	out, err := executeCommand("-l", libDir, "backup", "-o", backupOutDir)
 	if err != nil {
 		t.Fatalf("backup command failed: %v", err)
+	}
+	if strings.Contains(out, "===") {
+		t.Errorf("unexpected header in backup output: %s", out)
 	}
 
 	// 3. Backup list populated
@@ -124,7 +130,13 @@ func TestBackupAndRestoreCommand(t *testing.T) {
 		t.Fatalf("restore command failed: %v", err)
 	}
 
-	// 5. Restore failure with bad backup path
+	// 5. Restore with --no-backup
+	_, err = executeCommand("-l", libDir, "--no-backup", "restore", backupSnapshot)
+	if err != nil {
+		t.Fatalf("restore --no-backup failed: %v", err)
+	}
+
+	// 6. Restore failure with bad backup path
 	_, err = executeCommand("-l", libDir, "restore", "/nonexistent/backup")
 	if err == nil {
 		t.Error("expected error for nonexistent restore path")
@@ -132,12 +144,16 @@ func TestBackupAndRestoreCommand(t *testing.T) {
 }
 
 func TestVerifyCommand(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	libDir := createTestLibrary(t)
 
 	// 1. Verify plain output (healthy)
-	_, err := executeCommand("-l", libDir, "verify")
+	out, err := executeCommand("-l", libDir, "verify")
 	if err != nil {
 		t.Fatalf("verify command failed: %v", err)
+	}
+	if strings.Contains(out, "===") {
+		t.Errorf("verify output should not contain static headers '===', got: %s", out)
 	}
 
 	// 2. Verify JSON output
@@ -165,6 +181,7 @@ func TestVerifyCommand(t *testing.T) {
 }
 
 func TestSyncCommand(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	libDir := createTestLibrary(t)
 
 	// 1. Sync success (with unindexed file)
@@ -173,7 +190,13 @@ func TestSyncCommand(t *testing.T) {
 		t.Fatalf("sync command failed: %v", err)
 	}
 
-	// 2. Sync error on bad db path
+	// 2. Sync with --no-backup
+	_, err = executeCommand("-l", libDir, "--no-backup", "sync")
+	if err != nil {
+		t.Fatalf("sync --no-backup failed: %v", err)
+	}
+
+	// 3. Sync error on bad db path
 	_, err = executeCommand("-l", "/nonexistent/lib", "sync")
 	if err == nil {
 		t.Error("expected error for nonexistent lib in sync")
@@ -181,6 +204,7 @@ func TestSyncCommand(t *testing.T) {
 }
 
 func TestArtworkCommand(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	libDir := createTestLibrary(t)
 
 	// 1. Normalize
@@ -189,13 +213,25 @@ func TestArtworkCommand(t *testing.T) {
 		t.Fatalf("artwork normalize failed: %v", err)
 	}
 
-	// 2. Prune
+	// 2. Normalize with --no-backup
+	_, err = executeCommand("-l", libDir, "--no-backup", "artwork", "normalize")
+	if err != nil {
+		t.Fatalf("artwork normalize --no-backup failed: %v", err)
+	}
+
+	// 3. Prune
 	_, err = executeCommand("-l", libDir, "artwork", "prune")
 	if err != nil {
 		t.Fatalf("artwork prune failed: %v", err)
 	}
 
-	// 3. Errors on bad lib path
+	// 4. Prune with --no-backup
+	_, err = executeCommand("-l", libDir, "--no-backup", "artwork", "prune")
+	if err != nil {
+		t.Fatalf("artwork prune --no-backup failed: %v", err)
+	}
+
+	// 5. Errors on bad lib path
 	_, err = executeCommand("-l", "/nonexistent/lib", "artwork", "normalize")
 	if err == nil {
 		t.Error("expected error for nonexistent lib in artwork normalize")
@@ -207,18 +243,43 @@ func TestArtworkCommand(t *testing.T) {
 }
 
 func TestPlaylistCommand(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	libDir := createTestLibrary(t)
 
 	// 1. List with nested tree
-	_, err := executeCommand("-l", libDir, "playlist", "list")
+	out, err := executeCommand("-l", libDir, "playlist", "list")
 	if err != nil {
 		t.Fatalf("playlist list failed: %v", err)
 	}
+	if strings.Contains(out, "===") || strings.Contains(out, "📁") || strings.Contains(out, "🎵") {
+		t.Errorf("playlist list output should not contain headers or emojis, got: %s", out)
+	}
+	if !strings.Contains(out, "Collection") || !strings.Contains(out, "EDM Folder [id:1 tracks:0]") {
+		t.Errorf("expected root Collection and playlist line, got: %s", out)
+	}
+	if !strings.Contains(out, "└── House Child [id:2 tracks:1]") {
+		t.Errorf("expected ASCII branch line, got: %s", out)
+	}
 
 	// 2. Inspect child playlist
-	_, err = executeCommand("-l", libDir, "playlist", "inspect", "2")
+	inspectOut, err := executeCommand("-l", libDir, "playlist", "inspect", "2")
 	if err != nil {
 		t.Fatalf("playlist inspect failed: %v", err)
+	}
+	if strings.Contains(inspectOut, "===") || strings.Contains(inspectOut, "Tracks:") {
+		t.Errorf("inspect output should not contain headers, got: %s", inspectOut)
+	}
+	if !strings.Contains(inspectOut, "Sample Artist - Sample Title [id:1 5:00]") {
+		t.Errorf("expected track line 'Sample Artist - Sample Title [id:1 5:00]', got: %s", inspectOut)
+	}
+
+	// 2b. Inspect empty playlist (EDM Folder ID 1)
+	emptyInspectOut, err := executeCommand("-l", libDir, "playlist", "inspect", "1")
+	if err != nil {
+		t.Fatalf("playlist inspect 1 failed: %v", err)
+	}
+	if !strings.Contains(emptyInspectOut, "No tracks in playlist.") {
+		t.Errorf("expected 'No tracks in playlist.', got: %s", emptyInspectOut)
 	}
 
 	// 3. Inspect invalid ID string
@@ -253,8 +314,316 @@ func TestPlaylistCommand(t *testing.T) {
 	_ = db.InitSchema(context.Background(), emptyDB)
 	_ = emptyDB.Close()
 
-	_, err = executeCommand("-l", emptyDir, "playlist", "list")
+	emptyOut, err := executeCommand("-l", emptyDir, "playlist", "list")
 	if err != nil {
 		t.Fatalf("empty playlist list failed: %v", err)
+	}
+	if !strings.Contains(emptyOut, "No playlists found in database.") {
+		t.Errorf("expected empty message, got: %s", emptyOut)
+	}
+}
+
+func TestAgentMode_AllCommands(t *testing.T) {
+	t.Setenv("AGENT", "1")
+	libDir := createTestLibrary(t)
+	backupOutDir := filepath.Join(t.TempDir(), "Backups")
+
+	// 1. Verify in AGENT mode
+	vOut, err := executeCommand("-l", libDir, "verify")
+	if err != nil {
+		t.Fatalf("verify in agent mode failed: %v", err)
+	}
+	if !strings.Contains(vOut, "total_tracks: 1") || !strings.Contains(vOut, "status: ") {
+		t.Errorf("unexpected agent verify output: %s", vOut)
+	}
+
+	// 2. Backup in AGENT mode
+	bOut, err := executeCommand("-l", libDir, "backup", "-o", backupOutDir)
+	if err != nil {
+		t.Fatalf("backup in agent mode failed: %v", err)
+	}
+	if !strings.Contains(bOut, "status: success") || !strings.Contains(bOut, "db_files: 2") {
+		t.Errorf("unexpected agent backup output: %s", bOut)
+	}
+
+	// 3. Backup list in AGENT mode
+	blOut, err := executeCommand("-l", libDir, "backup", "-o", backupOutDir, "--list")
+	if err != nil {
+		t.Fatalf("backup list in agent mode failed: %v", err)
+	}
+	if !strings.Contains(blOut, "count: 1") || !strings.Contains(blOut, "backup: ") {
+		t.Errorf("unexpected agent backup list output: %s", blOut)
+	}
+
+	// 4. Restore in AGENT mode
+	entries, _ := os.ReadDir(backupOutDir)
+	snapshot := filepath.Join(backupOutDir, entries[0].Name())
+	rOut, err := executeCommand("-l", libDir, "restore", snapshot)
+	if err != nil {
+		t.Fatalf("restore in agent mode failed: %v", err)
+	}
+	if !strings.Contains(rOut, "status: success") || !strings.Contains(rOut, "restored_from: ") {
+		t.Errorf("unexpected agent restore output: %s", rOut)
+	}
+
+	// 5. Artwork normalize in AGENT mode
+	anOut, err := executeCommand("-l", libDir, "artwork", "normalize")
+	if err != nil {
+		t.Fatalf("artwork normalize in agent mode failed: %v", err)
+	}
+	if !strings.Contains(anOut, "status: complete") || !strings.Contains(anOut, "total_tracks: 1") {
+		t.Errorf("unexpected agent artwork normalize output: %s", anOut)
+	}
+
+	// 6. Artwork prune in AGENT mode
+	apOut, err := executeCommand("-l", libDir, "artwork", "prune")
+	if err != nil {
+		t.Fatalf("artwork prune in agent mode failed: %v", err)
+	}
+	if !strings.Contains(apOut, "status: complete") || !strings.Contains(apOut, "deleted_db_rows: ") {
+		t.Errorf("unexpected agent artwork prune output: %s", apOut)
+	}
+
+	// 7. Sync in AGENT mode
+	sOut, err := executeCommand("-l", libDir, "sync")
+	if err != nil {
+		t.Fatalf("sync in agent mode failed: %v", err)
+	}
+	if !strings.Contains(sOut, "status: complete") || !strings.Contains(sOut, "unindexed_files: 1") {
+		t.Errorf("unexpected agent sync output: %s", sOut)
+	}
+
+	// 8. Playlist inspect in AGENT mode
+	piOut, err := executeCommand("-l", libDir, "playlist", "inspect", "2")
+	if err != nil {
+		t.Fatalf("playlist inspect in agent mode failed: %v", err)
+	}
+	if !strings.Contains(piOut, "- Sample Artist - Sample Title [id:1 5:00]") {
+		t.Errorf("unexpected agent playlist inspect output: %s", piOut)
+	}
+
+	// 8b. Playlist inspect empty in AGENT mode
+	piEmptyOut, err := executeCommand("-l", libDir, "playlist", "inspect", "1")
+	if err != nil {
+		t.Fatalf("playlist inspect 1 in agent mode failed: %v", err)
+	}
+	if !strings.Contains(piEmptyOut, "status: empty") {
+		t.Errorf("unexpected agent empty playlist inspect output: %s", piEmptyOut)
+	}
+
+	// 9. Playlist list empty in AGENT mode
+	emptyDir := t.TempDir()
+	emptyDBPath := filepath.Join(emptyDir, "Database2", "m.db")
+	_ = os.MkdirAll(filepath.Dir(emptyDBPath), 0755)
+	emptyDB, _ := db.Open(emptyDBPath)
+	_ = db.InitSchema(context.Background(), emptyDB)
+	_ = emptyDB.Close()
+
+	peOut, err := executeCommand("-l", emptyDir, "playlist", "list")
+	if err != nil {
+		t.Fatalf("empty playlist list in agent mode failed: %v", err)
+	}
+	if !strings.Contains(peOut, "status: empty") {
+		t.Errorf("unexpected empty playlist output in agent mode: %s", peOut)
+	}
+
+	// 10. Backup list empty in AGENT mode
+	emptyBackupDir := t.TempDir()
+	beOut, err := executeCommand("-l", libDir, "backup", "-o", emptyBackupDir, "--list")
+	if err != nil {
+		t.Fatalf("empty backup list in agent mode failed: %v", err)
+	}
+	if !strings.Contains(beOut, "count: 0") {
+		t.Errorf("unexpected empty backup list output in agent mode: %s", beOut)
+	}
+
+	// 11. Playlist list in AGENT mode (bulleted list)
+	plAgentOut, err := executeCommand("-l", libDir, "playlist", "list")
+	if err != nil {
+		t.Fatalf("playlist list in agent mode failed: %v", err)
+	}
+	if !strings.Contains(plAgentOut, "- Collection") || !strings.Contains(plAgentOut, "  - EDM Folder [id:1 tracks:0]") || !strings.Contains(plAgentOut, "    - House Child [id:2 tracks:1]") {
+		t.Errorf("unexpected agent bulleted playlist list output:\n%s", plAgentOut)
+	}
+}
+
+func TestUnknownCommandsAndArgs(t *testing.T) {
+	t.Setenv("AGENT", "0")
+	libDir := createTestLibrary(t)
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"playlist unknown subcommand artwork", []string{"-l", libDir, "playlist", "artwork"}},
+		{"playlist unknown subcommand foo", []string{"-l", libDir, "playlist", "foo"}},
+		{"artwork unknown subcommand bar", []string{"-l", libDir, "artwork", "bar"}},
+		{"root unknown command", []string{"-l", libDir, "unknown-cmd"}},
+		{"verify extra arg", []string{"-l", libDir, "verify", "extra"}},
+		{"sync extra arg", []string{"-l", libDir, "sync", "extra"}},
+		{"playlist list extra arg", []string{"-l", libDir, "playlist", "list", "extra"}},
+		{"artwork normalize extra arg", []string{"-l", libDir, "artwork", "normalize", "extra"}},
+		{"artwork prune extra arg", []string{"-l", libDir, "artwork", "prune", "extra"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := executeCommand(tt.args...)
+			if err == nil {
+				t.Fatalf("expected error when running unknown command/args %v, got nil", tt.args)
+			}
+		})
+	}
+}
+
+func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
+	t.Setenv("AGENT", "0")
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantSubstr []string
+	}{
+		{
+			name: "playlist inspect help",
+			args: []string{"playlist", "inspect", "--help"},
+			wantSubstr: []string{
+				"<playlist-id>",
+				"Arguments:",
+				"playlist list",
+			},
+		},
+		{
+			name: "restore help",
+			args: []string{"restore", "--help"},
+			wantSubstr: []string{
+				"<backup-dir>",
+				"Arguments:",
+				"backup --list",
+			},
+		},
+		{
+			name: "artwork normalize help",
+			args: []string{"artwork", "normalize", "--help"},
+			wantSubstr: []string{
+				"1:1 square",
+				"--no-backup",
+			},
+		},
+		{
+			name: "artwork prune help",
+			args: []string{"artwork", "prune", "--help"},
+			wantSubstr: []string{
+				"delete old, unneeded cover art",
+				"--no-backup",
+			},
+		},
+		{
+			name: "sync help",
+			args: []string{"sync", "--help"},
+			wantSubstr: []string{
+				"Scan your audio files",
+				"--no-backup",
+			},
+		},
+		{
+			name: "verify help",
+			args: []string{"verify", "--help"},
+			wantSubstr: []string{
+				"health check",
+				"--json",
+			},
+		},
+		{
+			name: "backup help",
+			args: []string{"backup", "--help"},
+			wantSubstr: []string{
+				"backup snapshot",
+				"--list",
+			},
+		},
+		{
+			name: "playlist list help",
+			args: []string{"playlist", "list", "--help"},
+			wantSubstr: []string{
+				"Collection",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := executeCommand(tt.args...)
+			if err != nil {
+				t.Fatalf("help command failed for %v: %v", tt.args, err)
+			}
+			for _, sub := range tt.wantSubstr {
+				if !strings.Contains(out, sub) {
+					t.Errorf("help output for %v missing substring %q. Output:\n%s", tt.args, sub, out)
+				}
+			}
+		})
+	}
+}
+
+func TestAgentMode_HelpScreens(t *testing.T) {
+	t.Setenv("AGENT", "1")
+
+	tests := []struct {
+		name       string
+		args       []string
+		wantSubstr []string
+	}{
+		{
+			name: "root help in agent mode",
+			args: []string{"--help"},
+			wantSubstr: []string{
+				"command: engine-cli",
+				"summary:",
+				"Database2/m.db",
+				"subcommands:",
+			},
+		},
+		{
+			name: "artwork normalize in agent mode",
+			args: []string{"artwork", "normalize", "--help"},
+			wantSubstr: []string{
+				"command: engine-cli artwork normalize",
+				"AlbumArt",
+				"mutates_db: true",
+				"auto_backup: true",
+			},
+		},
+		{
+			name: "verify in agent mode",
+			args: []string{"verify", "--help"},
+			wantSubstr: []string{
+				"command: engine-cli verify",
+				"Database2/m.db",
+				"Track, Playlist",
+			},
+		},
+		{
+			name: "playlist inspect in agent mode",
+			args: []string{"playlist", "inspect", "--help"},
+			wantSubstr: []string{
+				"command: engine-cli playlist inspect",
+				"args: <playlist-id>",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := executeCommand(tt.args...)
+			if err != nil {
+				t.Fatalf("agent help failed for %v: %v", tt.args, err)
+			}
+			for _, sub := range tt.wantSubstr {
+				if !strings.Contains(out, sub) {
+					t.Errorf("agent help output for %v missing substring %q. Output:\n%s", tt.args, sub, out)
+				}
+			}
+		})
 	}
 }

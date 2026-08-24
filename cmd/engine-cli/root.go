@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	version    = "1.0.0"
-	libDirFlag string
+	version      = "1.0.0"
+	libDirFlag   string
+	noBackupFlag bool
 )
 
 func getDefaultLibraryDir() string {
@@ -23,11 +24,11 @@ func getDefaultLibraryDir() string {
 func newRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "engine-cli",
-		Short: "CLI tool for managing, backing up, verifying, and repairing Engine DJ libraries and SQLite databases.",
-		Long: `engine-cli is a powerful utility designed for DJs to manage Engine DJ collection databases (m.db),
-perform integrity audits, normalize non-square cover artwork, synchronize on-disk metadata tags,
-and create atomic backups of Engine DJ libraries.`,
+		Short: "Manage, audit, repair, synchronize, and back up Engine DJ music collections",
+		Long: `engine-cli is a command-line tool designed for DJs to inspect, repair, synchronize,
+and safely back up Engine DJ music libraries and album cover art on your computer or external USB drives.`,
 		Version: version,
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -36,6 +37,7 @@ and create atomic backups of Engine DJ libraries.`,
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
 
 	rootCmd.PersistentFlags().StringVarP(&libDirFlag, "lib-dir", "l", getDefaultLibraryDir(), "Path to the Engine Library directory")
+	rootCmd.PersistentFlags().BoolVar(&noBackupFlag, "no-backup", false, "Disable automatic backup snapshot before modifying database")
 
 	rootCmd.AddCommand(newBackupCommand())
 	rootCmd.AddCommand(newRestoreCommand())
@@ -43,6 +45,8 @@ and create atomic backups of Engine DJ libraries.`,
 	rootCmd.AddCommand(newSyncCommand())
 	rootCmd.AddCommand(newArtworkCommand())
 	rootCmd.AddCommand(newPlaylistCommand())
+
+	setupHelp(rootCmd)
 
 	return rootCmd
 }

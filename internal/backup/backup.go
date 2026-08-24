@@ -21,13 +21,29 @@ type BackupInfo struct {
 	SizeBytes int64     `json:"sizeBytes"`
 }
 
+// GetDefaultBackupDir returns the default directory for storing backup snapshots following the XDG Base Directory specification.
+func GetDefaultBackupDir() (string, error) {
+	if xdgData := os.Getenv("XDG_DATA_HOME"); xdgData != "" {
+		return filepath.Join(xdgData, "engine-cli", "backups"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolving user home directory: %w", err)
+	}
+	return filepath.Join(home, ".local", "share", "engine-cli", "backups"), nil
+}
+
 // CreateBackup creates an atomic timestamped snapshot of Engine DJ databases and Artwork cache.
 func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo, error) {
 	if engineLibDir == "" {
 		return nil, fmt.Errorf("empty engine library directory")
 	}
 	if outDir == "" {
-		outDir = filepath.Join(engineLibDir, "Database2", "Backups")
+		defaultDir, err := GetDefaultBackupDir()
+		if err != nil {
+			return nil, fmt.Errorf("resolving default backup directory: %w", err)
+		}
+		outDir = defaultDir
 	}
 
 	if _, err := os.Stat(engineLibDir); err != nil {
@@ -115,6 +131,14 @@ func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo
 	}, nil
 }
 
+// AutoBackupIfNeeded creates an automated backup snapshot before a modifying operation unless disabled.
+func AutoBackupIfNeeded(ctx context.Context, engineLibDir string, noBackup bool) (*BackupInfo, error) {
+	if noBackup {
+		return nil, nil
+	}
+	return CreateBackup(ctx, engineLibDir, "")
+}
+
 // RestoreBackup restores databases and artwork from a backup directory into the Engine Library directory.
 func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 	if backupDir == "" {
@@ -184,10 +208,17 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 // ListBackups scans a directory for created backup snapshots.
 func ListBackups(backupBaseDir string) ([]BackupInfo, error) {
 	if backupBaseDir == "" {
-		return nil, fmt.Errorf("empty backup directory")
+		defaultDir, err := GetDefaultBackupDir()
+		if err != nil {
+			return nil, fmt.Errorf("resolving default backup directory: %w", err)
+		}
+		backupBaseDir = defaultDir
 	}
 
 	if _, err := os.Stat(backupBaseDir); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("stat backup dir %s: %w", backupBaseDir, err)
 	}
 
