@@ -33,9 +33,13 @@ func TestNormalizeArtwork_SuccessAndRunner(t *testing.T) {
 
 	artCacheDir := filepath.Join(tempDir, "Artwork")
 
-	// Mock runner simulating ffprobe (1280x720 16:9 non-square image) and ffmpeg image operations
+	// Mock runner simulating ffprobe (1280x720 16:9 non-square image on audio) and ffmpeg image operations
 	runner := func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		if name == "ffprobe" {
+			target := args[len(args)-1]
+			if strings.Contains(target, "db_art_in_") {
+				return []byte(`{"streams":[{"width":1400,"height":1400,"codec_name":"mjpeg"}]}`), nil
+			}
 			return []byte(`{"streams":[{"width":1280,"height":720,"codec_name":"png"}]}`), nil
 		}
 		if name == "ffmpeg" {

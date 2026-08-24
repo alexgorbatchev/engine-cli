@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -178,10 +179,10 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 			continue
 		}
 
-		// Compute SHA-1 hash
-		hasher := sha1.New()
-		hasher.Write(squareBytes)
-		hashHex := hex.EncodeToString(hasher.Sum(nil))
+		// Compute SHA-1 hash and Base64 RawURL representation (Engine DJ cache format)
+		shaSum := sha1.Sum(squareBytes)
+		hashHex := hex.EncodeToString(shaSum[:])
+		hashBase64URL := base64.RawURLEncoding.EncodeToString(shaSum[:])
 
 		// 4. Update AlbumArt table
 		artID, errArt := db.InsertOrUpdateAlbumArt(ctx, database, hashHex, squareBytes)
@@ -200,16 +201,97 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 			continue
 		}
 
-		// 6. Update cache file in Artwork directory if provided
+		// 6. Update cache files in Artwork directory (Engine DJ uses base64url and hex .jpg)
 		if artCacheDir != "" {
-			cacheFile := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", hashHex))
-			_ = os.WriteFile(cacheFile, squareBytes, 0644)
+			cacheFileBase64 := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", hashBase64URL))
+			cacheFileHex := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", hashHex))
+			_ = os.WriteFile(cacheFileBase64, squareBytes, 0644)
+			_ = os.WriteFile(cacheFileHex, squareBytes, 0644)
 		}
 
 		if w == h && w >= 1000 {
 			report.AlreadySquare++
 		} else {
 			report.NormalizedCount++
+		}
+	}
+
+	// 7. Normalize all existing rows in AlbumArt table if they contain non-square BLOBs
+	allArtRows, errArtRows := db.GetAllAlbumArt(ctx, database)
+	if errArtRows == nil {
+		for _, artRow := range allArtRows {
+			if len(artRow.AlbumArt) == 0 {
+				continue
+			}
+			tmpArtIn := filepath.Join(tmpDir, fmt.Sprintf("db_art_in_%d.jpg", artRow.ID))
+			if errWrite := os.WriteFile(tmpArtIn, artRow.AlbumArt, 0644); errWrite != nil {
+				continue
+			}
+			probeOut, errProbe := runner(ctx, "ffprobe", "-v", "error", "-show_entries", "stream=width,height", "-of", "json", tmpArtIn)
+			if errProbe != nil || len(probeOut) == 0 {
+				continue
+			}
+			var pd struct {
+				Streams []struct {
+					Width  int `json:"width"`
+					Height int `json:"height"`
+				} `json:"streams"`
+			}
+			if json.Unmarshal(probeOut, &pd) == nil && len(pd.Streams) > 0 {
+				w := pd.Streams[0].Width
+				h := pd.Streams[0].Height
+				if w > 0 && h > 0 && w != h {
+					// Crop non-square BLOB to 1:1 square
+					tmpArtSq := filepath.Join(tmpDir, fmt.Sprintf("db_art_sq_%d.jpg", artRow.ID))
+					_, errCrop := runner(ctx, "ffmpeg", "-v", "quiet", "-hide_banner", "-y", "-i", tmpArtIn, "-vf", "crop='min(iw,ih)':'min(iw,ih)',scale=1400:1400", "-q:v", "2", tmpArtSq)
+					if errCrop == nil {
+						if sqBytes, errRead := os.ReadFile(tmpArtSq); errRead == nil && len(sqBytes) > 0 {
+							shaSum := sha1.Sum(sqBytes)
+							newHash := hex.EncodeToString(shaSum[:])
+							hashBase64URL := base64.RawURLEncoding.EncodeToString(shaSum[:])
+							_ = db.UpdateAlbumArtByID(ctx, database, artRow.ID, newHash, sqBytes)
+							if artCacheDir != "" {
+								cacheFileBase64 := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", hashBase64URL))
+								cacheFileHex := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", newHash))
+								_ = os.WriteFile(cacheFileBase64, sqBytes, 0644)
+								_ = os.WriteFile(cacheFileHex, sqBytes, 0644)
+							}
+							report.NormalizedCount++
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Clean any remaining non-square files in artCacheDir
+	if artCacheDir != "" && existsDir(artCacheDir) {
+		entries, _ := os.ReadDir(artCacheDir)
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".jpg") {
+				p := filepath.Join(artCacheDir, e.Name())
+				probeOut, errProbe := runner(ctx, "ffprobe", "-v", "error", "-show_entries", "stream=width,height", "-of", "json", p)
+				if errProbe == nil && len(probeOut) > 0 {
+					var pd struct {
+						Streams []struct {
+							Width  int `json:"width"`
+							Height int `json:"height"`
+						} `json:"streams"`
+					}
+					if json.Unmarshal(probeOut, &pd) == nil && len(pd.Streams) > 0 {
+						if pd.Streams[0].Width > 0 && pd.Streams[0].Height > 0 && pd.Streams[0].Width != pd.Streams[0].Height {
+							// Non-square cached thumbnail: crop in-place
+							tmpSquare := filepath.Join(tmpDir, fmt.Sprintf("art_sq_%s", e.Name()))
+							_, errCrop := runner(ctx, "ffmpeg", "-v", "quiet", "-hide_banner", "-y", "-i", p, "-vf", "crop='min(iw,ih)':'min(iw,ih)',scale=1400:1400", "-q:v", "2", tmpSquare)
+							if errCrop == nil {
+								if sqBytes, errR := os.ReadFile(tmpSquare); errR == nil {
+									_ = os.WriteFile(p, sqBytes, 0644)
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -235,7 +317,11 @@ func PruneArtwork(ctx context.Context, database *sql.DB, artCacheDir string) (*P
 			referencedArtIDs[t.AlbumArtID.Int64] = true
 		}
 		if t.AlbumArtSourceHash.Valid && t.AlbumArtSourceHash.String != "" {
-			referencedHashes[strings.ToLower(t.AlbumArtSourceHash.String)] = true
+			h := strings.ToLower(t.AlbumArtSourceHash.String)
+			referencedHashes[h] = true
+			if b, errHex := hex.DecodeString(h); errHex == nil {
+				referencedHashes[strings.ToLower(base64.RawURLEncoding.EncodeToString(b))] = true
+			}
 		}
 	}
 
@@ -253,7 +339,11 @@ func PruneArtwork(ctx context.Context, database *sql.DB, artCacheDir string) (*P
 			}
 		} else {
 			if art.Hash != "" {
-				referencedHashes[strings.ToLower(art.Hash)] = true
+				h := strings.ToLower(art.Hash)
+				referencedHashes[h] = true
+				if b, errHex := hex.DecodeString(h); errHex == nil {
+					referencedHashes[strings.ToLower(base64.RawURLEncoding.EncodeToString(b))] = true
+				}
 			}
 		}
 	}

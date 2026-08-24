@@ -295,6 +295,15 @@ func GetAllAlbumArt(ctx context.Context, database *sql.DB) ([]AlbumArtRecord, er
 	return records, nil
 }
 
+// UpdateAlbumArtByID updates an existing AlbumArt row directly by its ID.
+func UpdateAlbumArtByID(ctx context.Context, database *sql.DB, id int64, hash string, blob []byte) error {
+	_, err := database.ExecContext(ctx, "UPDATE AlbumArt SET hash = ?, albumArt = ? WHERE id = ?", hash, blob, id)
+	if err != nil {
+		return fmt.Errorf("updating album art %d: %w", id, err)
+	}
+	return nil
+}
+
 // InsertOrUpdateAlbumArt inserts or updates an album art record by hash.
 func InsertOrUpdateAlbumArt(ctx context.Context, database *sql.DB, hash string, blob []byte) (int64, error) {
 	var existingID int64
