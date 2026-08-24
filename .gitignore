@@ -1,0 +1,16 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files and test artifacts
+.tmp/
+coverage.out
+coverage.html
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
