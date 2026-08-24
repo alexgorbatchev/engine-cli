@@ -37,7 +37,8 @@ Download the latest prebuilt binary from GitHub Releases:
 
 ```bash
 # Using GitHub CLI
-gh release download --repo alexgorbatchev/engine-cli --pattern 'engine-cli-*' --output engine-cli
+gh release download --repo alexgorbatchev/engine-cli --pattern 'engine-cli_*_darwin_arm64.tar.gz'
+tar -xzf engine-cli_*_darwin_arm64.tar.gz
 chmod +x engine-cli
 mv engine-cli ~/.local/bin/
 ```
@@ -45,8 +46,9 @@ mv engine-cli ~/.local/bin/
 Or via direct download:
 
 ```bash
-curl -sSL https://github.com/alexgorbatchev/engine-cli/releases/latest/download/engine-cli-darwin-arm64 -o ~/.local/bin/engine-cli
-chmod +x ~/.local/bin/engine-cli
+curl -sSL https://github.com/alexgorbatchev/engine-cli/releases/latest/download/engine-cli_darwin_arm64.tar.gz | tar -xz
+chmod +x engine-cli
+mv engine-cli ~/.local/bin/
 ```
 
 # Quick Start

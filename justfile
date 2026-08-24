@@ -1,5 +1,9 @@
 set dotenv-load := false
 
+# Default recipe: list available recipes
+default:
+    @just --list
+
 # Run CLI in human mode (default)
 run *args:
     go run ./cmd/engine-cli {{args}}
@@ -16,6 +20,10 @@ test:
 build:
     mkdir -p bin
     go build -o bin/engine-cli ./cmd/engine-cli
+
+# Install engine-cli binary to GOPATH bin directory
+install:
+    go install ./cmd/engine-cli
 
 # Run static analysis and vet
 lint:
@@ -35,4 +43,4 @@ check:
 
 # Clean up build binaries and temporary files
 clean:
-    rm -rf bin coverage.out .tmp
+    rm -rf bin coverage.out .tmp dist

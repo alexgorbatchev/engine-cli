@@ -7,6 +7,8 @@ bin/
 
 # Temporary files and test artifacts
 .tmp/
+dist/
+build/
 coverage.out
 coverage.html
 *.log
