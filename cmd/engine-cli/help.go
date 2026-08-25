@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree"
 	"github.com/dj/engine-cli/internal/agent"
-	"github.com/dj/engine-cli/internal/cmdtree"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -158,7 +158,7 @@ func setupHelp(cmd *cobra.Command) {
 			renderAgentHelp(c)
 			return
 		}
-		c.Print(cmdtree.RenderTreeHelp(c))
+		c.Print(cobrahelptree.RenderTreeHelp(c))
 	})
 }
 
