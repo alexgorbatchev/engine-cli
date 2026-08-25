@@ -1,24 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree"
-	"github.com/dj/engine-cli/internal/agent"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
-type commandTechInfo struct {
-	Summary     string
-	Description string
-	Args        string
-	MutatesDB   bool
-	AutoBackup  bool
-}
-
-var techCatalog = map[string]commandTechInfo{
+var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli": {
 		Summary:     "Engine DJ SQLite database and artwork CLI management utility",
 		Description: "CLI utility for inspecting, repairing, synchronizing, and backing up Engine DJ collection databases (Database2/m.db, p.db) and Artwork/ cache.",
@@ -158,83 +145,7 @@ var techCatalog = map[string]commandTechInfo{
 }
 
 func setupHelp(cmd *cobra.Command) {
-	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
-		if agent.IsAgentMode() {
-			renderAgentHelp(c)
-			return
-		}
-		c.Print(cobrahelptree.RenderTreeHelp(c))
+	cobrahelptree.Setup(cmd, cobrahelptree.TreeOptions{
+		TechCatalog: techCatalog,
 	})
-}
-
-func renderAgentHelp(cmd *cobra.Command) {
-	path := cmd.CommandPath()
-	info, exists := techCatalog[path]
-	if !exists {
-		info = commandTechInfo{
-			Summary:     cmd.Short,
-			Description: cmd.Long,
-		}
-	}
-
-	cmd.Printf("command: %s\n", path)
-	cmd.Printf("summary: %s\n", info.Summary)
-	if info.Description != "" {
-		cmd.Printf("description: %s\n", info.Description)
-	}
-	cmd.Printf("usage: %s\n", cmd.UseLine())
-
-	if info.Args != "" {
-		cmd.Printf("args: %s\n", info.Args)
-	} else if len(cmd.ValidArgs) > 0 {
-		cmd.Printf("args: %s\n", strings.Join(cmd.ValidArgs, ", "))
-	}
-
-	if info.MutatesDB {
-		cmd.Println("mutates_db: true")
-	}
-	if info.AutoBackup {
-		cmd.Println("auto_backup: true (override with --no-backup)")
-	}
-
-	// Subcommands if any
-	subcommands := cmd.Commands()
-	var visibleSubs []*cobra.Command
-	for _, sub := range subcommands {
-		if !sub.Hidden && sub.Name() != "help" && sub.Name() != "completion" {
-			visibleSubs = append(visibleSubs, sub)
-		}
-	}
-	if len(visibleSubs) > 0 {
-		cmd.Println("subcommands:")
-		for _, sub := range visibleSubs {
-			subPath := sub.CommandPath()
-			subSummary := sub.Short
-			if subInfo, ok := techCatalog[subPath]; ok && subInfo.Summary != "" {
-				subSummary = subInfo.Summary
-			}
-			cmd.Printf("  - %s: %s\n", sub.Name(), subSummary)
-		}
-	}
-
-	// Flags
-	flags := cmd.Flags()
-	var flagLines []string
-	flags.VisitAll(func(f *pflag.Flag) {
-		if f.Hidden {
-			return
-		}
-		short := ""
-		if f.Shorthand != "" {
-			short = "-" + f.Shorthand + ", "
-		}
-		flagLines = append(flagLines, fmt.Sprintf("  %s--%s %s: %s (default: %q)", short, f.Name, f.Value.Type(), f.Usage, f.DefValue))
-	})
-
-	if len(flagLines) > 0 {
-		cmd.Println("flags:")
-		for _, fl := range flagLines {
-			cmd.Println(fl)
-		}
-	}
 }
