@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -329,6 +331,448 @@ func InsertOrUpdateAlbumArt(ctx context.Context, database *sql.DB, hash string, 
 		return 0, fmt.Errorf("getting inserted album art id: %w", errID)
 	}
 	return id, nil
+}
+
+// FindPlaylist finds a playlist by numeric ID or by title.
+func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Playlist, error) {
+	if database == nil {
+		return nil, fmt.Errorf("database cannot be nil")
+	}
+	idOrTitle = strings.TrimSpace(idOrTitle)
+	if idOrTitle == "" {
+		return nil, fmt.Errorf("empty playlist identifier")
+	}
+
+	// Try numeric ID first
+	if id, err := strconv.ParseInt(idOrTitle, 10, 64); err == nil && id > 0 {
+		var p Playlist
+		var isFolder sql.NullBool
+		err := database.QueryRowContext(ctx, "SELECT id, title, parentListId, isFolder FROM Playlist WHERE id = ?", id).
+			Scan(&p.ID, &p.Title, &p.ParentListID, &isFolder)
+		if err == nil {
+			p.IsFolder = isFolder.Bool
+			return &p, nil
+		} else if err != sql.ErrNoRows {
+			return nil, fmt.Errorf("querying playlist by id %d: %w", id, err)
+		}
+	}
+
+	// Fallback to title lookup (case-insensitive)
+	var p Playlist
+	var isFolder sql.NullBool
+	err := database.QueryRowContext(ctx, "SELECT id, title, parentListId, isFolder FROM Playlist WHERE title = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1", idOrTitle).
+		Scan(&p.ID, &p.Title, &p.ParentListID, &isFolder)
+	if err == nil {
+		p.IsFolder = isFolder.Bool
+		return &p, nil
+	} else if err != sql.ErrNoRows {
+		return nil, fmt.Errorf("querying playlist by title %q: %w", idOrTitle, err)
+	}
+
+	return nil, nil
+}
+
+// CreatePlaylist creates a new playlist or folder in the Playlist table.
+func CreatePlaylist(ctx context.Context, database *sql.DB, title string, parentListID int64, isFolder bool) (int64, error) {
+	if database == nil {
+		return 0, fmt.Errorf("database cannot be nil")
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return 0, fmt.Errorf("playlist title cannot be empty")
+	}
+
+	if parentListID > 0 {
+		var parentExists bool
+		err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", parentListID).Scan(&parentExists)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return 0, fmt.Errorf("parent playlist ID %d does not exist", parentListID)
+			}
+			return 0, fmt.Errorf("checking parent playlist: %w", err)
+		}
+	}
+
+	query := "INSERT INTO Playlist (title, parentListId, isFolder) VALUES (?, ?, ?)"
+	res, err := database.ExecContext(ctx, query, title, parentListID, isFolder)
+	if err != nil {
+		return 0, fmt.Errorf("creating playlist %q: %w", title, err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("getting inserted playlist id: %w", err)
+	}
+
+	return id, nil
+}
+
+// DeletePlaylist deletes a playlist and its associated PlaylistEntity records.
+// If the playlist has children and force is false, it returns an error.
+func DeletePlaylist(ctx context.Context, database *sql.DB, id int64, force bool) error {
+	if database == nil {
+		return fmt.Errorf("database cannot be nil")
+	}
+
+	var exists bool
+	err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", id).Scan(&exists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("playlist ID %d not found", id)
+		}
+		return fmt.Errorf("checking playlist %d: %w", id, err)
+	}
+
+	var childCount int
+	err = database.QueryRowContext(ctx, "SELECT COUNT(*) FROM Playlist WHERE parentListId = ?", id).Scan(&childCount)
+	if err != nil {
+		return fmt.Errorf("checking child playlists for %d: %w", id, err)
+	}
+
+	if childCount > 0 && !force {
+		return fmt.Errorf("playlist ID %d has %d child playlist(s); use --force to delete recursively", id, childCount)
+	}
+
+	// Helper to recursively collect all descendant IDs
+	var collectDescendants func(parent int64) ([]int64, error)
+	collectDescendants = func(parent int64) ([]int64, error) {
+		rows, err := database.QueryContext(ctx, "SELECT id FROM Playlist WHERE parentListId = ?", parent)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var ids []int64
+		for rows.Next() {
+			var childID int64
+			if err := rows.Scan(&childID); err != nil {
+				return nil, err
+			}
+			ids = append(ids, childID)
+			subIDs, err := collectDescendants(childID)
+			if err != nil {
+				return nil, err
+			}
+			ids = append(ids, subIDs...)
+		}
+		return ids, rows.Err()
+	}
+
+	allToDelete := []int64{id}
+	if childCount > 0 {
+		descendants, err := collectDescendants(id)
+		if err != nil {
+			return fmt.Errorf("collecting descendant playlists: %w", err)
+		}
+		allToDelete = append(allToDelete, descendants...)
+	}
+
+	for _, delID := range allToDelete {
+		if _, err := database.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE listId = ?", delID); err != nil {
+			return fmt.Errorf("deleting playlist entities for %d: %w", delID, err)
+		}
+		if _, err := database.ExecContext(ctx, "DELETE FROM Playlist WHERE id = ?", delID); err != nil {
+			return fmt.Errorf("deleting playlist %d: %w", delID, err)
+		}
+	}
+
+	return nil
+}
+
+// MovePlaylist updates the parentListId of a playlist/folder.
+func MovePlaylist(ctx context.Context, database *sql.DB, id int64, newParentID int64) error {
+	if database == nil {
+		return fmt.Errorf("database cannot be nil")
+	}
+	if id == newParentID {
+		return fmt.Errorf("cannot move playlist to be its own parent")
+	}
+
+	var exists bool
+	err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", id).Scan(&exists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("playlist ID %d not found", id)
+		}
+		return fmt.Errorf("checking playlist %d: %w", id, err)
+	}
+
+	if newParentID > 0 {
+		var parentExists bool
+		err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", newParentID).Scan(&parentExists)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("destination parent playlist ID %d not found", newParentID)
+			}
+			return fmt.Errorf("checking destination parent %d: %w", newParentID, err)
+		}
+
+		// Prevent circular hierarchy
+		curr := newParentID
+		for curr > 0 {
+			if curr == id {
+				return fmt.Errorf("cannot move playlist %d inside its own child playlist %d", id, newParentID)
+			}
+			var nextParent int64
+			err := database.QueryRowContext(ctx, "SELECT parentListId FROM Playlist WHERE id = ?", curr).Scan(&nextParent)
+			if err != nil {
+				break
+			}
+			curr = nextParent
+		}
+	}
+
+	_, err = database.ExecContext(ctx, "UPDATE Playlist SET parentListId = ? WHERE id = ?", newParentID, id)
+	if err != nil {
+		return fmt.Errorf("updating playlist %d parent: %w", id, err)
+	}
+
+	return nil
+}
+
+// AddTrackToPlaylist adds a track to a playlist, maintaining the linked list in PlaylistEntity.
+func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, trackID int64) (int64, error) {
+	if database == nil {
+		return 0, fmt.Errorf("database cannot be nil")
+	}
+
+	var pExists bool
+	err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", listID).Scan(&pExists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("playlist ID %d not found", listID)
+		}
+		return 0, fmt.Errorf("checking playlist %d: %w", listID, err)
+	}
+
+	var tExists bool
+	err = database.QueryRowContext(ctx, "SELECT 1 FROM Track WHERE id = ?", trackID).Scan(&tExists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("track ID %d not found", trackID)
+		}
+		return 0, fmt.Errorf("checking track %d: %w", trackID, err)
+	}
+
+	// Check if already in playlist
+	var existingEntityID int64
+	err = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND trackId = ?", listID, trackID).Scan(&existingEntityID)
+	if err == nil {
+		return existingEntityID, nil // already present
+	} else if err != sql.ErrNoRows {
+		return 0, fmt.Errorf("checking existing playlist entity: %w", err)
+	}
+
+	// Find the current tail entity (where nextEntityId = 0 or last entity by id)
+	var tailID int64
+	_ = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND (nextEntityId = 0 OR nextEntityId IS NULL) ORDER BY id DESC LIMIT 1", listID).Scan(&tailID)
+
+	res, err := database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, nextEntityId, membershipReference) VALUES (?, ?, 0, 0)", listID, trackID)
+	if err != nil {
+		return 0, fmt.Errorf("inserting playlist entity: %w", err)
+	}
+
+	newID, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("getting inserted entity id: %w", err)
+	}
+
+	if tailID > 0 && tailID != newID {
+		_, _ = database.ExecContext(ctx, "UPDATE PlaylistEntity SET nextEntityId = ? WHERE id = ?", newID, tailID)
+	}
+
+	return newID, nil
+}
+
+// RemoveTrackFromPlaylist removes a track from a playlist and relinks adjacent PlaylistEntities.
+func RemoveTrackFromPlaylist(ctx context.Context, database *sql.DB, listID int64, trackID int64) error {
+	if database == nil {
+		return fmt.Errorf("database cannot be nil")
+	}
+
+	var entityID int64
+	var nextEntityID sql.NullInt64
+	err := database.QueryRowContext(ctx, "SELECT id, nextEntityId FROM PlaylistEntity WHERE listId = ? AND trackId = ?", listID, trackID).Scan(&entityID, &nextEntityID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("track ID %d not found in playlist %d", trackID, listID)
+		}
+		return fmt.Errorf("checking track in playlist: %w", err)
+	}
+
+	// Relink previous node to nextEntityID
+	var targetNext int64
+	if nextEntityID.Valid {
+		targetNext = nextEntityID.Int64
+	}
+	_, _ = database.ExecContext(ctx, "UPDATE PlaylistEntity SET nextEntityId = ? WHERE listId = ? AND nextEntityId = ?", targetNext, listID, entityID)
+
+	// Delete target entity
+	_, err = database.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE id = ?", entityID)
+	if err != nil {
+		return fmt.Errorf("deleting playlist entity %d: %w", entityID, err)
+	}
+
+	return nil
+}
+
+// MoveTrackInPlaylist moves a track membership from srcListID to dstListID.
+func MoveTrackInPlaylist(ctx context.Context, database *sql.DB, srcListID int64, dstListID int64, trackID int64) error {
+	if srcListID == dstListID {
+		return nil
+	}
+	if err := RemoveTrackFromPlaylist(ctx, database, srcListID, trackID); err != nil {
+		return fmt.Errorf("removing from source playlist: %w", err)
+	}
+	if _, err := AddTrackToPlaylist(ctx, database, dstListID, trackID); err != nil {
+		return fmt.Errorf("adding to destination playlist: %w", err)
+	}
+	return nil
+}
+
+// InsertTrack inserts a new Track record into the Track table and returns its ID.
+func InsertTrack(ctx context.Context, database *sql.DB, t *Track) (int64, error) {
+	if database == nil {
+		return 0, fmt.Errorf("database cannot be nil")
+	}
+	nowISO := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	t.LastEditTime = sql.NullString{String: nowISO, Valid: true}
+
+	query := `
+		INSERT INTO Track (
+			playOrder, length, bpm, year, path, filename, bitrate, bpmAnalyzed,
+			albumArtId, fileBytes, title, artist, album, genre, comment, label,
+			composer, remixer, key, rating, albumArt, fileType, isAnalyzed, isAvailable,
+			lastEditTime, albumArtSourceHash
+		) VALUES (
+			?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?
+		);
+	`
+	res, err := database.ExecContext(ctx, query,
+		t.PlayOrder, t.Length, t.BPM, t.Year, t.Path, t.Filename, t.Bitrate, t.BPMAnalyzed,
+		t.AlbumArtID, t.FileBytes, t.Title, t.Artist, t.Album, t.Genre, t.Comment, t.Label,
+		t.Composer, t.Remixer, t.Key, t.Rating, t.AlbumArt, t.FileType, t.IsAnalyzed, t.IsAvailable,
+		t.LastEditTime, t.AlbumArtSourceHash,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("inserting track: %w", err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("getting inserted track id: %w", err)
+	}
+	t.ID = id
+	return id, nil
+}
+
+// DeleteTrack deletes a track from the Track table and removes all its PlaylistEntity references.
+func DeleteTrack(ctx context.Context, database *sql.DB, id int64) error {
+	if database == nil {
+		return fmt.Errorf("database cannot be nil")
+	}
+
+	var exists bool
+	err := database.QueryRowContext(ctx, "SELECT 1 FROM Track WHERE id = ?", id).Scan(&exists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("track ID %d not found", id)
+		}
+		return fmt.Errorf("checking track %d: %w", id, err)
+	}
+
+	if _, err := database.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE trackId = ?", id); err != nil {
+		return fmt.Errorf("deleting playlist entities for track %d: %w", id, err)
+	}
+
+	if _, err := database.ExecContext(ctx, "DELETE FROM Track WHERE id = ?", id); err != nil {
+		return fmt.Errorf("deleting track %d: %w", id, err)
+	}
+
+	return nil
+}
+
+// FindTrack finds a track by numeric ID, path, or filename.
+func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, error) {
+	if database == nil {
+		return nil, fmt.Errorf("database cannot be nil")
+	}
+	idOrPath = strings.TrimSpace(idOrPath)
+	if idOrPath == "" {
+		return nil, fmt.Errorf("empty track identifier")
+	}
+
+	// Try numeric ID first
+	if id, err := strconv.ParseInt(idOrPath, 10, 64); err == nil && id > 0 {
+		t, err := GetTrackByID(ctx, database, id)
+		if err != nil {
+			return nil, err
+		}
+		if t != nil {
+			return t, nil
+		}
+	}
+
+	// Lookup by path, filename, or title (exact or relative match)
+	query := `
+		SELECT id, playOrder, length, bpm, year, path, filename, bitrate, bpmAnalyzed,
+		       albumArtId, fileBytes, title, artist, album, genre, comment, label,
+		       composer, remixer, key, rating, albumArt, fileType, isAnalyzed, isAvailable,
+		       lastEditTime, albumArtSourceHash
+		FROM Track
+		WHERE path = ? OR filename = ? OR title = ? COLLATE NOCASE OR path LIKE ? OR path LIKE ?
+		ORDER BY id ASC LIMIT 1;
+	`
+	row := database.QueryRowContext(ctx, query, idOrPath, idOrPath, idOrPath, "%"+idOrPath, idOrPath+"%")
+	var t Track
+	err := row.Scan(
+		&t.ID, &t.PlayOrder, &t.Length, &t.BPM, &t.Year, &t.Path, &t.Filename, &t.Bitrate, &t.BPMAnalyzed,
+		&t.AlbumArtID, &t.FileBytes, &t.Title, &t.Artist, &t.Album, &t.Genre, &t.Comment, &t.Label,
+		&t.Composer, &t.Remixer, &t.Key, &t.Rating, &t.AlbumArt, &t.FileType, &t.IsAnalyzed, &t.IsAvailable,
+		&t.LastEditTime, &t.AlbumArtSourceHash,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("finding track %q: %w", idOrPath, err)
+	}
+	return &t, nil
+}
+
+// RelocateTracks replaces oldPrefix with newPrefix in Track.path for matching tracks.
+func RelocateTracks(ctx context.Context, database *sql.DB, oldPrefix string, newPrefix string) (int, error) {
+	if database == nil {
+		return 0, fmt.Errorf("database cannot be nil")
+	}
+	if oldPrefix == "" {
+		return 0, fmt.Errorf("old prefix cannot be empty")
+	}
+
+	tracks, err := GetAllTracks(ctx, database)
+	if err != nil {
+		return 0, fmt.Errorf("fetching tracks for relocation: %w", err)
+	}
+
+	relocatedCount := 0
+	for _, t := range tracks {
+		pathStr := t.PathString()
+		if strings.HasPrefix(pathStr, oldPrefix) || strings.Contains(pathStr, oldPrefix) {
+			newPath := strings.Replace(pathStr, oldPrefix, newPrefix, 1)
+			newFilename := filepath.Base(newPath)
+			t.Path = sql.NullString{String: newPath, Valid: true}
+			t.Filename = sql.NullString{String: newFilename, Valid: true}
+			if err := UpdateTrackMetadata(ctx, database, &t); err != nil {
+				return relocatedCount, fmt.Errorf("updating relocated track %d: %w", t.ID, err)
+			}
+			relocatedCount++
+		}
+	}
+
+	return relocatedCount, nil
 }
 
 // DeleteAlbumArt removes an AlbumArt row by ID.

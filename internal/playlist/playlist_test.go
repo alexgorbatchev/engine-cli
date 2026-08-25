@@ -53,8 +53,8 @@ func TestGetPlaylistHierarchy(t *testing.T) {
 		t.Errorf("expected 2 tracks in Deep House, got %v", tree[0].Children[0].Children)
 	}
 
-	// 2. InspectPlaylist (Deep House)
-	details, err := InspectPlaylist(ctx, database, 3)
+	// 2. InspectPlaylist (Deep House by ID and by name)
+	details, err := InspectPlaylist(ctx, database, "3")
 	if err != nil {
 		t.Fatalf("InspectPlaylist failed: %v", err)
 	}
@@ -62,8 +62,13 @@ func TestGetPlaylistHierarchy(t *testing.T) {
 		t.Errorf("expected 2 tracks / 540s duration, got count=%d, duration=%d", details.TrackCount, details.TotalDuration)
 	}
 
+	detailsName, err := InspectPlaylist(ctx, database, "deep house")
+	if err != nil || detailsName.ID != 3 {
+		t.Fatalf("InspectPlaylist by name failed: %v, got %v", err, detailsName)
+	}
+
 	// 3. Inspect non-existent playlist
-	_, err = InspectPlaylist(ctx, database, 9999)
+	_, err = InspectPlaylist(ctx, database, "9999")
 	if err == nil {
 		t.Error("expected error for non-existent playlist ID")
 	}
@@ -288,6 +293,146 @@ func TestFormatTrackLine(t *testing.T) {
 	}
 }
 
+func TestPlaylistOperations(t *testing.T) {
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "m.db")
+	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer database.Close()
+
+	_ = db.InitSchema(ctx, database)
+
+	// 1. CreatePlaylist
+	pRoot, err := CreatePlaylist(ctx, database, "Techno", "", true)
+	if err != nil || pRoot.ID <= 0 {
+		t.Fatalf("CreatePlaylist error: %v", err)
+	}
+	pChild, err := CreatePlaylist(ctx, database, "Peak Time", "Techno", false)
+	if err != nil || pChild.ParentListID != pRoot.ID {
+		t.Fatalf("CreatePlaylist child error: %v, got %v", err, pChild)
+	}
+
+	// 2. MovePlaylist
+	pDestFolder, _ := CreatePlaylist(ctx, database, "Underground", "", true)
+	movedPL, targetParent, err := MovePlaylist(ctx, database, "Peak Time", "Underground")
+	if err != nil || movedPL.ParentListID != pDestFolder.ID || targetParent.ID != pDestFolder.ID {
+		t.Fatalf("MovePlaylist error: %v, moved=%v, target=%v", err, movedPL, targetParent)
+	}
+	// Move to Collection (root 0)
+	movedRoot, targetRoot, err := MovePlaylist(ctx, database, "Peak Time", "Collection")
+	if err != nil || movedRoot.ParentListID != 0 || targetRoot != nil {
+		t.Fatalf("MovePlaylist to root error: %v", err)
+	}
+
+	// Insert tracks for membership tests
+	_, _ = database.ExecContext(ctx, "INSERT INTO Track (id, title, artist, path, filename) VALUES (101, 'Acid Track', 'DJ Acid', 'p101', 'f101');")
+	_, _ = database.ExecContext(ctx, "INSERT INTO Track (id, title, artist, path, filename) VALUES (102, 'Rave Track', 'DJ Rave', 'p102', 'f102');")
+
+	// 3. AddTrackToPlaylist
+	plAdded, trAdded, err := AddTrackToPlaylist(ctx, database, "Peak Time", "101")
+	if err != nil || plAdded.ID != movedRoot.ID || trAdded.ID != 101 {
+		t.Fatalf("AddTrackToPlaylist error: %v, pl=%v, tr=%v", err, plAdded, trAdded)
+	}
+
+	// 4. MoveTrackBetweenPlaylists
+	pNewDest, _ := CreatePlaylist(ctx, database, "Festival", "", false)
+	srcPL, dstPL, trMoved, err := MoveTrackBetweenPlaylists(ctx, database, "Peak Time", "Festival", "Acid Track")
+	if err != nil || srcPL.ID != movedRoot.ID || dstPL.ID != pNewDest.ID || trMoved.ID != 101 {
+		t.Fatalf("MoveTrackBetweenPlaylists error: %v", err)
+	}
+
+	// 5. RemoveTrackFromPlaylist
+	_, _, err = RemoveTrackFromPlaylist(ctx, database, "Festival", "Acid Track")
+	if err != nil {
+		t.Fatalf("RemoveTrackFromPlaylist error: %v", err)
+	}
+
+	// 6. DeletePlaylist with children without force (error)
+	_, _ = CreatePlaylist(ctx, database, "ParentToDel", "", true)
+	_, _ = CreatePlaylist(ctx, database, "ChildToDel", "ParentToDel", false)
+	if _, err := DeletePlaylist(ctx, database, "ParentToDel", false); err == nil {
+		t.Error("expected error deleting playlist with children without force")
+	}
+
+	// 7. DeletePlaylist
+	delPL, err := DeletePlaylist(ctx, database, "Festival", false)
+	if err != nil || delPL.ID != pNewDest.ID {
+		t.Fatalf("DeletePlaylist error: %v", err)
+	}
+}
+
+func TestPlaylistOperations_Errors(t *testing.T) {
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "m.db")
+	database, _ := db.Open(dbPath)
+	defer database.Close()
+	_ = db.InitSchema(ctx, database)
+
+	// Nil database
+	if _, err := CreatePlaylist(ctx, nil, "T", "", false); err == nil {
+		t.Error("expected error for nil db in CreatePlaylist")
+	}
+	if _, err := DeletePlaylist(ctx, nil, "T", false); err == nil {
+		t.Error("expected error for nil db in DeletePlaylist")
+	}
+	if _, _, err := MovePlaylist(ctx, nil, "T", ""); err == nil {
+		t.Error("expected error for nil db in MovePlaylist")
+	}
+	if _, _, err := AddTrackToPlaylist(ctx, nil, "T", "1"); err == nil {
+		t.Error("expected error for nil db in AddTrackToPlaylist")
+	}
+	if _, _, err := RemoveTrackFromPlaylist(ctx, nil, "T", "1"); err == nil {
+		t.Error("expected error for nil db in RemoveTrackFromPlaylist")
+	}
+	if _, _, _, err := MoveTrackBetweenPlaylists(ctx, nil, "T", "U", "1"); err == nil {
+		t.Error("expected error for nil db in MoveTrackBetweenPlaylists")
+	}
+
+	// Empty titles and non-existent identifiers
+	if _, err := CreatePlaylist(ctx, database, "", "", false); err == nil {
+		t.Error("expected error for empty playlist title")
+	}
+	if _, err := CreatePlaylist(ctx, database, "T", "nonexistent", false); err == nil {
+		t.Error("expected error for non-existent parent")
+	}
+	if _, err := DeletePlaylist(ctx, database, "nonexistent", false); err == nil {
+		t.Error("expected error deleting non-existent playlist")
+	}
+	if _, _, err := MovePlaylist(ctx, database, "nonexistent", ""); err == nil {
+		t.Error("expected error moving non-existent playlist")
+	}
+	p1, _ := CreatePlaylist(ctx, database, "P1", "", false)
+	if _, _, err := MovePlaylist(ctx, database, "P1", "nonexistent_parent"); err == nil {
+		t.Error("expected error moving to non-existent parent")
+	}
+	if _, _, err := AddTrackToPlaylist(ctx, database, "nonexistent", "1"); err == nil {
+		t.Error("expected error adding track to non-existent playlist")
+	}
+	if _, _, err := AddTrackToPlaylist(ctx, database, "P1", "nonexistent_track"); err == nil {
+		t.Error("expected error adding non-existent track")
+	}
+	if _, _, err := RemoveTrackFromPlaylist(ctx, database, "nonexistent", "1"); err == nil {
+		t.Error("expected error removing track from non-existent playlist")
+	}
+	if _, _, err := RemoveTrackFromPlaylist(ctx, database, "P1", "nonexistent_track"); err == nil {
+		t.Error("expected error removing non-existent track from playlist")
+	}
+	if _, _, _, err := MoveTrackBetweenPlaylists(ctx, database, "nonexistent", "P1", "1"); err == nil {
+		t.Error("expected error for non-existent src in MoveTrackBetweenPlaylists")
+	}
+	if _, _, _, err := MoveTrackBetweenPlaylists(ctx, database, "P1", "nonexistent", "1"); err == nil {
+		t.Error("expected error for non-existent dst in MoveTrackBetweenPlaylists")
+	}
+	if _, _, _, err := MoveTrackBetweenPlaylists(ctx, database, "P1", "P1", "nonexistent_track"); err == nil {
+		t.Error("expected error for non-existent track in MoveTrackBetweenPlaylists")
+	}
+	_ = p1
+}
+
 func TestPlaylist_Errors(t *testing.T) {
 	ctx := context.Background()
 	tempDir := t.TempDir()
@@ -295,7 +440,7 @@ func TestPlaylist_Errors(t *testing.T) {
 	if _, err := GetPlaylistHierarchy(ctx, nil); err == nil {
 		t.Error("expected error for nil database")
 	}
-	if _, err := InspectPlaylist(ctx, nil, 1); err == nil {
+	if _, err := InspectPlaylist(ctx, nil, "1"); err == nil {
 		t.Error("expected error for nil database")
 	}
 
@@ -306,7 +451,7 @@ func TestPlaylist_Errors(t *testing.T) {
 	if _, err := GetPlaylistHierarchy(ctx, database); err == nil {
 		t.Error("expected error on closed database")
 	}
-	if _, err := InspectPlaylist(ctx, database, 1); err == nil {
+	if _, err := InspectPlaylist(ctx, database, "1"); err == nil {
 		t.Error("expected error on closed database")
 	}
 }

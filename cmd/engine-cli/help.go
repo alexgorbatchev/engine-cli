@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/dj/engine-cli/internal/agent"
+	"github.com/dj/engine-cli/internal/cmdtree"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -68,20 +69,96 @@ var techCatalog = map[string]commandTechInfo{
 		Description: "Queries Playlist and PlaylistEntity tables in Database2/m.db to construct tree rooted at Collection. Emits bulleted list in AGENT=1 mode.",
 	},
 	"engine-cli playlist inspect": {
-		Summary:     "Query and list Track records associated with a playlist ID",
-		Description: "Queries PlaylistEntity joined with Track in Database2/m.db for specified playlist ID and outputs track list.",
-		Args:        "<playlist-id> (int64 playlist ID)",
+		Summary:     "Query and list Track records associated with a playlist",
+		Description: "Queries PlaylistEntity joined with Track in Database2/m.db for specified playlist name or ID and outputs track list.",
+		Args:        "<pl|id>",
+	},
+	"engine-cli playlist create": {
+		Summary:     "Create a new playlist or folder in the collection hierarchy",
+		Description: "Inserts a new record into Playlist table in Database2/m.db under optional parent folder.",
+		Args:        "<name>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli playlist rm": {
+		Summary:     "Delete a playlist or folder and its membership references",
+		Description: "Deletes PlaylistEntity associations and Playlist record from Database2/m.db without deleting underlying Track records.",
+		Args:        "<pl|id>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli playlist move": {
+		Summary:     "Relocate or reparent a playlist or folder in the hierarchy",
+		Description: "Updates parentListId for target playlist in Database2/m.db, preventing circular loops.",
+		Args:        "<pl|id>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli playlist track": {
+		Summary:     "Manage track memberships inside Engine DJ playlists",
+		Description: "Command group for adding, removing, and transferring track membership entities in playlists.",
+	},
+	"engine-cli playlist track add": {
+		Summary:     "Add track(s) to a playlist",
+		Description: "Creates PlaylistEntity linked-list records in Database2/m.db linking specified tracks to target playlist.",
+		Args:        "<pl|id> <tr|id|path...>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli playlist track rm": {
+		Summary:     "Remove track(s) from a playlist",
+		Description: "Deletes PlaylistEntity records for specified tracks in target playlist and relinks adjacent entities.",
+		Args:        "<pl|id> <tr|id|path...>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli playlist track move": {
+		Summary:     "Move track membership from source playlist to destination playlist",
+		Description: "Transfers PlaylistEntity associations from source playlist to destination playlist in Database2/m.db.",
+		Args:        "<src-pl|id> <dst-pl|id> <tr|id|path...>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli track": {
+		Summary:     "Manage audio files and collection tracks",
+		Description: "Command group for adding, removing, moving, and relocating master audio track records.",
+	},
+	"engine-cli track add": {
+		Summary:     "Import audio file(s) into collection and extract metadata",
+		Description: "Probes audio tags via ffprobe, writes Track records to Database2/m.db, and optionally moves files to library or assigns to playlist.",
+		Args:        "<path...>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli track rm": {
+		Summary:     "Remove track(s) from collection and all playlists",
+		Description: "Deletes Track and cascading PlaylistEntity records from Database2/m.db, optionally deleting audio file on disk.",
+		Args:        "<tr|id|path...>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli track move": {
+		Summary:     "Move audio file on disk and update collection path",
+		Description: "Moves physical audio file on filesystem and updates path and filename columns in Database2/m.db.",
+		Args:        "<tr|id|path> <dest-path>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli track relocate": {
+		Summary:     "Batch-replace directory path prefixes for collection tracks",
+		Description: "Updates Track.path prefixes across collection in Database2/m.db when drive mount points or folders change.",
+		MutatesDB:   true,
+		AutoBackup:  true,
 	},
 }
 
 func setupHelp(cmd *cobra.Command) {
-	defaultHelp := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
 		if agent.IsAgentMode() {
 			renderAgentHelp(c)
 			return
 		}
-		defaultHelp(c, args)
+		c.Print(cmdtree.RenderTreeHelp(c))
 	})
 }
 

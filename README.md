@@ -3,6 +3,8 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 # What It Does
 
 - Audits Engine DJ SQLite collection databases for missing audio files, file size mismatches, and broken playlist links.
+- Imports audio files into collection with automatic metadata tag probing, optional file relocation, and instant playlist assignment.
+- Manages nested playlist and folder hierarchies with full creation, deletion, moving, and track membership control.
 - Extracts and center-crops embedded album artwork to 1:1 square (1400x1400) for crisp jog wheel and media player displays.
 - Prunes unreferenced artwork database records and stale thumbnail cache files to reclaim storage space.
 - Synchronizes on-disk audio metadata tags and file sizes with database track records.
@@ -13,6 +15,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 
 - Scans your Engine DJ library directory on internal storage or external USB/SD drives.
 - Inspects SQLite database tables to detect corrupt file paths, size discrepancies, and missing artwork.
+- Imports audio files and links them to playlists while maintaining linked-list playback order.
 - Normalizes non-square album covers to 1:1 square dimensions without re-encoding your audio files.
 - Updates database track records from modified on-disk tags and discovers unindexed music files.
 - Automatically saves a safety backup snapshot before performing any database-modifying operation.
@@ -23,7 +26,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Executes `ffprobe` JSON stream analysis to detect attached picture stream dimensions and extract audio tags.
 - Invokes `ffmpeg` with `-c:a copy` to ensure zero lossy-to-lossy audio transcoding during metadata operations.
 - Generates SHA-1 binary BLOB hashes and writes raw URL-safe Base64 thumbnail files into the `Artwork/` cache directory.
-- Manages nested playlist trees through recursive foreign key traversal on `Playlist` and `PlaylistEntity` tables.
+- Manages nested playlist trees and linked-list entities through recursive foreign key traversal on `Playlist` and `PlaylistEntity` tables.
 - Packages database directories into timestamped XDG backup snapshots with atomic directory replacement on restore.
 
 # Prerequisites
@@ -57,14 +60,23 @@ mv engine-cli ~/.local/bin/
 # Verify library health and check for missing files
 engine-cli verify
 
+# Import an audio file, move it to library storage, and add to a playlist
+engine-cli track add --move --to-playlist "Tech House" "/Downloads/song.mp3"
+
+# Display playlist hierarchy tree
+engine-cli playlist list
+
+# Create a new playlist or folder
+engine-cli playlist create "Melodic Techno" --parent "Techno"
+
+# Add an existing track to a playlist
+engine-cli playlist track add "Melodic Techno" "Track Title"
+
 # Normalize cover artwork to 1:1 square
 engine-cli artwork normalize
 
 # Synchronize on-disk audio tags into database
 engine-cli sync
-
-# Display playlist hierarchy tree
-engine-cli playlist list
 ```
 
 # Options & Flags
@@ -73,6 +85,14 @@ engine-cli playlist list
 | :--- | :--- | :--- | :--- |
 | `--lib-dir <path>` | `-l` | `~/Music/Engine Library` | Path to the Engine Library directory |
 | `--no-backup` | `-` | `false` | Disable automatic backup snapshot before modifying database |
+| `--to-playlist <pl|id>` | `-` | `""` | Assign imported track directly to a playlist in `track add` |
+| `--move` | `-` | `false` | Move audio file into library directory in `track add` |
+| `--delete-file` | `-` | `false` | Delete physical audio file from disk in `track rm` |
+| `--parent <pl|id>` | `-p` | `""` | Parent playlist or folder in `playlist create` |
+| `--folder` | `-` | `false` | Create a folder container instead of a playlist in `playlist create` |
+| `--force` | `-f` | `false` | Recursively delete folder and nested playlists in `playlist rm` |
+| `--to <pl|id|path>` | `-` | `""` | Destination parent in `playlist move` or destination prefix in `track relocate` |
+| `--from <path>` | `-` | `""` | Old directory prefix to replace in `track relocate` |
 | `--json` | `-` | `false` | Output verification report in JSON format |
 | `--out-dir <path>` | `-o` | `~/.local/share/engine-cli/backups` | Destination directory for backup snapshots |
 | `--list` | `-` | `false` | List available backup snapshots without creating a new backup |

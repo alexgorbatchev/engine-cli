@@ -22,6 +22,17 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Normalize Artwork to 1:1 Square:** `bin/engine-cli artwork normalize`
 - **Prune Orphaned Artwork:** `bin/engine-cli artwork prune`
 - **List Playlists:** `bin/engine-cli playlist list`
+- **Inspect Playlist:** `bin/engine-cli playlist inspect <pl|id>`
+- **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <pl|id>] [--folder]`
+- **Remove Playlist:** `bin/engine-cli playlist rm <pl|id> [--force]`
+- **Move/Reparent Playlist:** `bin/engine-cli playlist move <pl|id> --to <pl|id>`
+- **Add Track to Playlist:** `bin/engine-cli playlist track add <pl|id> <tr|id|path...>`
+- **Remove Track from Playlist:** `bin/engine-cli playlist track rm <pl|id> <tr|id|path...>`
+- **Move Track Between Playlists:** `bin/engine-cli playlist track move <src-pl|id> <dst-pl|id> <tr|id|path...>`
+- **Add Track to Library:** `bin/engine-cli track add <path...> [--to-playlist <pl|id>] [--move]`
+- **Remove Track from Library:** `bin/engine-cli track rm <tr|id|path...> [--delete-file]`
+- **Move Track File on Disk:** `bin/engine-cli track move <tr|id|path> <dest-path>`
+- **Relocate Track Paths:** `bin/engine-cli track relocate --from <path> --to <path>`
 
 ## Setup & Environment
 - **Prerequisites:** Go 1.26+, `ffmpeg`, `ffprobe`, `just`.
@@ -30,8 +41,9 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Temporary Files:** Temporary file operations use `.tmp/` within the project root.
 
 ## Conventions
+- **CLI Argument Placeholder Conventions:** All command argument placeholders and help documentation strictly follow the standard abbreviations: `pl` for playlist name, `tr` for track title, `id` for numeric database ID, `path` for filesystem path (file or folder), `pl|id` for playlist name or ID, `tr|id|path` for track title, ID, or path, and `src-pl|id` / `dst-pl|id` for source and destination playlists.
 - **Distribution for Non-Technical Users:** `engine-cli` is distributed for non-technical users (working and bedroom DJs, music collectors). All installation instructions, CLI outputs, error messages, and documentation must remain straightforward, accessible, and actionable without requiring developer knowledge. Pre-compiled binaries are the primary release and distribution vehicle.
-- **Automated Database Snapshots:** All database modification operations (`artwork normalize`, `artwork prune`, `sync`, `restore`) must automatically create a snapshot backup in the XDG backup directory before applying changes, unless the user opts out with `--no-backup`.
+- **Automated Database Snapshots:** All database modification operations (`artwork normalize`, `artwork prune`, `sync`, `restore`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track rm`, `track move`, `track relocate`) must automatically create a snapshot backup in the XDG backup directory before applying changes, unless the user opts out with `--no-backup`.
 - **Output Formatting & No Decorative Headers:** All CLI output must be plain text without emojis across all modes and logs. Static decorative title headers (e.g. `=== ... ===`) are prohibited; output meaning must be obvious directly from the structured content lines.
 - **ASCII Tree Rendering:** All tree and hierarchy views (such as playlist listings) must render using standard ASCII tree characters (`├── `, `└── `, `│   `), with each node on a single line formatted as `<title> [id:<id> tracks:<trackCount>]`.
 - **Agent Mode (`AGENT=1`):** When the `AGENT=1`, `AGENT=true`, or `AGENT=yes` environment variable is present, commands output compact, token-conservative key-value pairs or simple indented bulleted lists (e.g. for `playlist list`) without interactive noise, multi-byte Unicode tree symbols, or formatting banners.

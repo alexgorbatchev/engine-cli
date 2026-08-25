@@ -488,7 +488,7 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "playlist inspect help",
 			args: []string{"playlist", "inspect", "--help"},
 			wantSubstr: []string{
-				"<playlist-id>",
+				"<pl|id>",
 				"Arguments:",
 				"playlist list",
 			},
@@ -547,6 +547,84 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			args: []string{"playlist", "list", "--help"},
 			wantSubstr: []string{
 				"Collection",
+			},
+		},
+		{
+			name: "playlist create help",
+			args: []string{"playlist", "create", "--help"},
+			wantSubstr: []string{
+				"<name>",
+				"--parent",
+				"--folder",
+			},
+		},
+		{
+			name: "playlist rm help",
+			args: []string{"playlist", "rm", "--help"},
+			wantSubstr: []string{
+				"<pl|id>",
+				"--force",
+			},
+		},
+		{
+			name: "playlist move help",
+			args: []string{"playlist", "move", "--help"},
+			wantSubstr: []string{
+				"<pl|id>",
+				"--to",
+			},
+		},
+		{
+			name: "playlist track add help",
+			args: []string{"playlist", "track", "add", "--help"},
+			wantSubstr: []string{
+				"<pl|id> <tr|id|path...>",
+			},
+		},
+		{
+			name: "playlist track rm help",
+			args: []string{"playlist", "track", "rm", "--help"},
+			wantSubstr: []string{
+				"<pl|id> <tr|id|path...>",
+			},
+		},
+		{
+			name: "playlist track move help",
+			args: []string{"playlist", "track", "move", "--help"},
+			wantSubstr: []string{
+				"<src-pl|id> <dst-pl|id> <tr|id|path...>",
+			},
+		},
+		{
+			name: "track add help",
+			args: []string{"track", "add", "--help"},
+			wantSubstr: []string{
+				"<path...>",
+				"--to-playlist",
+				"--move",
+			},
+		},
+		{
+			name: "track rm help",
+			args: []string{"track", "rm", "--help"},
+			wantSubstr: []string{
+				"<tr|id|path...>",
+				"--delete-file",
+			},
+		},
+		{
+			name: "track move help",
+			args: []string{"track", "move", "--help"},
+			wantSubstr: []string{
+				"<tr|id|path> <dest-path>",
+			},
+		},
+		{
+			name: "track relocate help",
+			args: []string{"track", "relocate", "--help"},
+			wantSubstr: []string{
+				"--from",
+				"--to",
 			},
 		},
 	}
@@ -608,7 +686,24 @@ func TestAgentMode_HelpScreens(t *testing.T) {
 			args: []string{"playlist", "inspect", "--help"},
 			wantSubstr: []string{
 				"command: engine-cli playlist inspect",
-				"args: <playlist-id>",
+				"args: <pl|id>",
+			},
+		},
+		{
+			name: "track add in agent mode",
+			args: []string{"track", "add", "--help"},
+			wantSubstr: []string{
+				"command: engine-cli track add",
+				"mutates_db: true",
+				"auto_backup: true",
+			},
+		},
+		{
+			name: "playlist track move in agent mode",
+			args: []string{"playlist", "track", "move", "--help"},
+			wantSubstr: []string{
+				"command: engine-cli playlist track move",
+				"mutates_db: true",
 			},
 		},
 	}
@@ -625,5 +720,293 @@ func TestAgentMode_HelpScreens(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNewPlaylistCommands_E2E(t *testing.T) {
+	t.Setenv("AGENT", "0")
+	libDir := createTestLibrary(t)
+
+	// 1. Create playlist
+	outCreate, err := executeCommand("-l", libDir, "playlist", "create", "Melodic House")
+	if err != nil {
+		t.Fatalf("playlist create failed: %v", err)
+	}
+	if !strings.Contains(outCreate, `[OK] Created playlist "Melodic House"`) {
+		t.Errorf("unexpected create output: %s", outCreate)
+	}
+
+	// 2. Create folder under parent
+	outFolder, err := executeCommand("-l", libDir, "playlist", "create", "Subgenres", "--parent", "EDM Folder", "--folder")
+	if err != nil {
+		t.Fatalf("playlist create folder failed: %v", err)
+	}
+	if !strings.Contains(outFolder, `[OK] Created folder "Subgenres"`) {
+		t.Errorf("unexpected folder create output: %s", outFolder)
+	}
+
+	// 3. Move playlist
+	outMove, err := executeCommand("-l", libDir, "playlist", "move", "Melodic House", "--to", "Subgenres")
+	if err != nil {
+		t.Fatalf("playlist move failed: %v", err)
+	}
+	if !strings.Contains(outMove, `[OK] Moved playlist "Melodic House"`) {
+		t.Errorf("unexpected move output: %s", outMove)
+	}
+
+	// 4. Playlist track add
+	outAddTrack, err := executeCommand("-l", libDir, "playlist", "track", "add", "Melodic House", "1")
+	if err != nil {
+		t.Fatalf("playlist track add failed: %v", err)
+	}
+	if !strings.Contains(outAddTrack, `[OK] Added track "Sample Title"`) {
+		t.Errorf("unexpected track add output: %s", outAddTrack)
+	}
+
+	// 5. Playlist track move
+	outMoveTrack, err := executeCommand("-l", libDir, "playlist", "track", "move", "Melodic House", "House Child", "1")
+	if err != nil {
+		t.Fatalf("playlist track move failed: %v", err)
+	}
+	if !strings.Contains(outMoveTrack, `[OK] Moved track "Sample Title"`) {
+		t.Errorf("unexpected track move output: %s", outMoveTrack)
+	}
+
+	// 6. Playlist track rm
+	outRmTrack, err := executeCommand("-l", libDir, "playlist", "track", "rm", "House Child", "1")
+	if err != nil {
+		t.Fatalf("playlist track rm failed: %v", err)
+	}
+	if !strings.Contains(outRmTrack, `[OK] Removed track "Sample Title"`) {
+		t.Errorf("unexpected track rm output: %s", outRmTrack)
+	}
+
+	// 7. Playlist rm
+	outRmPL, err := executeCommand("-l", libDir, "playlist", "rm", "Melodic House")
+	if err != nil {
+		t.Fatalf("playlist rm failed: %v", err)
+	}
+	if !strings.Contains(outRmPL, `[OK] Deleted playlist "Melodic House"`) {
+		t.Errorf("unexpected playlist rm output: %s", outRmPL)
+	}
+}
+
+func TestNewTrackCommands_E2E(t *testing.T) {
+	t.Setenv("AGENT", "0")
+	libDir := createTestLibrary(t)
+
+	// Create a new audio file
+	newAudio := filepath.Join(libDir, "incoming.mp3")
+	_ = os.WriteFile(newAudio, []byte("incoming track dummy bytes"), 0o644)
+
+	// 1. Track add with --to-playlist and --move
+	outAdd, err := executeCommand("-l", libDir, "track", "add", "--to-playlist", "Incoming Playlist", "--move", newAudio)
+	if err != nil {
+		t.Fatalf("track add failed: %v", err)
+	}
+	if !strings.Contains(outAdd, `[OK] Added track "incoming"`) || !strings.Contains(outAdd, "Assigned to playlist") {
+		t.Errorf("unexpected track add output: %s", outAdd)
+	}
+
+	// 2. Track move
+	destPath := filepath.Join(libDir, "Music", "Custom", "relocated_song.mp3")
+	outMove, err := executeCommand("-l", libDir, "track", "move", "incoming", destPath)
+	if err != nil {
+		t.Fatalf("track move failed: %v", err)
+	}
+	if !strings.Contains(outMove, `[OK] Moved track "incoming"`) {
+		t.Errorf("unexpected track move output: %s", outMove)
+	}
+
+	// 3. Track relocate
+	outRelocate, err := executeCommand("-l", libDir, "track", "relocate", "--from", "Music/Custom", "--to", "Music/Moved")
+	if err != nil {
+		t.Fatalf("track relocate failed: %v", err)
+	}
+	if !strings.Contains(outRelocate, `[OK] Relocated 1 track(s)`) {
+		t.Errorf("unexpected relocate output: %s", outRelocate)
+	}
+
+	// 4. Track rm with --delete-file
+	outRm, err := executeCommand("-l", libDir, "track", "rm", "incoming", "--delete-file")
+	if err != nil {
+		t.Fatalf("track rm failed: %v", err)
+	}
+	if !strings.Contains(outRm, `[OK] Removed track "incoming"`) || !strings.Contains(outRm, "Deleted audio file from disk") {
+		t.Errorf("unexpected track rm output: %s", outRm)
+	}
+}
+
+func TestAgentMode_NewCommands(t *testing.T) {
+	t.Setenv("AGENT", "1")
+	libDir := createTestLibrary(t)
+
+	// 1. Playlist create in AGENT mode
+	cOut, err := executeCommand("-l", libDir, "playlist", "create", "AgentPL")
+	if err != nil {
+		t.Fatalf("playlist create in agent mode failed: %v", err)
+	}
+	if !strings.Contains(cOut, "status: ok") || !strings.Contains(cOut, "title: AgentPL") {
+		t.Errorf("unexpected agent create output: %s", cOut)
+	}
+
+	// 2. Playlist move in AGENT mode
+	mOut, err := executeCommand("-l", libDir, "playlist", "move", "AgentPL", "--to", "EDM Folder")
+	if err != nil {
+		t.Fatalf("playlist move in agent mode failed: %v", err)
+	}
+	if !strings.Contains(mOut, "status: ok") || !strings.Contains(mOut, "parent_id: 1") {
+		t.Errorf("unexpected agent move output: %s", mOut)
+	}
+
+	// 3. Playlist track add in AGENT mode
+	ptaOut, err := executeCommand("-l", libDir, "playlist", "track", "add", "AgentPL", "1")
+	if err != nil {
+		t.Fatalf("playlist track add in agent mode failed: %v", err)
+	}
+	if !strings.Contains(ptaOut, "status: ok") || !strings.Contains(ptaOut, "track_id: 1") {
+		t.Errorf("unexpected agent playlist track add output: %s", ptaOut)
+	}
+
+	// 4. Playlist track move in AGENT mode
+	ptmOut, err := executeCommand("-l", libDir, "playlist", "track", "move", "AgentPL", "House Child", "1")
+	if err != nil {
+		t.Fatalf("playlist track move in agent mode failed: %v", err)
+	}
+	if !strings.Contains(ptmOut, "status: ok") || !strings.Contains(ptmOut, "dst_playlist_id: 2") {
+		t.Errorf("unexpected agent playlist track move output: %s", ptmOut)
+	}
+
+	// 5. Playlist track rm in AGENT mode
+	ptrOut, err := executeCommand("-l", libDir, "playlist", "track", "rm", "House Child", "1")
+	if err != nil {
+		t.Fatalf("playlist track rm in agent mode failed: %v", err)
+	}
+	if !strings.Contains(ptrOut, "status: ok") || !strings.Contains(ptrOut, "removed_track_id: 1") {
+		t.Errorf("unexpected agent playlist track rm output: %s", ptrOut)
+	}
+
+	// 6. Playlist rm in AGENT mode
+	prmOut, err := executeCommand("-l", libDir, "playlist", "rm", "AgentPL")
+	if err != nil {
+		t.Fatalf("playlist rm in agent mode failed: %v", err)
+	}
+	if !strings.Contains(prmOut, "status: ok") || !strings.Contains(prmOut, "deleted_title: AgentPL") {
+		t.Errorf("unexpected agent playlist rm output: %s", prmOut)
+	}
+
+	// 7. Track add in AGENT mode
+	newAudio := filepath.Join(libDir, "agent_song.mp3")
+	_ = os.WriteFile(newAudio, []byte("agent song data"), 0o644)
+	taOut, err := executeCommand("-l", libDir, "track", "add", newAudio)
+	if err != nil {
+		t.Fatalf("track add in agent mode failed: %v", err)
+	}
+	if !strings.Contains(taOut, "status: ok") || !strings.Contains(taOut, "title: agent_song") {
+		t.Errorf("unexpected agent track add output: %s", taOut)
+	}
+
+	// 8. Track move in AGENT mode
+	destPath := filepath.Join(libDir, "Music", "agent_moved.mp3")
+	tmOut, err := executeCommand("-l", libDir, "track", "move", "agent_song", destPath)
+	if err != nil {
+		t.Fatalf("track move in agent mode failed: %v", err)
+	}
+	if !strings.Contains(tmOut, "status: ok") || !strings.Contains(tmOut, "new_path: Music/agent_moved.mp3") {
+		t.Errorf("unexpected agent track move output: %s", tmOut)
+	}
+
+	// 9. Track relocate in AGENT mode
+	trOut, err := executeCommand("-l", libDir, "track", "relocate", "--from", "Music/agent_moved.mp3", "--to", "Music/agent_relocated.mp3")
+	if err != nil {
+		t.Fatalf("track relocate in agent mode failed: %v", err)
+	}
+	if !strings.Contains(trOut, "status: ok") || !strings.Contains(trOut, "relocated_count: 1") {
+		t.Errorf("unexpected agent track relocate output: %s", trOut)
+	}
+
+	// 10. Track rm in AGENT mode
+	trmOut, err := executeCommand("-l", libDir, "track", "rm", "agent_song")
+	if err != nil {
+		t.Fatalf("track rm in agent mode failed: %v", err)
+	}
+	if !strings.Contains(trmOut, "status: ok") || !strings.Contains(trmOut, "title: agent_song") {
+		t.Errorf("unexpected agent track rm output: %s", trmOut)
+	}
+}
+
+func TestCommandHelpAndErrorBranches(t *testing.T) {
+	t.Setenv("AGENT", "0")
+	libDir := createTestLibrary(t)
+
+	// Parent commands without subcommands trigger help
+	for _, parent := range [][]string{
+		{"playlist"},
+		{"playlist", "track"},
+		{"track"},
+		{"artwork"},
+	} {
+		out, err := executeCommand(parent...)
+		if err != nil {
+			t.Fatalf("parent command %v returned error: %v", parent, err)
+		}
+		if !strings.Contains(out, "Usage:") && !strings.Contains(out, "Flags:") {
+			t.Errorf("expected usage help for %v, got: %s", parent, out)
+		}
+	}
+
+	// Commands with --no-backup
+	newAudio := filepath.Join(libDir, "nobackup.mp3")
+	_ = os.WriteFile(newAudio, []byte("data"), 0o644)
+	if _, err := executeCommand("-l", libDir, "--no-backup", "track", "add", newAudio); err != nil {
+		t.Fatalf("track add --no-backup error: %v", err)
+	}
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "create", "NoBackupPL"); err != nil {
+		t.Fatalf("playlist create --no-backup error: %v", err)
+	}
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "track", "add", "NoBackupPL", "nobackup"); err != nil {
+		t.Fatalf("playlist track add --no-backup error: %v", err)
+	}
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "track", "rm", "NoBackupPL", "nobackup"); err != nil {
+		t.Fatalf("playlist track rm --no-backup error: %v", err)
+	}
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "move", "NoBackupPL", "--to", "0"); err != nil {
+		t.Fatalf("playlist move --no-backup error: %v", err)
+	}
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "rm", "NoBackupPL"); err != nil {
+		t.Fatalf("playlist rm --no-backup error: %v", err)
+	}
+
+	// Bad DB path errors for all new commands
+	badLib := "/nonexistent/path/lib"
+	if _, err := executeCommand("-l", badLib, "playlist", "create", "Bad"); err == nil {
+		t.Error("expected error for bad lib in playlist create")
+	}
+	if _, err := executeCommand("-l", badLib, "playlist", "rm", "Bad"); err == nil {
+		t.Error("expected error for bad lib in playlist rm")
+	}
+	if _, err := executeCommand("-l", badLib, "playlist", "move", "Bad", "--to", "0"); err == nil {
+		t.Error("expected error for bad lib in playlist move")
+	}
+	if _, err := executeCommand("-l", badLib, "playlist", "track", "add", "Bad", "1"); err == nil {
+		t.Error("expected error for bad lib in playlist track add")
+	}
+	if _, err := executeCommand("-l", badLib, "playlist", "track", "rm", "Bad", "1"); err == nil {
+		t.Error("expected error for bad lib in playlist track rm")
+	}
+	if _, err := executeCommand("-l", badLib, "playlist", "track", "move", "Bad", "Dest", "1"); err == nil {
+		t.Error("expected error for bad lib in playlist track move")
+	}
+	if _, err := executeCommand("-l", badLib, "track", "add", newAudio); err == nil {
+		t.Error("expected error for bad lib in track add")
+	}
+	if _, err := executeCommand("-l", badLib, "track", "rm", "1"); err == nil {
+		t.Error("expected error for bad lib in track rm")
+	}
+	if _, err := executeCommand("-l", badLib, "track", "move", "1", "dest"); err == nil {
+		t.Error("expected error for bad lib in track move")
+	}
+	if _, err := executeCommand("-l", badLib, "track", "relocate", "--from", "a", "--to", "b"); err == nil {
+		t.Error("expected error for bad lib in track relocate")
 	}
 }
