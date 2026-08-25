@@ -85,8 +85,8 @@ func TestRootCommand_HelpAndVersion(t *testing.T) {
 	if errVer != nil {
 		t.Fatalf("version failed: %v", errVer)
 	}
-	if outVer != "1.0.0\n" {
-		t.Errorf("expected '1.0.0\\n', got %q", outVer)
+	if outVer != "1.1.0\n" {
+		t.Errorf("expected '1.1.0\\n', got %q", outVer)
 	}
 
 	_ = getDefaultLibraryDir()
