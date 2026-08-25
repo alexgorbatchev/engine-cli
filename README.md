@@ -58,7 +58,7 @@ mv engine-cli ~/.local/bin/
 
 ```bash
 # Verify library health and check for missing files
-engine-cli verify
+engine-cli library verify
 
 # Import an audio file, move it to library storage, and add to a playlist
 engine-cli track add --move --to-playlist "Tech House" "/Downloads/song.mp3"
@@ -73,10 +73,13 @@ engine-cli playlist create "Melodic Techno" --parent "Techno"
 engine-cli playlist track add "Melodic Techno" "Track Title"
 
 # Normalize cover artwork to 1:1 square
-engine-cli artwork normalize
+engine-cli track artwork normalize
 
 # Synchronize on-disk audio tags into database
-engine-cli sync
+engine-cli library sync
+
+# Create a backup snapshot
+engine-cli library backup "/Volumes/BackupDrive/EngineBackups"
 ```
 
 # Options & Flags

@@ -16,11 +16,11 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Run Static Analysis & Tests:** `just check` (`go vet ./... && go test -v ./...`)
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)
-- **Verify Library:** `bin/engine-cli verify`
-- **Backup Library:** `bin/engine-cli backup`
-- **Sync On-Disk Metadata:** `bin/engine-cli sync`
-- **Normalize Artwork to 1:1 Square:** `bin/engine-cli artwork normalize`
-- **Prune Orphaned Artwork:** `bin/engine-cli artwork prune`
+- **Verify Library Integrity:** `bin/engine-cli library verify`
+- **Backup Library:** `bin/engine-cli library backup [path] [--list]`
+- **Restore Library:** `bin/engine-cli library restore <path>`
+- **Sync On-Disk Metadata:** `bin/engine-cli library sync`
+- **Prune Orphaned Artwork:** `bin/engine-cli library prune`
 - **List Playlists:** `bin/engine-cli playlist list`
 - **Inspect Playlist:** `bin/engine-cli playlist inspect <pl|id>`
 - **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <pl|id>] [--folder]`
@@ -33,6 +33,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Remove Track from Library:** `bin/engine-cli track rm <tr|id|path...> [--delete-file]`
 - **Move Track File on Disk:** `bin/engine-cli track move <tr|id|path> <dest-path>`
 - **Relocate Track Paths:** `bin/engine-cli track relocate --from <path> --to <path>`
+- **Normalize Artwork to 1:1 Square:** `bin/engine-cli track artwork normalize`
 
 ## Setup & Environment
 - **Prerequisites:** Go 1.26+, `ffmpeg`, `ffprobe`, `just`.
@@ -43,7 +44,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 ## Conventions
 - **CLI Argument Placeholder Conventions:** All command argument placeholders and help documentation strictly follow the standard abbreviations: `pl` for playlist name, `tr` for track title, `id` for numeric database ID, `path` for filesystem path (file or folder), `pl|id` for playlist name or ID, `tr|id|path` for track title, ID, or path, and `src-pl|id` / `dst-pl|id` for source and destination playlists.
 - **Distribution for Non-Technical Users:** `engine-cli` is distributed for non-technical users (working and bedroom DJs, music collectors). All installation instructions, CLI outputs, error messages, and documentation must remain straightforward, accessible, and actionable without requiring developer knowledge. Pre-compiled binaries are the primary release and distribution vehicle.
-- **Automated Database Snapshots:** All database modification operations (`artwork normalize`, `artwork prune`, `sync`, `restore`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track rm`, `track move`, `track relocate`) must automatically create a snapshot backup in the XDG backup directory before applying changes, unless the user opts out with `--no-backup`.
+- **Automated Database Snapshots:** All database modification operations (`library sync`, `library restore`, `library prune`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track rm`, `track move`, `track relocate`, `track artwork normalize`) must automatically create a snapshot backup in the XDG backup directory before applying changes, unless the user opts out with `--no-backup`.
 - **Output Formatting & No Decorative Headers:** All CLI output must be plain text without emojis across all modes and logs. Static decorative title headers (e.g. `=== ... ===`) are prohibited; output meaning must be obvious directly from the structured content lines.
 - **ASCII Tree Rendering:** All tree and hierarchy views (such as playlist listings) must render using standard ASCII tree characters (`├── `, `└── `, `│   `), with each node on a single line formatted as `<title> [id:<id> tracks:<trackCount>]`.
 - **Agent Mode (`AGENT=1`):** When the `AGENT=1`, `AGENT=true`, or `AGENT=yes` environment variable is present, commands output compact, token-conservative key-value pairs or simple indented bulleted lists (e.g. for `playlist list`) without interactive noise, multi-byte Unicode tree symbols, or formatting banners.

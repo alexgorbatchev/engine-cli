@@ -23,38 +23,33 @@ var techCatalog = map[string]commandTechInfo{
 		Summary:     "Engine DJ SQLite database and artwork CLI management utility",
 		Description: "CLI utility for inspecting, repairing, synchronizing, and backing up Engine DJ collection databases (Database2/m.db, p.db) and Artwork/ cache.",
 	},
-	"engine-cli verify": {
+	"engine-cli library": {
+		Summary:     "Engine DJ database and library maintenance command group",
+		Description: "Command group for auditing integrity, synchronizing tags, creating snapshots, restoring backups, and pruning caches.",
+	},
+	"engine-cli library verify": {
 		Summary:     "Run read-only integrity audit on Engine DJ SQLite database and audio files",
 		Description: "Audits Track, Playlist, PlaylistEntity, and AlbumArt tables in Database2/m.db for missing audio files on disk, fileBytes mismatches, orphaned entity foreign keys, missing album art, and empty playlists.",
 	},
-	"engine-cli sync": {
+	"engine-cli library sync": {
 		Summary:     "Synchronize audio tags and file sizes on disk with Track table in Database2/m.db",
 		Description: "Scans on-disk audio files referenced in Track table, updates title, artist, BPM, and fileBytes columns when modified on disk, and detects unindexed audio files.",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
-	"engine-cli backup": {
+	"engine-cli library backup": {
 		Summary:     "Create atomic snapshot of Engine DJ SQLite databases and Artwork/ cache",
-		Description: "Creates atomic timestamped snapshot directory containing Database2/*.db, Root/*.db, and Artwork/* into $XDG_DATA_HOME/engine-cli/backups (~/.local/share/engine-cli/backups) or custom -o path.",
+		Description: "Creates atomic timestamped snapshot directory containing Database2/*.db, Root/*.db, and Artwork/* into default XDG backup directory or custom path.",
+		Args:        "[path]",
 	},
-	"engine-cli restore": {
+	"engine-cli library restore": {
 		Summary:     "Restore Database2/*.db, Root/*.db, and Artwork/* from backup snapshot directory",
 		Description: "Overwrites target Engine Library databases and Artwork/ cache with files from specified snapshot directory.",
-		Args:        "<backup-dir> (path to snapshot directory)",
+		Args:        "<path>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
-	"engine-cli artwork": {
-		Summary:     "Album artwork processing and cache management group",
-		Description: "Command group for normalizing embedded picture streams to 1:1 square and pruning unreferenced AlbumArt table rows and Artwork/ cache files.",
-	},
-	"engine-cli artwork normalize": {
-		Summary:     "Normalize embedded picture streams to 1:1 square and sync AlbumArt table",
-		Description: "Extracts video stream v:0 via ffmpeg, crops to 1:1 square, computes SHA-1 hash, updates AlbumArt and Track records in Database2/m.db, and writes Artwork/*.jpg cache files without audio transcoding (-c:a copy).",
-		MutatesDB:   true,
-		AutoBackup:  true,
-	},
-	"engine-cli artwork prune": {
+	"engine-cli library prune": {
 		Summary:     "Delete unreferenced AlbumArt table records and orphaned disk cache files",
 		Description: "Deletes rows in AlbumArt table not referenced by any Track.albumArtId and deletes unreferenced .jpg files in Artwork/ cache directory.",
 		MutatesDB:   true,
@@ -147,6 +142,16 @@ var techCatalog = map[string]commandTechInfo{
 	"engine-cli track relocate": {
 		Summary:     "Batch-replace directory path prefixes for collection tracks",
 		Description: "Updates Track.path prefixes across collection in Database2/m.db when drive mount points or folders change.",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli track artwork": {
+		Summary:     "Manage embedded track cover artwork",
+		Description: "Command group for normalizing embedded picture streams on tracks.",
+	},
+	"engine-cli track artwork normalize": {
+		Summary:     "Normalize embedded picture streams to 1:1 square and sync AlbumArt table",
+		Description: "Extracts video stream v:0 via ffmpeg, crops to 1:1 square, computes SHA-1 hash, updates AlbumArt and Track records in Database2/m.db, and writes Artwork/*.jpg cache files without audio transcoding (-c:a copy).",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},

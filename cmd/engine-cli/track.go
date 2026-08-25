@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/dj/engine-cli/internal/agent"
+	"github.com/dj/engine-cli/internal/artwork"
 	"github.com/dj/engine-cli/internal/backup"
 	"github.com/dj/engine-cli/internal/db"
 	"github.com/dj/engine-cli/internal/track"
@@ -20,7 +21,8 @@ func newTrackCommand() *cobra.Command {
   - Use 'engine-cli track add <path...>' to import audio files into your collection.
   - Use 'engine-cli track rm <tr|id|path...>' to remove tracks from your collection.
   - Use 'engine-cli track move <tr|id|path> <dest-path>' to move audio files on disk and update their database paths.
-  - Use 'engine-cli track relocate' to batch-fix broken audio file paths across drives or folders.`,
+  - Use 'engine-cli track relocate' to batch-fix broken audio file paths across drives or folders.
+  - Use 'engine-cli track artwork' to manage embedded cover art.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
@@ -31,6 +33,7 @@ func newTrackCommand() *cobra.Command {
 	trCmd.AddCommand(newTrackRmCommand())
 	trCmd.AddCommand(newTrackMoveCommand())
 	trCmd.AddCommand(newTrackRelocateCommand())
+	trCmd.AddCommand(newTrackArtworkCommand())
 
 	return trCmd
 }
@@ -301,4 +304,87 @@ Automatically saves a safety backup of your library before making changes unless
 	_ = cmd.MarkFlagRequired("to")
 
 	return cmd
+}
+
+func newTrackArtworkCommand() *cobra.Command {
+	artCmd := &cobra.Command{
+		Use:   "artwork",
+		Short: "Manage and fix embedded track cover artwork",
+		Long: `Manage and fix embedded album cover artwork for tracks in your collection.
+
+  - Use 'engine-cli track artwork normalize' to crop wide covers to 1:1 square for DJ jog wheels.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
+	}
+
+	artCmd.AddCommand(newTrackArtworkNormalizeCommand())
+
+	return artCmd
+}
+
+func newTrackArtworkNormalizeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "normalize",
+		Short: "Crop album cover art to 1:1 square for DJ jog wheels and player displays",
+		Long: `Scan your music collection, extract embedded album cover art, and crop wide or banner images into clean 1:1 square covers so they look crisp on DJ jog wheels and player screens without modifying your audio files.
+
+Automatically saves a safety backup of your library before applying changes unless --no-backup is specified.`,
+		Example: `  engine-cli track artwork normalize
+  engine-cli -l "/Volumes/DJ_USB/Engine Library" track artwork normalize
+  engine-cli --no-backup track artwork normalize`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
+			if err != nil {
+				return fmt.Errorf("automatic backup before artwork normalize: %w", err)
+			}
+			if bkInfo != nil {
+				if agent.IsAgentMode() {
+					cmd.Printf("backup_snapshot: %s\n", bkInfo.Path)
+				} else {
+					cmd.Printf("Created automated backup snapshot at %s\n", bkInfo.Path)
+				}
+			}
+
+			dbPath := filepath.Join(libDirFlag, "Database2", "m.db")
+			database, err := db.Open(dbPath)
+			if err != nil {
+				return err
+			}
+			defer database.Close()
+
+			artCacheDir := filepath.Join(libDirFlag, "Artwork")
+
+			if !agent.IsAgentMode() {
+				cmd.Println("Normalizing collection artwork to 1:1 square (1400x1400)...")
+			}
+			report, err := artwork.NormalizeArtwork(cmd.Context(), database, libDirFlag, artCacheDir)
+			if err != nil {
+				return err
+			}
+
+			if agent.IsAgentMode() {
+				cmd.Println("status: complete")
+				cmd.Printf("total_tracks: %d\n", report.TotalTracks)
+				cmd.Printf("normalized: %d\n", report.NormalizedCount)
+				cmd.Printf("already_square: %d\n", report.AlreadySquare)
+				cmd.Printf("no_art: %d\n", report.NoArtCount)
+				cmd.Printf("errors: %d\n", report.ErrorCount)
+				return nil
+			}
+
+			cmd.Println("Artwork Normalization Complete!")
+			cmd.Printf("  Total Tracks:     %d\n", report.TotalTracks)
+			cmd.Printf("  Normalized to 1:1:%d\n", report.NormalizedCount)
+			cmd.Printf("  Already Square:   %d\n", report.AlreadySquare)
+			cmd.Printf("  No Art / Audio:   %d\n", report.NoArtCount)
+			if report.ErrorCount > 0 {
+				cmd.Printf("  Errors / Skipped: %d\n", report.ErrorCount)
+			}
+
+			return nil
+		},
+	}
 }

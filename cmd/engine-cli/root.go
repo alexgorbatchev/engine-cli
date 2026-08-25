@@ -39,11 +39,7 @@ and safely back up Engine DJ music libraries and album cover art on your compute
 	rootCmd.PersistentFlags().StringVarP(&libDirFlag, "lib-dir", "l", getDefaultLibraryDir(), "Path to the Engine Library directory")
 	rootCmd.PersistentFlags().BoolVar(&noBackupFlag, "no-backup", false, "Disable automatic backup snapshot before modifying database")
 
-	rootCmd.AddCommand(newBackupCommand())
-	rootCmd.AddCommand(newRestoreCommand())
-	rootCmd.AddCommand(newVerifyCommand())
-	rootCmd.AddCommand(newSyncCommand())
-	rootCmd.AddCommand(newArtworkCommand())
+	rootCmd.AddCommand(newLibraryCommand())
 	rootCmd.AddCommand(newPlaylistCommand())
 	rootCmd.AddCommand(newTrackCommand())
 
