@@ -22,16 +22,12 @@ func installHistory(root *cobra.Command) {
 		run := c.RunE
 		c.RunE = func(c *cobra.Command, args []string) error {
 			operation := strings.ReplaceAll(strings.TrimPrefix(c.CommandPath(), root.Name()+" "), " ", ".")
-			var paths []string
-			switch operation {
-			case "track.add":
-				paths = args
-			case "track.move":
-				if len(args) == 2 {
-					paths = []string{args[1]}
-				}
-			}
-			e, err := history.Run(c.Context(), libDirFlag, operation, paths, func(context.Context) error { return run(c, args) })
+			e, err := history.Run(c.Context(), libDirFlag, operation, nil, func(ctx context.Context) error {
+				previous := c.Context()
+				c.SetContext(ctx)
+				defer c.SetContext(previous)
+				return run(c, args)
+			})
 			if e != nil {
 				if _, writeErr := fmt.Fprintf(c.OutOrStdout(), "operation_id: %s\n", e.ID); err == nil {
 					err = writeErr

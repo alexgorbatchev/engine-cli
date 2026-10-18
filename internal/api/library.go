@@ -23,7 +23,7 @@ func (s *Server) libraryOperations() []operation {
 			return backup.CreateBackup(ctx, s.config.LibraryDir, p.OutDir)
 		}),
 		define("library.backups", false, nil, func(ctx context.Context, p directoryParams) (any, error) {
-			return backup.ListBackups(p.OutDir)
+			return backup.ListBackups(s.config.LibraryDir, p.OutDir)
 		}),
 		define("library.restore", true, []string{"path"}, func(ctx context.Context, p pathParams) (any, error) {
 			return nil, backup.RestoreBackup(ctx, p.Path, s.config.LibraryDir)

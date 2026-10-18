@@ -55,44 +55,39 @@ func TestUpgradeRejectsInvalidOriginal(t *testing.T) {
 }
 
 func TestUpgradeWorkspaceLifecycle(t *testing.T) {
-	for _, existing := range []bool{false, true} {
-		t.Run(map[bool]string{false: "new", true: "existing"}[existing], func(t *testing.T) {
-			t.Chdir(t.TempDir())
-			if existing {
-				if err := os.Mkdir(".tmp", 0700); err != nil {
-					t.Fatal(err)
-				}
-			}
-			work, cleanup, err := upgradeWorkspace()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !filepath.IsAbs(work) {
-				t.Fatalf("workspace not absolute: %s", work)
-			}
-			cleanup()
-			if _, err := os.Stat(work); !os.IsNotExist(err) {
-				t.Fatalf("workspace remains: %v", err)
-			}
-			_, err = os.Stat(".tmp")
-			if existing && err != nil || !existing && !os.IsNotExist(err) {
-				t.Fatalf("root retention: %v", err)
-			}
-		})
+	t.Chdir(t.TempDir())
+	root := t.TempDir()
+	t.Setenv("TMPDIR", root)
+	t.Setenv("TMP", root)
+	t.Setenv("TEMP", root)
+	if err := os.WriteFile(".tmp", []byte("keep"), 0600); err != nil {
+		t.Fatal(err)
 	}
-	t.Run("blocked root", func(t *testing.T) {
-		t.Chdir(t.TempDir())
-		if err := os.WriteFile(".tmp", []byte("keep"), 0600); err != nil {
-			t.Fatal(err)
-		}
-		if _, _, err := upgradeWorkspace(); err == nil {
-			t.Fatal("expected workspace failure")
-		}
-		b, err := os.ReadFile(".tmp")
-		if err != nil || string(b) != "keep" {
-			t.Fatalf("existing file changed: %q %v", b, err)
-		}
-	})
+	work, cleanup, err := upgradeWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(work) != canonical {
+		t.Fatalf("workspace outside OS temp: %s", work)
+	}
+	cleanup()
+	if _, err = os.Stat(work); !os.IsNotExist(err) {
+		t.Fatalf("workspace retained: %v", err)
+	}
+	data, err := os.ReadFile(".tmp")
+	if err != nil || string(data) != "keep" {
+		t.Fatalf("modified working directory: %q %v", data, err)
+	}
+	if err = os.Remove(root); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = upgradeWorkspace(); err == nil {
+		t.Fatal("accepted missing OS temp directory")
+	}
 }
 
 func TestFetchUpgradeRejectsUnusableDownloads(t *testing.T) {
@@ -223,14 +218,14 @@ func TestInstallUpgradeFailuresRetainOriginal(t *testing.T) {
 	if err := os.WriteFile(original, []byte("original"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installUpgrade(filepath.Join(root, "missing.m4a"), original); err == nil {
+	if _, err := installUpgrade(context.Background(), filepath.Join(root, "missing.m4a"), original); err == nil {
 		t.Fatal("accepted missing source")
 	}
 	source := filepath.Join(root, "staged.m4a")
 	if err := os.WriteFile(source, []byte("new"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installUpgrade(source, filepath.Join(root, "missing", "original.mp3")); err == nil {
+	if _, err := installUpgrade(context.Background(), source, filepath.Join(root, "missing", "original.mp3")); err == nil {
 		t.Fatal("accepted missing destination directory")
 	}
 	b, err := os.ReadFile(original)

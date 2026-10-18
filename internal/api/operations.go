@@ -28,7 +28,6 @@ type operation struct {
 
 type boundOperation struct {
 	run     func(context.Context) (any, error)
-	paths   []string
 	preview bool
 }
 
@@ -81,21 +80,8 @@ func define[P any](name string, mutates bool, required []string, run func(contex
 					}
 				}
 			}
-			var paths []string
-			if name == "track.add" {
-				if err := json.Unmarshal(values["paths"], &paths); err != nil {
-					return nil, err
-				}
-			}
-			if name == "track.move" {
-				var path string
-				if err := json.Unmarshal(values["destination"], &path); err != nil {
-					return nil, err
-				}
-				paths = []string{path}
-			}
 			undo, _ := any(p).(undoParams)
-			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, paths: paths, preview: undo.DryRun}, nil
+			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: undo.DryRun}, nil
 		}}
 }
 
@@ -124,7 +110,7 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 			}
 		}
 		if op.Mutates && op.Name != "library.undo" {
-			entry, e := history.Run(ctx, s.config.LibraryDir, op.Name, bound.paths, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
+			entry, e := history.Run(ctx, s.config.LibraryDir, op.Name, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
 			if entry != nil {
 				historyID = entry.ID
 			}

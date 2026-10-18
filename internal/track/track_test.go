@@ -289,37 +289,6 @@ func TestTrack_ValidationAndErrors(t *testing.T) {
 	}
 }
 
-func TestMoveFileOnDisk(t *testing.T) {
-	tempDir := t.TempDir()
-	src := filepath.Join(tempDir, "source.txt")
-	dst := filepath.Join(tempDir, "dest.txt")
-
-	_ = os.WriteFile(src, []byte("content"), 0o644)
-	if err := moveFileOnDisk(src, dst); err != nil {
-		t.Fatalf("moveFileOnDisk failed: %v", err)
-	}
-
-	// Error when source does not exist
-	if err := moveFileOnDisk(filepath.Join(tempDir, "nonexistent.txt"), dst); err == nil {
-		t.Error("expected error moving nonexistent file")
-	}
-
-	// Test copyAndRemoveFile directly
-	src2 := filepath.Join(tempDir, "source2.txt")
-	dst2 := filepath.Join(tempDir, "dest2.txt")
-	_ = os.WriteFile(src2, []byte("content2"), 0o644)
-	if err := copyAndRemoveFile(src2, dst2); err != nil {
-		t.Fatalf("copyAndRemoveFile failed: %v", err)
-	}
-	// Test copyAndRemoveFile errors
-	if err := copyAndRemoveFile(filepath.Join(tempDir, "nonexistent.txt"), dst2); err == nil {
-		t.Error("expected error opening nonexistent src")
-	}
-	if err := copyAndRemoveFile(src2, filepath.Join(tempDir, "nonexistent_dir", "sub", "dest.txt")); err == nil {
-		t.Error("expected error creating destination in nonexistent dir")
-	}
-}
-
 func TestAddTrack_ExistingPlaylistAndAlternateTags(t *testing.T) {
 	database, libDir, _ := createTestDB(t)
 	ctx := context.Background()

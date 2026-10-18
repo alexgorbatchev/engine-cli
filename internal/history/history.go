@@ -4,7 +4,6 @@ package history
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"zombiezen.com/go/sqlite"
@@ -20,17 +18,18 @@ import (
 )
 
 type Entry struct {
-	ID        string    `json:"id"`
-	Operation string    `json:"operation"`
-	Created   time.Time `json:"created"`
-	Library   string    `json:"library"`
-	LibraryID string    `json:"library_id"`
-	State     string    `json:"state"`
-	Error     string    `json:"error,omitempty"`
-	UndoOf    string    `json:"undo_of,omitempty"`
-	Entities  []Entity  `json:"entities,omitempty"`
-	Before    *snapshot `json:"before"`
-	After     *snapshot `json:"after,omitempty"`
+	ID        string     `json:"id"`
+	Operation string     `json:"operation"`
+	Created   time.Time  `json:"created"`
+	Library   string     `json:"library"`
+	LibraryID string     `json:"library_id"`
+	State     string     `json:"state"`
+	Error     string     `json:"error,omitempty"`
+	UndoOf    string     `json:"undo_of,omitempty"`
+	Entities  []Entity   `json:"entities,omitempty"`
+	Moves     []fileMove `json:"moves,omitempty"`
+	Before    *snapshot  `json:"before"`
+	After     *snapshot  `json:"after,omitempty"`
 }
 
 type Entity struct {
@@ -40,48 +39,21 @@ type Entity struct {
 }
 
 func storeDir(lib string) (string, error) {
+	if lib == "" {
+		return "", fmt.Errorf("empty engine library directory")
+	}
 	abs, err := filepath.Abs(lib)
 	if err != nil {
 		return "", err
 	}
-	base := os.Getenv("XDG_DATA_HOME")
-	if base == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		base = filepath.Join(home, ".local", "share")
-	}
-	identity := abs
-	c, err := sqlite.OpenConn(filepath.Join(abs, "Database2", "m.db"), sqlite.OpenReadOnly)
-	if err == nil {
-		// Synthetic libraries may lack Information; production libraries are
-		// identified by Engine's UUID so moving a library retains its history.
-		ids, e := queryStrings(c, "SELECT uuid FROM Information WHERE uuid IS NOT NULL AND uuid<>''")
-		if e == nil && len(ids) == 1 {
-			identity = ids[0]
-		}
-		if err = c.Close(); err != nil {
-			return "", err
-		}
-	}
-	dir := filepath.Join(base, "engine-cli", "history", hashText(identity))
-	// A restore can replace Information.uuid. Keep the existing history namespace
-	// associated with this location so the restore itself remains discoverable.
-	alias, err := os.ReadFile(locationPath(abs, dir))
-	if err == nil {
-		decoded, err := hex.DecodeString(string(alias))
-		if err != nil || len(decoded) != sha256.Size {
-			return "", fmt.Errorf("library history location record is damaged")
-		}
-		dir = filepath.Join(filepath.Dir(dir), string(alias))
-	} else if !os.IsNotExist(err) {
+	info, err := os.Stat(abs)
+	if err != nil {
 		return "", err
 	}
-	if rel, err := filepath.Rel(abs, dir); err != nil || rel == "." || (!strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != "..") {
-		return "", fmt.Errorf("undo history storage must be outside the source library")
+	if !info.IsDir() {
+		return "", fmt.Errorf("library is not a directory: %s", abs)
 	}
-	return dir, nil
+	return filepath.Join(abs, ".engine-cli", "history"), nil
 }
 
 func lock(ctx context.Context, dir string) (*sqlite.Conn, error) {
@@ -101,15 +73,11 @@ func lock(ctx context.Context, dir string) (*sqlite.Conn, error) {
 }
 
 func writeEntry(dir string, e *Entry) error {
-	data, err := json.MarshalIndent(e, "", "  ")
+	data, err := json.MarshalIndent(portableEntry(*e), "", "  ")
 	if err != nil {
 		return err
 	}
 	return writeAtomic(filepath.Join(dir, e.ID+".json"), append(data, '\n'))
-}
-
-func locationPath(lib, dir string) string {
-	return filepath.Join(filepath.Dir(dir), hashText(lib)+".location")
 }
 
 func writeAtomic(path string, data []byte) error {
@@ -158,6 +126,7 @@ func entries(dir string) ([]Entry, error) {
 		if e.ID+".json" != file.Name() || e.Library == "" || e.Before == nil || e.Before.Files == nil || e.Before.Databases == nil || (e.After != nil && (e.After.Files == nil || e.After.Databases == nil)) {
 			return nil, fmt.Errorf("operation history %s is incomplete or damaged", file.Name())
 		}
+		relocateEntry(&e, filepath.Dir(filepath.Dir(dir)))
 		result = append(result, e)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Created.After(result[j].Created) })
@@ -173,14 +142,11 @@ func List(lib string) ([]Entry, error) {
 }
 
 func Run(ctx context.Context, lib, operation string, paths []string, run func(context.Context) error) (*Entry, error) {
-	abs, err := filepath.Abs(lib)
+	dir, err := storeDir(lib)
 	if err != nil {
 		return nil, err
 	}
-	dir, err := storeDir(abs)
-	if err != nil {
-		return nil, err
-	}
+	abs := filepath.Dir(filepath.Dir(dir))
 	l, err := lock(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -195,9 +161,6 @@ func Run(ctx context.Context, lib, operation string, paths []string, run func(co
 			return nil, fmt.Errorf("operation %s was interrupted; inspect it and use library undo %s --force to recover", e.ID, e.ID)
 		}
 	}
-	if err = writeAtomic(locationPath(abs, dir), []byte(filepath.Base(dir))); err != nil {
-		return nil, fmt.Errorf("preserving library history location: %w", err)
-	}
 	return runLocked(ctx, abs, dir, operation, "", paths, run)
 }
 
@@ -206,7 +169,14 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, paths []
 	if _, err := rand.Read(id[:]); err != nil {
 		return nil, err
 	}
-	e := &Entry{ID: hex.EncodeToString(id[:]), Operation: operation, Created: time.Now().UTC(), Library: lib, LibraryID: filepath.Base(dir), State: "pending", UndoOf: undoOf}
+	e := &Entry{ID: hex.EncodeToString(id[:]), Operation: operation, Created: time.Now().UTC(), Library: lib, LibraryID: hex.EncodeToString(id[:]), State: "pending", UndoOf: undoOf}
+	previous, err := entries(dir)
+	if err != nil {
+		return nil, err
+	}
+	if len(previous) > 0 {
+		e.LibraryID = previous[0].LibraryID
+	}
 	work := filepath.Join(dir, e.ID)
 	objects := filepath.Join(dir, "objects")
 	before, err := capture(ctx, lib, filepath.Join(work, "before"), objects, paths)
@@ -217,14 +187,11 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, paths []
 	if err = writeEntry(dir, e); err != nil {
 		return nil, err
 	}
-	runErr := run(ctx)
+	runErr := run(context.WithValue(ctx, recorderKey{}, &recorder{entry: e, dir: dir}))
 	// Capture actual partial changes after a cancellation or failure too.
 	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Minute)
 	defer cancel()
-	for path := range before.Files {
-		paths = append(paths, path)
-	}
-	e.After, err = capture(finish, lib, filepath.Join(work, "after"), objects, paths)
+	e.After, err = captureAfter(finish, lib, filepath.Join(work, "after"), before)
 	if err != nil {
 		return e, errors.Join(runErr, fmt.Errorf("operation history is pending; original data is retained: %w", err))
 	}
@@ -246,14 +213,11 @@ type UndoOptions struct {
 }
 
 func Undo(ctx context.Context, lib, id string, opts UndoOptions) (*Entry, error) {
-	abs, err := filepath.Abs(lib)
+	dir, err := storeDir(lib)
 	if err != nil {
 		return nil, err
 	}
-	dir, err := storeDir(abs)
-	if err != nil {
-		return nil, err
-	}
+	abs := filepath.Dir(filepath.Dir(dir))
 	l, err := lock(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -280,19 +244,12 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (*Entry, error)
 	if undone[target.ID] {
 		return nil, fmt.Errorf("operation %s has already been undone", target.ID)
 	}
-	if target.Library != abs {
-		return nil, fmt.Errorf("library has moved from %s; history requires path reconciliation before undo", target.Library)
-	}
 	recovered := target.After == nil
 	if recovered {
 		if !opts.Force {
 			return nil, fmt.Errorf("operation %s was interrupted; --force recovers changes since its snapshot", target.ID)
 		}
-		extra := make([]string, 0, len(target.Before.Files))
-		for path := range target.Before.Files {
-			extra = append(extra, path)
-		}
-		target.After, err = capture(ctx, abs, filepath.Join(dir, target.ID, "recovered"), filepath.Join(dir, "objects"), extra)
+		target.After, err = captureAfter(ctx, abs, filepath.Join(dir, target.ID, "recovered"), target.Before)
 		if err != nil {
 			return nil, err
 		}
@@ -305,11 +262,7 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (*Entry, error)
 	if opts.DryRun {
 		return target, nil
 	}
-	paths := make([]string, 0, len(plan.files))
-	for path := range plan.files {
-		paths = append(paths, path)
-	}
-	entry, err := runLocked(ctx, abs, dir, "library.undo", target.ID, paths, func(ctx context.Context) error { return plan.apply(ctx, filepath.Join(dir, "objects")) })
+	entry, err := runLocked(ctx, abs, dir, "library.undo", target.ID, nil, func(ctx context.Context) error { return plan.apply(ctx, filepath.Join(dir, "objects")) })
 	if err == nil && recovered {
 		target.State = "recovered"
 		err = writeEntry(dir, target)

@@ -22,13 +22,13 @@ func TestCaptureRejectsUnpreservableFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err = Run(ctx, lib, "edit", nil, func(context.Context) error { called = true; return nil }); err == nil || called {
+	if _, err = Run(ctx, lib, "edit", []string{link}, func(context.Context) error { called = true; return nil }); err == nil || called {
 		t.Fatal("modified library before preserving files")
 	}
 	if err = os.Remove(link); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "interrupted", nil, func(context.Context) error { return os.Symlink(file, link) })
+	e, err := Run(ctx, lib, "interrupted", []string{link}, func(context.Context) error { return os.Symlink(file, link) })
 	if err == nil || e == nil {
 		t.Fatalf("missing pending record %v %v", e, err)
 	}
@@ -44,8 +44,8 @@ func TestCaptureRejectsUnpreservableFiles(t *testing.T) {
 	if _, err = d.Exec("DROP TABLE Track"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = capture(ctx, lib, filepath.Join(dir, "invalid"), filepath.Join(dir, "objects"), nil); err == nil {
-		t.Fatal("accepted missing tracks schema")
+	if _, err = capture(ctx, lib, filepath.Join(dir, "invalid"), filepath.Join(dir, "objects"), nil); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -56,11 +56,11 @@ func TestCaptureExcludesOwnStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err := capture(ctx, lib, filepath.Join(dir, "test"), filepath.Join(dir, "objects"), []string{"", os.Getenv("XDG_DATA_HOME")})
+	s, err := capture(ctx, lib, filepath.Join(dir, "test"), filepath.Join(dir, "objects"), []string{""})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(s.Files) != 1 {
+	if len(s.Files) != 0 {
 		t.Fatalf("captured own storage: %v", s.Files)
 	}
 	empty := t.TempDir()
@@ -190,17 +190,13 @@ func TestHistoryReadAndLockErrors(t *testing.T) {
 	if _, err = List(lib); err == nil {
 		t.Fatal("accepted unreadable history entry")
 	}
+	if err = os.Remove(filepath.Join(dir, "bad.json")); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("XDG_DATA_HOME", lib)
-	if _, err = Run(ctx, lib, "edit", nil, func(context.Context) error { return nil }); err == nil {
-		t.Fatal("accepted recursive store")
-	}
-	if _, err = Undo(ctx, lib, "", UndoOptions{}); err == nil {
-		t.Fatal("accepted recursive undo store")
-	}
-	t.Setenv("XDG_DATA_HOME", "")
-	t.Setenv("HOME", t.TempDir())
+	t.Setenv("HOME", "")
 	if entries, err := List(lib); err != nil || len(entries) != 0 {
-		t.Fatalf("default storage %v %v", entries, err)
+		t.Fatalf("portable storage %v %v", entries, err)
 	}
 }
 
@@ -220,7 +216,7 @@ func TestUndoPreflightDamagedFiles(t *testing.T) {
 		t.Run(damage, func(t *testing.T) {
 			lib, d, file := fixture(t)
 			ctx := context.Background()
-			e, err := Run(ctx, lib, "edit", nil, func(context.Context) error {
+			e, err := Run(ctx, lib, "edit", []string{file}, func(context.Context) error {
 				if _, err := d.Exec("UPDATE Track SET title='Edited'"); err != nil {
 					return err
 				}

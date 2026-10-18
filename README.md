@@ -37,11 +37,14 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Uses `fetch-track --json` to acquire replacement audio, then copies the original track information into the replacement without re-encoding its audio.
 - Generates SHA-1 binary BLOB hashes and writes raw URL-safe Base64 thumbnail files into the `Artwork/` cache directory.
 - Manages nested playlist trees and linked-list entities through recursive foreign key traversal on `Playlist` and `PlaylistEntity` tables.
-- Captures each database independently through SQLite's online backup API and publishes the completed snapshot directory in the XDG backup folder. Failed snapshots are removed, and successive backups use unique names.
+- Captures each database independently through SQLite's online backup API and publishes the completed snapshot directory in the library’s `.engine-cli/backups/` folder. Failed snapshots are removed, and successive backups use unique names.
 - Close Engine DJ for a backup with matching state across all database files and artwork, and before restoring. WAL-backed databases can be backed up while open, but the whole library is not captured in a single transaction.
-- Undo history lives under `$XDG_DATA_HOME/engine-cli/history` (default `~/.local/share/engine-cli/history`). It retains database snapshots and deduplicated copies of library files and referenced audio. The first modifying operation can require space comparable to the collection; later operations still read the collection to detect changes. History is retained without automatic pruning. `--no-backup` disables the separate safety snapshot, but keeps undo history.
+- Automatic safety snapshots contain databases and live under `<lib-dir>/.engine-cli/backups/`. An explicit `library backup` includes databases and artwork and accepts a custom destination.
+- Undo history lives under `<lib-dir>/.engine-cli/history/`. It retains operation records, database snapshots, and deduplicated copies of files that an operation overwrites or deletes. Database-only operations copy no audio or artwork. File moves retain paths and a fingerprint; only an overwritten destination needs a content backup. Undo preserves any contents it replaces so that undoing the undo can restore them.
+- Disposable audio and artwork workspaces use the OS temporary directory and are removed after use. Atomic publication files are staged beside their destination.
+- History is retained without automatic pruning. Its storage grows with database snapshots and affected file contents, without copying or scanning the whole audio collection. `--no-backup` disables the separate safety snapshot, but keeps undo history. For a moved file edited afterward, undo refuses by default; `--force` moves the edited contents back. A missing moved file cannot be recovered from a path record.
 - Undo preserves unrelated later database edits and refuses conflicting changes to affected values or files. `--force` restores prior values over those conflicts; it still refuses ambiguous track identities and broken database references. Schema changes and tables without primary keys require a whole-database restore, so forcing those operations can replace later edits throughout that database.
-- History identifies tracks by Engine's origin database UUID and origin track ID, and other records by their database and primary key. Their history hashes stay stable across renames, file relocations, and playlist moves. Membership changes also list the affected track and playlists. Moving the entire library directory requires path reconciliation before undo and is refused.
+- History identifies tracks by Engine's origin database UUID and origin track ID, and other records by their database and primary key. Their history hashes stay stable across renames, file relocations, and playlist moves. Membership changes also list the affected track and playlists. History follows the library directory when moved, including its database snapshots and affected files inside the library. Audio outside the library retains its external path.
 - Undo records its own changes: undoing that operation ID reapplies them. Interrupted operations retain their original data and block further modifications until recovered with `library undo <id> --force`. Files and separate databases are restored individually; keep Engine DJ closed throughout recovery. Symbolic links and other non-regular files are refused before modification.
 
 # Installation
@@ -134,7 +137,7 @@ Merge retains the keeper's cues, loops, and beat grid by default. To explicitly 
 | `--to <pl|id|path>` | `-` | `""` | Destination parent in `playlist move` or destination prefix in `track relocate` |
 | `--from <path>` | `-` | `""` | Old directory prefix to replace in `track relocate` |
 | `--json` | `-` | `false` | Output verification report in JSON format |
-| `--out-dir <path>` | `-o` | `~/.local/share/engine-cli/backups` | Destination directory for backup snapshots |
+| `--out-dir <path>` | `-o` | `<lib-dir>/.engine-cli/backups` | Destination directory for backup snapshots |
 | `--list` | `-` | `false` | List available backup snapshots without creating a new backup |
 | `--version` | `-v` | `false` | Print version information and exit |
 | `--help` | `-h` | `false` | Print command line help |

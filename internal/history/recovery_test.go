@@ -17,8 +17,8 @@ func TestHistoryStableIdentityAcrossRelocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	dest := filepath.Join(lib, "moved.mp3")
-	moved, err := Run(ctx, lib, "track.move", []string{dest}, func(context.Context) error {
-		if err := os.Rename(p, dest); err != nil {
+	moved, err := Run(ctx, lib, "track.move", nil, func(ctx context.Context) error {
+		if err := MoveFile(ctx, p, dest); err != nil {
 			return err
 		}
 		_, err := d.Exec("UPDATE Track SET path='moved.mp3'")
@@ -110,7 +110,7 @@ func TestUndoFailedOperationAndRedo(t *testing.T) {
 	lib, d, p := fixture(t)
 	ctx := context.Background()
 	failure := errors.New("failed after modifying track")
-	r, err := Run(ctx, lib, "partial", nil, func(context.Context) error {
+	r, err := Run(ctx, lib, "partial", []string{p}, func(context.Context) error {
 		if _, err := d.Exec("UPDATE Track SET title='Partial'"); err != nil {
 			return err
 		}
@@ -345,7 +345,7 @@ func TestHistoryLockCancellationAndStorageErrors(t *testing.T) {
 		t.Fatal("accepted invalid hash")
 	}
 	t.Setenv("XDG_DATA_HOME", lib)
-	if _, err = List(lib); err == nil {
-		t.Fatal("accepted recursive history storage")
+	if _, err = List(lib); err != nil {
+		t.Fatal(err)
 	}
 }

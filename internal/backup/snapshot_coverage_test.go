@@ -42,7 +42,7 @@ func TestBackupFailurePublishesNothing(t *testing.T) {
 			if _, err := CreateBackup(ctx, library, out); err == nil {
 				t.Fatal("expected backup failure")
 			}
-			backups, err := ListBackups(out)
+			backups, err := ListBackups("", out)
 			if err != nil || len(backups) != 0 {
 				t.Fatalf("failed backup visible: %+v error=%v", backups, err)
 			}
@@ -192,13 +192,13 @@ func TestSnapshotCannotOverwriteExistingDatabase(t *testing.T) {
 func TestBackupCannotResolveDefaultDirectory(t *testing.T) {
 	t.Setenv("HOME", "")
 	t.Setenv("XDG_DATA_HOME", "")
-	if _, err := GetDefaultBackupDir(); err == nil {
+	if _, err := GetDefaultBackupDir(""); err == nil {
 		t.Fatal("expected missing home error")
 	}
-	if _, err := CreateBackup(context.Background(), t.TempDir(), ""); err == nil {
+	if _, err := CreateBackup(context.Background(), "", ""); err == nil {
 		t.Fatal("expected default backup directory error")
 	}
-	if _, err := ListBackups(""); err == nil {
+	if _, err := ListBackups("", ""); err == nil {
 		t.Fatal("expected default backup listing error")
 	}
 }
@@ -212,7 +212,7 @@ func TestBackupOutputAndRestoreWriteErrors(t *testing.T) {
 	if _, err := CreateBackup(context.Background(), library, blocked); err == nil {
 		t.Fatal("accepted output file as directory")
 	}
-	if _, err := ListBackups(blocked); err == nil {
+	if _, err := ListBackups("", blocked); err == nil {
 		t.Fatal("listed file as backup directory")
 	}
 	info, err := CreateBackup(context.Background(), library, t.TempDir())

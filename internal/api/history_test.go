@@ -22,7 +22,7 @@ func TestAPIHistoryUndo(t *testing.T) {
 	if preview["history_id"] != nil {
 		t.Fatalf("preview created history: %v", preview)
 	}
-	if _, err := os.Stat(filepath.Join(os.Getenv("XDG_DATA_HOME"), "engine-cli", "backups")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(lib, ".engine-cli", "backups")); !os.IsNotExist(err) {
 		t.Fatalf("preview created backup: %v", err)
 	}
 	entries, err := history.List(lib)

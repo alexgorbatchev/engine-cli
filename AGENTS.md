@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-18 09:57
+last_modified: 2026-10-18 12:45
 status: current
 ---
 
@@ -43,11 +43,12 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 ## Setup & Environment
 - **Prerequisites:** Go 1.26+, `ffmpeg`, `ffprobe`, `just`; `fetch-track` with JSON download output for track upgrades.
 - **Default Library Directory:** `$HOME/Music/Engine Library` (override with `-l <dir>` / `--lib-dir`).
-- **Default Backup Directory:** Follows XDG Base Directory specification (`$XDG_DATA_HOME/engine-cli/backups` or `~/.local/share/engine-cli/backups`).
-- **Temporary Files:** Temporary file operations use `.tmp/` within the project root.
+- **Portable Library Storage:** Store default backups in `<lib-dir>/.engine-cli/backups/` and undo history in `<lib-dir>/.engine-cli/history/`. Library-contained history paths must follow the library when it moves.
+- **Temporary Files:** Production code uses the OS temporary directory for disposable workspaces, never project `.tmp/`. Agent development artifacts may use project `.tmp/`. Atomic publication staging stays beside its destination to support same-filesystem rename.
 
 ## Conventions
 - **Reversible Library Operations:** Every operation that modifies the source library must support undo, including database changes and changes to audio files or artwork. Apply this requirement to existing operations as well as duplicate-track operations, through both the CLI and HTTP API.
+- **Affected Files Only:** Plan and preserve only files an operation will modify or delete. Database-only operations must not copy audio or artwork. Record file moves as reversible path changes rather than audio backups. Explicit library backups may include all databases and artwork.
 - **Undo Conflicts:** Reverse an operation even after later library changes when there are no conflicts. Refuse conflicting undo by default; provide an explicit `--force` override.
 - **Entity Identity:** Track changed tracks, playlists, and other entities using stable UUIDs or hashes so history and undo retain identity across moves, relocations, and playlist membership changes; names, paths, and membership alone are not identities.
 - **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
@@ -55,7 +56,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Track Upgrades:** Use Fetch Track CLI to acquire replacement audio. Preserve the original track's curated metadata. Replacing a radio edit with an extended mix is intended upgrade behavior.
 - **CLI Argument Placeholder Conventions:** All command argument placeholders and help documentation strictly follow the standard abbreviations: `pl` for playlist name, `tr` for track title, `id` for numeric database ID, `path` for filesystem path (file or folder), `pl|id` for playlist name or ID, `tr|id|path` for track title, ID, or path, and `src-pl|id` / `dst-pl|id` for source and destination playlists.
 - **Distribution for Non-Technical Users:** `engine-cli` is distributed for non-technical users (working and bedroom DJs, music collectors). All installation instructions, CLI outputs, error messages, and documentation must remain straightforward, accessible, and actionable without requiring developer knowledge. Pre-compiled binaries are the primary release and distribution vehicle.
-- **Automated Database Snapshots:** All database modification operations (`library sync`, `library restore`, `library prune`, `library undo`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track upgrade`, `track rm`, `track move`, `track relocate`, `track artwork normalize`, `track duplicate merge`) must automatically create a snapshot backup in the XDG backup directory before applying changes, unless the user opts out with `--no-backup`. Read-only undo previews do not create safety snapshots.
+- **Automated Database Snapshots:** All database modification operations (`library sync`, `library restore`, `library prune`, `library undo`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track upgrade`, `track rm`, `track move`, `track relocate`, `track artwork normalize`, `track duplicate merge`) must automatically create a snapshot backup in `<lib-dir>/.engine-cli/backups/` before applying changes, unless the user opts out with `--no-backup`. Read-only undo previews do not create safety snapshots.
 - **Output Formatting & No Decorative Headers:** All CLI output must be plain text without emojis across all modes and logs. Static decorative title headers (e.g. `=== ... ===`) are prohibited; output meaning must be obvious directly from the structured content lines.
 - **ASCII Tree Rendering:** All tree and hierarchy views (such as playlist listings) must render using standard ASCII tree characters (`├── `, `└── `, `│   `), with each node on a single line formatted as `<title> [id:<id> tracks:<trackCount>]`.
 - **Agent Mode (`AGENT=1`):** When the `AGENT=1`, `AGENT=true`, or `AGENT=yes` environment variable is present, commands output compact, token-conservative key-value pairs or simple indented bulleted lists (e.g. for `playlist list`) without interactive noise, multi-byte Unicode tree symbols, or formatting banners.
@@ -67,7 +68,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 ## Gotchas
 - **SQLite WAL Backups:** Use the SQLite online backup API to capture committed database content, including WAL pages. Publish a snapshot only after all copies succeed; never copy live `.db` files directly or checkpoint the source to make a backup.
 - **Zero-Reencoding Tagging:** When embedding artwork and tags via `ffmpeg`, always pass `-c:a copy` to prevent accidental audio transcoding.
-- **Temporary Folder Cleanup:** `.tmp` directories created during execution must be cleaned up on completion if `.tmp` did not exist prior to execution.
+- **Temporary Folder Cleanup:** Remove production temporary workspaces on completion; never remove their shared OS temporary parent directory.
 
 ## Boundaries
 - **Always:** Automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).

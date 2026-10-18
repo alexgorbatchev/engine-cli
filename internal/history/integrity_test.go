@@ -87,7 +87,7 @@ func TestCaptureRepairsDamagedRetainedContent(t *testing.T) {
 	if err = os.WriteFile(filepath.Join(dir, "objects", state.Hash), []byte("damaged"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { return os.WriteFile(file, []byte("modified"), 0600) })
+	e, err := Run(ctx, lib, "edit", []string{file}, func(context.Context) error { return os.WriteFile(file, []byte("modified"), 0600) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,30 +117,13 @@ func TestHistoryRejectsIncompleteEntry(t *testing.T) {
 	}
 }
 
-func TestHistoryRejectsDamagedLocationRecord(t *testing.T) {
+func TestHistoryRejectsBlockedStorage(t *testing.T) {
 	lib, _, _ := fixture(t)
-	dir, err := storeDir(lib)
-	if err != nil {
+	if err := os.WriteFile(filepath.Join(lib, ".engine-cli"), []byte("blocked"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err = os.MkdirAll(filepath.Dir(dir), 0700); err != nil {
-		t.Fatal(err)
-	}
-	path := locationPath(lib, dir)
-	if err = os.WriteFile(path, []byte("../invalid"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = List(lib); err == nil {
-		t.Fatal("accepted damaged location record")
-	}
-	if err = os.Remove(path); err != nil {
-		t.Fatal(err)
-	}
-	if err = os.Mkdir(path, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = List(lib); err == nil {
-		t.Fatal("accepted unreadable location record")
+	if _, err := List(lib); err == nil {
+		t.Fatal("accepted blocked history storage")
 	}
 }
 

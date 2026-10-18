@@ -134,8 +134,8 @@ func TestHistoryStorageFailures(t *testing.T) {
 	}
 	t.Setenv("XDG_DATA_HOME", "")
 	t.Setenv("HOME", "")
-	if _, err = List(lib); err == nil {
-		t.Fatal("accepted missing storage home")
+	if _, err = List(lib); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -144,7 +144,7 @@ func TestUndoPlanDetectsRacingEdits(t *testing.T) {
 		t.Run(map[bool]string{false: "file", true: "database"}[database], func(t *testing.T) {
 			lib, d, file := fixture(t)
 			ctx := context.Background()
-			e, err := Run(ctx, lib, "edit", nil, func(context.Context) error {
+			e, err := Run(ctx, lib, "edit", []string{file}, func(context.Context) error {
 				if _, err := d.Exec("UPDATE Track SET title='Edited'"); err != nil {
 					return err
 				}
@@ -202,8 +202,11 @@ func TestHistoryUUIDAndMovedLibrary(t *testing.T) {
 	if err != nil || len(entries) != 1 || entries[0].ID != e.ID {
 		t.Fatalf("lost UUID history %v %v", entries, err)
 	}
-	if _, err = Undo(ctx, moved, e.ID, UndoOptions{Force: true}); err == nil {
-		t.Fatal("restored old absolute paths")
+	if _, err = Undo(ctx, moved, e.ID, UndoOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = os.Stat(lib); !os.IsNotExist(err) {
+		t.Fatalf("recreated old library: %v", err)
 	}
 }
 

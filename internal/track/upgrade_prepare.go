@@ -149,7 +149,7 @@ func (j *upgradeJob) inspectPrepared(ctx context.Context, path string) (*prepare
 
 func (j *upgradeJob) publish(ctx context.Context, prepared *preparedUpgrade) (*UpgradeResult, error) {
 	progress.Stage(ctx, "install", 90)
-	installed, err := installUpgrade(prepared.path, j.original)
+	installed, err := installUpgrade(ctx, prepared.path, j.original)
 	if err != nil {
 		return nil, err
 	}

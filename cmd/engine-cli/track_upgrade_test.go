@@ -102,7 +102,7 @@ func TestTrackUpgradeErrors(t *testing.T) {
 		{"conflicting timing flags", []string{"track", "upgrade", "1", "--keep-timing", "--clear-timing"}, "none of the others can be"},
 		{"missing track", []string{"--no-backup", "-l", lib, "track", "upgrade", "999"}, "track"},
 		{"missing fetch executable", []string{"--no-backup", "-l", lib, "track", "upgrade", "1"}, "fetch-track"},
-		{"backup failure", []string{"-l", filepath.Join(t.TempDir(), "missing"), "track", "upgrade", "1"}, "automatic backup before track upgrade"},
+		{"missing library", []string{"-l", filepath.Join(t.TempDir(), "missing"), "track", "upgrade", "1"}, "no such file"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := executeCommand(tt.args...)
@@ -128,7 +128,7 @@ func TestTrackUpgradeCreatesBackupBeforeDownload(t *testing.T) {
 			if !strings.Contains(out, "snapshot") {
 				t.Fatalf("missing backup output: %s", out)
 			}
-			entries, err := os.ReadDir(filepath.Join(data, "engine-cli", "backups"))
+			entries, err := os.ReadDir(filepath.Join(lib, ".engine-cli", "backups"))
 			if err != nil || len(entries) != 1 {
 				t.Fatalf("backup entries = %v, error = %v", entries, err)
 			}

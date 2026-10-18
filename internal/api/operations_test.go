@@ -50,7 +50,7 @@ func TestAPIMutationSnapshotPrecedesChanges(t *testing.T) {
 	}
 	defer s.Close()
 	runAPIJob(t, s, "playlist.create", `{"name":"After snapshot"}`)
-	snapshots, err := backup.ListBackups("")
+	snapshots, err := backup.ListBackups(s.config.LibraryDir, "")
 	if err != nil || len(snapshots) != 1 {
 		t.Fatalf("snapshots=%+v error=%v", snapshots, err)
 	}
@@ -83,11 +83,10 @@ func TestAPIDatabaseAndBackupFailures(t *testing.T) {
 				}
 			}
 			if scenario == "backup destination" {
-				blocked := filepath.Join(t.TempDir(), "blocked")
+				blocked := filepath.Join(lib, ".engine-cli")
 				if err := os.WriteFile(blocked, []byte("keep"), 0600); err != nil {
 					t.Fatal(err)
 				}
-				t.Setenv("XDG_DATA_HOME", blocked)
 				operation, body = "playlist.create", `{"name":"Never created"}`
 			}
 			s, err := New(Config{LibraryDir: lib})

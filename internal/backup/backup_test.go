@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -49,7 +48,7 @@ func TestCreateAndRestoreBackup(t *testing.T) {
 	}
 
 	// 2. List backups
-	backups, err := ListBackups(backupOutDir)
+	backups, err := ListBackups("", backupOutDir)
 	if err != nil {
 		t.Fatalf("ListBackups failed: %v", err)
 	}
@@ -84,54 +83,29 @@ func TestCreateAndRestoreBackup(t *testing.T) {
 
 func TestGetDefaultBackupDir_AndAutoBackup(t *testing.T) {
 	ctx := context.Background()
-	engineDir := createDummyEngineLibrary(t)
-	tempXDG := t.TempDir()
-
-	t.Setenv("XDG_DATA_HOME", tempXDG)
-	dir, err := GetDefaultBackupDir()
-	if err != nil {
-		t.Fatalf("GetDefaultBackupDir failed: %v", err)
+	lib := createDummyEngineLibrary(t)
+	t.Setenv("HOME", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	dir, err := GetDefaultBackupDir(lib)
+	if err != nil || dir != filepath.Join(lib, ".engine-cli", "backups") {
+		t.Fatalf("default %s: %v", dir, err)
 	}
-	wantPrefix := filepath.Join(tempXDG, "engine-cli", "backups")
-	if dir != wantPrefix {
-		t.Errorf("expected %q, got %q", wantPrefix, dir)
+	skipped, err := AutoBackupIfNeeded(ctx, lib, true)
+	if err != nil || skipped != nil {
+		t.Fatalf("opt out: %v %v", skipped, err)
 	}
-
-	// AutoBackup with noBackup = true
-	infoNoBk, err := AutoBackupIfNeeded(ctx, engineDir, true)
-	if err != nil {
-		t.Fatalf("AutoBackupIfNeeded(noBackup=true) failed: %v", err)
+	for range 2 {
+		info, err := AutoBackupIfNeeded(ctx, lib, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if filepath.Dir(info.Path) != dir || info.DBFiles != 3 || info.ArtFiles != 0 {
+			t.Fatalf("snapshot: %+v", info)
+		}
 	}
-	if infoNoBk != nil {
-		t.Errorf("expected nil backup info, got %v", infoNoBk)
-	}
-
-	// AutoBackup with noBackup = false (uses default XDG dir)
-	infoBk, err := AutoBackupIfNeeded(ctx, engineDir, false)
-	if err != nil {
-		t.Fatalf("AutoBackupIfNeeded(noBackup=false) failed: %v", err)
-	}
-	if infoBk == nil || !strings.Contains(infoBk.Path, tempXDG) {
-		t.Errorf("expected backup in XDG dir %q, got %v", tempXDG, infoBk)
-	}
-
-	// List backups with empty dir (should use default XDG dir)
-	list, err := ListBackups("")
-	if err != nil {
-		t.Fatalf("ListBackups('') failed: %v", err)
-	}
-	if len(list) != 1 {
-		t.Errorf("expected 1 backup listed in default XDG dir, got %d", len(list))
-	}
-
-	// Default backup with unset XDG_DATA_HOME
-	_ = os.Unsetenv("XDG_DATA_HOME")
-	dirFallback, errFallback := GetDefaultBackupDir()
-	if errFallback != nil {
-		t.Fatalf("GetDefaultBackupDir fallback failed: %v", errFallback)
-	}
-	if !strings.Contains(dirFallback, ".local/share/engine-cli/backups") && !strings.Contains(dirFallback, "engine-cli/backups") {
-		t.Errorf("unexpected fallback dir: %q", dirFallback)
+	list, err := ListBackups(lib, "")
+	if err != nil || len(list) != 2 {
+		t.Fatalf("listing %v: %v", list, err)
 	}
 }
 
@@ -169,7 +143,7 @@ func TestBackup_Errors(t *testing.T) {
 
 	// 5. ListBackups on non-existent path
 	nonExistentDir := filepath.Join(tempDir, "nonexistent-dir")
-	list, err := ListBackups(nonExistentDir)
+	list, err := ListBackups("", nonExistentDir)
 	if err != nil {
 		t.Errorf("expected non-existent dir to return empty list without error, got %v", err)
 	}

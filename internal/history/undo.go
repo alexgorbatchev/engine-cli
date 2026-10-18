@@ -15,6 +15,7 @@ import (
 )
 
 type undoPlan struct {
+	moves         []fileMove
 	databases     map[string]string
 	files         map[string]fileState
 	expectedDB    map[string]string
@@ -22,13 +23,16 @@ type undoPlan struct {
 }
 
 func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*undoPlan, func(), error) {
-	work, err := os.MkdirTemp(dir, "undo-")
+	work, err := os.MkdirTemp("", "engine-undo-")
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup := func() { os.RemoveAll(work) }
 	p := &undoPlan{databases: make(map[string]string), files: make(map[string]fileState), expectedDB: make(map[string]string), expectedFiles: make(map[string]fileState)}
 	fail := func(err error) (*undoPlan, func(), error) { cleanup(); return nil, nil, err }
+	if err = p.prepareMoves(e, force); err != nil {
+		return fail(err)
+	}
 	for _, path := range changedKeys(e.Before.Files, e.After.Files) {
 		current, err := fileHash(path)
 		if err != nil {
@@ -131,8 +135,28 @@ func (p *undoPlan) apply(ctx context.Context, objects string) error {
 			return fmt.Errorf("database changed while preparing undo: %s", path)
 		}
 	}
+	beforeMove := make(map[string]bool)
+	for _, move := range p.moves {
+		if state, ok := p.files[move.To]; ok {
+			if err := restoreAffected(ctx, move.To, objects, state); err != nil {
+				return err
+			}
+			beforeMove[move.To] = true
+		}
+	}
+	for _, move := range p.moves {
+		if err := os.MkdirAll(filepath.Dir(move.To), 0755); err != nil {
+			return err
+		}
+		if err := MoveFile(ctx, move.From, move.To); err != nil {
+			return err
+		}
+	}
 	for path, state := range p.files {
-		if err := restoreFile(ctx, path, objects, state); err != nil {
+		if beforeMove[path] {
+			continue
+		}
+		if err := restoreAffected(ctx, path, objects, state); err != nil {
 			return err
 		}
 	}
@@ -146,6 +170,13 @@ func (p *undoPlan) apply(ctx context.Context, objects string) error {
 		}
 	}
 	return nil
+}
+
+func restoreAffected(ctx context.Context, path, objects string, state fileState) error {
+	if err := Preserve(ctx, path); err != nil {
+		return err
+	}
+	return restoreFile(ctx, path, objects, state)
 }
 
 func changedEntities(ctx context.Context, e *Entry) ([]Entity, error) {

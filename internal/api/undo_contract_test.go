@@ -125,7 +125,7 @@ func TestAPIUndoMovedAudioConflict(t *testing.T) {
 	runAPIJob(t, s, "library.undo", undoRequestBody(t, id, true, true))
 	assertUndoFile(t, moved, "later audio edit")
 	undone := runAPIJob(t, s, "library.undo", undoRequestBody(t, id, true, false))
-	assertUndoFile(t, original, "original audio")
+	assertUndoFile(t, original, "later audio edit")
 	if _, err := os.Stat(moved); !os.IsNotExist(err) {
 		t.Fatalf("undo left moved audio: %v", err)
 	}

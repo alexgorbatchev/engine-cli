@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"zombiezen.com/go/sqlite"
 )
 
 type fileState struct {
@@ -34,7 +32,6 @@ func capture(ctx context.Context, lib, dir, objects string, extra []string) (*sn
 		return nil, err
 	}
 	s := &snapshot{Databases: make(map[string]databaseState), Files: make(map[string]fileState)}
-	paths := append([]string{lib}, extra...)
 	for _, base := range []string{lib, filepath.Join(lib, "Database2")} {
 		entries, err := os.ReadDir(base)
 		if os.IsNotExist(err) {
@@ -59,25 +56,7 @@ func capture(ctx context.Context, lib, dir, objects string, extra []string) (*sn
 			s.Databases[path] = databaseState{Path: target, Hash: digest}
 		}
 	}
-	if main, ok := s.Databases[filepath.Join(lib, "Database2", "m.db")]; ok {
-		c, err := open(ctx, main.Path, sqlite.OpenReadOnly)
-		if err != nil {
-			return nil, err
-		}
-		references, err := queryStrings(c, "SELECT path FROM Track WHERE path IS NOT NULL AND path<>''")
-		closeErr := c.Close()
-		if err = errors.Join(err, closeErr); err != nil {
-			return nil, err
-		}
-		for _, path := range references {
-			if !filepath.IsAbs(path) {
-				path = filepath.Join(lib, path)
-			}
-			paths = append(paths, path)
-		}
-	}
-	seen := make(map[string]bool)
-	for _, path := range paths {
+	for _, path := range extra {
 		if path == "" {
 			continue
 		}
@@ -85,41 +64,26 @@ func capture(ctx context.Context, lib, dir, objects string, extra []string) (*sn
 		if err != nil {
 			return nil, err
 		}
-		err = filepath.WalkDir(abs, func(path string, entry fs.DirEntry, walkErr error) error {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if os.IsNotExist(walkErr) {
-				return nil
-			}
-			if walkErr != nil {
-				return walkErr
-			}
-			if path == filepath.Dir(filepath.Dir(objects)) && entry.IsDir() {
-				return fs.SkipDir
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			for dbPath := range s.Databases {
-				if path == dbPath || path == dbPath+"-wal" || path == dbPath+"-shm" || path == dbPath+"-journal" {
-					return nil
-				}
-			}
-			if seen[path] {
-				return nil
-			}
-			seen[path] = true
-			state, err := saveFile(ctx, path, objects)
-			if err != nil {
-				return err
-			}
-			s.Files[path] = state
-			return nil
-		})
+		state, err := saveFile(ctx, abs, objects)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		s.Files[abs] = state
+	}
+	return s, nil
+}
+
+func captureAfter(ctx context.Context, lib, dir string, before *snapshot) (*snapshot, error) {
+	s, err := capture(ctx, lib, dir, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	for path := range before.Files {
+		state, err := fileHash(path)
 		if err != nil {
 			return nil, err
 		}
+		s.Files[path] = state
 	}
 	return s, nil
 }

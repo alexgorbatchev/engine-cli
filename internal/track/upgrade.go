@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dj/engine-cli/internal/db"
+	"github.com/dj/engine-cli/internal/history"
 	"github.com/dj/engine-cli/internal/progress"
 	"github.com/dj/engine-cli/internal/sync"
 )
@@ -82,32 +83,19 @@ func checkUpgradeTiming(ctx context.Context, database upgradeQuerier, id int64, 
 }
 
 func upgradeWorkspace() (string, func(), error) {
-	const root = ".tmp"
-	created := false
-	if err := os.Mkdir(root, 0o700); err == nil {
-		created = true
-	} else if !os.IsExist(err) {
+	work, err := os.MkdirTemp("", "engine-track-upgrade-*")
+	if err != nil {
 		return "", nil, fmt.Errorf("creating workspace: %w", err)
 	}
-	work, err := os.MkdirTemp(root, "track-upgrade-*")
-	cleanup := func() {
-		if work != "" {
-			_ = os.RemoveAll(work)
-		}
-		if created {
-			_ = os.Remove(root)
-		}
-	}
+	cleanup := func() { _ = os.RemoveAll(work) }
+	// OS temporary directories can be symlinked (for example /var on macOS).
+	// Match the canonical paths used to validate downloaded audio.
+	canonical, err := filepath.EvalSymlinks(work)
 	if err != nil {
 		cleanup()
-		return "", nil, fmt.Errorf("creating upgrade workspace: %w", err)
+		return "", nil, fmt.Errorf("resolving workspace: %w", err)
 	}
-	abs, err := filepath.Abs(work)
-	if err != nil {
-		cleanup()
-		return "", nil, err
-	}
-	return abs, cleanup, nil
+	return canonical, cleanup, nil
 }
 
 type acquiredUpgrade struct {
@@ -159,7 +147,7 @@ func outsideUpgradeDir(path string) bool {
 	return path == ".." || strings.HasPrefix(path, ".."+string(filepath.Separator)) || filepath.IsAbs(path)
 }
 
-func installUpgrade(staged, original string) (string, error) {
+func installUpgrade(ctx context.Context, staged, original string) (string, error) {
 	src, err := os.Open(staged)
 	if err != nil {
 		return "", fmt.Errorf("opening prepared audio: %w", err)
@@ -178,6 +166,9 @@ func installUpgrade(staged, original string) (string, error) {
 			_ = os.Remove(path)
 		}
 	}()
+	if err := history.Created(ctx, path); err != nil {
+		return "", err
+	}
 	if _, err := io.Copy(out, src); err != nil {
 		return "", fmt.Errorf("saving replacement: %w", err)
 	}

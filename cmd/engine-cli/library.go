@@ -205,7 +205,7 @@ func newLibraryBackupCommand() *cobra.Command {
 Includes committed changes even while databases are open. Each database is captured independently.
 Close Engine DJ if you need matching state across all database files and artwork.
 
-By default, backups are saved in your user data directory (~/.local/share/engine-cli/backups), or to an optional [path] specified as an argument or via -o.`,
+By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optional [path] specified as an argument or via -o.`,
 		Example: `  engine-cli library backup
   engine-cli library backup "/Volumes/BackupDrive/EngineBackups"
   engine-cli library backup --list`,
@@ -217,14 +217,14 @@ By default, backups are saved in your user data directory (~/.local/share/engine
 			}
 			if destDir == "" {
 				var err error
-				destDir, err = backup.GetDefaultBackupDir()
+				destDir, err = backup.GetDefaultBackupDir(libDirFlag)
 				if err != nil {
 					return err
 				}
 			}
 
 			if listBackups {
-				backups, err := backup.ListBackups(destDir)
+				backups, err := backup.ListBackups(libDirFlag, destDir)
 				if err != nil {
 					return err
 				}
@@ -280,7 +280,7 @@ By default, backups are saved in your user data directory (~/.local/share/engine
 	}
 
 	cmd.Flags().BoolVar(&listBackups, "list", false, "List available backup snapshots without creating a new backup")
-	cmd.Flags().StringVarP(&outDirFlag, "out-dir", "o", "", "Destination directory for backup snapshots (default: ~/.local/share/engine-cli/backups)")
+	cmd.Flags().StringVarP(&outDirFlag, "out-dir", "o", "", "Destination directory for backup snapshots (default: <lib-dir>/.engine-cli/backups)")
 
 	return cmd
 }
@@ -295,7 +295,7 @@ Close Engine DJ before restoring.
 
 Arguments:
   <path>   The full path to the backup snapshot folder. Use 'engine-cli library backup --list' to find snapshots.`,
-		Example: `  engine-cli library restore ~/.local/share/engine-cli/backups/backup-2026-08-23T20-30-00Z
+		Example: `  engine-cli library restore <lib-dir>/.engine-cli/backups/backup-2026-08-23T20-30-00Z
   engine-cli -l "/Volumes/DJ_USB/Engine Library" library restore "/Backups/backup-2026-08-23T20-30-00Z"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

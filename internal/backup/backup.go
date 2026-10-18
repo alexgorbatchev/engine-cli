@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dj/engine-cli/internal/history"
 	"github.com/dj/engine-cli/internal/progress"
 )
 
@@ -23,20 +24,24 @@ type BackupInfo struct {
 	SizeBytes int64     `json:"sizeBytes"`
 }
 
-// GetDefaultBackupDir returns the default directory for storing backup snapshots following the XDG Base Directory specification.
-func GetDefaultBackupDir() (string, error) {
-	if xdgData := os.Getenv("XDG_DATA_HOME"); xdgData != "" {
-		return filepath.Join(xdgData, "engine-cli", "backups"), nil
+// GetDefaultBackupDir keeps snapshots beside their source library.
+func GetDefaultBackupDir(lib string) (string, error) {
+	if lib == "" {
+		return "", fmt.Errorf("empty engine library directory")
 	}
-	home, err := os.UserHomeDir()
+	abs, err := filepath.Abs(lib)
 	if err != nil {
-		return "", fmt.Errorf("resolving user home directory: %w", err)
+		return "", err
 	}
-	return filepath.Join(home, ".local", "share", "engine-cli", "backups"), nil
+	return filepath.Join(abs, ".engine-cli", "backups"), nil
 }
 
 // CreateBackup creates an atomic timestamped snapshot of Engine DJ databases and Artwork cache.
 func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo, error) {
+	return createBackup(ctx, engineLibDir, outDir, true)
+}
+
+func createBackup(ctx context.Context, engineLibDir, outDir string, artwork bool) (*BackupInfo, error) {
 	progress.Stage(ctx, "backup", 0)
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -45,7 +50,7 @@ func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo
 		return nil, fmt.Errorf("empty engine library directory")
 	}
 	if outDir == "" {
-		defaultDir, err := GetDefaultBackupDir()
+		defaultDir, err := GetDefaultBackupDir(engineLibDir)
 		if err != nil {
 			return nil, fmt.Errorf("resolving default backup directory: %w", err)
 		}
@@ -97,11 +102,15 @@ func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo
 	dbCount += rootCount
 	totalSize := dbBytes + rootBytes
 	progress.Stage(ctx, "backup.artwork", 70)
-	artCount, artBytes, err := copyArtwork(ctx, filepath.Join(engineLibDir, "Artwork"), artTarget)
-	if err != nil {
-		return nil, err
+	artCount := 0
+	if artwork {
+		var artBytes int64
+		artCount, artBytes, err = copyArtwork(ctx, filepath.Join(engineLibDir, "Artwork"), artTarget)
+		if err != nil {
+			return nil, err
+		}
+		totalSize += artBytes
 	}
-	totalSize += artBytes
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -176,7 +185,7 @@ func AutoBackupIfNeeded(ctx context.Context, engineLibDir string, noBackup bool)
 	if noBackup {
 		return nil, nil
 	}
-	info, err := CreateBackup(progress.Range(ctx, 0, 10), engineLibDir, "")
+	info, err := createBackup(progress.Range(ctx, 0, 10), engineLibDir, "", false)
 	if err == nil {
 		progress.Stage(ctx, "backup.saved", 10)
 	}
@@ -255,7 +264,12 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 				if !e.IsDir() {
 					src := filepath.Join(artSrc, e.Name())
 					dst := filepath.Join(artDest, e.Name())
-					_, _ = copyFile(src, dst)
+					if err := history.Preserve(ctx, dst); err != nil {
+						return err
+					}
+					if _, err := copyFile(src, dst); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -265,9 +279,9 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 }
 
 // ListBackups scans a directory for created backup snapshots.
-func ListBackups(backupBaseDir string) ([]BackupInfo, error) {
+func ListBackups(lib, backupBaseDir string) ([]BackupInfo, error) {
 	if backupBaseDir == "" {
-		defaultDir, err := GetDefaultBackupDir()
+		defaultDir, err := GetDefaultBackupDir(lib)
 		if err != nil {
 			return nil, fmt.Errorf("resolving default backup directory: %w", err)
 		}

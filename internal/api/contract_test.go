@@ -18,13 +18,13 @@ func TestUndoPreviewDoesNotCreateBackup(t *testing.T) {
 	if preview["history_id"] != nil {
 		t.Fatalf("preview created a mutation history ID: %+v", preview)
 	}
-	snapshots, err := backup.ListBackups("")
+	snapshots, err := backup.ListBackups(s.config.LibraryDir, "")
 	if err != nil || len(snapshots) != 0 {
 		t.Fatalf("preview created a backup: %+v err=%v", snapshots, err)
 	}
 	runAPIJob(t, s, "playlist.inspect", `{"identifier":"Preview target"}`)
 	runAPIJob(t, s, "library.undo", fmt.Sprintf(`{"id":%q}`, id))
-	snapshots, err = backup.ListBackups("")
+	snapshots, err = backup.ListBackups(s.config.LibraryDir, "")
 	if err != nil || len(snapshots) != 1 {
 		t.Fatalf("real undo missing safety backup: %+v err=%v", snapshots, err)
 	}

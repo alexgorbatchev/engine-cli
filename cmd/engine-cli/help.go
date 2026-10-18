@@ -36,7 +36,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"engine-cli library backup": {
 		Summary:     "Create atomic snapshot of Engine DJ SQLite databases and Artwork/ cache",
-		Description: "Captures each database's committed SQLite content, including WAL pages, independently into Database2/*.db and Root/*.db, copies Artwork/*, then atomically publishes a unique timestamped snapshot directory in the XDG backup directory or custom path.",
+		Description: "Captures each database's committed SQLite content, including WAL pages, independently into Database2/*.db and Root/*.db, copies Artwork/*, then atomically publishes a unique timestamped snapshot directory in the library’s .engine-cli/backups directory or custom path.",
 		Args:        "[path]",
 	},
 	"engine-cli library restore": {

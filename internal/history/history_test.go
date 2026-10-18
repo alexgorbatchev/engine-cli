@@ -37,7 +37,7 @@ func TestUndoPreservesLaterChangesAndForce(t *testing.T) {
 		t.Run(map[bool]string{false: "unrelated", true: "conflict"}[force], func(t *testing.T) {
 			lib, d, p := fixture(t)
 			ctx := context.Background()
-			record, err := Run(ctx, lib, "track.edit", nil, func(context.Context) error {
+			record, err := Run(ctx, lib, "track.edit", []string{p}, func(context.Context) error {
 				if _, err := d.Exec("UPDATE Track SET title='Changed' WHERE id=1"); err != nil {
 					return err
 				}
@@ -82,7 +82,7 @@ func TestUndoPreservesLaterChangesAndForce(t *testing.T) {
 func TestUndoFileConflictAndPreview(t *testing.T) {
 	lib, _, p := fixture(t)
 	ctx := context.Background()
-	r, err := Run(ctx, lib, "track.rm", nil, func(context.Context) error { return os.Remove(p) })
+	r, err := Run(ctx, lib, "track.rm", []string{p}, func(context.Context) error { return os.Remove(p) })
 	if err != nil {
 		t.Fatal(err)
 	}
