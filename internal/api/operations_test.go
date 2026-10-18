@@ -15,17 +15,17 @@ import (
 func TestAPIPlaylistMutations(t *testing.T) {
 	s, lib := testAPI(t)
 	runAPIJob(t, s, "playlist.create", `{"name":"Folder","folder":true}`)
-	runAPIJob(t, s, "playlist.create", `{"name":"Second","parent":"Folder"}`)
-	runAPIJob(t, s, "playlist.inspect", `{"identifier":"Second"}`)
-	runAPIJob(t, s, "playlist.move", `{"identifier":"Second","to":""}`)
-	runAPIJob(t, s, "playlist.track.add", `{"playlist":"Favorites","tracks":["1"]}`)
-	runAPIJob(t, s, "playlist.track.move", `{"from":"Favorites","to":"Second","tracks":["1"]}`)
+	runAPIJob(t, s, "playlist.create", `{"name":"Second","parent":"2"}`)
+	runAPIJob(t, s, "playlist.inspect", `{"identifier":"3"}`)
+	runAPIJob(t, s, "playlist.move", `{"identifier":"3","to":""}`)
+	runAPIJob(t, s, "playlist.track.add", `{"playlist":"1","tracks":["1"]}`)
+	runAPIJob(t, s, "playlist.track.move", `{"from":"1","to":"3","tracks":["1"]}`)
 	database, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer database.Close()
-	second, err := db.FindPlaylist(context.Background(), database, "Second")
+	second, err := db.FindPlaylist(context.Background(), database, "3")
 	if err != nil || second == nil || second.ParentListID != 0 {
 		t.Fatalf("moved playlist=%+v error=%v", second, err)
 	}
@@ -33,9 +33,9 @@ func TestAPIPlaylistMutations(t *testing.T) {
 	if err != nil || len(tracks) != 1 || tracks[0].ID != 1 {
 		t.Fatalf("moved membership=%+v error=%v", tracks, err)
 	}
-	runAPIJob(t, s, "playlist.track.rm", `{"playlist":"Second","tracks":["1"]}`)
-	runAPIJob(t, s, "playlist.rm", `{"identifier":"Second","force":true}`)
-	second, err = db.FindPlaylist(context.Background(), database, "Second")
+	runAPIJob(t, s, "playlist.track.rm", `{"playlist":"3","tracks":["1"]}`)
+	runAPIJob(t, s, "playlist.rm", `{"identifier":"3","force":true}`)
+	second, err = db.FindPlaylist(context.Background(), database, "3")
 	if err != nil || second != nil {
 		t.Fatalf("removed playlist=%+v error=%v", second, err)
 	}
@@ -59,7 +59,7 @@ func TestAPIMutationSnapshotPrecedesChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer database.Close()
-	pl, err := db.FindPlaylist(context.Background(), database, "After snapshot")
+	pl, err := db.FindPlaylist(context.Background(), database, "2")
 	if err != nil || pl != nil {
 		t.Fatalf("snapshot was taken after mutation: %+v %v", pl, err)
 	}
@@ -125,7 +125,7 @@ func TestAPITrackMutationsAndEmptyMaintenance(t *testing.T) {
 	if err != nil || track != nil {
 		t.Fatalf("removed track=%+v error=%v", track, err)
 	}
-	for _, operation := range []string{"library.verify", "library.sync", "library.prune", "track.artwork.normalize"} {
+	for _, operation := range []string{"library.verify", "library.refresh", "library.prune", "track.artwork.normalize"} {
 		runAPIJob(t, s, operation, `{}`)
 	}
 }
@@ -147,7 +147,7 @@ func TestAPIBackupsAndRestore(t *testing.T) {
 		t.Fatalf("backup path=%+v", result)
 	}
 	runAPIJob(t, s, "library.backups", string(body))
-	runAPIJob(t, s, "playlist.rm", `{"identifier":"Favorites","force":true}`)
+	runAPIJob(t, s, "playlist.rm", `{"identifier":"1","force":true}`)
 	restore, err := json.Marshal(map[string]string{"path": path})
 	if err != nil {
 		t.Fatal(err)
@@ -158,7 +158,7 @@ func TestAPIBackupsAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer database.Close()
-	pl, err := db.FindPlaylist(context.Background(), database, "Favorites")
+	pl, err := db.FindPlaylist(context.Background(), database, "1")
 	if err != nil || pl == nil {
 		t.Fatalf("restored playlist=%+v error=%v", pl, err)
 	}

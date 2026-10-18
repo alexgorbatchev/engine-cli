@@ -15,7 +15,7 @@ func newTrackUpgradeCommand() *cobra.Command {
 	var query string
 	var keepTiming, clearTiming bool
 	cmd := &cobra.Command{
-		Use:   "upgrade <tr|id|path>",
+		Use:   "upgrade <id|path>",
 		Short: "Fetch replacement audio while keeping your track information and playlists",
 		Long: `Find and download replacement audio using Fetch Track CLI.
 
@@ -28,7 +28,7 @@ retain them or --clear-timing to remove them. An extended mix may shift their po
 
 Requires fetch-track, ffmpeg, and ffprobe on your PATH.
 Automatically saves a safety backup before making changes unless --no-backup is specified.`,
-		Example: `  engine-cli track upgrade "Sample Title"
+		Example: `  engine-cli track upgrade 42
   engine-cli track upgrade 42 --query "Sample Artist Sample Title extended mix"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

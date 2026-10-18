@@ -95,9 +95,10 @@ func assertUndoPlaylist(t *testing.T, lib, title string, present bool) {
 		t.Fatal(err)
 	}
 	defer database.Close()
-	pl, err := db.FindPlaylist(context.Background(), database, title)
-	if err != nil || (pl != nil) != present {
-		t.Fatalf("playlist %q present=%v got=%+v error=%v", title, present, pl, err)
+	var exists bool
+	err = database.QueryRowContext(context.Background(), "SELECT EXISTS(SELECT 1 FROM Playlist WHERE title=?)", title).Scan(&exists)
+	if err != nil || exists != present {
+		t.Fatalf("playlist %q present=%v got=%v error=%v", title, present, exists, err)
 	}
 }
 

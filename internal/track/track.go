@@ -55,6 +55,17 @@ func AddTrack(
 	if filePath == "" {
 		return nil, fmt.Errorf("file path cannot be empty")
 	}
+	var targetPlaylist *db.Playlist
+	if strings.TrimSpace(toPlaylist) != "" {
+		var err error
+		targetPlaylist, err = db.FindPlaylist(ctx, database, toPlaylist)
+		if err != nil {
+			return nil, err
+		}
+		if targetPlaylist == nil {
+			return nil, fmt.Errorf("playlist ID %s not found", toPlaylist)
+		}
+	}
 
 	runner := defaultRunner
 	if len(runnerOpt) > 0 && runnerOpt[0] != nil {
@@ -204,23 +215,11 @@ func AddTrack(
 	}
 
 	// Link to playlist if specified
-	if strings.TrimSpace(toPlaylist) != "" {
-		pl, err := db.FindPlaylist(ctx, database, toPlaylist)
-		if err != nil {
-			return nil, fmt.Errorf("finding playlist %q: %w", toPlaylist, err)
-		}
-		if pl == nil {
-			plID, err := db.CreatePlaylist(ctx, database, toPlaylist, 0, false)
-			if err != nil {
-				return nil, fmt.Errorf("creating playlist %q: %w", toPlaylist, err)
-			}
-			pl = &db.Playlist{ID: plID, Title: toPlaylist}
-		}
-
-		if _, err := db.AddTrackToPlaylist(ctx, database, pl.ID, t.ID); err != nil {
+	if targetPlaylist != nil {
+		if _, err := db.AddTrackToPlaylist(ctx, database, targetPlaylist.ID, t.ID); err != nil {
 			return nil, fmt.Errorf("adding track to playlist: %w", err)
 		}
-		result.Playlist = pl
+		result.Playlist = targetPlaylist
 	}
 
 	return result, nil

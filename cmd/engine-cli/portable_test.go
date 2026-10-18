@@ -12,7 +12,7 @@ import (
 
 func TestPortableBackupFailureStopsMutations(t *testing.T) {
 	commands := [][]string{
-		{"library", "sync"}, {"library", "prune"}, {"library", "restore", "missing"},
+		{"library", "refresh"}, {"library", "prune"}, {"library", "restore", "missing"},
 		{"playlist", "create", "Never"}, {"playlist", "rm", "1", "--force"}, {"playlist", "move", "1", "--to", "2"},
 		{"playlist", "track", "add", "1", "1"}, {"playlist", "track", "rm", "1", "1"}, {"playlist", "track", "move", "1", "2", "1"},
 		{"track", "add", "missing.mp3"}, {"track", "rm", "1"}, {"track", "move", "1", "missing.mp3"},

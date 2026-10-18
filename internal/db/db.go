@@ -333,7 +333,7 @@ func InsertOrUpdateAlbumArt(ctx context.Context, database *sql.DB, hash string, 
 	return id, nil
 }
 
-// FindPlaylist finds a playlist by numeric ID or by title.
+// FindPlaylist finds a playlist by library-scoped numeric ID.
 func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Playlist, error) {
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
@@ -355,14 +355,8 @@ func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Pla
 		}
 	}
 
-	// Fallback to title lookup (case-insensitive)
-	var p Playlist
-	err := database.QueryRowContext(ctx, "SELECT id, title, parentListId FROM Playlist WHERE title = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1", idOrTitle).
-		Scan(&p.ID, &p.Title, &p.ParentListID)
-	if err == nil {
-		return &p, nil
-	} else if err != sql.ErrNoRows {
-		return nil, fmt.Errorf("querying playlist by title %q: %w", idOrTitle, err)
+	if id, err := strconv.ParseInt(idOrTitle, 10, 64); err != nil || id <= 0 {
+		return nil, fmt.Errorf("playlist identifier must be a positive numeric ID; list playlists to choose an ID")
 	}
 
 	return nil, nil
@@ -691,7 +685,7 @@ func DeleteTrack(ctx context.Context, database *sql.DB, id int64) error {
 	return nil
 }
 
-// FindTrack finds a track by numeric ID, path, or filename.
+// FindTrack finds a track by numeric ID or its exact stored path.
 func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, error) {
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
@@ -707,22 +701,19 @@ func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, 
 		if err != nil {
 			return nil, err
 		}
-		if t != nil {
-			return t, nil
-		}
+		return t, nil
 	}
 
-	// Lookup by path, filename, or title (exact or relative match)
+	// Paths match exactly; titles, basenames, and path prefixes are not selectors.
 	query := `
 		SELECT id, playOrder, length, bpm, year, path, filename, bitrate, bpmAnalyzed,
 		       albumArtId, fileBytes, title, artist, album, genre, comment, label,
 		       composer, remixer, key, rating, albumArt, fileType, isAnalyzed, isAvailable,
 		       lastEditTime, albumArtSourceHash
 		FROM Track
-		WHERE path = ? OR filename = ? OR title = ? COLLATE NOCASE OR path LIKE ? OR path LIKE ?
-		ORDER BY id ASC LIMIT 1;
+		WHERE path = ?;
 	`
-	row := database.QueryRowContext(ctx, query, idOrPath, idOrPath, idOrPath, "%"+idOrPath, idOrPath+"%")
+	row := database.QueryRowContext(ctx, query, idOrPath)
 	var t Track
 	err := row.Scan(
 		&t.ID, &t.PlayOrder, &t.Length, &t.BPM, &t.Year, &t.Path, &t.Filename, &t.Bitrate, &t.BPMAnalyzed,

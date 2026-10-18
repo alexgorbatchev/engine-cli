@@ -25,7 +25,7 @@ func TestFindPlaylistWithoutFolderColumn(t *testing.T) {
 	`); err != nil {
 		t.Fatal(err)
 	}
-	for _, identifier := range []string{"67", "downtempo", " Downtempo "} {
+	for _, identifier := range []string{"67", " 67 "} {
 		t.Run(identifier, func(t *testing.T) {
 			playlist, err := FindPlaylist(ctx, database, identifier)
 			if err != nil {
@@ -42,7 +42,7 @@ func TestFindPlaylistCancelledLookup(t *testing.T) {
 	database, _ := createTestDB(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	for _, identifier := range []string{"67", "Downtempo"} {
+	for _, identifier := range []string{"67", "68"} {
 		t.Run(identifier, func(t *testing.T) {
 			playlist, err := FindPlaylist(ctx, database, identifier)
 			if playlist != nil || !errors.Is(err, context.Canceled) {

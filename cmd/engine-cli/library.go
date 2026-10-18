@@ -22,7 +22,7 @@ func newLibraryCommand() *cobra.Command {
 		Long: `Manage, audit, synchronize, and back up Engine DJ databases and library files.
 
   - Use 'engine-cli library verify' to audit database integrity and missing files.
-  - Use 'engine-cli library sync' to synchronize on-disk metadata tags with database.
+  - Use 'engine-cli library refresh' to synchronize on-disk metadata tags with database.
   - Use 'engine-cli library backup [path]' to create or list backup snapshots.
   - Use 'engine-cli library restore <path>' to restore from a backup snapshot.
   - Use 'engine-cli library prune' to delete orphaned artwork rows and cache files.`,
@@ -34,7 +34,8 @@ func newLibraryCommand() *cobra.Command {
 
 	libCmd.AddCommand(newLibraryVerifyCommand())
 	libCmd.AddCommand(newLibraryDiscoverCommand())
-	libCmd.AddCommand(newLibrarySyncCommand())
+	libCmd.AddCommand(newLibraryRefreshCommand())
+	libCmd.AddCommand(newLibraryTransferCommand())
 	libCmd.AddCommand(newLibraryBackupCommand())
 	libCmd.AddCommand(newLibraryRestoreCommand())
 	libCmd.AddCommand(newLibraryPruneCommand())
@@ -120,16 +121,16 @@ Outputs a clear plain text summary by default or JSON when --json is passed.`,
 	return cmd
 }
 
-func newLibrarySyncCommand() *cobra.Command {
+func newLibraryRefreshCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "sync",
+		Use:   "refresh",
 		Short: "Update song information in Engine DJ from audio files on disk",
 		Long: `Scan your audio files and update song titles, artists, BPM, and file sizes in your Engine DJ collection if you modified them outside Engine DJ. Also finds and lists any new songs on disk that are not yet added to your collection.
 
 Automatically saves a safety backup of your library before making changes unless --no-backup is specified.`,
-		Example: `  engine-cli library sync
-  engine-cli -l "/Volumes/DJ_USB/Engine Library" library sync
-  engine-cli --no-backup library sync`,
+		Example: `  engine-cli library refresh
+  engine-cli -l "/Volumes/DJ_USB/Engine Library" library refresh
+  engine-cli --no-backup library refresh`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)

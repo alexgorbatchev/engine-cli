@@ -22,7 +22,7 @@ func TestTrackUpgradeHelp(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, want := range []string{"upgrade <tr|id|path>", "--query", "--keep-timing", "--clear-timing", "--no-backup"} {
+			for _, want := range []string{"upgrade <id|path>", "--query", "--keep-timing", "--clear-timing", "--no-backup"} {
 				if !strings.Contains(out, want) {
 					t.Errorf("help missing %q: %s", want, out)
 				}

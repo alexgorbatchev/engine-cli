@@ -22,7 +22,7 @@ func TestUndoPreviewDoesNotCreateBackup(t *testing.T) {
 	if err != nil || len(snapshots) != 0 {
 		t.Fatalf("preview created a backup: %+v err=%v", snapshots, err)
 	}
-	runAPIJob(t, s, "playlist.inspect", `{"identifier":"Preview target"}`)
+	runAPIJob(t, s, "playlist.inspect", `{"identifier":"2"}`)
 	runAPIJob(t, s, "library.undo", fmt.Sprintf(`{"id":%q}`, id))
 	snapshots, err = backup.ListBackups(s.config.LibraryDir, "")
 	if err != nil || len(snapshots) != 1 {
@@ -45,8 +45,8 @@ func TestConsumedTerminalCursorStopsReconnect(t *testing.T) {
 
 func TestTrackResultsUseJSONNullsAndValues(t *testing.T) {
 	s, _ := testAPI(t)
-	runAPIJob(t, s, "playlist.track.add", `{"playlist":"Favorites","tracks":["1"]}`)
-	job := runAPIJob(t, s, "playlist.inspect", `{"identifier":"Favorites"}`)
+	runAPIJob(t, s, "playlist.track.add", `{"playlist":"1","tracks":["1"]}`)
+	job := runAPIJob(t, s, "playlist.inspect", `{"identifier":"1"}`)
 	result := job["result"].(map[string]any)
 	tr := result["tracks"].([]any)[0].(map[string]any)
 	if tr["title"] != "Curated title" || tr["album"] != nil || tr["id"] != float64(1) {

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-18 12:45
+last_modified: 2026-10-18 15:53
 status: current
 ---
 
@@ -20,20 +20,21 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Discover Libraries:** `bin/engine-cli library discover` and HTTP `library.discover` inspect common macOS/Windows locations and attached drives without modifying libraries.
 - **Backup Library:** `bin/engine-cli library backup [path] [--list]`
 - **Restore Library:** `bin/engine-cli library restore <path>`
-- **Sync On-Disk Metadata:** `bin/engine-cli library sync`
+- **Refresh On-Disk Metadata:** `bin/engine-cli library refresh`
+- **Sync Libraries:** `bin/engine-cli library sync --from <path> --to <path> (--playlist-id <id> | --root) [--dry-run]`
 - **Prune Orphaned Artwork:** `bin/engine-cli library prune`
 - **List Playlists:** `bin/engine-cli playlist list`
-- **Inspect Playlist:** `bin/engine-cli playlist inspect <pl|id>`
-- **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <pl|id>] [--folder]`
-- **Remove Playlist:** `bin/engine-cli playlist rm <pl|id> [--force]`
-- **Move/Reparent Playlist:** `bin/engine-cli playlist move <pl|id> --to <pl|id>`
-- **Add Track to Playlist:** `bin/engine-cli playlist track add <pl|id> <tr|id|path...>`
-- **Remove Track from Playlist:** `bin/engine-cli playlist track rm <pl|id> <tr|id|path...>`
-- **Move Track Between Playlists:** `bin/engine-cli playlist track move <src-pl|id> <dst-pl|id> <tr|id|path...>`
-- **Add Track to Library:** `bin/engine-cli track add <path...> [--to-playlist <pl|id>] [--move]`
-- **Upgrade Track Audio:** `bin/engine-cli track upgrade <tr|id|path> [--query <text>] [--keep-timing | --clear-timing]`
-- **Remove Track from Library:** `bin/engine-cli track rm <tr|id|path...> [--delete-file]`
-- **Move Track File on Disk:** `bin/engine-cli track move <tr|id|path> <dest-path>`
+- **Inspect Playlist:** `bin/engine-cli playlist inspect <id>`
+- **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <id>] [--folder]`
+- **Remove Playlist:** `bin/engine-cli playlist rm <id> [--force]`
+- **Move/Reparent Playlist:** `bin/engine-cli playlist move <id> --to <id>`
+- **Add Track to Playlist:** `bin/engine-cli playlist track add <id> <id|path...>`
+- **Remove Track from Playlist:** `bin/engine-cli playlist track rm <id> <id|path...>`
+- **Move Track Between Playlists:** `bin/engine-cli playlist track move <src-id> <dst-id> <id|path...>`
+- **Add Track to Library:** `bin/engine-cli track add <path...> [--to-playlist <id>] [--move]`
+- **Upgrade Track Audio:** `bin/engine-cli track upgrade <id|path> [--query <text>] [--keep-timing | --clear-timing]`
+- **Remove Track from Library:** `bin/engine-cli track rm <id|path...> [--delete-file]`
+- **Move Track File on Disk:** `bin/engine-cli track move <id|path> <dest-path>`
 - **Relocate Track Paths:** `bin/engine-cli track relocate --from <path> --to <path>`
 - **Normalize Artwork to 1:1 Square:** `bin/engine-cli track artwork normalize`
 - **Find and Compare Duplicates:** `bin/engine-cli track duplicate list [--type all|metadata|filename-len]`; `bin/engine-cli track duplicate inspect <id...>`
@@ -48,6 +49,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Temporary Files:** Production code uses the OS temporary directory for disposable workspaces, never project `.tmp/`. Agent development artifacts may use project `.tmp/`. Atomic publication staging stays beside its destination to support same-filesystem rename.
 
 ## Conventions
+- **UI-Driven Contracts:** UI workflows drive HTTP API design and associated CLI output. Extend or reshape shared results when the UI needs richer data rather than constraining the UI to an existing response shape. Keep CLI and HTTP results aligned, preserve stable entity identity, and retain snapshot/undo guarantees for mutations.
 - **Library Discovery:** Recognize current `Database2/m.db` libraries; ignore legacy root-level database leftovers. Keep enumeration read-only and provide a friendly `name`, `source`, and absolute path for UI library pickers through the HTTP API.
 - **Reversible Library Operations:** Every operation that modifies the source library must support undo, including database changes and changes to audio files or artwork. Apply this requirement to existing operations as well as duplicate-track operations, through both the CLI and HTTP API.
 - **Affected Files Only:** Plan and preserve only files an operation will modify or delete. Database-only operations must not copy audio or artwork. Record file moves as reversible path changes rather than audio backups. Explicit library backups may include all databases and artwork.
@@ -56,9 +58,10 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
 - **Shared Progress Schema:** Keep CLI and HTTP progress field names and types aligned with Fetch Track, including `job_id`, `sequence`, and string-valued `error`. Preserve upstream event details under `source`; retain structured `{code,message}` errors for HTTP job/status and request responses.
 - **Track Upgrades:** Use Fetch Track CLI to acquire replacement audio. Preserve the original track's curated metadata. Replacing a radio edit with an extended mix is intended upgrade behavior.
-- **CLI Argument Placeholder Conventions:** All command argument placeholders and help documentation strictly follow the standard abbreviations: `pl` for playlist name, `tr` for track title, `id` for numeric database ID, `path` for filesystem path (file or folder), `pl|id` for playlist name or ID, `tr|id|path` for track title, ID, or path, and `src-pl|id` / `dst-pl|id` for source and destination playlists.
+- **Entity Selection:** CLI and HTTP operations select existing playlists and tracks by library-scoped numeric IDs, or tracks by an exact explicit path. Names, titles, and file basenames are display/search fields only; never resolve them to an entity. Use `id`, `id|path`, `src-id`, and `dst-id` in argument placeholders.
+- **Library Sync:** Sync direction is explicit source to destination; USB selection resolves to the same path-based operation. Scope is selected playlist IDs (including descendants) or the library root. Dry runs are read-only previews shared by CLI and HTTP. Preserve destination-only content by default, require explicit mirroring for removals, and refuse unresolved conflicts. Sync baselines and mappings live in portable `.engine-cli/sync/` storage and must participate in undo.
 - **Distribution for Non-Technical Users:** `engine-cli` is distributed for non-technical users (working and bedroom DJs, music collectors). All installation instructions, CLI outputs, error messages, and documentation must remain straightforward, accessible, and actionable without requiring developer knowledge. Pre-compiled binaries are the primary release and distribution vehicle.
-- **Automated Database Snapshots:** All database modification operations (`library sync`, `library restore`, `library prune`, `library undo`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track upgrade`, `track rm`, `track move`, `track relocate`, `track artwork normalize`, `track duplicate merge`) must automatically create a snapshot backup in `<lib-dir>/.engine-cli/backups/` before applying changes, unless the user opts out with `--no-backup`. Read-only undo previews do not create safety snapshots.
+- **Automated Database Snapshots:** All database modification operations (`library sync`, `library refresh`, `library restore`, `library prune`, `library undo`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track upgrade`, `track rm`, `track move`, `track relocate`, `track artwork normalize`, `track duplicate merge`) must automatically create a snapshot backup in `<lib-dir>/.engine-cli/backups/` before applying changes, unless the user opts out with `--no-backup`. Read-only undo previews do not create safety snapshots.
 - **Output Formatting & No Decorative Headers:** All CLI output must be plain text without emojis across all modes and logs. Static decorative title headers (e.g. `=== ... ===`) are prohibited; output meaning must be obvious directly from the structured content lines.
 - **ASCII Tree Rendering:** All tree and hierarchy views (such as playlist listings) must render using standard ASCII tree characters (`├── `, `└── `, `│   `), with each node on a single line formatted as `<title> [id:<id> tracks:<trackCount>]`.
 - **Agent Mode (`AGENT=1`):** When the `AGENT=1`, `AGENT=true`, or `AGENT=yes` environment variable is present, commands output compact, token-conservative key-value pairs or simple indented bulleted lists (e.g. for `playlist list`) without interactive noise, multi-byte Unicode tree symbols, or formatting banners.

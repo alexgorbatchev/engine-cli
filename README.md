@@ -32,6 +32,12 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 
 # How it Really Works
 
+- Existing playlists are selected by numeric ID. Tracks are selected by numeric ID or their exact stored path; titles and file basenames never establish a match. Use playlist listings and the HTTP `track.list` operation to obtain IDs.
+- `library sync --from <path> --to <path>` requires source `--playlist-id <id>` (repeatable, including descendants) or `--root`. Ancestors preserve hierarchy without copying their other tracks. Root sync includes tracks outside playlists, smartlist definitions, and the prepare queue. Both paths must contain existing libraries with matching, verified Engine database schema 3.0.2 and distinct database UUIDs.
+- Sync matches track origins and explicit playlist mappings. Use `--map-playlist <source-id>:<destination-id>` to match existing playlists. Names never establish identity. Unmapped playlists are created unless a sibling title collision prevents it. Source changes propagate while destination-only edits remain. Conflicting edits are refused unless `--conflict source` or `--conflict destination` chooses a side.
+- Sync preserves destination-only entries by default. `--mirror` propagates removals within the selected scope while retaining tracks referenced by kept playlists. Removed audio is preserved for undo. `--media none` requires matching destination audio and copies no audio; artwork may still be transferred. New audio goes under `Music/engine-cli/` inside the destination, without re-encoding. Audio changes outside the destination library are refused.
+- `--dry-run --json` returns the HTTP preview format: entity changes, conflicts, copy sizes, free space, and an approximate space requirement including database snapshots. It creates no backups, history, media, or sync-state files. Apply recomputes the comparison; `--plan-token` additionally rejects an outdated preview. Mappings and baselines live in the destination's `.engine-cli/sync/` and participate in undo. Reverse the paths to sync back. No-op repeats create no history when their baseline is current.
+- Sync publishes verified audio before committing database changes. Failed or interrupted operations can leave completed file changes; destination history preserves recovery data. Use `engine-cli -l <destination> library undo <operation-id>` to reverse them. Pending interrupted entries require `--force` recovery. Keep Engine DJ closed during application and recovery.
 - `library discover [path...]` checks current `Database2/m.db` libraries without opening SQLite or writing library state. Automatic discovery uses Music (including redirected Windows Music folders) and mounted local drives; Windows scans fixed/removable drive letters. Optional paths replace automatic locations and check each path directly, `Engine Library/`, and `Music/Engine Library/`. It does not search recursively, scan network drives automatically, or list legacy root-level databases. Results include `name`, `source` (`local`, `drive`, or `folder`), `path`, and `database`; unreadable or invalid candidates appear in `warnings`. Use `--json` for structured output.
 - Connects to SQLite collection databases (`Database2/m.db`, `Database2/p.db`) using modern zero-CGO SQLite drivers.
 - Executes `ffprobe` JSON stream analysis to detect attached picture stream dimensions and extract audio tags.
@@ -81,28 +87,28 @@ engine-cli library discover --json
 engine-cli library verify
 
 # Import an audio file, move it to library storage, and add to a playlist
-engine-cli track add --move --to-playlist "Tech House" "/Downloads/song.mp3"
+engine-cli track add --move --to-playlist 2 "/Downloads/song.mp3"
 
 # Display playlist hierarchy tree
 engine-cli playlist list
 
 # Fetch replacement audio while keeping your track information and playlists
-engine-cli track upgrade "Track Title"
+engine-cli track upgrade 42
 
 # Customize the search, including an extended mix
 engine-cli track upgrade 42 --query "Artist Track Title extended mix"
 
 # Create a new playlist or folder
-engine-cli playlist create "Melodic Techno" --parent "Techno"
+engine-cli playlist create "Melodic Techno" --parent 2
 
 # Add an existing track to a playlist
-engine-cli playlist track add "Melodic Techno" "Track Title"
+engine-cli playlist track add 2 42
 
 # Normalize cover artwork to 1:1 square
 engine-cli track artwork normalize
 
 # Synchronize on-disk audio tags into database
-engine-cli library sync
+engine-cli library refresh
 
 # Create a backup snapshot
 engine-cli library backup "/Volumes/BackupDrive/EngineBackups"
@@ -126,6 +132,22 @@ Merge retains the keeper's cues, loops, and beat grid by default. To explicitly 
 
 # Options & Flags
 
+`engine-cli library sync`
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--from <path>` | `-` | required | Source library |
+| `--to <path>` | `-` | required | Destination library |
+| `--playlist-id <id>` | `-` | none | Source playlist ID; repeatable; includes descendants |
+| `--root` | `-` | `false` | Whole library; mutually exclusive with playlist IDs |
+| `--map-playlist <source-id>:<destination-id>` | `-` | none | Explicit existing playlist match; repeatable |
+| `--dry-run` | `-` | `false` | Preview without modifying either library |
+| `--json` | `-` | `false` | Structured preview or result on stdout |
+| `--mirror` | `-` | `false` | Remove destination entries absent from selected source scope |
+| `--conflict <policy>` | `-` | `error` | `error`, `source`, or `destination` |
+| `--media <mode>` | `-` | `changed` | `changed` or `none` |
+| `--plan-token <token>` | `-` | none | Reject an outdated preview before applying |
+
 `engine-cli library discover [path...]`
 
 | Flag | Short | Default | Description |
@@ -137,16 +159,16 @@ Merge retains the keeper's cues, loops, and beat grid by default. To explicitly 
 | `--lib-dir <path>` | `-l` | `~/Music/Engine Library` | Path to the Engine Library directory |
 | `--no-backup` | `-` | `false` | Disable automatic backup snapshot before modifying database |
 | `--progress-json` | `-` | `false` | Emit NDJSON progress on stderr with overall 0–100 completion; keep results on stdout |
-| `--to-playlist <pl|id>` | `-` | `""` | Assign imported track directly to a playlist in `track add` |
+| `--to-playlist <id>` | `-` | `""` | Assign imported track directly to a playlist in `track add` |
 | `--move` | `-` | `false` | Move audio file into library directory in `track add` |
 | `--query <text>` | `-` | `""` | Override the artist/title search in `track upgrade` |
 | `--keep-timing` | `-` | `false` | Keep saved cues, loops, and beat grids during `track upgrade` |
 | `--clear-timing` | `-` | `false` | Remove saved cues, loops, and beat grids during `track upgrade`; cannot combine with `--keep-timing` |
 | `--delete-file` | `-` | `false` | Delete physical audio file from disk in `track rm` |
-| `--parent <pl|id>` | `-p` | `""` | Parent playlist or folder in `playlist create` |
+| `--parent <id>` | `-p` | `""` | Parent playlist or folder in `playlist create` |
 | `--folder` | `-` | `false` | Create a folder container instead of a playlist in `playlist create` |
 | `--force` | `-f` | `false` | Recursively delete folder and nested playlists in `playlist rm` |
-| `--to <pl|id|path>` | `-` | `""` | Destination parent in `playlist move` or destination prefix in `track relocate` |
+| `--to <id|path>` | `-` | `""` | Destination parent in `playlist move` or destination prefix in `track relocate` |
 | `--from <path>` | `-` | `""` | Old directory prefix to replace in `track relocate` |
 | `--json` | `-` | `false` | Output verification report in JSON format |
 | `--out-dir <path>` | `-o` | `<lib-dir>/.engine-cli/backups` | Destination directory for backup snapshots |

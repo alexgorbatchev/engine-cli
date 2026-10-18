@@ -327,7 +327,7 @@ func TestPlaylistCRUDAndHierarchy(t *testing.T) {
 		t.Fatalf("FindPlaylist by ID error: %v, got %v", err, pFoundID)
 	}
 
-	pFoundName, err := FindPlaylist(ctx, database, "tech house")
+	pFoundName, err := FindPlaylist(ctx, database, "2")
 	if err != nil || pFoundName == nil || pFoundName.ID != pID2 {
 		t.Fatalf("FindPlaylist by name error: %v, got %v", err, pFoundName)
 	}
@@ -338,7 +338,7 @@ func TestPlaylistCRUDAndHierarchy(t *testing.T) {
 	}
 
 	pNotFound, err := FindPlaylist(ctx, database, "nonexistent")
-	if err != nil || pNotFound != nil {
+	if err == nil || pNotFound != nil {
 		t.Fatalf("expected nil for nonexistent playlist, got %v, err=%v", pNotFound, err)
 	}
 
@@ -351,7 +351,7 @@ func TestPlaylistCRUDAndHierarchy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MovePlaylist error: %v", err)
 	}
-	pMoved, _ := FindPlaylist(ctx, database, "Deep House")
+	pMoved, _ := FindPlaylist(ctx, database, "3")
 	if pMoved.ParentListID != pID1 {
 		t.Errorf("expected parent ID %d, got %d", pID1, pMoved.ParentListID)
 	}
@@ -397,11 +397,11 @@ func TestPlaylistCRUDAndHierarchy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeletePlaylist with force error: %v", err)
 	}
-	pDeleted, _ := FindPlaylist(ctx, database, "EDM")
+	pDeleted, _ := FindPlaylist(ctx, database, "1")
 	if pDeleted != nil {
 		t.Errorf("expected EDM to be deleted, got %v", pDeleted)
 	}
-	pChildDeleted, _ := FindPlaylist(ctx, database, "Tech House")
+	pChildDeleted, _ := FindPlaylist(ctx, database, "2")
 	if pChildDeleted != nil {
 		t.Errorf("expected child Tech House to be deleted, got %v", pChildDeleted)
 	}
@@ -527,13 +527,13 @@ func TestTrackCRUD_FindDeleteRelocate(t *testing.T) {
 		t.Fatalf("FindTrack by ID error: %v, got %v", err, tByID)
 	}
 
-	tByPath, err := FindTrack(ctx, database, "Sunrise.mp3")
+	tByPath, err := FindTrack(ctx, database, tr1.Path.String)
 	if err != nil || tByPath == nil || tByPath.ID != tID1 {
 		t.Fatalf("FindTrack by filename error: %v, got %v", err, tByPath)
 	}
 
 	tByPrefix, err := FindTrack(ctx, database, "/Volumes/USB1/Music")
-	if err != nil || tByPrefix == nil || tByPrefix.ID != tID1 {
+	if err != nil || tByPrefix != nil {
 		t.Fatalf("FindTrack by prefix error: %v, got %v", err, tByPrefix)
 	}
 

@@ -54,6 +54,32 @@ Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`
 
 The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
 
+## Library sync previews
+
+Submit `library.sync` with explicit library paths and exactly one scope:
+
+```json
+{
+  "source": "/Music/Engine Library",
+  "destination": "/Volumes/DJ_USB/Engine Library",
+  "scope": {"playlist_ids": [42]},
+  "dry_run": true,
+  "mirror": false,
+  "conflict": "error",
+  "media": "changed"
+}
+```
+
+Use `{"root":true}` for whole-library scope, including unassigned tracks, smartlist definitions, and the prepare queue. Playlist IDs refer to the source. The playlist scope includes descendants; ancestors are copied only as needed for hierarchy. For existing destination playlists, optional `playlist_map` entries contain numeric `source_id` and `destination_id`. No names are used to match entities. Both libraries must already exist and use verified schema 3.0.2 with distinct UUIDs.
+
+The preview result contains `applicable`, `plan_token`, `summary`, `changes`, `conflicts`, and `warnings`. Each change identifies its entity type, stable identity, action, and available source/destination numeric IDs; labels are display-only. The summary reports track/playlist additions, updates and removals, file-copy counts, bytes to copy/preserve, available bytes, and estimated required space including database snapshots. A successful preview job may have `applicable:false`: show its conflicts before allowing application.
+
+Apply by submitting the same request with `dry_run:false` and the returned `plan_token`. An outdated token fails before backups or mutation. Apply recomputes the comparison even without a token. Dry runs never create backups, history, media, or sync-state files. Unchanged repeated applications return no operation ID when the baseline is current.
+
+Default `conflict:"error"` refuses divergent edits. Explicit `source` or `destination` chooses the winning side of a conflict. Destination-only changes remain unless mirroring requires reconciliation. Default `media:"changed"` copies missing/changed audio; `none` requires matching existing audio and still permits artwork transfer. `mirror:true` removes entries absent from the selected source scope, preserving tracks referenced by kept playlists. Reverse the endpoints to sync back; USB uses the same behavior as any other library path.
+
+The applied result's `operation_id` and job's `history_id` identify undo history in the destination. Submit `library.undo` with `{"library":"/Volumes/DJ_USB/Engine Library","id":"<operation_id>"}` to undo there, or `library.history` with the same `library` field to list its operations. The server's configured library remains unchanged. Interrupted operations retain recovery data; undo a pending operation with `force:true` after inspecting it. Do not run Engine DJ during sync application or recovery.
+
 ## Saved beat grids
 
 The beat-grid response contains `grid.sampleRate` and `grid.anchors`. Each anchor has `sample` (sample position, which can be negative for preroll), `beat` (zero-based beat index), and `beatsUntilNext` (the outgoing segment's beat count). Interpolate the interval between adjacent anchors using `beatsUntilNext`, then divide sample positions by `sampleRate` for seconds. Every fourth beat is a bar boundary. The last anchor ends the preceding segment.
@@ -114,22 +140,25 @@ The server retains up to 128 jobs and 1,024 events per job in memory. It evicts 
 
 ## Operations
 
+Duplicate scan (`track.duplicate.list`) and comparison (`track.duplicate.inspect`) tracks include a `playlists` array of current playlist names, including `[]` for tracks outside playlists. Memberships resolve through the track's origin database UUID and origin track ID, matching Engine's persistent identity rather than coincidentally equal local IDs. Duplicate-list and inspect CLI output also includes these memberships. Track IDs can be used with the metadata, audio, and beat-grid endpoints to audition each candidate before merging.
+
 `track.list` returns every collection track, including tracks outside playlists, in ascending ID order. Its result is an array using the same track fields as `playlist.inspect`. An empty collection returns `[]`.
 
 Audio requests accept only positive numeric database IDs. Engine resolves the file path from that track's database record; clients cannot supply arbitrary filesystem paths. Missing tracks/files return `404`, unsupported audio file types return `415`, and unavailable libraries return `503`, using structured API errors. These endpoints read the library and stream the original file without changing or re-encoding it. Browser codec support determines which files can play. The normal loopback-host and allowed-origin checks apply to metadata and audio requests.
 
 Cross-origin audio elements must set `crossorigin="anonymous"` so the browser sends its origin. Browser media requests that omit the origin are rejected; ordinary command-line HTTP clients can still read audio.
 
-Fields marked `?` are optional. Identifiers accept the same track or playlist names, numeric IDs, and applicable paths as the CLI. The live operation catalog is the authoritative list of accepted parameters.
+Fields marked `?` are optional. Playlist identifiers are positive numeric IDs encoded as strings. Track identifiers are numeric IDs encoded as strings or exact stored paths. Names, titles, basenames, and path-prefix matches are not selectors. Creation requests still specify the new entity's display name. The live operation catalog is the authoritative list of accepted parameters.
 
 | Operation | JSON parameters |
 | --- | --- |
-| `library.verify`, `library.sync`, `library.prune` | `{}` |
+| `library.verify`, `library.refresh`, `library.prune` | `{}` |
+| `library.sync` | `source`, `destination`, `scope`, `playlist_map?`, `dry_run?`, `mirror?`, `conflict?`, `media?`, `plan_token?` |
 | `library.backup`, `library.backups` | `out_dir?` |
 | `library.discover` | `paths?` (array; omitted or empty uses automatic locations) |
 | `library.restore` | `path` |
-| `library.history` | `{}` |
-| `library.undo` | `id?`, `force?`, `dry_run?`; omitted ID selects latest |
+| `library.history` | `library?`; defaults to the server's configured library |
+| `library.undo` | `library?`, `id?`, `force?`, `dry_run?`; omitted ID selects latest in that library |
 | `playlist.list` | `{}` |
 | `playlist.inspect` | `identifier` |
 | `playlist.create` | `name`, `parent?`, `folder?` |

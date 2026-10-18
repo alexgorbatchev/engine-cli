@@ -16,6 +16,7 @@ import (
 	"github.com/dj/engine-cli/internal/db"
 	"github.com/dj/engine-cli/internal/history"
 	"github.com/dj/engine-cli/internal/progress"
+	"github.com/dj/engine-cli/internal/transfer"
 )
 
 type operation struct {
@@ -29,6 +30,7 @@ type operation struct {
 type boundOperation struct {
 	run     func(context.Context) (any, error)
 	preview bool
+	library string
 }
 
 type parameterValidator interface{ validate() error }
@@ -40,6 +42,9 @@ func define[P any](name string, mutates bool, required []string, run func(contex
 	typ := reflect.TypeFor[P]()
 	for i := 0; i < typ.NumField(); i++ {
 		f := typ.Field(i)
+		if f.Tag.Get("json") == "-" {
+			continue
+		}
 		params[f.Tag.Get("json")] = f.Type.String()
 	}
 	return operation{Name: name, Mutates: mutates, Parameters: params, Required: required,
@@ -81,7 +86,8 @@ func define[P any](name string, mutates bool, required []string, run func(contex
 				}
 			}
 			undo, _ := any(p).(undoParams)
-			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: undo.DryRun}, nil
+			sync, _ := any(p).(transfer.Options)
+			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: undo.DryRun || sync.DryRun, library: undo.Library}, nil
 		}}
 }
 
@@ -104,12 +110,16 @@ func (s *Server) database(ctx context.Context, run func(*sql.DB) (any, error)) (
 
 func (s *Server) execute(ctx context.Context, op operation, bound *boundOperation) (result any, historyID string, err error) {
 	err = progress.Run(ctx, op.Name, func(ctx context.Context) error {
-		if op.Mutates && !bound.preview {
-			if _, e := backup.AutoBackupIfNeeded(ctx, s.config.LibraryDir, s.config.NoBackup); e != nil {
+		lib := s.config.LibraryDir
+		if bound.library != "" {
+			lib = bound.library
+		}
+		if op.Mutates && !bound.preview && op.Name != "library.sync" {
+			if _, e := backup.AutoBackupIfNeeded(ctx, lib, s.config.NoBackup); e != nil {
 				return e
 			}
 		}
-		if op.Mutates && op.Name != "library.undo" {
+		if op.Mutates && !bound.preview && op.Name != "library.undo" && op.Name != "library.sync" {
 			entry, e := history.Run(ctx, s.config.LibraryDir, op.Name, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
 			if entry != nil {
 				historyID = entry.ID
@@ -117,6 +127,9 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 			return e
 		}
 		result, err = bound.run(ctx)
+		if r, ok := result.(*transfer.Report); ok && r != nil {
+			historyID = r.OperationID
+		}
 		if entry, ok := result.(*history.Entry); ok && entry != nil && !bound.preview {
 			historyID = entry.ID
 		}
