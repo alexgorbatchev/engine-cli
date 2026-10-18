@@ -100,7 +100,9 @@ func TestDecodeBeatGridRejectsMalformedPayloads(t *testing.T) {
 	binary.BigEndian.PutUint64(invalidCount[17:], math.MaxUint64)
 	invalidSample := bytes.Clone(valid)
 	binary.LittleEndian.PutUint64(invalidSample[17+8+48+8:], math.Float64bits(math.Inf(1)))
-	for _, payload := range [][]byte{{}, valid[:16], valid[:25], invalidRate, invalidCount, invalidSample} {
+	unsafeBeat := bytes.Clone(valid)
+	binary.LittleEndian.PutUint64(unsafeBeat[17+8+48+8+8:], 1<<53)
+	for _, payload := range [][]byte{{}, valid[:16], valid[:25], invalidRate, invalidCount, invalidSample, unsafeBeat} {
 		if _, err := decodeBeatGrid(compressedGrid(t, payload)); err == nil {
 			t.Fatalf("accepted malformed payload %x", payload)
 		}

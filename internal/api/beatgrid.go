@@ -108,7 +108,7 @@ func decodeBeatGrid(blob []byte) (*beatGrid, error) {
 				Beat:           int64(binary.LittleEndian.Uint64(payload[8:])),
 				BeatsUntilNext: binary.LittleEndian.Uint32(payload[16:]),
 			}
-			if math.IsNaN(anchor.Sample) || math.IsInf(anchor.Sample, 0) || anchor.Beat > 1<<53 || anchor.Beat < -(1<<53) {
+			if math.IsNaN(anchor.Sample) || math.IsInf(anchor.Sample, 0) || anchor.Beat >= 1<<53 || anchor.Beat <= -(1<<53) {
 				return nil, errors.New("invalid beat anchor")
 			}
 			anchors = append(anchors, anchor)
