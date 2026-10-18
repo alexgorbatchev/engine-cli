@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dj/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 // PlaylistNode represents a tree node in a playlist/folder hierarchy.

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 func createTestDB(t *testing.T) (*sql.DB, string, string) {

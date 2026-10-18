@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 func createTestLibrary(t *testing.T) string {

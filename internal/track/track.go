@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dj/engine-cli/internal/db"
-	"github.com/dj/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
 // AddTrackResult contains the result of importing an audio file into the collection.

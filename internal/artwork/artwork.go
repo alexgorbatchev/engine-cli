@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dj/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 // CommandRunner abstracts external command execution for testability.

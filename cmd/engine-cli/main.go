@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dj/engine-cli/internal/agent"
+	"github.com/alexgorbatchev/engine-cli/internal/agent"
 )
 
 func main() {

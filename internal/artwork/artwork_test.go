@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 func TestNormalizeArtwork_SuccessAndRunner(t *testing.T) {

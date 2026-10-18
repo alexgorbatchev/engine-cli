@@ -1,4 +1,4 @@
-module github.com/dj/engine-cli
+module github.com/alexgorbatchev/engine-cli
 
 go 1.26.2
 

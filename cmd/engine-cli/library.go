@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/dj/engine-cli/internal/agent"
-	"github.com/dj/engine-cli/internal/artwork"
-	"github.com/dj/engine-cli/internal/backup"
-	"github.com/dj/engine-cli/internal/db"
-	"github.com/dj/engine-cli/internal/sync"
-	"github.com/dj/engine-cli/internal/verify"
+	"github.com/alexgorbatchev/engine-cli/internal/agent"
+	"github.com/alexgorbatchev/engine-cli/internal/artwork"
+	"github.com/alexgorbatchev/engine-cli/internal/backup"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/verify"
 	"github.com/spf13/cobra"
 )
 
