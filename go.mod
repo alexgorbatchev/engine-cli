@@ -6,6 +6,7 @@ require (
 	github.com/alexgorbatchev/cobra-help-tree v1.1.0
 	github.com/spf13/cobra v1.10.2
 	modernc.org/sqlite v1.44.3
+	zombiezen.com/go/sqlite v1.4.2
 )
 
 require (

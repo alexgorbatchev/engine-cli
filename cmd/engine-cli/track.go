@@ -19,6 +19,7 @@ func newTrackCommand() *cobra.Command {
 		Long: `Manage audio files and track entries in your master Engine DJ collection.
 
   - Use 'engine-cli track add <path...>' to import audio files into your collection.
+  - Use 'engine-cli track upgrade <tr|id|path>' to fetch replacement audio while keeping your track information.
   - Use 'engine-cli track rm <tr|id|path...>' to remove tracks from your collection.
   - Use 'engine-cli track move <tr|id|path> <dest-path>' to move audio files on disk and update their database paths.
   - Use 'engine-cli track relocate' to batch-fix broken audio file paths across drives or folders.
@@ -30,10 +31,12 @@ func newTrackCommand() *cobra.Command {
 	}
 
 	trCmd.AddCommand(newTrackAddCommand())
+	trCmd.AddCommand(newTrackUpgradeCommand())
 	trCmd.AddCommand(newTrackRmCommand())
 	trCmd.AddCommand(newTrackMoveCommand())
 	trCmd.AddCommand(newTrackRelocateCommand())
 	trCmd.AddCommand(newTrackArtworkCommand())
+	trCmd.AddCommand(newDuplicateCommand())
 
 	return trCmd
 }

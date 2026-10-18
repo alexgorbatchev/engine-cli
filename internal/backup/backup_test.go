@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,11 +16,11 @@ func createDummyEngineLibrary(t *testing.T) string {
 	// Create Database2/*.db
 	db2 := filepath.Join(dir, "Database2")
 	_ = os.MkdirAll(db2, 0755)
-	_ = os.WriteFile(filepath.Join(db2, "m.db"), []byte("sample m.db content"), 0644)
-	_ = os.WriteFile(filepath.Join(db2, "stm.db"), []byte("sample stm.db content"), 0644)
+	createSnapshotFixture(t, filepath.Join(db2, "m.db"), "sample m.db content")
+	createSnapshotFixture(t, filepath.Join(db2, "stm.db"), "sample stm.db content")
 
 	// Create root *.db
-	_ = os.WriteFile(filepath.Join(dir, "m.db"), []byte("sample root m.db"), 0644)
+	createSnapshotFixture(t, filepath.Join(dir, "m.db"), "sample root m.db")
 
 	// Create Artwork/
 	art := filepath.Join(dir, "Artwork")
@@ -70,9 +71,14 @@ func TestCreateAndRestoreBackup(t *testing.T) {
 		t.Fatalf("RestoreBackup failed: %v", err)
 	}
 
-	restoredContent, _ := os.ReadFile(filepath.Join(engineDir, "Database2", "m.db"))
-	if string(restoredContent) != "sample m.db content" {
-		t.Errorf("expected restored content, got %q", string(restoredContent))
+	restored, err := sql.Open("sqlite", filepath.Join(engineDir, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restored.Close()
+	var value string
+	if err := restored.QueryRow("SELECT value FROM fixture").Scan(&value); err != nil || value != "sample m.db content" {
+		t.Errorf("expected restored content, got %q, error %v", value, err)
 	}
 }
 

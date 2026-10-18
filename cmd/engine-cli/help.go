@@ -6,6 +6,16 @@ import (
 )
 
 var techCatalog = cobrahelptree.TechCatalog{
+	"engine-cli library history":         {Summary: "List retained operations and persistent identities of affected entities"},
+	"engine-cli library undo":            {Summary: "Undo an operation; refuse conflicts unless --force is given", Args: "[id]", MutatesDB: true, AutoBackup: true},
+	"engine-cli track duplicate":         {Summary: "Find, inspect, and reversibly merge duplicate candidates"},
+	"engine-cli track duplicate list":    {Summary: "List non-overlapping duplicate candidates by metadata or filename and duration"},
+	"engine-cli track duplicate inspect": {Summary: "Compare track quality, performance data, and origin-based playlist memberships", Args: "<id...>"},
+	"engine-cli track duplicate merge":   {Summary: "Merge explicit duplicates into --keep while retaining audio; record undo history", Args: "<id...>", MutatesDB: true, AutoBackup: true},
+	"engine-cli api serve": {
+		Summary:     "Serve all operations over loopback HTTP with JSON jobs and SSE progress",
+		Description: "GET /v1/operations lists accepted parameters. POST /v1/operations/{name} starts a job; GET /v1/jobs/{id} reports its result and GET /v1/jobs/{id}/events streams resumable progress. POST /v1/jobs/{id}/cancel requests cancellation. Job status and progress last for the server process lifetime; library undo history is stored separately.",
+	},
 	"engine-cli": {
 		Summary:     "Engine DJ SQLite database and artwork CLI management utility",
 		Description: "CLI utility for inspecting, repairing, synchronizing, and backing up Engine DJ collection databases (Database2/m.db, p.db) and Artwork/ cache.",
@@ -26,7 +36,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"engine-cli library backup": {
 		Summary:     "Create atomic snapshot of Engine DJ SQLite databases and Artwork/ cache",
-		Description: "Creates atomic timestamped snapshot directory containing Database2/*.db, Root/*.db, and Artwork/* into default XDG backup directory or custom path.",
+		Description: "Captures each database's committed SQLite content, including WAL pages, independently into Database2/*.db and Root/*.db, copies Artwork/*, then atomically publishes a unique timestamped snapshot directory in the XDG backup directory or custom path.",
 		Args:        "[path]",
 	},
 	"engine-cli library restore": {
@@ -116,6 +126,13 @@ var techCatalog = cobrahelptree.TechCatalog{
 		Summary:     "Remove track(s) from collection and all playlists",
 		Description: "Deletes Track and cascading PlaylistEntity records from Database2/m.db, optionally deleting audio file on disk.",
 		Args:        "<tr|id|path...>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli track upgrade": {
+		Summary:     "Fetch replacement audio and preserve curated metadata and playlist membership",
+		Description: "Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.",
+		Args:        "<tr|id|path>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},

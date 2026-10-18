@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/dj/engine-cli/internal/db"
+	"github.com/dj/engine-cli/internal/progress"
 )
 
 // IssueType categorizes an integrity check failure.
@@ -45,6 +46,10 @@ type VerifyReport struct {
 
 // VerifyLibrary performs a comprehensive integrity check on an Engine DJ database and files.
 func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (*VerifyReport, error) {
+	progress.Stage(ctx, "verify", 10)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
 	}
@@ -78,7 +83,11 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 	missingArt := 0
 
 	// Check tracks
-	for _, t := range tracks {
+	for i, t := range tracks {
+		progress.Item(progress.Range(ctx, 10, 65), "verify.tracks", i, len(tracks))
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		pathStr := t.PathString()
 		fullPath := filepath.Join(musicBaseDir, pathStr)
 		info, statErr := os.Stat(fullPath)
@@ -117,6 +126,7 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 	}
 
 	// Check orphaned playlist entities
+	progress.Stage(ctx, "verify.memberships", 70)
 	orphanedCount := 0
 	trackIDMap := make(map[int64]bool)
 	for _, t := range tracks {
@@ -144,7 +154,11 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 
 	// Check empty playlists
 	emptyPlaylistCount := 0
-	for _, p := range playlists {
+	for i, p := range playlists {
+		progress.Item(progress.Range(ctx, 75, 95), "verify.playlists", i, len(playlists))
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		plTracks, errPL := db.GetPlaylistTracks(ctx, database, p.ID)
 		if errPL == nil && len(plTracks) == 0 {
 			emptyPlaylistCount++
@@ -168,5 +182,5 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 		IsHealthy:          len(issues) == 0,
 	}
 
-	return report, nil
+	return report, ctx.Err()
 }

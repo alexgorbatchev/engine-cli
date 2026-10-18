@@ -37,6 +37,8 @@ func newLibraryCommand() *cobra.Command {
 	libCmd.AddCommand(newLibraryBackupCommand())
 	libCmd.AddCommand(newLibraryRestoreCommand())
 	libCmd.AddCommand(newLibraryPruneCommand())
+	libCmd.AddCommand(newHistoryCommand())
+	libCmd.AddCommand(newUndoCommand())
 
 	return libCmd
 }
@@ -200,6 +202,9 @@ func newLibraryBackupCommand() *cobra.Command {
 		Short: "Create a safety backup snapshot of your Engine DJ library",
 		Long: `Create a timestamped backup snapshot of your Engine DJ SQLite databases (Database2/m.db, p.db) and Artwork/ thumbnail cache.
 
+Includes committed changes even while databases are open. Each database is captured independently.
+Close Engine DJ if you need matching state across all database files and artwork.
+
 By default, backups are saved in your user data directory (~/.local/share/engine-cli/backups), or to an optional [path] specified as an argument or via -o.`,
 		Example: `  engine-cli library backup
   engine-cli library backup "/Volumes/BackupDrive/EngineBackups"
@@ -285,6 +290,8 @@ func newLibraryRestoreCommand() *cobra.Command {
 		Use:   "restore <path>",
 		Short: "Restore your Engine DJ library from a previous backup snapshot",
 		Long: `Restore your Engine DJ SQLite databases and Artwork/ cache from a previous backup snapshot directory.
+
+Close Engine DJ before restoring.
 
 Arguments:
   <path>   The full path to the backup snapshot folder. Use 'engine-cli library backup --list' to find snapshots.`,

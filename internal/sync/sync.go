@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/dj/engine-cli/internal/db"
+	"github.com/dj/engine-cli/internal/progress"
 )
 
 // CommandRunner abstracts command execution for testability.
@@ -45,6 +46,10 @@ type SyncReport struct {
 
 // SyncLibrary synchronizes on-disk audio file tags and exact fileBytes into the SQLite database.
 func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, runnerOpt ...CommandRunner) (*SyncReport, error) {
+	progress.Stage(ctx, "sync", 10)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
 	}
@@ -68,7 +73,11 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 
 	indexedPaths := make(map[string]bool)
 
-	for _, t := range tracks {
+	for i, t := range tracks {
+		progress.Item(progress.Range(ctx, 10, 85), "sync.tracks", i, len(tracks))
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		pathStr := t.PathString()
 		if pathStr == "" {
 			report.MissingCount++
@@ -156,7 +165,11 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 	}
 
 	// Scan musicBaseDir for unindexed audio files
+	progress.Stage(ctx, "sync.scan", 90)
 	_ = filepath.WalkDir(musicBaseDir, func(path string, d fs.DirEntry, walkErr error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if walkErr == nil && !d.IsDir() {
 			ext := strings.ToLower(filepath.Ext(path))
 			if ext == ".m4a" || ext == ".mp3" || ext == ".opus" || ext == ".flac" || ext == ".wav" {
@@ -173,5 +186,5 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 		return nil
 	})
 
-	return report, nil
+	return report, ctx.Err()
 }

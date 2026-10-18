@@ -13,6 +13,7 @@ import (
 
 func createTestLibrary(t *testing.T) string {
 	t.Helper()
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	dir := t.TempDir()
 
 	db2Dir := filepath.Join(dir, "Database2")
@@ -49,8 +50,17 @@ func createTestLibrary(t *testing.T) string {
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (2, 'House Child', 1);")
 	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (2, 1);")
 
-	// Insert root m.db
-	_ = os.WriteFile(filepath.Join(dir, "m.db"), []byte("sample root m.db"), 0644)
+	// Root database fixtures must be valid SQLite, just like Database2/m.db.
+	rootDB, err := db.Open(filepath.Join(dir, "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rootDB.Exec("CREATE TABLE fixture(value TEXT); INSERT INTO fixture VALUES('sample root m.db')"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rootDB.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create Artwork dir
 	artDir := filepath.Join(dir, "Artwork")
@@ -140,6 +150,23 @@ func TestLibraryBackupAndRestoreCommand(t *testing.T) {
 	_, err = executeCommand("-l", libDir, "library", "restore", "/nonexistent/backup")
 	if err == nil {
 		t.Error("expected error for nonexistent restore path")
+	}
+}
+
+func TestBackupHelpExplainsSnapshotConsistency(t *testing.T) {
+	for _, mode := range []string{"0", "1"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Setenv("AGENT", mode)
+			out, err := executeCommand("library", "backup", "--help")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, term := range []string{"committed", "independently"} {
+				if !strings.Contains(out, term) {
+					t.Fatalf("backup help missing %q: %s", term, out)
+				}
+			}
+		})
 	}
 }
 

@@ -1,0 +1,132 @@
+# HTTP API and progress
+
+Use the local API to control an Engine DJ library from another CLI or a web UI. Close Engine DJ before changing the library.
+
+```sh
+engine-cli --lib-dir "$HOME/Music/Engine Library" api serve
+```
+
+The server prints its URL and listens on `127.0.0.1:8787`. Use `--port 0` to select an available port. For a browser UI on another origin, allow that exact origin:
+
+```sh
+engine-cli api serve --allow-origin http://localhost:3000
+```
+
+Other browser origins are rejected. The server has no authentication and is intended for local applications. Global `--no-backup` disables automatic safety snapshots; it does not disable undo history.
+
+## Submit, observe, cancel
+
+| Request | Response |
+| --- | --- |
+| `GET /v1/operations` | Operation names, parameter types, required fields, and whether each operation changes the library |
+| `POST /v1/operations/{operation}` | `202` with a job object and a `Location` header pointing to its status |
+| `GET /v1/jobs/{id}` | Current state, latest progress, and result or error |
+| `GET /v1/jobs/{id}/events` | Server-sent events, including retained events followed by live events |
+| `POST /v1/jobs/{id}/cancel` | `202` with current status; requests cancellation |
+
+Every operation, including reads, runs as a job. Submit a JSON object with `Content-Type: application/json`; use `{}` when there are no parameters. Unknown fields and missing required parameters are rejected before the job starts. Requests are limited to 1 MiB.
+
+```sh
+curl -sS http://127.0.0.1:8787/v1/operations
+
+curl -sS -H 'Content-Type: application/json' \
+  -d '{"identifier":"42","query":"Artist Track extended mix","clear_timing":true}' \
+  http://127.0.0.1:8787/v1/operations/track.upgrade
+```
+
+Use the returned job `id` in the following commands:
+
+```sh
+job_id=REPLACE_WITH_RETURNED_ID
+curl -N "http://127.0.0.1:8787/v1/jobs/$job_id/events"
+curl -sS "http://127.0.0.1:8787/v1/jobs/$job_id"
+curl -sS -X POST "http://127.0.0.1:8787/v1/jobs/$job_id/cancel"
+```
+
+Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`. Operations run one at a time. A disconnected client does not cancel its job. Cancellation is cooperative and can leave completed changes; use library history to inspect and undo changes. Shutdown requests cancellation and waits for workers.
+
+The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
+
+## Shared progress fields
+
+The operation produces the same progress events for CLI and HTTP consumers. For CLI NDJSON on stderr, use:
+
+```sh
+engine-cli --progress-json track upgrade 42 --clear-timing
+```
+
+Command results remain on stdout. Human CLI output displays the same overall percentage.
+
+| Field | Meaning |
+| --- | --- |
+| `timestamp` | UTC event time in RFC 3339 format |
+| `job_id` | Stable identifier for this operation, in CLI and HTTP events |
+| `sequence` | Increasing event number within the operation, starting at 1 |
+| `type` | `phase_start`, `progress`, `candidate_found`, `candidate_selected`, `complete`, `error`, or `cancelled`; HTTP adds `queued`, and acquisition can forward other Fetch Track event types such as `metadata_found` and `tagged` |
+| `phase` | Current operation or work phase |
+| `subphase` | Optional nested phase; during acquisition, Fetch Track's phase |
+| `step`, `total_steps` | Optional stage numbering; Fetch Track's values remain under `source` |
+| `percent` | Required overall completion, 0–100; monotonic within an operation |
+| `message` | Optional explanation |
+| `source` | Optional upstream event envelope plus `name: "fetch-track"`; retains upstream identity, sequence, timestamp, phase details, percentage, and payloads |
+| `candidate` | Optional candidate object forwarded from Fetch Track |
+| `metadata` | Optional metadata object forwarded from Fetch Track |
+| `result` | Optional result payload; Fetch Track's acquired artifact remains under `source.result` |
+| `error` | Optional string for failure or cancellation; HTTP job/status and request errors separately use `{code,message}` |
+
+Percentages describe completed stages or items, not elapsed time. A phase may remain at the same percentage while it works. Only successful completion emits 100%; errors and cancellations retain the last percentage.
+
+During upgrade, Fetch Track's overall 0–100% maps to Engine's acquisition interval of 15–70%. For example, source 50% becomes Engine 42.5%. `source.percent` retains 50. Verification, metadata preservation, installation, and database work follow acquisition. Fetch Track's terminal event remains an Engine progress event until Engine finishes its own work. Engine's job identity and sequence are independent of Fetch Track's, which remain under `source`.
+
+## Consume SSE
+
+Every SSE frame uses `event: progress`; read `data.type` to distinguish event types. Its `id` is the job's sequence number. Browser clients can use native `EventSource`:
+
+```js
+const events = new EventSource(`${baseURL}/v1/jobs/${jobID}/events`);
+events.addEventListener("progress", async ({ data }) => {
+  const event = JSON.parse(data);
+  console.log(event.percent, event.phase);
+  if (["complete", "error", "cancelled"].includes(event.type)) {
+    events.close();
+    const job = await fetch(`${baseURL}/v1/jobs/${jobID}`).then(r => r.json());
+    console.log(job);
+  }
+});
+```
+
+Reconnect with the `Last-Event-ID` header to replay events after that sequence. Browsers send this header automatically on reconnect. A consumed terminal cursor returns `204`, stopping reconnection. An expired cursor returns `409`; retrieve status and reconnect without a cursor. Heartbeat comments arrive every 15 seconds while idle.
+
+The server retains up to 128 jobs and 1,024 events per job in memory. It evicts completed jobs as needed and rejects submissions with `503` when all slots are active. Restarting clears job status and events. Durable library undo history is separate. An evicted or unknown job returns `404`.
+
+## Operations
+
+Fields marked `?` are optional. Identifiers accept the same track or playlist names, numeric IDs, and applicable paths as the CLI. The live operation catalog is the authoritative list of accepted parameters.
+
+| Operation | JSON parameters |
+| --- | --- |
+| `library.verify`, `library.sync`, `library.prune` | `{}` |
+| `library.backup`, `library.backups` | `out_dir?` |
+| `library.restore` | `path` |
+| `library.history` | `{}` |
+| `library.undo` | `id?`, `force?`, `dry_run?`; omitted ID selects latest |
+| `playlist.list` | `{}` |
+| `playlist.inspect` | `identifier` |
+| `playlist.create` | `name`, `parent?`, `folder?` |
+| `playlist.rm` | `identifier`, `force?` |
+| `playlist.move` | `identifier`, `to?`; omitted destination moves to root |
+| `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
+| `playlist.track.move` | `from`, `to`, `tracks` array |
+| `track.add` | `paths` array, `to_playlist?`, `move?` |
+| `track.rm` | `tracks` array, `delete_file?` |
+| `track.move` | `identifier`, `destination` |
+| `track.relocate` | `from`, `to` |
+| `track.upgrade` | `identifier`, `query?`, `keep_timing?`, `clear_timing?` |
+| `track.artwork.normalize` | `{}` |
+| `track.duplicate.list` | `type?`: `all` (default), `metadata`, or `filename-len` |
+| `track.duplicate.inspect` | `ids` array of positive integers |
+| `track.duplicate.merge` | `keep`, `remove` array, `performance_from?` |
+
+Upgrade timing options are mutually exclusive. When saved cues, loops, or beat grids exist, choose whether to keep or clear them. Upgrades retain the original audio and curated metadata; the replacement needs analysis in Engine DJ.
+
+HTTP validation errors use `{ "error": { "code": "...", "message": "..." } }`. Failures after acceptance appear in job status and terminal events; a successful submission alone does not mean the operation succeeded.
