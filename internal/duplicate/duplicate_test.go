@@ -94,3 +94,24 @@ func TestInspectOriginIdentity(t *testing.T) {
 		t.Fatal("missing track accepted")
 	}
 }
+
+func TestListIncludesPlaylistMemberships(t *testing.T) {
+	d := library(t)
+	seed(t, d)
+	execSQL(t, d, `INSERT INTO Playlist(title,parentListId,nextListId) VALUES('Favorites',0,0);
+	INSERT INTO PlaylistEntity(listId,trackId,databaseUuid,nextEntityId) VALUES(1,101,'first',0),(1,2,'unrelated',0);`)
+	groups, err := List(context.Background(), d, "all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := groups[0].Tracks[0].Playlists; !reflect.DeepEqual(got, []string{"Favorites"}) {
+		t.Fatalf("playlists=%v", got)
+	}
+	if got := groups[0].Tracks[1].Playlists; got == nil || len(got) != 0 {
+		t.Fatalf("unrelated memberships=%v", got)
+	}
+	execSQL(t, d, "DROP TABLE PlaylistEntity")
+	if _, err := List(context.Background(), d, "all"); err == nil {
+		t.Fatal("accepted unreadable memberships")
+	}
+}

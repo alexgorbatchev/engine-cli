@@ -36,6 +36,17 @@ func duplicateLibrary(t *testing.T) string {
 
 func TestDuplicateCommands(t *testing.T) {
 	lib := duplicateLibrary(t)
+	d, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`INSERT INTO Playlist(title,parentListId,nextListId) VALUES('Favorites',0,0);
+	INSERT INTO PlaylistEntity(listId,trackId,databaseUuid,nextEntityId) SELECT 1,originTrackId,originDatabaseUuid,0 FROM Track WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
 	for _, mode := range []string{"0", "1"} {
 		t.Run(mode, func(t *testing.T) {
 			t.Setenv("AGENT", mode)
@@ -44,6 +55,9 @@ func TestDuplicateCommands(t *testing.T) {
 				out, err := executeCommand(argv...)
 				if err != nil || !strings.Contains(out, "Song") || !strings.Contains(out, "320") || !strings.Contains(out, "128") {
 					t.Fatalf("output=%s error=%v", out, err)
+				}
+				if !strings.Contains(out, `playlist: "Favorites"`) {
+					t.Fatalf("missing playlist membership: %s", out)
 				}
 			}
 		})

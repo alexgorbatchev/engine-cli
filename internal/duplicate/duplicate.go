@@ -25,7 +25,7 @@ type Track struct {
 	IsPlayed       bool     `json:"is_played"`
 	HasCues        bool     `json:"has_cues"`
 	HasLoops       bool     `json:"has_loops"`
-	Playlists      []string `json:"playlists,omitempty"`
+	Playlists      []string `json:"playlists"`
 	originID       int64
 	originUUID     string
 }
@@ -52,7 +52,7 @@ func readTracks(ctx context.Context, d reader) ([]Track, error) {
 	defer rows.Close()
 	var tracks []Track
 	for rows.Next() {
-		var t Track
+		t := Track{Playlists: []string{}}
 		if err := rows.Scan(&t.ID, &t.Title, &t.Artist, &t.Album, &t.Filename, &t.Path, &t.Length, &t.Bitrate, &t.FileBytes, &t.FileType, &t.TimeLastPlayed, &t.IsPlayed, &t.HasCues, &t.HasLoops, &t.originID, &t.originUUID); err != nil {
 			return nil, err
 		}
@@ -78,7 +78,23 @@ func List(ctx context.Context, d *sql.DB, mode string) ([]Group, error) {
 	if err != nil {
 		return nil, err
 	}
-	return groupTracks(tracks, mode), nil
+	groups := groupTracks(tracks, mode)
+	if len(groups) == 0 {
+		return groups, nil
+	}
+	memberships, err := readPlaylistMemberships(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	for i := range groups {
+		for j := range groups[i].Tracks {
+			track := &groups[i].Tracks[j]
+			if names, ok := memberships[track.ID]; ok {
+				track.Playlists = names
+			}
+		}
+	}
+	return groups, nil
 }
 
 func normalized(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
@@ -152,18 +168,32 @@ func Inspect(ctx context.Context, d *sql.DB, id int64) (*Track, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := d.QueryContext(ctx, `SELECT COALESCE(p.title,'') FROM PlaylistEntity pe JOIN Playlist p ON p.id=pe.listId
-	WHERE pe.trackId=? AND pe.databaseUuid=? ORDER BY p.id`, t.originID, t.originUUID)
+	memberships, err := readPlaylistMemberships(ctx, d)
 	if err != nil {
 		return nil, err
 	}
+	if names, ok := memberships[t.ID]; ok {
+		t.Playlists = names
+	}
+	return &t, nil
+}
+
+func readPlaylistMemberships(ctx context.Context, d reader) (map[int64][]string, error) {
+	rows, err := d.QueryContext(ctx, `SELECT t.id, COALESCE(p.title,'') FROM Track t
+	JOIN PlaylistEntity pe ON pe.trackId=t.originTrackId AND pe.databaseUuid=t.originDatabaseUuid
+	JOIN Playlist p ON p.id=pe.listId ORDER BY t.id,p.id`)
+	if err != nil {
+		return nil, fmt.Errorf("reading duplicate playlist memberships: %w", err)
+	}
 	defer rows.Close()
+	memberships := make(map[int64][]string)
 	for rows.Next() {
+		var id int64
 		var name string
-		if err := rows.Scan(&name); err != nil {
+		if err := rows.Scan(&id, &name); err != nil {
 			return nil, err
 		}
-		t.Playlists = append(t.Playlists, name)
+		memberships[id] = append(memberships[id], name)
 	}
-	return &t, rows.Err()
+	return memberships, rows.Err()
 }

@@ -59,6 +59,13 @@ func TestAPIDuplicateReadOperations(t *testing.T) {
 		if !ok || len(tracks) != 2 {
 			t.Fatalf("candidate tracks=%+v", group)
 		}
+		first, ok := tracks[0].(map[string]any)
+		if !ok {
+			t.Fatalf("candidate=%+v", tracks[0])
+		}
+		if playlists, ok := first["playlists"].([]any); !ok || len(playlists) != 0 {
+			t.Fatalf("playlist memberships=%+v", first)
+		}
 	}
 	job := runAPIJob(t, s, "track.duplicate.inspect", `{"ids":[1,2]}`)
 	tracks, ok := job["result"].([]any)
