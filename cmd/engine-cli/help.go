@@ -6,6 +6,7 @@ import (
 )
 
 var techCatalog = cobrahelptree.TechCatalog{
+	"engine-cli library discover":        {Summary: "Discover current Engine DJ libraries in Music and attached local drives", Args: "[path...]", Description: "Read-only, nonrecursive discovery. Optional paths replace automatic locations. Returns libraries and warnings; does not require a selected library."},
 	"engine-cli library history":         {Summary: "List retained operations and persistent identities of affected entities"},
 	"engine-cli library undo":            {Summary: "Undo an operation; refuse conflicts unless --force is given", Args: "[id]", MutatesDB: true, AutoBackup: true},
 	"engine-cli track duplicate":         {Summary: "Find, inspect, and reversibly merge duplicate candidates"},

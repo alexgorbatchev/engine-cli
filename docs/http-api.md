@@ -14,6 +14,10 @@ engine-cli api serve --allow-origin http://localhost:3000
 
 Other browser origins are rejected. The server has no authentication and is intended for local applications. Global `--no-backup` disables automatic safety snapshots; it does not disable undo history.
 
+The server can start when the configured library directory is absent so clients can discover libraries first. Submit `POST /v1/operations/library.discover` with `{}` to check Music and attached local drives on macOS/Windows, or `{"paths":["/Volumes/My Drive"]}` to check only specified roots. Each root is checked directly and at `Engine Library/` and `Music/Engine Library/`; discovery is nonrecursive and recognizes current `Database2/m.db` files. Legacy root-level databases are ignored. Windows uses the redirected Music folder and fixed/removable drive letters. Automatic scans exclude network drives.
+
+The job result contains `libraries` and `warnings` arrays. Each library has `name` (for example `Local library` or `Drive: PRIME-128GB`), `source` (`local`, `drive`, or `folder`), and absolute `path` and `database` fields. Use `name` as a picker label and `path` as secondary text; names are not unique identifiers. Warnings contain `path` and `message`. Discovery does not select a library, create history, or modify databases. Start the server with the chosen `--lib-dir` to operate on it.
+
 ## Submit, observe, cancel
 
 | Request | Response |
@@ -107,6 +111,7 @@ Fields marked `?` are optional. Identifiers accept the same track or playlist na
 | --- | --- |
 | `library.verify`, `library.sync`, `library.prune` | `{}` |
 | `library.backup`, `library.backups` | `out_dir?` |
+| `library.discover` | `paths?` (array; omitted or empty uses automatic locations) |
 | `library.restore` | `path` |
 | `library.history` | `{}` |
 | `library.undo` | `id?`, `force?`, `dry_run?`; omitted ID selects latest |

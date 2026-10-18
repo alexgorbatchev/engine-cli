@@ -2,6 +2,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 
 # What It Does
 
+- Finds current Engine DJ libraries in Music and attached local drives on macOS and Windows, with friendly names for choosing a library.
 - Audits Engine DJ SQLite collection databases for missing audio files, file size mismatches, and broken playlist links.
 - Imports audio files into collection with automatic metadata tag probing, optional file relocation, and instant playlist assignment.
 - Upgrades tracks through Fetch Track CLI while preserving curated track information, artwork, and playlist membership; extended mixes may replace radio edits.
@@ -31,6 +32,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 
 # How it Really Works
 
+- `library discover [path...]` checks current `Database2/m.db` libraries without opening SQLite or writing library state. Automatic discovery uses Music (including redirected Windows Music folders) and mounted local drives; Windows scans fixed/removable drive letters. Optional paths replace automatic locations and check each path directly, `Engine Library/`, and `Music/Engine Library/`. It does not search recursively, scan network drives automatically, or list legacy root-level databases. Results include `name`, `source` (`local`, `drive`, or `folder`), `path`, and `database`; unreadable or invalid candidates appear in `warnings`. Use `--json` for structured output.
 - Connects to SQLite collection databases (`Database2/m.db`, `Database2/p.db`) using modern zero-CGO SQLite drivers.
 - Executes `ffprobe` JSON stream analysis to detect attached picture stream dimensions and extract audio tags.
 - Invokes `ffmpeg` with `-c:a copy` to ensure zero lossy-to-lossy audio transcoding during metadata operations.
@@ -69,6 +71,10 @@ Keep `~/.local/bin` on your PATH in future terminal sessions. Intel Macs use the
 - [Fetch Track CLI](https://github.com/alexgorbatchev/fetch-track-cli) is required for `track upgrade`. Install a version supporting JSON download results, `--progress-target`, and overall `percent` on every progress event, and make `fetch-track` available on your PATH.
 
 # Quick Start
+
+```sh
+engine-cli library discover --json
+```
 
 ```bash
 # Verify library health and check for missing files
@@ -119,6 +125,12 @@ engine-cli library undo
 Merge retains the keeper's cues, loops, and beat grid by default. To explicitly transfer all performance data from a selected track, add `--performance-from 87`; check timing in Engine DJ afterward. Both audio files remain on disk. Memberships are combined without adding duplicate playlist entries, and the latest play history is retained.
 
 # Options & Flags
+
+`engine-cli library discover [path...]`
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--json` | `-` | `false` | Print libraries and warnings as JSON; displayed home paths use `~` |
 
 | Flag | Short | Default | Description |
 | :--- | :--- | :--- | :--- |

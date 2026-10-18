@@ -44,10 +44,10 @@ func New(config Config) (*Server, error) {
 		return nil, err
 	}
 	info, err := os.Stat(path)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
-	if !info.IsDir() {
+	if err == nil && !info.IsDir() {
 		return nil, fmt.Errorf("library path must be a directory")
 	}
 	config.LibraryDir = path

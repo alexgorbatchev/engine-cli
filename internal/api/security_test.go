@@ -15,7 +15,7 @@ func TestAPINewValidatesInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, config := range []Config{
-		{}, {LibraryDir: filepath.Join(t.TempDir(), "missing")}, {LibraryDir: file},
+		{}, {LibraryDir: file}, {LibraryDir: filepath.Join(file, "child")},
 		{LibraryDir: t.TempDir(), AllowedOrigins: []string{"file:///local"}},
 		{LibraryDir: t.TempDir(), AllowedOrigins: []string{"http://localhost:3000/path"}},
 	} {

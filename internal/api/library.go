@@ -7,12 +7,14 @@ import (
 
 	"github.com/dj/engine-cli/internal/artwork"
 	"github.com/dj/engine-cli/internal/backup"
+	"github.com/dj/engine-cli/internal/discovery"
 	enginesync "github.com/dj/engine-cli/internal/sync"
 	"github.com/dj/engine-cli/internal/verify"
 )
 
 func (s *Server) libraryOperations() []operation {
 	return []operation{
+		define("library.discover", false, nil, func(ctx context.Context, p discoverParams) (any, error) { return discovery.Discover(ctx, p.Paths) }),
 		define("library.verify", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return verify.VerifyLibrary(ctx, d, s.config.LibraryDir) })
 		}),
@@ -34,4 +36,8 @@ func (s *Server) libraryOperations() []operation {
 			})
 		}),
 	}
+}
+
+type discoverParams struct {
+	Paths []string `json:"paths"`
 }
