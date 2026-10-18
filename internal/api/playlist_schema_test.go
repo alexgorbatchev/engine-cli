@@ -16,15 +16,15 @@ func TestInspectPlaylistWithoutFolderColumn(t *testing.T) {
 	}
 	if _, err := database.ExecContext(context.Background(), `
 		ALTER TABLE Playlist DROP COLUMN isFolder;
-		INSERT INTO PlaylistEntity(listId,trackId) VALUES(1,1);
+		INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) VALUES(1,1,'fixture');
 	`); err != nil {
 		t.Fatal(err)
 	}
 	if err := database.Close(); err != nil {
 		t.Fatal(err)
 	}
-	job := runAPIJob(t, s, "playlist.inspect", `{"identifier":"1"}`)
-	result, ok := job["result"].(map[string]any)
+	job := runAPIJob(t, s, "playlist.inspect", `{"ids":[1]}`)
+	result, ok := job["result"].(map[string]any)["items"].([]any)[0].(map[string]any)["data"].(map[string]any)
 	if !ok {
 		t.Fatalf("unexpected result: %+v", job["result"])
 	}

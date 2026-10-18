@@ -48,7 +48,7 @@ func createTestLibrary(t *testing.T) string {
 	// Insert Nested Playlist (Folder 1 -> Child 2)
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (1, 'EDM Folder', 0);")
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (2, 'House Child', 1);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (2, 1);")
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (2, 1, 'fixture');")
 
 	// Root database fixtures must be valid SQLite, just like Database2/m.db.
 	rootDB, err := db.Open(filepath.Join(dir, "m.db"))
@@ -273,7 +273,7 @@ func TestPlaylistCommand(t *testing.T) {
 	if strings.Contains(inspectOut, "===") || strings.Contains(inspectOut, "Tracks:") {
 		t.Errorf("inspect output should not contain headers, got: %s", inspectOut)
 	}
-	if !strings.Contains(inspectOut, "Sample Artist - Sample Title [id:1 5:00]") {
+	if !strings.Contains(inspectOut, "track: 1 artist: Sample Artist title: Sample Title") {
 		t.Errorf("expected track line 'Sample Artist - Sample Title [id:1 5:00]', got: %s", inspectOut)
 	}
 
@@ -282,14 +282,14 @@ func TestPlaylistCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("playlist inspect 1 failed: %v", err)
 	}
-	if !strings.Contains(emptyInspectOut, "No tracks in playlist.") {
+	if !strings.Contains(emptyInspectOut, "playlist: 1 title: EDM Folder") {
 		t.Errorf("expected 'No tracks in playlist.', got: %s", emptyInspectOut)
 	}
 
 	// 3. Inspect non-existent ID
-	_, err = executeCommand("-l", libDir, "playlist", "inspect", "99999")
-	if err == nil {
-		t.Error("expected error for nonexistent playlist ID")
+	missingOut, err := executeCommand("-l", libDir, "playlist", "inspect", "99999")
+	if err != nil || !strings.Contains(missingOut, "error: not_found") {
+		t.Error("expected per-item error for nonexistent playlist ID")
 	}
 
 	// 4. List error on bad lib path
@@ -396,7 +396,7 @@ func TestAgentMode_AllCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("playlist inspect in agent mode failed: %v", err)
 	}
-	if !strings.Contains(piOut, "- Sample Artist - Sample Title [id:1 5:00]") {
+	if !strings.Contains(piOut, "track: 1 artist: Sample Artist title: Sample Title") {
 		t.Errorf("unexpected agent playlist inspect output: %s", piOut)
 	}
 
@@ -405,7 +405,7 @@ func TestAgentMode_AllCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("playlist inspect 1 in agent mode failed: %v", err)
 	}
-	if !strings.Contains(piEmptyOut, "status: empty") {
+	if !strings.Contains(piEmptyOut, "playlist: 1 title: EDM Folder") {
 		t.Errorf("unexpected agent empty playlist inspect output: %s", piEmptyOut)
 	}
 
@@ -486,9 +486,9 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "playlist inspect help",
 			args: []string{"playlist", "inspect", "--help"},
 			wantSubstr: []string{
-				"<id>",
-				"Arguments:",
-				"playlist list",
+				"<id...>",
+				"--json",
+				"playlist IDs",
 			},
 		},
 		{
@@ -684,7 +684,7 @@ func TestAgentMode_HelpScreens(t *testing.T) {
 			args: []string{"playlist", "inspect", "--help"},
 			wantSubstr: []string{
 				"command: engine-cli playlist inspect",
-				"args: <id>",
+				"args: <id...>",
 			},
 		},
 		{

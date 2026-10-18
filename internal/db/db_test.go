@@ -129,8 +129,8 @@ func TestPlaylistAndEntities(t *testing.T) {
 	id2, _ := res2.LastInsertId()
 
 	// Link tracks to playlist 11
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (11, ?)", id1)
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (11, ?)", id2)
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (11, ?, 'fixture')", id1)
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (11, ?, 'fixture')", id2)
 
 	// 1. GetAllPlaylists
 	pls, err := GetAllPlaylists(ctx, database)

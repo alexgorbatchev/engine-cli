@@ -21,7 +21,7 @@ func TestUpgradeTrack(t *testing.T) {
 			if err := os.WriteFile(original, []byte("original audio"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := database.Exec(`INSERT INTO Track (id,path,filename,title,artist,album,comment,rating,isAnalyzed,length,bitrate,fileType) VALUES (1,'original.mp3','original.mp3','Curated title','Curated artist','Curated album','Keep this',5,1,180,128,'mp3'); INSERT INTO Playlist (id,title) VALUES (1,'Favorites'); INSERT INTO PlaylistEntity (id,listId,trackId,nextEntityId) VALUES (1,1,1,0); CREATE TABLE PerformanceData (trackId INTEGER, quickCues BLOB); INSERT INTO PerformanceData VALUES (1,x'0102');`); err != nil {
+			if _, err := database.Exec(`INSERT INTO Track (id,path,filename,title,artist,album,comment,rating,isAnalyzed,length,bitrate,fileType) VALUES (1,'original.mp3','original.mp3','Curated title','Curated artist','Curated album','Keep this',5,1,180,128,'mp3'); INSERT INTO Playlist (id,title) VALUES (1,'Favorites'); INSERT INTO PlaylistEntity (id,listId,trackId,databaseUuid,nextEntityId) VALUES (1,1,1,'fixture',0); CREATE TABLE PerformanceData (trackId INTEGER, quickCues BLOB); INSERT INTO PerformanceData VALUES (1,x'0102');`); err != nil {
 				t.Fatal(err)
 			}
 			var remuxArgs []string

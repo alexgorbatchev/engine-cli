@@ -31,8 +31,8 @@ func TestGetPlaylistHierarchy(t *testing.T) {
 	// Insert Tracks and link to Deep House
 	_, _ = database.ExecContext(ctx, "INSERT INTO Track (id, title, artist, length) VALUES (10, 'Track 10', 'Artist 10', 300);")
 	_, _ = database.ExecContext(ctx, "INSERT INTO Track (id, title, artist, length) VALUES (20, 'Track 20', 'Artist 20', 240);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (3, 10);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (3, 20);")
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (3, 10, 'fixture');")
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (3, 20, 'fixture');")
 
 	// 1. GetHierarchy
 	tree, err := GetPlaylistHierarchy(ctx, database)

@@ -47,6 +47,8 @@ func Open(path string, readonly ...bool) (*sql.DB, error) {
 // InitSchema creates the necessary Engine DJ schema tables for synthetic tests.
 func InitSchema(ctx context.Context, database *sql.DB) error {
 	schema := `
+	CREATE TABLE IF NOT EXISTS Information (id INTEGER PRIMARY KEY, uuid TEXT);
+	INSERT OR IGNORE INTO Information(id,uuid) VALUES(1,'fixture');
 	CREATE TABLE IF NOT EXISTS Track (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		playOrder INTEGER,
@@ -74,8 +76,15 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 		isAnalyzed BOOLEAN,
 		isAvailable BOOLEAN,
 		lastEditTime DATETIME,
-		albumArtSourceHash CHAR(40)
+		albumArtSourceHash CHAR(40),
+		originDatabaseUuid TEXT,
+		originTrackId INTEGER
 	);
+	CREATE TRIGGER IF NOT EXISTS trigger_after_insert_Track_fix_origin AFTER INSERT ON Track
+	WHEN IFNULL(NEW.originTrackId,0)=0 OR IFNULL(NEW.originDatabaseUuid,'')=''
+	BEGIN
+		UPDATE Track SET originTrackId=NEW.id,originDatabaseUuid=(SELECT uuid FROM Information) WHERE id=NEW.id;
+	END;
 
 	CREATE TABLE IF NOT EXISTS AlbumArt (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,6 +103,7 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		listId INTEGER,
 		trackId INTEGER,
+		databaseUuid TEXT,
 		nextEntityId INTEGER,
 		membershipReference INTEGER
 	);
@@ -236,7 +246,7 @@ func GetPlaylistTracks(ctx context.Context, database *sql.DB, listID int64) ([]T
 		       t.composer, t.remixer, t.key, t.rating, t.albumArt, t.fileType, t.isAnalyzed, t.isAvailable,
 		       t.lastEditTime, t.albumArtSourceHash
 		FROM PlaylistEntity pe
-		JOIN Track t ON t.id = pe.trackId
+		JOIN Track t ON t.originTrackId = pe.trackId AND t.originDatabaseUuid = pe.databaseUuid
 		WHERE pe.listId = ?
 		ORDER BY pe.id ASC;
 	`
@@ -535,8 +545,9 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 		return 0, fmt.Errorf("checking playlist %d: %w", listID, err)
 	}
 
-	var tExists bool
-	err = database.QueryRowContext(ctx, "SELECT 1 FROM Track WHERE id = ?", trackID).Scan(&tExists)
+	var originID int64
+	var originUUID string
+	err = database.QueryRowContext(ctx, "SELECT originTrackId, originDatabaseUuid FROM Track WHERE id = ?", trackID).Scan(&originID, &originUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, fmt.Errorf("track ID %d not found", trackID)
@@ -546,7 +557,7 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 
 	// Check if already in playlist
 	var existingEntityID int64
-	err = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND trackId = ?", listID, trackID).Scan(&existingEntityID)
+	err = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND trackId = ? AND databaseUuid = ?", listID, originID, originUUID).Scan(&existingEntityID)
 	if err == nil {
 		return existingEntityID, nil // already present
 	} else if err != sql.ErrNoRows {
@@ -557,7 +568,7 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 	var tailID int64
 	_ = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND (nextEntityId = 0 OR nextEntityId IS NULL) ORDER BY id DESC LIMIT 1", listID).Scan(&tailID)
 
-	res, err := database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, nextEntityId, membershipReference) VALUES (?, ?, 0, 0)", listID, trackID)
+	res, err := database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid, nextEntityId, membershipReference) VALUES (?, ?, ?, 0, 0)", listID, originID, originUUID)
 	if err != nil {
 		return 0, fmt.Errorf("inserting playlist entity: %w", err)
 	}
@@ -582,7 +593,9 @@ func RemoveTrackFromPlaylist(ctx context.Context, database *sql.DB, listID int64
 
 	var entityID int64
 	var nextEntityID sql.NullInt64
-	err := database.QueryRowContext(ctx, "SELECT id, nextEntityId FROM PlaylistEntity WHERE listId = ? AND trackId = ?", listID, trackID).Scan(&entityID, &nextEntityID)
+	err := database.QueryRowContext(ctx, `SELECT pe.id, pe.nextEntityId FROM PlaylistEntity pe
+	JOIN Track t ON t.originTrackId=pe.trackId AND t.originDatabaseUuid=pe.databaseUuid
+	WHERE pe.listId=? AND t.id=?`, listID, trackID).Scan(&entityID, &nextEntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("track ID %d not found in playlist %d", trackID, listID)
@@ -674,7 +687,8 @@ func DeleteTrack(ctx context.Context, database *sql.DB, id int64) error {
 		return fmt.Errorf("checking track %d: %w", id, err)
 	}
 
-	if _, err := database.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE trackId = ?", id); err != nil {
+	if _, err := database.ExecContext(ctx, `DELETE FROM PlaylistEntity WHERE (trackId,databaseUuid) IN
+	(SELECT originTrackId,originDatabaseUuid FROM Track WHERE id=?)`, id); err != nil {
 		return fmt.Errorf("deleting playlist entities for track %d: %w", id, err)
 	}
 

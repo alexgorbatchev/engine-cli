@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dj/engine-cli/internal/db"
+	"github.com/dj/engine-cli/internal/details"
 )
 
 func (s *Server) requestTrack(w http.ResponseWriter, r *http.Request) *db.Track {
@@ -39,7 +40,7 @@ func (s *Server) trackMetadata(w http.ResponseWriter, r *http.Request) {
 	if track == nil {
 		return
 	}
-	writeJSON(w, http.StatusOK, trackResult(track))
+	writeJSON(w, http.StatusOK, details.Track(track))
 }
 
 func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {

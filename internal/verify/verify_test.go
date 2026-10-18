@@ -40,7 +40,7 @@ func TestVerifyLibrary_Healthy(t *testing.T) {
 
 	// Insert Playlist with track
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (1, 'Favorites', 0);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (1, 1);")
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (1, 1, 'fixture');")
 
 	report, err := VerifyLibrary(ctx, database, tempDir)
 	if err != nil {
@@ -86,7 +86,7 @@ func TestVerifyLibrary_IssuesDetected(t *testing.T) {
 	// 3. Orphaned playlist entity & empty playlist
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (100, 'Empty List', 0);")
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (200, 'Orphan List', 0);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (200, 9999);") // 9999 does not exist
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (200, 9999, 'fixture');") // 9999 does not exist
 
 	report, err := VerifyLibrary(ctx, database, tempDir)
 	if err != nil {

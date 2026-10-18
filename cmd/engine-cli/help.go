@@ -6,6 +6,8 @@ import (
 )
 
 var techCatalog = cobrahelptree.TechCatalog{
+	"engine-cli track inspect":           {Summary: "Read ordered details for up to 500 track IDs with per-item errors", Args: "<id...>"},
+	"engine-cli system check":            {Summary: "Return read-only runtime checks for UI decisions; no selected library required"},
 	"engine-cli library discover":        {Summary: "Discover current Engine DJ libraries in Music and attached local drives", Args: "[path...]", Description: "Read-only, nonrecursive discovery. Optional paths replace automatic locations. Returns libraries and warnings; does not require a selected library."},
 	"engine-cli library history":         {Summary: "List retained operations and persistent identities of affected entities"},
 	"engine-cli library undo":            {Summary: "Undo an operation; refuse conflicts unless --force is given", Args: "[id]", MutatesDB: true, AutoBackup: true},
@@ -70,7 +72,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli playlist inspect": {
 		Summary:     "Query and list Track records associated with a playlist",
 		Description: "Queries PlaylistEntity joined with Track in Database2/m.db for specified playlist numeric ID and outputs track list.",
-		Args:        "<id>",
+		Args:        "<id...>",
 	},
 	"engine-cli playlist create": {
 		Summary:     "Create a new playlist or folder in the collection hierarchy",

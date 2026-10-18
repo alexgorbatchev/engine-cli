@@ -2,7 +2,9 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	"github.com/dj/engine-cli/internal/systemcheck"
 	"net"
 	"net/http"
 	"net/url"
@@ -21,6 +23,7 @@ type Config struct {
 	LibraryDir     string
 	NoBackup       bool
 	AllowedOrigins []string
+	CheckSystem    func(context.Context, []string) (*systemcheck.Report, error)
 }
 
 type Server struct {
@@ -63,10 +66,14 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.trackOperations()...)
 	ops = append(ops, s.historyOperations()...)
 	ops = append(ops, s.duplicateOperations()...)
+	ops = append(ops, s.systemOperations()...)
 	for _, op := range ops {
 		s.operations[op.Name] = op
 	}
 	s.mux.HandleFunc("GET /v1/operations", s.catalog)
+	s.mux.HandleFunc("GET /v1/system/check", s.systemCheck)
+	s.mux.HandleFunc("GET /v1/tracks", s.batchDetails("track"))
+	s.mux.HandleFunc("GET /v1/playlists", s.batchDetails("playlist"))
 	s.mux.HandleFunc("POST /v1/operations/{operation}", s.submit)
 	s.mux.HandleFunc("GET /v1/jobs/{id}", s.status)
 	s.mux.HandleFunc("POST /v1/jobs/{id}/cancel", s.cancel)

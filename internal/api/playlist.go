@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"github.com/dj/engine-cli/internal/details"
 
 	"github.com/dj/engine-cli/internal/playlist"
 )
@@ -35,12 +36,7 @@ func (s *Server) playlistOperations() []operation {
 		define("playlist.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.GetPlaylistHierarchy(ctx, d) })
 		}),
-		define("playlist.inspect", false, []string{"identifier"}, func(ctx context.Context, p identifierParams) (any, error) {
-			return s.database(ctx, func(d *sql.DB) (any, error) {
-				result, err := playlist.InspectPlaylist(ctx, d, p.Identifier)
-				return playlistResult(result), err
-			})
-		}),
+		s.detailOperation("playlist"),
 		define("playlist.create", true, []string{"name"}, func(ctx context.Context, p createPlaylistParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.CreatePlaylist(ctx, d, p.Name, p.Parent, p.Folder) })
 		}),
@@ -59,7 +55,7 @@ func (s *Server) playlistOperations() []operation {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				return batch(ctx, "playlist.track.move", p.Tracks, func(ctx context.Context, id string) (any, error) {
 					from, to, tr, err := playlist.MoveTrackBetweenPlaylists(ctx, d, p.From, p.To, id)
-					return map[string]any{"from": from, "to": to, "track": trackResult(tr)}, err
+					return map[string]any{"from": from, "to": to, "track": details.Track(tr)}, err
 				})
 			})
 		}),
@@ -75,7 +71,7 @@ func (s *Server) membershipOperation(name string) operation {
 					run = playlist.RemoveTrackFromPlaylist
 				}
 				pl, tr, err := run(ctx, d, p.Playlist, id)
-				return map[string]any{"playlist": pl, "track": trackResult(tr)}, err
+				return map[string]any{"playlist": pl, "track": details.Track(tr)}, err
 			})
 		})
 	})

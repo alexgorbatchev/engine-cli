@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/dj/engine-cli/internal/systemcheck"
 	"mime"
 	"net/http"
 	"sort"
@@ -163,6 +165,10 @@ func (s *Server) work(ctx context.Context, j *job, op operation, run *boundOpera
 			j.view.State = "cancelled"
 		}
 		j.view.Error = &progress.Failure{Code: j.terminal.Type, Message: j.terminal.Error}
+		var checkError *systemcheck.Error
+		if errors.As(err, &checkError) {
+			j.view.Error.Code = checkError.Code
+		}
 	}
 	j.append(*j.terminal)
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dj/engine-cli/internal/artwork"
 	"github.com/dj/engine-cli/internal/db"
+	"github.com/dj/engine-cli/internal/details"
 	"github.com/dj/engine-cli/internal/track"
 )
 
@@ -44,6 +45,7 @@ func (p upgradeParams) validate() error {
 
 func (s *Server) trackOperations() []operation {
 	return []operation{
+		s.detailOperation("track"),
 		define("track.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				tracks, err := db.GetAllTracks(ctx, d)
@@ -52,7 +54,7 @@ func (s *Server) trackOperations() []operation {
 				}
 				result := make([]map[string]any, 0, len(tracks))
 				for _, track := range tracks {
-					result = append(result, trackResult(&track))
+					result = append(result, details.Track(&track))
 				}
 				return result, nil
 			})
@@ -69,14 +71,14 @@ func (s *Server) trackOperations() []operation {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				return batch(ctx, "track.rm", p.Tracks, func(ctx context.Context, id string) (any, error) {
 					t, err := track.RemoveTrack(ctx, d, s.config.LibraryDir, id, p.DeleteFile)
-					return trackResult(t), err
+					return details.Track(t), err
 				})
 			})
 		}),
 		define("track.move", true, []string{"identifier", "destination"}, func(ctx context.Context, p moveTrackParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				t, err := track.MoveTrackFile(ctx, d, s.config.LibraryDir, p.Identifier, p.Destination)
-				return trackResult(t), err
+				return details.Track(t), err
 			})
 		}),
 		define("track.relocate", true, []string{"from", "to"}, func(ctx context.Context, p relocateParams) (any, error) {

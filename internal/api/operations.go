@@ -16,6 +16,7 @@ import (
 	"github.com/dj/engine-cli/internal/db"
 	"github.com/dj/engine-cli/internal/history"
 	"github.com/dj/engine-cli/internal/progress"
+	"github.com/dj/engine-cli/internal/systemcheck"
 	"github.com/dj/engine-cli/internal/transfer"
 )
 
@@ -110,6 +111,15 @@ func (s *Server) database(ctx context.Context, run func(*sql.DB) (any, error)) (
 
 func (s *Server) execute(ctx context.Context, op operation, bound *boundOperation) (result any, historyID string, err error) {
 	err = progress.Run(ctx, op.Name, func(ctx context.Context) error {
+		if op.Mutates && !bound.preview {
+			r, e := s.checkSystem(ctx, nil)
+			if e != nil {
+				return e
+			}
+			if e := systemcheck.AllowMutation(r); e != nil {
+				return e
+			}
+		}
 		lib := s.config.LibraryDir
 		if bound.library != "" {
 			lib = bound.library
@@ -152,9 +162,6 @@ func decodeRequest(r io.Reader) (json.RawMessage, error) {
 }
 
 type emptyParams struct{}
-type identifierParams struct {
-	Identifier string `json:"identifier"`
-}
 type directoryParams struct {
 	OutDir string `json:"out_dir"`
 }

@@ -16,7 +16,7 @@ func TestAPIPlaylistMutations(t *testing.T) {
 	s, lib := testAPI(t)
 	runAPIJob(t, s, "playlist.create", `{"name":"Folder","folder":true}`)
 	runAPIJob(t, s, "playlist.create", `{"name":"Second","parent":"2"}`)
-	runAPIJob(t, s, "playlist.inspect", `{"identifier":"3"}`)
+	runAPIJob(t, s, "playlist.inspect", `{"ids":[3]}`)
 	runAPIJob(t, s, "playlist.move", `{"identifier":"3","to":""}`)
 	runAPIJob(t, s, "playlist.track.add", `{"playlist":"1","tracks":["1"]}`)
 	runAPIJob(t, s, "playlist.track.move", `{"from":"1","to":"3","tracks":["1"]}`)
@@ -167,7 +167,6 @@ func TestAPIBackupsAndRestore(t *testing.T) {
 func TestAPIOperationFailuresBecomeJobs(t *testing.T) {
 	s, _ := testAPI(t)
 	for _, tt := range []struct{ name, body string }{
-		{"playlist.inspect", `{"identifier":"missing"}`},
 		{"playlist.create", `{"name":"Bad","parent":"missing"}`},
 		{"playlist.rm", `{"identifier":"missing"}`},
 		{"playlist.move", `{"identifier":"missing","to":"Favorites"}`},

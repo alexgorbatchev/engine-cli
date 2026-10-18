@@ -24,6 +24,7 @@ import (
 // The helper implements Fetch Track's process protocol offline. Actual probing,
 // remuxing, metadata preservation and SQLite updates use production code.
 func TestMain(m *testing.M) {
+	setupSystemTests()
 	if os.Getenv("ENGINE_API_FETCH_HELPER") == "1" {
 		if err := fetchHelperCommand().Execute(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -140,7 +141,7 @@ func TestUpgradeProgressCLIAndHTTP(t *testing.T) {
 				}
 				reference = events
 			} else {
-				s, err := api.New(api.Config{LibraryDir: lib, NoBackup: true})
+				s, err := api.New(api.Config{LibraryDir: lib, NoBackup: true, CheckSystem: querySystem})
 				if err != nil {
 					t.Fatal(err)
 				}

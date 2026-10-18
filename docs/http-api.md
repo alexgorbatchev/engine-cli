@@ -1,5 +1,28 @@
 # HTTP API and progress
 
+## Runtime checks and mutation protection
+
+`GET /v1/system/check` returns runtime facts without selecting or opening a library. Use `?checks=engine_desktop` to select checks, or omit it for all supported checks. Repeated/comma-separated check IDs are accepted and deduplicated. Unknown IDs return `400`. The equivalent job operation is `system.check` with `{"checks":["engine_desktop"]}`; the CLI is `engine-cli system check --json` (`--checks` selects checks).
+
+The response contains `checked_at` (UTC timestamp), `platform`, and a `checks` object keyed by check ID. `engine_desktop` contains `status` (`ok`, `error`, or `unsupported`), `running` (boolean when known, otherwise `null`), and `pids` (matching process IDs, always an array). Failed checks also contain `error: {code, message}`. A completed HTTP check returns `200` even when a particular check is unavailable; inspect its status rather than treating HTTP success as “safe to edit.”
+
+Desktop detection uses native process snapshots on macOS and Windows and matches the Engine DJ executable name, not command-line substrings. Other platforms report `unsupported`; they do not report “not running.” The check is an observation, not a library lock or a guarantee that Engine DJ will not start later.
+
+Every CLI/API library mutation obtains a fresh desktop check before backups or undo-history writes. Running or unknown desktop state blocks the mutation; there is no bypass flag. API jobs report `engine_desktop_running` or `engine_desktop_unknown` as structured error codes. Dry runs and read-only operations remain available. The synchronous check endpoint remains available while a mutation job is running.
+
+## Batch entity details
+
+Fetch a UI selection in one request:
+
+```text
+GET /v1/tracks?ids=12,34,56
+GET /v1/playlists?ids=7,9
+```
+
+Repeated `ids` query parameters are also accepted. Equivalent operations are `track.inspect` and `playlist.inspect` with `{"ids":[12,34,56]}`. Equivalent CLI commands are `engine-cli track inspect 12 34 56 --json` and `engine-cli playlist inspect 7 9 --json`.
+
+Each request accepts 1–500 positive numeric library-scoped IDs. Results are `{"items":[{"id":12,"data":{...}}]}` in request order, including repeated IDs. Missing entities return `{"id":34,"data":null,"error":{"code":"not_found","message":"..."}}` without discarding other results. Invalid IDs reject the request; database/query failures fail the whole request. Playlist data includes its track details; track fields are shared with the single-track metadata endpoint. Reads do not create backups or history. `playlist.inspect` now takes an `ids` array instead of `identifier` and returns the batch envelope even for one item.
+
 Use the local API to control an Engine DJ library from another CLI or a web UI. Close Engine DJ before changing the library.
 
 ```sh
@@ -160,7 +183,8 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `library.history` | `library?`; defaults to the server's configured library |
 | `library.undo` | `library?`, `id?`, `force?`, `dry_run?`; omitted ID selects latest in that library |
 | `playlist.list` | `{}` |
-| `playlist.inspect` | `identifier` |
+| `playlist.inspect`, `track.inspect` | `ids` (array of 1–500 positive numeric IDs) |
+| `system.check` | `checks?` (array; omitted or empty runs all supported checks) |
 | `playlist.create` | `name`, `parent?`, `folder?` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`; omitted destination moves to root |

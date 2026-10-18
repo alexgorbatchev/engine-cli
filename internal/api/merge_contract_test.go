@@ -94,7 +94,7 @@ func assertMergeState(t *testing.T, lib string, merged bool) {
 
 func TestAPIProgressFailureIsStringAndJobFailureIsStructured(t *testing.T) {
 	s, _ := testAPI(t)
-	id := submitAPIJob(t, s, "playlist.inspect", `{"identifier":"missing"}`)
+	id := submitAPIJob(t, s, "playlist.rm", `{"identifier":"missing"}`)
 	job := awaitAPIJob(t, s, id)
 	structured, ok := job["error"].(map[string]any)
 	if !ok || structured["code"] != "error" || structured["message"] == "" {

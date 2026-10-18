@@ -30,7 +30,7 @@ func newPlaylistCommand() *cobra.Command {
 	}
 
 	plCmd.AddCommand(newPlaylistListCommand())
-	plCmd.AddCommand(newPlaylistInspectCommand())
+	plCmd.AddCommand(newDetailsCommand("playlist"))
 	plCmd.AddCommand(newPlaylistCreateCommand())
 	plCmd.AddCommand(newPlaylistRmCommand())
 	plCmd.AddCommand(newPlaylistMoveCommand())
@@ -78,56 +78,6 @@ In AGENT=1 mode, displays a compact token-conservative bulleted list.`,
 			}
 
 			cmd.Print(playlist.FormatPlaylistTree(tree))
-			return nil
-		},
-	}
-}
-
-func newPlaylistInspectCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "inspect <id>",
-		Short: "Display all songs inside a playlist",
-		Long: `Display all songs and track lengths inside a specific playlist.
-
-Arguments:
-  <id>   The numeric ID of the playlist. Run 'engine-cli playlist list' to see IDs.`,
-		Example: `  engine-cli playlist inspect 2
-  engine-cli playlist inspect 17
-  engine-cli -l "/Volumes/DJ_USB/Engine Library" playlist inspect 43`,
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			dbPath := filepath.Join(libDirFlag, "Database2", "m.db")
-			database, err := db.Open(dbPath, true)
-			if err != nil {
-				return err
-			}
-			defer database.Close()
-
-			details, err := playlist.InspectPlaylist(cmd.Context(), database, args[0])
-			if err != nil {
-				return err
-			}
-
-			if len(details.Tracks) == 0 {
-				if agent.IsAgentMode() {
-					cmd.Println("status: empty")
-					return nil
-				}
-				cmd.Println("No tracks in playlist.")
-				return nil
-			}
-
-			if agent.IsAgentMode() {
-				for _, t := range details.Tracks {
-					cmd.Printf("- %s\n", playlist.FormatTrackLine(t))
-				}
-				return nil
-			}
-
-			for _, t := range details.Tracks {
-				cmd.Println(playlist.FormatTrackLine(t))
-			}
-
 			return nil
 		},
 	}

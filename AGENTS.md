@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-18 15:53
+last_modified: 2026-10-18 16:13
 status: current
 ---
 
@@ -17,6 +17,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)
 - **Verify Library Integrity:** `bin/engine-cli library verify`
+- **Check Desktop Status:** `bin/engine-cli system check [--checks engine_desktop] [--json]`; HTTP `GET /v1/system/check` or `system.check`.
 - **Discover Libraries:** `bin/engine-cli library discover` and HTTP `library.discover` inspect common macOS/Windows locations and attached drives without modifying libraries.
 - **Backup Library:** `bin/engine-cli library backup [path] [--list]`
 - **Restore Library:** `bin/engine-cli library restore <path>`
@@ -24,7 +25,8 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Sync Libraries:** `bin/engine-cli library sync --from <path> --to <path> (--playlist-id <id> | --root) [--dry-run]`
 - **Prune Orphaned Artwork:** `bin/engine-cli library prune`
 - **List Playlists:** `bin/engine-cli playlist list`
-- **Inspect Playlist:** `bin/engine-cli playlist inspect <id>`
+- **Inspect Playlists:** `bin/engine-cli playlist inspect <id...> [--json]`
+- **Inspect Tracks:** `bin/engine-cli track inspect <id...> [--json]`
 - **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <id>] [--folder]`
 - **Remove Playlist:** `bin/engine-cli playlist rm <id> [--force]`
 - **Move/Reparent Playlist:** `bin/engine-cli playlist move <id> --to <id>`
@@ -50,11 +52,15 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 
 ## Conventions
 - **UI-Driven Contracts:** UI workflows drive HTTP API design and associated CLI output. Extend or reshape shared results when the UI needs richer data rather than constraining the UI to an existing response shape. Keep CLI and HTTP results aligned, preserve stable entity identity, and retain snapshot/undo guarantees for mutations.
+- **Batch UI Reads:** When a UI needs details for multiple entities, accept multiple explicit identifiers in one CLI/API request and return identifiable results together; do not require one request per item. Define ordering, limits, and per-item failure behavior. Ask for clarification when the UI workflow or required response is unclear.
+- **Runtime Checks:** Provide read-only, structured checks for UI decisions, including whether Engine DJ Desktop is running. Distinguish a negative result from an unavailable or failed check; never report detection failure as “not running.” Keep CLI JSON and HTTP check results aligned.
+- **Desktop Mutation Guard:** Recheck Engine DJ Desktop immediately before CLI/API library mutations, before snapshots or history writes. Refuse mutations while it is running or its status is unknown. Read-only operations and dry runs remain available. A UI status observation is not a lock or authorization to skip the fresh check.
 - **Library Discovery:** Recognize current `Database2/m.db` libraries; ignore legacy root-level database leftovers. Keep enumeration read-only and provide a friendly `name`, `source`, and absolute path for UI library pickers through the HTTP API.
 - **Reversible Library Operations:** Every operation that modifies the source library must support undo, including database changes and changes to audio files or artwork. Apply this requirement to existing operations as well as duplicate-track operations, through both the CLI and HTTP API.
 - **Affected Files Only:** Plan and preserve only files an operation will modify or delete. Database-only operations must not copy audio or artwork. Record file moves as reversible path changes rather than audio backups. Explicit library backups may include all databases and artwork.
 - **Undo Conflicts:** Reverse an operation even after later library changes when there are no conflicts. Refuse conflicting undo by default; provide an explicit `--force` override.
 - **Entity Identity:** Track changed tracks, playlists, and other entities using stable UUIDs or hashes so history and undo retain identity across moves, relocations, and playlist membership changes; names, paths, and membership alone are not identities.
+- **Audio-Based Duplicate Recognition:** Account for independently imported copies of the same audio using acoustic fingerprint evidence, such as Chromaprint. Engine row IDs and origin identities alone do not establish musical uniqueness; duplicate detection must go beyond titles, filenames, and import lineage.
 - **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
 - **Shared Progress Schema:** Keep CLI and HTTP progress field names and types aligned with Fetch Track, including `job_id`, `sequence`, and string-valued `error`. Preserve upstream event details under `source`; retain structured `{code,message}` errors for HTTP job/status and request responses.
 - **Track Upgrades:** Use Fetch Track CLI to acquire replacement audio. Preserve the original track's curated metadata. Replacing a radio edit with an extended mix is intended upgrade behavior.

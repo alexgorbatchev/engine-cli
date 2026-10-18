@@ -24,7 +24,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Normalizes non-square album covers to 1:1 square dimensions without re-encoding your audio files.
 - Updates database track records from modified on-disk tags and discovers unindexed music files.
 - Automatically saves a safety backup snapshot before performing any database-modifying operation.
-- Close Engine DJ before modifying the library or undoing an operation. Use `library history` to find an operation ID and `library undo <id> --dry-run` to check for conflicts before restoring it.
+- Close Engine DJ before modifying the library or undoing an operation. Commands check desktop status on macOS and Windows and refuse changes while Engine DJ is running or its status is unknown. Other platforms report unsupported detection and refuse mutations. Read-only commands and dry runs remain available. Use `system check --json` for status and `library undo <id> --dry-run` to check undo conflicts.
 - Keeps the original audio file when upgrading a track. Close Engine DJ before running the upgrade, then analyze the replacement in Engine DJ before playing it.
 - When an upgraded track has saved cues, loops, or beat grids, requires `--keep-timing` or `--clear-timing`. An extended mix can shift those positions, so check retained timing before playing.
 - Track upgrades require at least 16 kHz of measured audio bandwidth and either a higher measured bandwidth than the original or a longer mix with equal bandwidth. This is a screening measure, not a guarantee of audible improvement.
@@ -33,6 +33,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 # How it Really Works
 
 - Existing playlists are selected by numeric ID. Tracks are selected by numeric ID or their exact stored path; titles and file basenames never establish a match. Use playlist listings and the HTTP `track.list` operation to obtain IDs.
+- `track inspect <id...> --json` and `playlist inspect <id...> --json` return details for up to 500 IDs in one call, preserving request order and reporting missing IDs individually. The HTTP API offers the same results through `GET /v1/tracks?ids=12,34` and `GET /v1/playlists?ids=7,9`.
 - `library sync --from <path> --to <path>` requires source `--playlist-id <id>` (repeatable, including descendants) or `--root`. Ancestors preserve hierarchy without copying their other tracks. Root sync includes tracks outside playlists, smartlist definitions, and the prepare queue. Both paths must contain existing libraries with matching, verified Engine database schema 3.0.2 and distinct database UUIDs.
 - Sync matches track origins and explicit playlist mappings. Use `--map-playlist <source-id>:<destination-id>` to match existing playlists. Names never establish identity. Unmapped playlists are created unless a sibling title collision prevents it. Source changes propagate while destination-only edits remain. Conflicting edits are refused unless `--conflict source` or `--conflict destination` chooses a side.
 - Sync preserves destination-only entries by default. `--mirror` propagates removals within the selected scope while retaining tracks referenced by kept playlists. Removed audio is preserved for undo. `--media none` requires matching destination audio and copies no audio; artwork may still be transferred. New audio goes under `Music/engine-cli/` inside the destination, without re-encoding. Audio changes outside the destination library are refused.
@@ -131,6 +132,19 @@ engine-cli library undo
 Merge retains the keeper's cues, loops, and beat grid by default. To explicitly transfer all performance data from a selected track, add `--performance-from 87`; check timing in Engine DJ afterward. Both audio files remain on disk. Memberships are combined without adding duplicate playlist entries, and the latest play history is retained.
 
 # Options & Flags
+
+`engine-cli system check`
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--checks <ids>` | `-` | all supported checks | Comma-separated or repeated check IDs; supports `engine_desktop` |
+| `--json` | `-` | `false` | Structured timestamped runtime facts |
+
+`engine-cli track inspect <id...>` and `engine-cli playlist inspect <id...>`
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--json` | `-` | `false` | Ordered details with per-item errors |
 
 `engine-cli library sync`
 
