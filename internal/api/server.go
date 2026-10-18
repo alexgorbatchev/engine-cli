@@ -71,6 +71,8 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("GET /v1/jobs/{id}", s.status)
 	s.mux.HandleFunc("POST /v1/jobs/{id}/cancel", s.cancel)
 	s.mux.HandleFunc("GET /v1/jobs/{id}/events", s.events)
+	s.mux.HandleFunc("GET /v1/tracks/{id}", s.trackMetadata)
+	s.mux.HandleFunc("GET /v1/tracks/{id}/audio", s.trackAudio)
 	return s, nil
 }
 

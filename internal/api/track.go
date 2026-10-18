@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dj/engine-cli/internal/artwork"
+	"github.com/dj/engine-cli/internal/db"
 	"github.com/dj/engine-cli/internal/track"
 )
 
@@ -43,6 +44,19 @@ func (p upgradeParams) validate() error {
 
 func (s *Server) trackOperations() []operation {
 	return []operation{
+		define("track.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				tracks, err := db.GetAllTracks(ctx, d)
+				if err != nil {
+					return nil, err
+				}
+				result := make([]map[string]any, 0, len(tracks))
+				for _, track := range tracks {
+					result = append(result, trackResult(&track))
+				}
+				return result, nil
+			})
+		}),
 		define("track.add", true, []string{"paths"}, func(ctx context.Context, p addTrackParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				return batch(ctx, "track.add", p.Paths, func(ctx context.Context, path string) (any, error) {

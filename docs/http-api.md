@@ -27,6 +27,8 @@ The job result contains `libraries` and `warnings` arrays. Each library has `nam
 | `GET /v1/jobs/{id}` | Current state, latest progress, and result or error |
 | `GET /v1/jobs/{id}/events` | Server-sent events, including retained events followed by live events |
 | `POST /v1/jobs/{id}/cancel` | `202` with current status; requests cancellation |
+| `GET /v1/tracks/{id}` | Track metadata with JSON values and nulls |
+| `GET /v1/tracks/{id}/audio` | Original local audio; supports `HEAD` and HTTP byte ranges for seeking |
 
 Every operation, including reads, runs as a job. Submit a JSON object with `Content-Type: application/json`; use `{}` when there are no parameters. Unknown fields and missing required parameters are rejected before the job starts. Requests are limited to 1 MiB.
 
@@ -105,6 +107,12 @@ The server retains up to 128 jobs and 1,024 events per job in memory. It evicts 
 
 ## Operations
 
+`track.list` returns every collection track, including tracks outside playlists, in ascending ID order. Its result is an array using the same track fields as `playlist.inspect`. An empty collection returns `[]`.
+
+Audio requests accept only positive numeric database IDs. Engine resolves the file path from that track's database record; clients cannot supply arbitrary filesystem paths. Missing tracks/files return `404`, unsupported audio file types return `415`, and unavailable libraries return `503`, using structured API errors. These endpoints read the library and stream the original file without changing or re-encoding it. Browser codec support determines which files can play. The normal loopback-host and allowed-origin checks apply to metadata and audio requests.
+
+Cross-origin audio elements must set `crossorigin="anonymous"` so the browser sends its origin. Browser media requests that omit the origin are rejected; ordinary command-line HTTP clients can still read audio.
+
 Fields marked `?` are optional. Identifiers accept the same track or playlist names, numeric IDs, and applicable paths as the CLI. The live operation catalog is the authoritative list of accepted parameters.
 
 | Operation | JSON parameters |
@@ -123,6 +131,7 @@ Fields marked `?` are optional. Identifiers accept the same track or playlist na
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
 | `playlist.track.move` | `from`, `to`, `tracks` array |
 | `track.add` | `paths` array, `to_playlist?`, `move?` |
+| `track.list` | `{}` |
 | `track.rm` | `tracks` array, `delete_file?` |
 | `track.move` | `identifier`, `destination` |
 | `track.relocate` | `from`, `to` |
