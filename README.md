@@ -29,30 +29,25 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Manages nested playlist trees and linked-list entities through recursive foreign key traversal on `Playlist` and `PlaylistEntity` tables.
 - Packages database directories into timestamped XDG backup snapshots with atomic directory replacement on restore.
 
-# Prerequisites
-
-- [`ffmpeg` & `ffprobe`](https://ffmpeg.org/download.html) - Version 4.4 or newer required for audio tag probing and artwork processing.
-- [GitHub CLI (`gh`)](https://cli.github.com/) - Optional, for automated binary updates.
-
 # Installation
 
-Download the latest prebuilt binary from GitHub Releases:
+Download the [latest release](https://github.com/alexgorbatchev/engine-cli/releases/latest) for your platform; this example installs version 1.1.0 on an Apple silicon Mac:
 
 ```bash
-# Using GitHub CLI
-gh release download --repo alexgorbatchev/engine-cli --pattern 'engine-cli_*_darwin_arm64.tar.gz'
-tar -xzf engine-cli_*_darwin_arm64.tar.gz
-chmod +x engine-cli
-mv engine-cli ~/.local/bin/
+curl -fL -o engine-cli_1.1.0_darwin_arm64.tar.gz \
+  https://github.com/alexgorbatchev/engine-cli/releases/download/v1.1.0/engine-cli_1.1.0_darwin_arm64.tar.gz
+tar -xzf engine-cli_1.1.0_darwin_arm64.tar.gz engine-cli
+mkdir -p "$HOME/.local/bin"
+install -m 755 engine-cli "$HOME/.local/bin/engine-cli"
+export PATH="$HOME/.local/bin:$PATH"
+engine-cli --version
 ```
 
-Or via direct download:
+Keep `~/.local/bin` on your PATH in future terminal sessions. Intel Macs use the `darwin_amd64` archive from the release page.
 
-```bash
-curl -sSL https://github.com/alexgorbatchev/engine-cli/releases/latest/download/engine-cli_darwin_arm64.tar.gz | tar -xz
-chmod +x engine-cli
-mv engine-cli ~/.local/bin/
-```
+# Setup
+
+- [`ffmpeg` & `ffprobe`](https://ffmpeg.org/download.html) are required for audio tag probing and artwork processing. Make both commands available on your PATH.
 
 # Quick Start
 
