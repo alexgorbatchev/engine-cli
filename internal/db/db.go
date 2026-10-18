@@ -346,11 +346,9 @@ func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Pla
 	// Try numeric ID first
 	if id, err := strconv.ParseInt(idOrTitle, 10, 64); err == nil && id > 0 {
 		var p Playlist
-		var isFolder sql.NullBool
-		err := database.QueryRowContext(ctx, "SELECT id, title, parentListId, isFolder FROM Playlist WHERE id = ?", id).
-			Scan(&p.ID, &p.Title, &p.ParentListID, &isFolder)
+		err := database.QueryRowContext(ctx, "SELECT id, title, parentListId FROM Playlist WHERE id = ?", id).
+			Scan(&p.ID, &p.Title, &p.ParentListID)
 		if err == nil {
-			p.IsFolder = isFolder.Bool
 			return &p, nil
 		} else if err != sql.ErrNoRows {
 			return nil, fmt.Errorf("querying playlist by id %d: %w", id, err)
@@ -359,11 +357,9 @@ func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Pla
 
 	// Fallback to title lookup (case-insensitive)
 	var p Playlist
-	var isFolder sql.NullBool
-	err := database.QueryRowContext(ctx, "SELECT id, title, parentListId, isFolder FROM Playlist WHERE title = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1", idOrTitle).
-		Scan(&p.ID, &p.Title, &p.ParentListID, &isFolder)
+	err := database.QueryRowContext(ctx, "SELECT id, title, parentListId FROM Playlist WHERE title = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1", idOrTitle).
+		Scan(&p.ID, &p.Title, &p.ParentListID)
 	if err == nil {
-		p.IsFolder = isFolder.Bool
 		return &p, nil
 	} else if err != sql.ErrNoRows {
 		return nil, fmt.Errorf("querying playlist by title %q: %w", idOrTitle, err)
