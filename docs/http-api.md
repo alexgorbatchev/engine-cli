@@ -163,6 +163,18 @@ The server retains up to 128 jobs and 1,024 events per job in memory. It evicts 
 
 ## Operations
 
+### Rekordbox export
+
+Submit `POST /v1/operations/migrate.export` with `{"source":"/path/to/Engine Library","target":"/path/to/rekordbox"}`. Both fields are optional strings: `source` defaults to the server's configured library and `target` defaults to `./rekordbox` relative to the server's working directory. The CLI equivalent is `engine-cli migrate export --source <path> --target <path> --json`.
+
+The job runs without a terminal interface and reads current `Database2/m.db` libraries without modifying the source database or audio. It creates no source snapshot or undo history and does not require a desktop mutation check. It copies audio byte-for-byte under target `Contents/`, preserving playlists, cues, and beat grids in target-root `rekordbox.xml`. Target-root `.sync_state.json` records resumable work. Matching-size existing audio is verified by SHA-256 before reuse; interrupted tracks restart from the beginning. Unreferenced target files remain in place.
+
+The result contains absolute `source`, `target`, and `xml` paths, plus numeric `total`, `copied`, `existing`, `failed`, and `unavailable`. Optional `failures` contains `{source,error}` items for failed tracks. `total` describes the imported collection; the outcome counts describe the tracks processed in that run. Missing and streaming audio is unavailable and excluded from XML without causing failure by itself. Only tracks copied or verified in that run and still present belong in XML. Failed/cancelled jobs retain completed audio and publish the available subset where possible; rerun to resume and rebuild the full export. Regenerate XML after relocating the target because its file URIs are absolute.
+
+Use the ordinary job status, cancellation, and SSE endpoints. Progress phases include `migrate.read`, `migrate.copy`, and `migrate.xml`; `migrate.export` owns the terminal event, with 100% reserved for successful completion. Copy events carry `metadata: {source,target,track,total_tracks,copied_bytes,total_bytes}` with absolute paths, a one-based track index, and byte counts. Percentages are monotonic across the whole operation, and events share its stable `job_id` and increasing `sequence`. CLI `--progress-json` emits the same schema on stderr; normal CLI output shows percentages and phases. Copy, resume-state, and XML failures fail the job while retaining any available partial result.
+
+### Library, playlist, and track operations
+
 Duplicate scan (`track.duplicate.list`) and comparison (`track.duplicate.inspect`) tracks include a `playlists` array of current playlist names, including `[]` for tracks outside playlists. Memberships resolve through the track's origin database UUID and origin track ID, matching Engine's persistent identity rather than coincidentally equal local IDs. Duplicate-list and inspect CLI output also includes these memberships. Track IDs can be used with the metadata, audio, and beat-grid endpoints to audition each candidate before merging.
 
 `track.list` returns every collection track, including tracks outside playlists, in ascending ID order. Its result is an array using the same track fields as `playlist.inspect`. An empty collection returns `[]`.
@@ -175,6 +187,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 
 | Operation | JSON parameters |
 | --- | --- |
+| `migrate.export` | `source?`, `target?`; defaults to configured library and `./rekordbox` |
 | `library.verify`, `library.refresh`, `library.prune` | `{}` |
 | `library.sync` | `source`, `destination`, `scope`, `playlist_map?`, `dry_run?`, `mirror?`, `conflict?`, `media?`, `plan_token?` |
 | `library.backup`, `library.backups` | `out_dir?` |

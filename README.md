@@ -15,10 +15,12 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Finds duplicate candidates, compares their quality and playlists, and merges selected database records while retaining audio files.
 - Records undo history for every library-modifying command, including audio and artwork changes, with persistent identities for affected entities.
 - Exposes library, playlist, and track operations through a local HTTP API with job status, cancellation, and streamed progress. See the [HTTP API guide](docs/http-api.md).
+- **Export to Rekordbox:** Copy local audio and export playlists, cues, and beat grids with verified resume through the CLI or HTTP API.
 
 # How It Works
 
 - Scans your Engine DJ library directory on internal storage or external USB/SD drives.
+- Use `engine-cli migrate export` to copy the selected library into `./rekordbox`, or choose paths with `--source` and `--target`. Export runs unattended in every mode and leaves the source databases and audio unchanged.
 - Inspects SQLite database tables to detect corrupt file paths, size discrepancies, and missing artwork.
 - Imports audio files and links them to playlists while maintaining linked-list playback order.
 - Normalizes non-square album covers to 1:1 square dimensions without re-encoding your audio files.
@@ -55,6 +57,10 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Undo preserves unrelated later database edits and refuses conflicting changes to affected values or files. `--force` restores prior values over those conflicts; it still refuses ambiguous track identities and broken database references. Schema changes and tables without primary keys require a whole-database restore, so forcing those operations can replace later edits throughout that database.
 - History identifies tracks by Engine's origin database UUID and origin track ID, and other records by their database and primary key. Their history hashes stay stable across renames, file relocations, and playlist moves. Membership changes also list the affected track and playlists. History follows the library directory when moved, including its database snapshots and affected files inside the library. Audio outside the library retains its external path.
 - Undo records its own changes: undoing that operation ID reapplies them. Interrupted operations retain their original data and block further modifications until recovered with `library undo <id> --force`. Files and separate databases are restored individually; keep Engine DJ closed throughout recovery. Symbolic links and other non-regular files are refused before modification.
+
+- Migration reads a current `Database2/m.db` library, writes byte-for-byte audio copies under the target's `Contents/`, and publishes target-root `rekordbox.xml` and `.sync_state.json`. Existing target content is verified by SHA-256 before reuse; interrupted tracks restart from the beginning. Stable source-path filename digests distinguish identical basenames. Unreferenced destination files are retained.
+- Migration XML contains only audio copied or verified during that run and still present on the target. Missing and streaming tracks are counted as unavailable and excluded from XML; unavailable tracks alone do not fail the operation. Failure or cancellation retains completed files and publishes the available subset where possible. Rerun the command to resume and rebuild the full export.
+- XML locations use absolute destination paths, so rerun migration after moving the target. Migration performs no source-library mutation, snapshot, or undo-history write. It works offline without `ffmpeg`, `ffprobe`, Fetch Track, or a standalone migration program. Progress goes to stderr; `--json` writes the same structured report returned by the HTTP API to stdout.
 
 # Installation
 
@@ -116,6 +122,12 @@ engine-cli library backup "/Volumes/BackupDrive/EngineBackups"
 
 # Serve the local HTTP API with streamed job progress
 engine-cli api serve
+
+# Copy audio and export a Rekordbox library
+engine-cli migrate export --target ./rekordbox
+
+# Select a different source and return structured results
+engine-cli migrate export --source "$HOME/Music/Engine Library" --target ./rekordbox --json
 ```
 
 Duplicate candidates match normalized title/artist or filename/duration; a match does not prove identical audio. Inspect the candidates before merging. For example, if tracks 42 and 87 are candidates:
@@ -132,6 +144,16 @@ engine-cli library undo
 Merge retains the keeper's cues, loops, and beat grid by default. To explicitly transfer all performance data from a selected track, add `--performance-from 87`; check timing in Engine DJ afterward. Both audio files remain on disk. Memberships are combined without adding duplicate playlist entries, and the latest play history is retained.
 
 # Options & Flags
+
+`engine-cli migrate export` (no positional arguments)
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--source <path>` | `-s` | Empty: selected `--lib-dir` | Source Engine Library with `Database2/m.db` |
+| `--target <path>` | `-t` | Empty: `./rekordbox` | Destination for copied audio, XML, and resume state |
+| `--json` | `-` | `false` | Structured migration report on stdout; paths remain absolute |
+
+Human and agent text results contain `copied`, `existing`, `failed`, `unavailable`, and `xml` fields, with home paths folded to `~`. JSON/API results also contain `source`, `target`, `total`, and an optional `failures` array of `{source,error}` items. Counts describe the tracks processed during that run. Copy, state, or XML failures return an error alongside any available result. Progress reports read, copy, and XML phases on stderr; use global `--progress-json` for NDJSON events with stable job identity, increasing sequence, monotonic completion, and per-copy `metadata` containing `source`, `target`, `track`, `total_tracks`, `copied_bytes`, and `total_bytes`. The API streams the same events through its job/SSE endpoints. Only successful completion reaches 100%.
 
 `engine-cli system check`
 

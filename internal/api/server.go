@@ -67,6 +67,7 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.historyOperations()...)
 	ops = append(ops, s.duplicateOperations()...)
 	ops = append(ops, s.systemOperations()...)
+	ops = append(ops, s.migrationOperations()...)
 	for _, op := range ops {
 		s.operations[op.Name] = op
 	}

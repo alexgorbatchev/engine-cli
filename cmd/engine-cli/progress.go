@@ -16,7 +16,7 @@ func installProgress(root *cobra.Command) {
 	var jsonEvents bool
 	root.PersistentFlags().BoolVar(&jsonEvents, "progress-json", false, "Write progress events with 0-100 percent completion as JSON lines to stderr")
 	for _, group := range root.Commands() {
-		if group.Name() == "library" || group.Name() == "playlist" || group.Name() == "track" {
+		if group.Name() == "library" || group.Name() == "playlist" || group.Name() == "track" || group.Name() == "migrate" {
 			wrapProgress(group, &jsonEvents)
 		}
 	}
