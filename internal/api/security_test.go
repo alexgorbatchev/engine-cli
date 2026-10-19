@@ -28,13 +28,16 @@ func TestAPINewValidatesInputs(t *testing.T) {
 
 func TestAPIHostOriginAndPreflight(t *testing.T) {
 	s, _ := testAPI(t)
-	for _, host := range []string{"localhost", "127.0.0.1:8080", "[::1]:8080", "untrusted.example"} {
+	for _, host := range []string{
+		"localhost", "127.0.0.1:8080", "[::1]:8080", "engine-cli.localhost", "engine-cli.localhost:8080",
+		"untrusted.example", "notlocalhost",
+	} {
 		r := httptest.NewRequest(http.MethodGet, "/v1/operations", nil)
 		r.Host = host
 		w := httptest.NewRecorder()
 		s.ServeHTTP(w, r)
 		want := http.StatusOK
-		if host == "untrusted.example" {
+		if host == "untrusted.example" || host == "notlocalhost" {
 			want = http.StatusForbidden
 		}
 		if w.Code != want {

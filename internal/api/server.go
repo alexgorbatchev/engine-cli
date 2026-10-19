@@ -98,7 +98,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		host = h
 	}
 	ip := net.ParseIP(strings.Trim(host, "[]"))
-	if host != "localhost" && (ip == nil || !ip.IsLoopback()) {
+	isLoopbackHost := host == "localhost" || strings.HasSuffix(host, ".localhost") || (ip != nil && ip.IsLoopback())
+	if !isLoopbackHost {
 		writeError(w, http.StatusForbidden, "invalid_host", "use a loopback address")
 		return
 	}
