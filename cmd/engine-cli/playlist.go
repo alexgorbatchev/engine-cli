@@ -32,6 +32,7 @@ func newPlaylistCommand() *cobra.Command {
 	plCmd.AddCommand(newPlaylistListCommand())
 	plCmd.AddCommand(newDetailsCommand("playlist"))
 	plCmd.AddCommand(newPlaylistCreateCommand())
+	plCmd.AddCommand(newPlaylistRenameCommand())
 	plCmd.AddCommand(newPlaylistRmCommand())
 	plCmd.AddCommand(newPlaylistMoveCommand())
 	plCmd.AddCommand(newPlaylistTrackCommand())

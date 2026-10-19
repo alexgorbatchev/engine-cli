@@ -3,6 +3,7 @@ package details
 import (
 	"github.com/dj/engine-cli/internal/db"
 	"github.com/dj/engine-cli/internal/playlist"
+	"github.com/dj/engine-cli/internal/track"
 )
 
 func valueOrNull[T any](value T, valid bool) any {
@@ -39,6 +40,7 @@ func Track(t *db.Track) map[string]any {
 		"remixer":            valueOrNull(t.Remixer.String, t.Remixer.Valid),
 		"key":                valueOrNull(t.Key.Int64, t.Key.Valid),
 		"rating":             valueOrNull(t.Rating.Int64, t.Rating.Valid),
+		"ratingStars":        min(track.MaxRatingStars, max(0, t.Rating.Int64/track.RatingUnitsPerStar)),
 		"albumArt":           valueOrNull(t.AlbumArt.String, t.AlbumArt.Valid),
 		"fileType":           valueOrNull(t.FileType.String, t.FileType.Valid),
 		"isAnalyzed":         valueOrNull(t.IsAnalyzed.Bool, t.IsAnalyzed.Valid),

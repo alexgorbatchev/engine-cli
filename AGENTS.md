@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-18 16:35
+last_modified: 2026-10-18 17:33
 status: current
 ---
 
@@ -29,6 +29,8 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Inspect Playlists:** `bin/engine-cli playlist inspect <id...> [--json]`
 - **Inspect Tracks:** `bin/engine-cli track inspect <id...> [--json]`
 - **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <id>] [--folder]`
+- **Rename Playlist:** `bin/engine-cli playlist rename <pl|id> <name> [--json]`
+- **Edit Track Information:** `bin/engine-cli track update <tr|id|path> [--title <text>] [--artist <text>] [--album <text>] [--genre <text>] [--comment <text>] [--label <text>] [--composer <text>] [--remixer <text>] [--year <year>] [--rating <0-5>] [--json]`
 - **Remove Playlist:** `bin/engine-cli playlist rm <id> [--force]`
 - **Move/Reparent Playlist:** `bin/engine-cli playlist move <id> --to <id>`
 - **Add Track to Playlist:** `bin/engine-cli playlist track add <id> <id|path...>`
@@ -54,6 +56,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 
 ## Conventions
 - **UI-Driven Contracts:** UI workflows drive HTTP API design and associated CLI output. Extend or reshape shared results when the UI needs richer data rather than constraining the UI to an existing response shape. Keep CLI and HTTP results aligned, preserve stable entity identity, and retain snapshot/undo guarantees for mutations.
+- **Collection Editing:** Track metadata updates change only explicitly supplied fields, preserve audio and performance data, and support snapshot/undo through CLI and API. Expose `ratingStars` from 0 to 5 and store Engine ratings in units of 20. Playlist renaming preserves identity, hierarchy, and memberships. Artwork previews read the track's linked AlbumArt record without modifying the collection.
 - **Batch UI Reads:** When a UI needs details for multiple entities, accept multiple explicit identifiers in one CLI/API request and return identifiable results together; do not require one request per item. Define ordering, limits, and per-item failure behavior. Ask for clarification when the UI workflow or required response is unclear.
 - **Runtime Checks:** Provide read-only, structured checks for UI decisions, including whether Engine DJ Desktop is running. Distinguish a negative result from an unavailable or failed check; never report detection failure as “not running.” Keep CLI JSON and HTTP check results aligned.
 - **Desktop Mutation Guard:** Recheck Engine DJ Desktop immediately before CLI/API library mutations, before snapshots or history writes. Refuse mutations while it is running or its status is unknown. Read-only operations and dry runs remain available. A UI status observation is not a lock or authorization to skip the fresh check.

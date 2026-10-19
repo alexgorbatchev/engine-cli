@@ -21,6 +21,10 @@ type movePlaylistParams struct {
 	Identifier string `json:"identifier"`
 	To         string `json:"to"`
 }
+type renamePlaylistParams struct {
+	Identifier string `json:"identifier"`
+	Title      string `json:"title"`
+}
 type membershipParams struct {
 	Playlist string   `json:"playlist"`
 	Tracks   []string `json:"tracks"`
@@ -37,6 +41,9 @@ func (s *Server) playlistOperations() []operation {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.GetPlaylistHierarchy(ctx, d) })
 		}),
 		s.detailOperation("playlist"),
+		define("playlist.rename", true, []string{"identifier", "title"}, func(ctx context.Context, p renamePlaylistParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.RenamePlaylist(ctx, d, p.Identifier, p.Title) })
+		}),
 		define("playlist.create", true, []string{"name"}, func(ctx context.Context, p createPlaylistParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.CreatePlaylist(ctx, d, p.Name, p.Parent, p.Folder) })
 		}),

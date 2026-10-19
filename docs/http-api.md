@@ -165,6 +165,16 @@ The server retains up to 128 jobs and 1,024 events per job in memory. It evicts 
 
 ## Operations
 
+### Collection editing and artwork
+
+`track.update` accepts `identifier` plus any supplied `title`, `artist`, `album`, `genre`, `comment`, `label`, `composer`, `remixer`, `year`, and `rating_stars`. At least one editable field is required. Omitted fields remain unchanged. Optional text can be cleared with an empty string; titles must contain text. Year is an integer from 0 to 9999, with 0 clearing the year. Rating is an integer from 0 (unrated) to 5 stars. Track responses include `ratingStars`; the stored `rating` field uses Engine's 0–100 scale. These edits change collection metadata, leave audio files and saved timing untouched, and support ordinary snapshots and undo. JSON null does not clear a field.
+
+The matching CLI command is `engine-cli track update <tr|id|path>` with `--title`, `--artist`, `--album`, `--genre`, `--comment`, `--label`, `--composer`, `--remixer`, `--year`, and `--rating` flags. `--json` prints the updated track. Only supplied flags change fields.
+
+`playlist.rename` accepts `identifier` and a nonempty `title`, preserving playlist identity, parent, and memberships. The matching command is `engine-cli playlist rename <pl|id> <name> [--json]`. Renaming uses the same snapshot, desktop protection, and undo handling as other collection mutations.
+
+`GET /v1/tracks/{id}/artwork` serves the linked artwork as PNG, JPEG, WebP, or GIF. The identifier can be a local numeric ID or stable track reference. Missing artwork returns `404`; unsupported image content returns `415`. This endpoint is read-only.
+
 ### Rekordbox export
 
 Submit `POST /v1/operations/migrate.export` with `{"source":"/path/to/Engine Library","target":"/path/to/rekordbox"}`. Both fields are optional strings: `source` defaults to the server's configured library and `target` defaults to `./rekordbox` relative to the server's working directory. The CLI equivalent is `engine-cli migrate export --source <path> --target <path> --json`.
@@ -198,22 +208,24 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `library.history` | `library?`; defaults to the server's configured library |
 | `library.undo` | `library?`, `id?`, `force?`, `dry_run?`; omitted ID selects latest in that library |
 | `playlist.list` | `{}` |
-| `playlist.inspect`, `track.inspect` | `ids` (array of 1–500 positive numeric IDs) |
+| `playlist.inspect`, `track.inspect` | Either `ids` (array of 1–500 positive numeric IDs) or `refs` (array of stable references) |
 | `system.check` | `checks?` (array; omitted or empty runs all supported checks) |
 | `playlist.create` | `name`, `parent?`, `folder?` |
+| `playlist.rename` | `identifier`, `title` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`; omitted destination moves to root |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
 | `playlist.track.move` | `from`, `to`, `tracks` array |
 | `track.add` | `paths` array, `to_playlist?`, `move?` |
 | `track.list` | `{}` |
+| `track.update` | `identifier`, plus at least one metadata field; see collection editing above |
 | `track.rm` | `tracks` array, `delete_file?` |
 | `track.move` | `identifier`, `destination` |
 | `track.relocate` | `from`, `to` |
 | `track.upgrade` | `identifier`, `query?`, `keep_timing?`, `clear_timing?` |
 | `track.artwork.normalize` | `{}` |
 | `track.duplicate.list` | `type?`: `all` (default), `metadata`, or `filename-len` |
-| `track.duplicate.inspect` | `ids` array of positive integers |
+| `track.duplicate.inspect` | Either `ids` array of positive integers or `refs` array of stable references |
 | `track.duplicate.merge` | `keep`, `remove` array, `performance_from?` |
 
 Upgrade timing options are mutually exclusive. When saved cues, loops, or beat grids exist, choose whether to keep or clear them. Upgrades retain the original audio and curated metadata; the replacement needs analysis in Engine DJ.

@@ -84,6 +84,8 @@ var techCatalog = cobrahelptree.TechCatalog{
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
+	"engine-cli playlist rename": {Summary: "Rename a playlist without changing its identity or memberships", Args: "<pl|id> <name>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track update":    {Summary: "Update supplied metadata fields and star rating while preserving audio and timing", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli playlist rm": {
 		Summary:     "Delete a playlist or folder and its membership references",
 		Description: "Deletes PlaylistEntity associations and Playlist record from Database2/m.db without deleting underlying Track records.",

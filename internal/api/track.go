@@ -36,6 +36,10 @@ type upgradeParams struct {
 	ClearTiming bool   `json:"clear_timing"`
 }
 
+type metadataParams track.MetadataEdit
+
+func (p metadataParams) validate() error { return track.MetadataEdit(p).Validate() }
+
 func (p upgradeParams) validate() error {
 	if p.KeepTiming && p.ClearTiming {
 		return fmt.Errorf("choose keep_timing or clear_timing, not both")
@@ -46,6 +50,12 @@ func (p upgradeParams) validate() error {
 func (s *Server) trackOperations() []operation {
 	return []operation{
 		s.detailOperation("track"),
+		define("track.update", true, []string{"identifier"}, func(ctx context.Context, p metadataParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				t, err := track.EditMetadata(ctx, d, track.MetadataEdit(p))
+				return details.Track(t), err
+			})
+		}),
 		define("track.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				tracks, err := db.GetAllTracks(ctx, d)
