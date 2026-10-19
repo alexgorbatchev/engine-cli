@@ -17,7 +17,7 @@ func TestRenamePlaylist(t *testing.T) {
 	if err := db.InitSchema(ctx, d); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Exec("INSERT INTO Playlist(id,title,parentListId,isFolder) VALUES(1,'Old',0,0)"); err != nil {
+	if _, err := d.Exec("INSERT INTO Playlist(id,title,parentListId) VALUES(1,'Old',0)"); err != nil {
 		t.Fatal(err)
 	}
 	p, err := RenamePlaylist(ctx, d, "1", "  New  ")

@@ -97,7 +97,10 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		title TEXT,
 		parentListId INTEGER,
-		isFolder BOOLEAN
+		isPersisted BOOLEAN,
+		nextListId INTEGER,
+		lastEditTime DATETIME,
+		isExplicitlyExported BOOLEAN
 	);
 
 	CREATE TABLE IF NOT EXISTS PlaylistEntity (
@@ -401,8 +404,10 @@ func CreatePlaylist(ctx context.Context, database *sql.DB, title string, parentL
 		}
 	}
 
-	query := "INSERT INTO Playlist (title, parentListId, isFolder) VALUES (?, ?, ?)"
-	res, err := database.ExecContext(ctx, query, title, parentListID, isFolder)
+	// Engine uses the same persisted row for playlists and folders. Its insert
+	// triggers link the new tail (nextListId=0) into the parent's sibling chain.
+	query := "INSERT INTO Playlist (title, parentListId, isPersisted, nextListId, lastEditTime, isExplicitlyExported) VALUES (?, ?, 1, 0, ?, 1)"
+	res, err := database.ExecContext(ctx, query, title, parentListID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return 0, fmt.Errorf("creating playlist %q: %w", title, err)
 	}

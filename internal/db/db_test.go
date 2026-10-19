@@ -119,8 +119,8 @@ func TestPlaylistAndEntities(t *testing.T) {
 	ctx := context.Background()
 
 	// Insert playlists (Folder + Child Playlist)
-	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId, isFolder) VALUES (10, 'EDM', 0, 1)")
-	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId, isFolder) VALUES (11, 'House', 10, 0)")
+	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (10, 'EDM', 0)")
+	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (11, 'House', 10)")
 
 	// Insert tracks
 	res1, _ := database.ExecContext(ctx, "INSERT INTO Track (title, artist, path, filename) VALUES ('T1', 'A1', 'p1', 'f1')")

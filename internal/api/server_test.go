@@ -27,7 +27,7 @@ func testAPI(t *testing.T) (*Server, string) {
 	if err := db.InitSchema(context.Background(), database); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec("INSERT INTO Track(id,title,artist,path) VALUES(1,'Curated title','Artist','song.mp3'); INSERT INTO Playlist(id,title,parentListId,isFolder) VALUES(1,'Favorites',0,0)"); err != nil {
+	if _, err := database.Exec("INSERT INTO Track(id,title,artist,path) VALUES(1,'Curated title','Artist','song.mp3'); INSERT INTO Playlist(id,title,parentListId) VALUES(1,'Favorites',0)"); err != nil {
 		t.Fatal(err)
 	}
 	if err := database.Close(); err != nil {
