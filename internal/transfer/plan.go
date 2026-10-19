@@ -21,6 +21,7 @@ type plan struct {
 	copy        map[string]string
 	artwork     map[string]*entity
 	baseline    map[string]baseline
+	reused      map[string]bool
 }
 
 func normalize(o Options) (Options, error) {
@@ -58,7 +59,10 @@ func normalize(o Options) (Options, error) {
 	if os.SameFile(a, b) {
 		return o, fmt.Errorf("source and destination refer to the same database")
 	}
-	if o.Scope.Root == (len(o.Scope.PlaylistIDs) > 0) {
+	if len(o.Scope.PlaylistIDs) > 0 && len(o.Scope.PlaylistRefs) > 0 {
+		return o, fmt.Errorf("choose playlist references or numeric IDs")
+	}
+	if o.Scope.Root == (len(o.Scope.PlaylistIDs) > 0 || len(o.Scope.PlaylistRefs) > 0) {
 		return o, fmt.Errorf("choose root or one or more playlist IDs")
 	}
 	for _, id := range o.Scope.PlaylistIDs {
@@ -140,8 +144,8 @@ func selection(c *collection, scope Scope) (map[string]bool, map[string]bool, er
 	return selected, ancestors, nil
 }
 func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) {
-	if s.UUID == d.UUID {
-		return nil, fmt.Errorf("libraries share the same database UUID; independent library identities are required")
+	if s.Instance == d.Instance {
+		return nil, fmt.Errorf("libraries share the same identity; register the copied library with --new-copy")
 	}
 	if !reflect.DeepEqual(s.Schema, d.Schema) {
 		return nil, fmt.Errorf("source and destination database columns differ")
@@ -159,12 +163,12 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 			p.conflict(Change{Entity: "track", ID: key, Reason: "selected playlist references a missing source track"})
 		}
 	}
-	for k, b := range d.State.Peers[s.UUID] {
+	for k, b := range d.State.Peers[s.Instance] {
 		p.baseline[k] = b
 	}
-	if s.State.Revisions[d.UUID] > d.State.Revisions[s.UUID] || len(p.baseline) == 0 {
+	if s.State.Revisions[d.Instance] > d.State.Revisions[s.Instance] || len(p.baseline) == 0 {
 		p.baseline = map[string]baseline{}
-		for k, b := range s.State.Peers[d.UUID] {
+		for k, b := range s.State.Peers[d.Instance] {
 			p.baseline[k] = baseline{Source: b.Destination, Destination: b.Source}
 		}
 	}
@@ -175,7 +179,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 			if e.Kind != "track" {
 				continue
 			}
-			if !selected[key] && !o.Mirror {
+			if c == s && !selected[key] && !o.Mirror {
 				continue
 			}
 			e.Hash, e.Size, err = fileHash(ctx, e.File)
@@ -187,12 +191,22 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 			}
 		}
 	}
+	if err := p.matchAudio(ctx); err != nil {
+		return nil, err
+	}
 	for _, key := range orderedKeys(s.Entities) {
 		if !selected[key] {
 			continue
 		}
 		src := s.Entities[key]
 		dst := d.Entities[key]
+		if src.Kind == "track" && dst != nil && nativeTrackKey(src) != nativeTrackKey(dst) {
+			if p.reused[key] {
+				p.report.Summary.TracksReused++
+				p.baseline[key] = baseline{Source: fingerprint(src), Destination: fingerprint(dst)}
+			}
+			continue
+		}
 		if ancestors[key] {
 			if dst != nil {
 				continue

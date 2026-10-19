@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/dj/engine-cli/internal/identity"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -349,6 +350,13 @@ func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Pla
 		return nil, fmt.Errorf("database cannot be nil")
 	}
 	idOrTitle = strings.TrimSpace(idOrTitle)
+	if strings.HasPrefix(idOrTitle, "eng:") {
+		id, err := identity.ResolveDatabase(ctx, database, "playlist", idOrTitle)
+		if err != nil {
+			return nil, err
+		}
+		idOrTitle = strconv.FormatInt(id, 10)
+	}
 	if idOrTitle == "" {
 		return nil, fmt.Errorf("empty playlist identifier")
 	}
@@ -705,6 +713,13 @@ func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, 
 		return nil, fmt.Errorf("database cannot be nil")
 	}
 	idOrPath = strings.TrimSpace(idOrPath)
+	if strings.HasPrefix(idOrPath, "eng:") {
+		id, err := identity.ResolveDatabase(ctx, database, "track", idOrPath)
+		if err != nil {
+			return nil, err
+		}
+		return GetTrackByID(ctx, database, id)
+	}
 	if idOrPath == "" {
 		return nil, fmt.Errorf("empty track identifier")
 	}

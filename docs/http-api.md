@@ -1,5 +1,7 @@
 # HTTP API and progress
 
+See [audio duplicates, stable references, and sync](fingerprints.md) for library registration, fingerprint scans, reference-based batch selection, and audio reuse during sync.
+
 ## Runtime checks and mutation protection
 
 `GET /v1/system/check` returns runtime facts without selecting or opening a library. Use `?checks=engine_desktop` to select checks, or omit it for all supported checks. Repeated/comma-separated check IDs are accepted and deduplicated. Unknown IDs return `400`. The equivalent job operation is `system.check` with `{"checks":["engine_desktop"]}`; the CLI is `engine-cli system check --json` (`--checks` selects checks).

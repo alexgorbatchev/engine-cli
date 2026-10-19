@@ -110,10 +110,7 @@ func (p *plan) applyPreparelist(ctx context.Context, c *sql.Conn) error {
 		return nil
 	}
 	for i, key := range e.Members {
-		tr := p.source.Entities[key]
-		if tr == nil {
-			tr = p.destination.Entities[key]
-		}
+		tr := p.membershipTrack(key)
 		var id int64
 		if err := c.QueryRowContext(ctx, "SELECT id FROM Track WHERE originDatabaseUuid=? AND originTrackId=?", tr.Values["originDatabaseUuid"], tr.Values["originTrackId"]).Scan(&id); err != nil {
 			return err
@@ -123,6 +120,14 @@ func (p *plan) applyPreparelist(ctx context.Context, c *sql.Conn) error {
 		}
 	}
 	return nil
+}
+
+func (p *plan) membershipTrack(key string) *entity {
+	tr := p.source.Entities[key]
+	if tr == nil || p.reused[key] {
+		tr = p.destination.Entities[key]
+	}
+	return tr
 }
 func (p *plan) removePlaylists(ctx context.Context, c *sql.Conn) error {
 	keys := []string{}

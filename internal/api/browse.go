@@ -14,7 +14,7 @@ import (
 
 func (s *Server) requestTrack(w http.ResponseWriter, r *http.Request) *db.Track {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil || id <= 0 {
+	if (err != nil || id <= 0) && !strings.HasPrefix(r.PathValue("id"), "eng:") {
 		writeError(w, http.StatusBadRequest, "invalid_track", "Use a positive numeric track ID.")
 		return nil
 	}
@@ -24,7 +24,7 @@ func (s *Server) requestTrack(w http.ResponseWriter, r *http.Request) *db.Track 
 		return nil
 	}
 	defer database.Close()
-	track, err := db.GetTrackByID(r.Context(), database, id)
+	track, err := db.FindTrack(r.Context(), database, r.PathValue("id"))
 	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read this track from the library.")
 		return nil

@@ -8,28 +8,40 @@ import (
 	"github.com/spf13/cobra"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func newDetailsCommand(kind string) *cobra.Command {
 	var asJSON bool
 	c := &cobra.Command{Use: "inspect <id...>", Short: "Read details for one or more " + kind + " IDs", Args: cobra.RangeArgs(1, details.MaxItems), RunE: func(c *cobra.Command, args []string) error {
 		ids := make([]int64, len(args))
+		useRefs := strings.HasPrefix(args[0], "eng:")
 		for i, arg := range args {
+			if useRefs {
+				continue
+			}
 			n, err := strconv.ParseInt(arg, 10, 64)
 			if err != nil {
 				return fmt.Errorf("use positive numeric IDs: %q", arg)
 			}
 			ids[i] = n
 		}
-		if err := details.Validate(ids); err != nil {
-			return err
+		if !useRefs {
+			if err := details.Validate(ids); err != nil {
+				return err
+			}
 		}
 		d, err := db.Open(filepath.Join(libDirFlag, "Database2", "m.db"), true)
 		if err != nil {
 			return err
 		}
 		defer d.Close()
-		r, err := details.Read(c.Context(), d, kind, ids)
+		var r *details.Report
+		if useRefs {
+			r, err = details.ReadRefs(c.Context(), d, kind, args)
+		} else {
+			r, err = details.Read(c.Context(), d, kind, ids)
+		}
 		if err != nil {
 			return err
 		}

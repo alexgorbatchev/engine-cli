@@ -11,6 +11,7 @@ import (
 
 // Track contains comparison information. Matching metadata is not proof of identical audio.
 type Track struct {
+	Ref            string   `json:"ref,omitempty"`
 	ID             int64    `json:"id"`
 	Title          string   `json:"title"`
 	Artist         string   `json:"artist"`
@@ -76,6 +77,9 @@ func List(ctx context.Context, d *sql.DB, mode string) ([]Group, error) {
 	}
 	tracks, err := readTracks(ctx, d)
 	if err != nil {
+		return nil, err
+	}
+	if err := attachReferences(ctx, d, tracks); err != nil {
 		return nil, err
 	}
 	groups := groupTracks(tracks, mode)
@@ -168,6 +172,11 @@ func Inspect(ctx context.Context, d *sql.DB, id int64) (*Track, error) {
 	if err != nil {
 		return nil, err
 	}
+	selected := []Track{t}
+	if err := attachReferences(ctx, d, selected); err != nil {
+		return nil, err
+	}
+	t = selected[0]
 	memberships, err := readPlaylistMemberships(ctx, d)
 	if err != nil {
 		return nil, err

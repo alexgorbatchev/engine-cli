@@ -87,6 +87,18 @@ func TestAPIDuplicateReadOperations(t *testing.T) {
 	}
 }
 
+func TestAPIAudioPreview(t *testing.T) {
+	s, lib := testDuplicateAPI(t)
+	job := runAPIJob(t, s, "track.duplicate.list", `{"type":"audio"}`)
+	r, ok := job["result"].(map[string]any)
+	if !ok || len(r["items"].([]any)) != 2 {
+		t.Fatalf("audio preview: %v", job)
+	}
+	if _, err := os.Stat(filepath.Join(lib, ".engine-cli", "fingerprints")); !os.IsNotExist(err) {
+		t.Fatalf("preview wrote cache: %v", err)
+	}
+}
+
 func TestAPIDuplicateAndUpgradeParameterValidation(t *testing.T) {
 	s, _ := testAPI(t)
 	for _, tt := range []struct{ name, body string }{

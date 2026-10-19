@@ -4,12 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/dj/engine-cli/internal/fingerprint"
+	"github.com/dj/engine-cli/internal/identity"
 )
 
 type MergeOptions struct {
-	Keep            int64   `json:"keep"`
-	Remove          []int64 `json:"remove"`
-	PerformanceFrom int64   `json:"performance_from"`
+	Keep               int64    `json:"keep"`
+	Remove             []int64  `json:"remove"`
+	PerformanceFrom    int64    `json:"performance_from"`
+	KeepRef            string   `json:"keep_ref"`
+	RemoveRefs         []string `json:"remove_refs"`
+	PerformanceFromRef string   `json:"performance_from_ref"`
 }
 
 type MergeResult struct {
@@ -20,6 +26,15 @@ type MergeResult struct {
 // Merge changes database records atomically. Audio remains at its original path.
 // The caller records history and snapshots before invoking any mutation.
 func Merge(ctx context.Context, d *sql.DB, opts MergeOptions) (*MergeResult, error) {
+	var err error
+	opts, err = resolveMerge(ctx, d, opts)
+	if err != nil {
+		return nil, err
+	}
+	lib, err := identity.LibraryPath(ctx, d)
+	if err != nil {
+		return nil, err
+	}
 	tx, err := d.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -29,7 +44,7 @@ func Merge(ctx context.Context, d *sql.DB, opts MergeOptions) (*MergeResult, err
 	if err != nil {
 		return nil, err
 	}
-	result, err := selection(tracks, opts)
+	result, err := selection(ctx, lib, tracks, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +95,33 @@ func Merge(ctx context.Context, d *sql.DB, opts MergeOptions) (*MergeResult, err
 	return result, nil
 }
 
-func selection(tracks []Track, opts MergeOptions) (*MergeResult, error) {
+func resolveMerge(ctx context.Context, d *sql.DB, o MergeOptions) (MergeOptions, error) {
+	if (o.KeepRef != "" && o.Keep != 0) || (len(o.RemoveRefs) > 0 && len(o.Remove) > 0) || (o.PerformanceFromRef != "" && o.PerformanceFrom != 0) {
+		return o, fmt.Errorf("choose references or numeric IDs for each selection")
+	}
+	for _, selection := range []struct {
+		ref string
+		id  *int64
+	}{{o.KeepRef, &o.Keep}, {o.PerformanceFromRef, &o.PerformanceFrom}} {
+		if selection.ref != "" {
+			id, err := identity.ResolveDatabase(ctx, d, "track", selection.ref)
+			if err != nil {
+				return o, err
+			}
+			*selection.id = id
+		}
+	}
+	for _, ref := range o.RemoveRefs {
+		id, err := identity.ResolveDatabase(ctx, d, "track", ref)
+		if err != nil {
+			return o, err
+		}
+		o.Remove = append(o.Remove, id)
+	}
+	return o, nil
+}
+
+func selection(ctx context.Context, lib string, tracks []Track, opts MergeOptions) (*MergeResult, error) {
 	keep, err := lookup(tracks, opts.Keep)
 	if err != nil {
 		return nil, err
@@ -114,7 +155,13 @@ func selection(tracks []Track, opts MergeOptions) (*MergeResult, error) {
 			return nil, err
 		}
 		if !allowed[id] {
-			return nil, fmt.Errorf("track %d is not a duplicate candidate of track %d", id, opts.Keep)
+			match, err := audioCandidate(ctx, lib, keep, tr)
+			if err != nil {
+				return nil, err
+			}
+			if !match {
+				return nil, fmt.Errorf("track %d is not a duplicate candidate of track %d; scan audio before merging recordings with different metadata", id, opts.Keep)
+			}
 		}
 		if tr.originID <= 0 || tr.originUUID == "" {
 			return nil, fmt.Errorf("track %d has no persistent Engine identity", id)
@@ -128,6 +175,23 @@ func selection(tracks []Track, opts MergeOptions) (*MergeResult, error) {
 		return nil, fmt.Errorf("performance source must be one of the selected tracks")
 	}
 	return result, nil
+}
+
+func audioCandidate(ctx context.Context, lib string, a, b Track) (bool, error) {
+	index, err := fingerprint.Load(lib)
+	if err != nil {
+		return false, err
+	}
+	first, fa, err := audioItem(ctx, lib, a, index, false)
+	if err != nil || first.Error != nil {
+		return false, err
+	}
+	second, fb, err := audioItem(ctx, lib, b, index, false)
+	if err != nil || second.Error != nil {
+		return false, err
+	}
+	m, err := fingerprint.Compare(ctx, fa, fb)
+	return m.Duplicate, err
 }
 
 func mergeMemberships(ctx context.Context, tx *sql.Tx, keep, source Track) error {

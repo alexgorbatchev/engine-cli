@@ -55,6 +55,7 @@ func newLibraryTransferCommand() *cobra.Command {
 	f.StringVar(&o.Source, "from", "", "Source Engine Library path")
 	f.StringVar(&o.Destination, "to", "", "Destination Engine Library path")
 	f.Int64SliceVar(&o.Scope.PlaylistIDs, "playlist-id", nil, "Source playlist IDs, including descendants (repeatable)")
+	f.StringSliceVar(&o.Scope.PlaylistRefs, "playlist-ref", nil, "Stable source playlist references, including descendants")
 	f.BoolVar(&o.Scope.Root, "root", false, "Sync the whole library, including tracks outside playlists")
 	f.BoolVar(&o.DryRun, "dry-run", false, "Preview changes and conflicts without writing to either library")
 	f.BoolVar(&o.Mirror, "mirror", false, "Remove destination entries absent from the selected source scope")
@@ -64,7 +65,7 @@ func newLibraryTransferCommand() *cobra.Command {
 	f.StringSliceVar(&mappings, "map-playlist", nil, "Explicitly match source-id:destination-id for existing playlists (repeatable)")
 	f.BoolVar(&asJSON, "json", false, "Print the preview or result as JSON")
 	c.MarkFlagsRequiredTogether("from", "to")
-	c.MarkFlagsMutuallyExclusive("root", "playlist-id")
-	c.MarkFlagsOneRequired("root", "playlist-id")
+	c.MarkFlagsMutuallyExclusive("root", "playlist-id", "playlist-ref")
+	c.MarkFlagsOneRequired("root", "playlist-id", "playlist-ref")
 	return c
 }

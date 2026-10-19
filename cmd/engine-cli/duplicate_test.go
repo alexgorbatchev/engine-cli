@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +10,29 @@ import (
 
 	"github.com/dj/engine-cli/internal/db"
 )
+
+func TestDuplicateAudioPreview(t *testing.T) {
+	lib := duplicateLibrary(t)
+	var output bytes.Buffer
+	c := newRootCommand()
+	c.SetOut(&output)
+	c.SetErr(&bytes.Buffer{})
+	c.SetArgs([]string{"-l", lib, "track", "duplicate", "list", "--type", "audio", "--json"})
+	if err := c.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := output.String()
+	var result map[string]any
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("JSON: %s %v", out, err)
+	}
+	if len(result["items"].([]any)) != 2 {
+		t.Fatalf("result: %v", result)
+	}
+	if _, err := os.Stat(filepath.Join(lib, ".engine-cli")); !os.IsNotExist(err) {
+		t.Fatalf("preview wrote storage: %v", err)
+	}
+}
 
 func duplicateLibrary(t *testing.T) string {
 	t.Helper()

@@ -10,16 +10,19 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/dj/engine-cli/internal/identity"
 	"github.com/dj/engine-cli/internal/progress"
 )
 
 const libraryName = "Engine Library"
 
 type Library struct {
-	Name     string `json:"name"`
-	Source   string `json:"source"`
-	Path     string `json:"path"`
-	Database string `json:"database"`
+	ID           string `json:"id,omitempty"`
+	Registration string `json:"registration"`
+	Name         string `json:"name"`
+	Source       string `json:"source"`
+	Path         string `json:"path"`
+	Database     string `json:"database"`
 }
 
 type location struct {
@@ -110,8 +113,31 @@ func Discover(ctx context.Context, roots []string) (*Report, error) {
 		progress.Item(ctx, "library.discover.locations", i+1, len(locations))
 	}
 	sort.Slice(r.Libraries, func(i, j int) bool { return r.Libraries[i].Path < r.Libraries[j].Path })
+	r.identities()
 	sort.Slice(r.Warnings, func(i, j int) bool { return r.Warnings[i].Path < r.Warnings[j].Path })
 	return r, nil
+}
+
+func (r *Report) identities() {
+	counts := map[string]int{}
+	for i := range r.Libraries {
+		lib := &r.Libraries[i]
+		lib.Registration = "unregistered"
+		registry, err := identity.Load(lib.Path)
+		if err != nil {
+			lib.Registration = "invalid_identity"
+			r.Warnings = append(r.Warnings, Warning{Path: lib.Path, Message: err.Error()})
+		} else if registry != nil {
+			lib.ID = registry.ID
+			lib.Registration = "registered"
+			counts[lib.ID]++
+		}
+	}
+	for i := range r.Libraries {
+		if counts[r.Libraries[i].ID] > 1 {
+			r.Libraries[i].Registration = "identity_conflict"
+		}
+	}
 }
 
 func inspect(candidate string) (string, os.FileInfo, error) {

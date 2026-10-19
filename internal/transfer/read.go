@@ -3,6 +3,7 @@ package transfer
 import (
 	"context"
 	"fmt"
+	libraryidentity "github.com/dj/engine-cli/internal/identity"
 	"sort"
 	"strconv"
 )
@@ -17,6 +18,17 @@ func readCollection(ctx context.Context, q queryer, path string, current *state)
 		return nil, fmt.Errorf("unsupported Engine database schema %d.%d.%d; sync requires verified schema 3.0.2", major, minor, patch)
 	}
 	var err error
+	c.Instance = c.UUID
+	c.Registry, err = libraryidentity.Load(path)
+	if err != nil {
+		return nil, err
+	}
+	if c.Registry != nil {
+		if c.Registry.EngineUUID != c.UUID {
+			return nil, fmt.Errorf("registered identity belongs to a different Engine library")
+		}
+		c.Instance = c.Registry.ID
+	}
 	c.State, err = loadState(path, c.UUID)
 	if err != nil {
 		return nil, err
@@ -47,6 +59,9 @@ func readCollection(ctx context.Context, q queryer, path string, current *state)
 			return nil, fmt.Errorf("track %d has no stable origin identity", id)
 		}
 		key := "track:" + identity(origin, oid)
+		if mapped := c.State.Tracks[key]; mapped != "" {
+			key = mapped
+		}
 		if c.Entities[key] != nil {
 			return nil, fmt.Errorf("duplicate track origin identity %s", key)
 		}
@@ -55,6 +70,9 @@ func readCollection(ctx context.Context, q queryer, path string, current *state)
 	for _, v := range tables["Playlist"] {
 		id := number(v["id"])
 		key := c.State.Playlists[strconv.FormatInt(id, 10)]
+		if key == "" && c.Registry != nil {
+			key = "playlist:" + libraryidentity.PlaylistID(c.Registry, id)
+		}
 		if key == "" {
 			key = "playlist:" + identity(c.UUID, id)
 		}
@@ -96,6 +114,9 @@ func readCollection(ctx context.Context, q queryer, path string, current *state)
 			}
 			seen[head] = true
 			key := "track:" + identity(str(m["databaseUuid"]), number(m["trackId"]))
+			if mapped := c.State.Tracks[key]; mapped != "" {
+				key = mapped
+			}
 			e.Members = append(e.Members, key)
 			head = number(m["nextEntityId"])
 		}

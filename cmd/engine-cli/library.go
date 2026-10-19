@@ -34,6 +34,7 @@ func newLibraryCommand() *cobra.Command {
 
 	libCmd.AddCommand(newLibraryVerifyCommand())
 	libCmd.AddCommand(newLibraryDiscoverCommand())
+	libCmd.AddCommand(newLibraryRegisterCommand(), newLibraryEntitiesCommand())
 	libCmd.AddCommand(newLibraryRefreshCommand())
 	libCmd.AddCommand(newLibraryTransferCommand())
 	libCmd.AddCommand(newLibraryBackupCommand())

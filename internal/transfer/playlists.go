@@ -47,10 +47,7 @@ func (p *plan) applyPlaylists(ctx context.Context, c *sql.Conn) error {
 			}
 			var next int64
 			for i := len(e.Members) - 1; i >= 0; i-- {
-				track := p.source.Entities[e.Members[i]]
-				if track == nil {
-					track = p.destination.Entities[e.Members[i]]
-				}
+				track := p.membershipTrack(e.Members[i])
 				if track == nil {
 					return fmt.Errorf("missing playlist track identity")
 				}

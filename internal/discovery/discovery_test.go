@@ -7,8 +7,30 @@ import (
 	"testing"
 
 	"github.com/dj/engine-cli/internal/db"
+	"github.com/dj/engine-cli/internal/identity"
 	"github.com/dj/engine-cli/internal/progress"
+	"github.com/dj/engine-cli/internal/sidecar"
 )
+
+func TestDiscoverIdentityCollisions(t *testing.T) {
+	a := libraryFixture(t, filepath.Join(t.TempDir(), "a"), false)
+	b := libraryFixture(t, filepath.Join(t.TempDir(), "b"), false)
+	r := identity.Registry{Version: 1, ID: "copied", EngineUUID: "native", Playlists: map[string]string{}}
+	for _, lib := range []string{a, b} {
+		if err := sidecar.WriteJSON(context.Background(), identity.Path(lib), r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := Discover(context.Background(), []string{a, b})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lib := range got.Libraries {
+		if lib.ID != "copied" || lib.Registration != "identity_conflict" {
+			t.Fatalf("clone not surfaced: %+v", lib)
+		}
+	}
+}
 
 func libraryFixture(t *testing.T, path string, legacy bool) string {
 	t.Helper()

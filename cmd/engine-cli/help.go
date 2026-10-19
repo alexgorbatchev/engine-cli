@@ -13,6 +13,9 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli library undo":            {Summary: "Undo an operation; refuse conflicts unless --force is given", Args: "[id]", MutatesDB: true, AutoBackup: true},
 	"engine-cli track duplicate":         {Summary: "Find, inspect, and reversibly merge duplicate candidates"},
 	"engine-cli track duplicate list":    {Summary: "List non-overlapping duplicate candidates by metadata or filename and duration"},
+	"engine-cli track duplicate scan":    {Summary: "Fingerprint audio and record a portable, reversible index", MutatesDB: true, AutoBackup: true},
+	"engine-cli library register":        {Summary: "Register a library or explicitly give a copied library its own identity", MutatesDB: true, AutoBackup: true},
+	"engine-cli library entity list":     {Summary: "List stable entity references and native IDs"},
 	"engine-cli track duplicate inspect": {Summary: "Compare track quality, performance data, and origin-based playlist memberships", Args: "<id...>"},
 	"engine-cli track duplicate merge":   {Summary: "Merge explicit duplicates into --keep while retaining audio; record undo history", Args: "<id...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli api serve": {

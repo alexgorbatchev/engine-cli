@@ -15,6 +15,7 @@ import (
 
 	"github.com/dj/engine-cli/internal/backup"
 	"github.com/dj/engine-cli/internal/history"
+	libraryidentity "github.com/dj/engine-cli/internal/identity"
 	"github.com/dj/engine-cli/internal/progress"
 )
 
@@ -29,6 +30,13 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 		return nil, err
 	}
 	defer source.Close()
+	if len(o.Scope.PlaylistRefs) > 0 {
+		ids, err := libraryidentity.ResolveBatch(ctx, source, o.Source, "playlist", o.Scope.PlaylistRefs)
+		if err != nil {
+			return nil, err
+		}
+		o.Scope.PlaylistIDs = ids
+	}
 	dest, err := openLibrary(o.Destination, !o.DryRun)
 	if err != nil {
 		return nil, err
@@ -74,7 +82,7 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 	if !p.report.Applicable {
 		return p.report, fmt.Errorf("sync has %d unresolved conflicts; preview and resolve them before applying", len(p.report.Conflicts))
 	}
-	if len(p.report.Changes) == 0 && len(p.copy) == 0 && len(p.artwork) == 0 && reflect.DeepEqual(d.State.Peers[s.UUID], p.baseline) {
+	if len(p.report.Changes) == 0 && len(p.copy) == 0 && len(p.artwork) == 0 && reflect.DeepEqual(d.State.Peers[s.Instance], p.baseline) {
 		return p.report, nil
 	}
 	progress.Stage(ctx, "sync.backup", 20)
@@ -95,8 +103,8 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 		for id, key := range p.destination.Playlists {
 			after.State.Playlists[strconv.FormatInt(id, 10)] = key
 		}
-		after.State.Peers[s.UUID] = p.baseline
-		after.State.Revisions[s.UUID] = max(s.State.Revisions[d.UUID], d.State.Revisions[s.UUID]) + 1
+		after.State.Peers[s.Instance] = p.baseline
+		after.State.Revisions[s.Instance] = max(s.State.Revisions[d.Instance], d.State.Revisions[s.Instance]) + 1
 		for key, b := range p.baseline {
 			if e := after.Entities[key]; e != nil {
 				if e.Kind == "track" {
@@ -106,7 +114,7 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 					}
 				}
 				b.Destination = fingerprint(e)
-				after.State.Peers[s.UUID][key] = b
+				after.State.Peers[s.Instance][key] = b
 			}
 		}
 		if err = history.Preserve(ctx, statePath(o.Destination)); err != nil {
@@ -114,6 +122,14 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 		}
 		if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
 			return err
+		}
+		if d.Registry != nil {
+			for id, key := range after.State.Playlists {
+				d.Registry.Playlists[id] = strings.TrimPrefix(key, "playlist:")
+			}
+			if err := history.WriteJSON(ctx, libraryidentity.Path(o.Destination), d.Registry); err != nil {
+				return err
+			}
 		}
 		return writeState(o.Destination, after.State)
 	})

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-18 16:13
+last_modified: 2026-10-18 16:35
 status: current
 ---
 
@@ -22,7 +22,8 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Backup Library:** `bin/engine-cli library backup [path] [--list]`
 - **Restore Library:** `bin/engine-cli library restore <path>`
 - **Refresh On-Disk Metadata:** `bin/engine-cli library refresh`
-- **Sync Libraries:** `bin/engine-cli library sync --from <path> --to <path> (--playlist-id <id> | --root) [--dry-run]`
+- **Sync Libraries:** `bin/engine-cli library sync --from <path> --to <path> (--playlist-ref <ref> | --playlist-id <id> | --root) [--dry-run]`
+- **Register Library Identity:** `bin/engine-cli library register [--new-copy] [--json]`; list opaque references with `library entity list --json`.
 - **Prune Orphaned Artwork:** `bin/engine-cli library prune`
 - **List Playlists:** `bin/engine-cli playlist list`
 - **Inspect Playlists:** `bin/engine-cli playlist inspect <id...> [--json]`
@@ -39,7 +40,8 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Move Track File on Disk:** `bin/engine-cli track move <id|path> <dest-path>`
 - **Relocate Track Paths:** `bin/engine-cli track relocate --from <path> --to <path>`
 - **Normalize Artwork to 1:1 Square:** `bin/engine-cli track artwork normalize`
-- **Find and Compare Duplicates:** `bin/engine-cli track duplicate list [--type all|metadata|filename-len]`; `bin/engine-cli track duplicate inspect <id...>`
+- **Find and Compare Duplicates:** `bin/engine-cli track duplicate list [--type all|metadata|filename-len|audio] [--json]`; `bin/engine-cli track duplicate inspect <id|ref...>`.
+- **Fingerprint Audio:** `bin/engine-cli track duplicate scan [--ids <ids> | --refs <refs>] [--json]`; fingerprints are SHA-256 keyed in `.engine-cli/fingerprints/index.json`, use full audio through Go Chromaprint and FFmpeg decoding, and participate in undo. Audio listing only reads cached evidence.
 - **Merge Duplicates:** `bin/engine-cli track duplicate merge <id...> --keep <id> [--performance-from <id>]`
 - **Inspect Undo History:** `bin/engine-cli library history`
 - **Undo an Operation:** `bin/engine-cli library undo [id] [--dry-run] [--force]`
@@ -61,10 +63,11 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Undo Conflicts:** Reverse an operation even after later library changes when there are no conflicts. Refuse conflicting undo by default; provide an explicit `--force` override.
 - **Entity Identity:** Track changed tracks, playlists, and other entities using stable UUIDs or hashes so history and undo retain identity across moves, relocations, and playlist membership changes; names, paths, and membership alone are not identities.
 - **Audio-Based Duplicate Recognition:** Account for independently imported copies of the same audio using acoustic fingerprint evidence, such as Chromaprint. Engine row IDs and origin identities alone do not establish musical uniqueness; duplicate detection must go beyond titles, filenames, and import lineage.
+- **Copied Library Registration:** Require explicit registration to assign a copied library its own instance identity. Preserve identity when a library is relocated; do not derive instance identity from mount paths or silently treat cloned sidecar IDs as distinct sync peers.
 - **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
 - **Shared Progress Schema:** Keep CLI and HTTP progress field names and types aligned with Fetch Track, including `job_id`, `sequence`, and string-valued `error`. Preserve upstream event details under `source`; retain structured `{code,message}` errors for HTTP job/status and request responses.
 - **Track Upgrades:** Use Fetch Track CLI to acquire replacement audio. Preserve the original track's curated metadata. Replacing a radio edit with an extended mix is intended upgrade behavior.
-- **Entity Selection:** CLI and HTTP operations select existing playlists and tracks by library-scoped numeric IDs, or tracks by an exact explicit path. Names, titles, and file basenames are display/search fields only; never resolve them to an entity. Use `id`, `id|path`, `src-id`, and `dst-id` in argument placeholders.
+- **Entity Selection:** Prefer opaque `eng:<instance>:<kind>:<entity>` references from registered libraries. Numeric IDs remain library-scoped; exact track paths remain explicit selectors. Names, titles, and file basenames are display/search fields only. Track entity identity derives from Engine's origin pair; playlist lineage is persisted in `.engine-cli/identity.json`. Acoustic matches are evidence, not an immutable entity identity. See [fingerprints and references](docs/fingerprints.md) for batch selectors and sync behavior.
 - **Library Sync:** Sync direction is explicit source to destination; USB selection resolves to the same path-based operation. Scope is selected playlist IDs (including descendants) or the library root. Dry runs are read-only previews shared by CLI and HTTP. Preserve destination-only content by default, require explicit mirroring for removals, and refuse unresolved conflicts. Sync baselines and mappings live in portable `.engine-cli/sync/` storage and must participate in undo.
 - **Distribution for Non-Technical Users:** `engine-cli` is distributed for non-technical users (working and bedroom DJs, music collectors). All installation instructions, CLI outputs, error messages, and documentation must remain straightforward, accessible, and actionable without requiring developer knowledge. Pre-compiled binaries are the primary release and distribution vehicle.
 - **Automated Database Snapshots:** All database modification operations (`library sync`, `library refresh`, `library restore`, `library prune`, `library undo`, `playlist create`, `playlist rm`, `playlist move`, `playlist track add`, `playlist track rm`, `playlist track move`, `track add`, `track upgrade`, `track rm`, `track move`, `track relocate`, `track artwork normalize`, `track duplicate merge`) must automatically create a snapshot backup in `<lib-dir>/.engine-cli/backups/` before applying changes, unless the user opts out with `--no-backup`. Read-only undo previews do not create safety snapshots.

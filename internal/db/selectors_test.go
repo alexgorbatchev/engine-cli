@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"github.com/dj/engine-cli/internal/identity"
 	"testing"
 )
 
@@ -26,5 +27,43 @@ func TestSelectorsNeverResolveLabels(t *testing.T) {
 	}
 	if tr, err := FindTrack(ctx, d, "b/same.mp3"); err != nil || tr == nil || tr.ID != 2 {
 		t.Fatalf("exact path: %v %v", tr, err)
+	}
+}
+
+func TestStableSelectors(t *testing.T) {
+	d, _ := createTestDB(t)
+	if _, err := d.Exec(`INSERT INTO Playlist(id,title,parentListId) VALUES(1,'Set',0);INSERT INTO Track(id,title,path) VALUES(1,'Song','song.mp3')`); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := FindTrack(ctx, d, "eng:missing:track:missing"); err == nil {
+		t.Fatal("accepted unregistered track reference")
+	}
+	if _, err := FindPlaylist(ctx, d, "eng:missing:playlist:missing"); err == nil {
+		t.Fatal("accepted unregistered playlist reference")
+	}
+	lib, err := identity.LibraryPath(ctx, d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := identity.Register(ctx, d, lib, false); err != nil {
+		t.Fatal(err)
+	}
+	items, err := identity.List(ctx, d, lib)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items {
+		if item.Kind == "track" {
+			tr, err := FindTrack(ctx, d, item.Ref)
+			if err != nil || tr == nil || tr.ID != item.ID {
+				t.Fatalf("track ref: %v %v", tr, err)
+			}
+		} else {
+			pl, err := FindPlaylist(ctx, d, item.Ref)
+			if err != nil || pl == nil || pl.ID != item.ID {
+				t.Fatalf("playlist ref: %v %v", pl, err)
+			}
+		}
 	}
 }

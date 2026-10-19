@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	libraryidentity "github.com/dj/engine-cli/internal/identity"
 	"io"
 	"net/url"
 	"os"
@@ -18,8 +19,9 @@ import (
 )
 
 type Scope struct {
-	Root        bool    `json:"root"`
-	PlaylistIDs []int64 `json:"playlist_ids"`
+	Root         bool     `json:"root"`
+	PlaylistIDs  []int64  `json:"playlist_ids"`
+	PlaylistRefs []string `json:"playlist_refs"`
 }
 type PlaylistMapping struct {
 	SourceID      int64 `json:"source_id"`
@@ -41,6 +43,7 @@ type Summary struct {
 	BytesRequiredEstimate int64  `json:"bytes_required_estimate"`
 	BytesAvailable        uint64 `json:"bytes_available"`
 	TracksAdded           int    `json:"tracks_added"`
+	TracksReused          int    `json:"tracks_reused"`
 	TracksUpdated         int    `json:"tracks_updated"`
 	TracksRemoved         int    `json:"tracks_removed"`
 	PlaylistsAdded        int    `json:"playlists_added"`
@@ -61,13 +64,14 @@ type Change struct {
 	Reason        string `json:"reason,omitempty"`
 }
 type Report struct {
-	Applicable  bool     `json:"applicable"`
-	PlanToken   string   `json:"plan_token"`
-	OperationID string   `json:"operation_id,omitempty"`
-	Summary     Summary  `json:"summary"`
-	Changes     []Change `json:"changes"`
-	Conflicts   []Change `json:"conflicts"`
-	Warnings    []string `json:"warnings"`
+	Applicable   bool         `json:"applicable"`
+	PlanToken    string       `json:"plan_token"`
+	OperationID  string       `json:"operation_id,omitempty"`
+	Summary      Summary      `json:"summary"`
+	Changes      []Change     `json:"changes"`
+	Conflicts    []Change     `json:"conflicts"`
+	Warnings     []string     `json:"warnings"`
+	AudioMatches []AudioMatch `json:"audio_matches"`
 }
 type row map[string]any
 type entity struct {
@@ -94,10 +98,13 @@ type state struct {
 	Playlists map[string]string
 	Peers     map[string]map[string]baseline
 	Revisions map[string]uint64
+	Tracks    map[string]string
 }
 type collection struct {
 	Path      string
 	UUID      string
+	Instance  string
+	Registry  *libraryidentity.Registry
 	Entities  map[string]*entity
 	Playlists map[int64]string
 	State     state
@@ -119,7 +126,7 @@ func quoted(s string) string                { return `"` + strings.ReplaceAll(s,
 func identity(uuid string, id int64) string { return uuid + ":" + strconv.FormatInt(id, 10) }
 func statePath(path string) string          { return filepath.Join(path, ".engine-cli", "sync", "state.json") }
 func loadState(path, uuid string) (state, error) {
-	s := state{Version: 1, Library: uuid, Playlists: map[string]string{}, Peers: map[string]map[string]baseline{}, Revisions: map[string]uint64{}}
+	s := state{Version: 1, Library: uuid, Playlists: map[string]string{}, Peers: map[string]map[string]baseline{}, Revisions: map[string]uint64{}, Tracks: map[string]string{}}
 	b, err := os.ReadFile(statePath(path))
 	if os.IsNotExist(err) {
 		return s, nil
@@ -132,6 +139,9 @@ func loadState(path, uuid string) (state, error) {
 	}
 	if s.Version != 1 || s.Library != uuid || s.Playlists == nil || s.Peers == nil || s.Revisions == nil {
 		return s, fmt.Errorf("sync state does not belong to this library or is damaged")
+	}
+	if s.Tracks == nil {
+		s.Tracks = map[string]string{}
 	}
 	return s, nil
 }

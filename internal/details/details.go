@@ -17,6 +17,7 @@ type ItemError struct {
 	Message string `json:"message"`
 }
 type Item struct {
+	Ref   string         `json:"ref,omitempty"`
 	ID    int64          `json:"id"`
 	Data  map[string]any `json:"data"`
 	Error *ItemError     `json:"error,omitempty"`
@@ -59,7 +60,7 @@ func Read(ctx context.Context, d *sql.DB, kind string, ids []int64) (*Report, er
 		}
 		r.Items = append(r.Items, item)
 	}
-	return r, nil
+	return r, enrichRefs(ctx, d, kind, r)
 }
 
 func readItem(ctx context.Context, d *sql.DB, kind string, id int64) (map[string]any, error) {

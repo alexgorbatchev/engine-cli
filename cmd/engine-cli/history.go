@@ -29,7 +29,11 @@ func installHistory(root *cobra.Command) {
 				return run(c, args)
 			})
 			if e != nil {
-				if _, writeErr := fmt.Fprintf(c.OutOrStdout(), "operation_id: %s\n", e.ID); err == nil {
+				out := c.OutOrStdout()
+				if flag := c.Flags().Lookup("json"); flag != nil && flag.Value.String() == "true" {
+					out = c.ErrOrStderr()
+				}
+				if _, writeErr := fmt.Fprintf(out, "operation_id: %s\n", e.ID); err == nil {
 					err = writeErr
 				}
 			}
