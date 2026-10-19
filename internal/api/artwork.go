@@ -2,8 +2,13 @@ package api
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -21,14 +26,24 @@ func (s *Server) trackArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer d.Close()
-	var data []byte
-	err = d.QueryRowContext(r.Context(), "SELECT albumArt FROM AlbumArt WHERE id = ?", t.AlbumArtID).Scan(&data)
-	if err == sql.ErrNoRows || err == nil && len(data) == 0 {
-		writeError(w, http.StatusNotFound, "artwork_unavailable", "This track has no cover artwork.")
-		return
+	var data, hash []byte
+	err = d.QueryRowContext(r.Context(), "SELECT albumArt, hash FROM AlbumArt WHERE id = ?", t.AlbumArtID).Scan(&data, &hash)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = nil
 	}
 	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, "artwork_unavailable", "Could not read this track's cover artwork.")
+		return
+	}
+	if len(data) == 0 {
+		data, err = s.cachedArtwork(hash, []byte(t.AlbumArtSourceHash.String))
+		if err != nil {
+			writeError(w, http.StatusServiceUnavailable, "artwork_unavailable", "Could not read this track's cached cover artwork.")
+			return
+		}
+	}
+	if len(data) == 0 {
+		writeError(w, http.StatusNotFound, "artwork_unavailable", "This track has no cover artwork.")
 		return
 	}
 	contentType := http.DetectContentType(data)
@@ -38,4 +53,34 @@ func (s *Server) trackArtwork(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 	http.ServeContent(w, r, "artwork", time.Time{}, bytes.NewReader(data))
+}
+
+// Engine stores cache-backed SHA-1 hashes as binary BLOBs as well as hexadecimal
+// text. Generate filenames from decoded hashes, never from database paths.
+func (s *Server) cachedArtwork(hashes ...[]byte) ([]byte, error) {
+	for _, hash := range hashes {
+		if len(hash) == hex.EncodedLen(sha1.Size) {
+			decoded, err := hex.DecodeString(string(hash))
+			if err != nil {
+				continue
+			}
+			hash = decoded
+		}
+		if len(hash) != sha1.Size {
+			continue
+		}
+		for _, name := range []string{base64.RawURLEncoding.EncodeToString(hash), hex.EncodeToString(hash)} {
+			data, err := os.ReadFile(filepath.Join(s.config.LibraryDir, "Artwork", name+".jpg"))
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			if err != nil {
+				return nil, err
+			}
+			if len(data) > 0 {
+				return data, nil
+			}
+		}
+	}
+	return nil, nil
 }

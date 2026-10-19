@@ -173,7 +173,7 @@ The matching CLI command is `engine-cli track update <tr|id|path>` with `--title
 
 `playlist.rename` accepts `identifier` and a nonempty `title`, preserving playlist identity, parent, and memberships. The matching command is `engine-cli playlist rename <pl|id> <name> [--json]`. Renaming uses the same snapshot, desktop protection, and undo handling as other collection mutations.
 
-`GET /v1/tracks/{id}/artwork` serves the linked artwork as PNG, JPEG, WebP, or GIF. The identifier can be a local numeric ID or stable track reference. Missing artwork returns `404`; unsupported image content returns `415`. This endpoint is read-only.
+`GET /v1/tracks/{id}/artwork` serves the linked artwork as PNG, JPEG, WebP, or GIF. It reads inline AlbumArt bytes first, then resolves Engine's `Artwork/` cache from the linked binary or hexadecimal SHA-1 hash, followed by the track's source hash. Cache names use URL-safe base64 or hexadecimal hashes. The identifier can be a local numeric ID or stable track reference. Missing artwork returns `404`; unsupported image content returns `415`. This endpoint is read-only and does not regenerate artwork or change the library.
 
 ### Rekordbox export
 
