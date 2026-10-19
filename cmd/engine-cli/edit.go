@@ -31,6 +31,7 @@ func newTrackEditCommand() *cobra.Command {
 	var asJSON bool
 	text := map[string]*string{}
 	var year, stars int64
+	var artworkPath string
 	c := &cobra.Command{Use: "update <tr|id|path>", Short: "Edit track information and star rating", Args: cobra.ExactArgs(1)}
 	for _, name := range []string{"title", "artist", "album", "genre", "comment", "label", "composer", "remixer"} {
 		text[name] = c.Flags().String(name, "", "Update the track's "+name)
@@ -38,8 +39,13 @@ func newTrackEditCommand() *cobra.Command {
 	c.Flags().Int64Var(&year, "year", 0, "Release year (0 clears the year)")
 	c.Flags().Int64Var(&stars, "rating", 0, "Star rating from 0 (unrated) to 5")
 	c.Flags().BoolVar(&asJSON, "json", false, "Print the updated track as JSON")
+	c.Flags().StringVar(&artworkPath, "artwork", "", "Set cover artwork from a PNG, JPEG, or GIF image")
+	c.Flags().BoolVar(&edit.ClearArtwork, "clear-artwork", false, "Remove the track's artwork association")
 	c.RunE = func(c *cobra.Command, args []string) error {
 		edit.Identifier = args[0]
+		if c.Flags().Changed("artwork") {
+			edit.ArtworkPath = &artworkPath
+		}
 		for _, field := range []struct {
 			name string
 			dest **string

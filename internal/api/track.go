@@ -52,7 +52,7 @@ func (s *Server) trackOperations() []operation {
 		s.detailOperation("track"),
 		define("track.update", true, []string{"identifier"}, func(ctx context.Context, p metadataParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				t, err := track.EditMetadata(ctx, d, track.MetadataEdit(p))
+				t, err := track.EditMetadata(ctx, d, track.MetadataEdit(p), s.config.ArtworkRunner)
 				return details.Track(t), err
 			})
 		}),

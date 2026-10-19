@@ -42,6 +42,12 @@ func (s *Server) trackArtwork(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if r.URL.Query().Get("size") == "full" && len(data) > 0 {
+		full, cacheErr := s.cachedArtwork(hash, []byte(t.AlbumArtSourceHash.String))
+		if cacheErr == nil && len(full) > 0 {
+			data = full
+		}
+	}
 	if len(data) == 0 {
 		writeError(w, http.StatusNotFound, "artwork_unavailable", "This track has no cover artwork.")
 		return

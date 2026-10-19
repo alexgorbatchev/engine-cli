@@ -4,7 +4,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/dj/engine-cli/internal/systemcheck"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,6 +12,9 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/dj/engine-cli/internal/artwork"
+	"github.com/dj/engine-cli/internal/systemcheck"
 )
 
 const maxJobs = 128
@@ -24,6 +26,7 @@ type Config struct {
 	NoBackup       bool
 	AllowedOrigins []string
 	CheckSystem    func(context.Context, []string) (*systemcheck.Report, error)
+	ArtworkRunner  artwork.CommandRunner
 }
 
 type Server struct {
@@ -80,6 +83,7 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("POST /v1/jobs/{id}/cancel", s.cancel)
 	s.mux.HandleFunc("GET /v1/jobs/{id}/events", s.events)
 	s.mux.HandleFunc("GET /v1/tracks/{id}", s.trackMetadata)
+	s.mux.HandleFunc("PUT /v1/tracks/{id}", s.editTrackUpload)
 	s.mux.HandleFunc("GET /v1/tracks/{id}/audio", s.trackAudio)
 	s.mux.HandleFunc("GET /v1/tracks/{id}/artwork", s.trackArtwork)
 	s.mux.HandleFunc("GET /v1/tracks/{id}/beatgrid", s.trackBeatGrid)
@@ -112,7 +116,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Origin")
 	}
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Last-Event-ID")
 		w.WriteHeader(http.StatusNoContent)
 		return

@@ -15,6 +15,7 @@ func TestEditCommands(t *testing.T) {
 	}{
 		{[]string{"track", "update", "1", "--title", "New title", "--artist", "New artist", "--year", "2026", "--rating", "4", "--json"}, "New title"},
 		{[]string{"playlist", "rename", "1", "Renamed", "--json"}, "Renamed"},
+		{[]string{"track", "update", "1", "--clear-artwork", "--json"}, "New title"},
 	} {
 		var out bytes.Buffer
 		c := newRootCommand()
@@ -30,6 +31,11 @@ func TestEditCommands(t *testing.T) {
 		}
 		if result["title"] != tt.want {
 			t.Fatal(result)
+		}
+	}
+	for _, args := range [][]string{{"track", "update", "1", "--artwork", "missing.png"}, {"track", "update", "1", "--artwork", "missing.png", "--clear-artwork"}} {
+		if _, err := executeCommand(append([]string{"-l", lib, "--no-backup"}, args...)...); err == nil {
+			t.Fatal("invalid artwork edit accepted", args)
 		}
 	}
 	for _, args := range [][]string{{"track", "update", "1", "--title", "Other"}, {"playlist", "rename", "1", "Again"}} {
