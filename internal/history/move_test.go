@@ -48,6 +48,10 @@ func TestCopyMovedFile(t *testing.T) {
 			if err := os.WriteFile(src, []byte("audio"), 0640); err != nil {
 				t.Fatal(err)
 			}
+			// WriteFile applies the process umask; set the mode explicitly so the expected permissions hold everywhere.
+			if err := os.Chmod(src, 0640); err != nil {
+				t.Fatal(err)
+			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			switch scenario {
