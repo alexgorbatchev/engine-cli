@@ -95,7 +95,7 @@ func (c Client) InspectTool(ctx context.Context, tool string) (*Tool, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	minimum := map[string]string{"fetch-track": "1.10.0", "fetch-mix": "2.1.0", "tag-track": "1.1.0"}[tool]
+	minimum := map[string]string{"fetch-track": "1.10.1", "fetch-mix": "2.1.1", "tag-track": "1.1.1"}[tool]
 	result := &Tool{Name: tool, Available: err == nil, MinimumVersion: minimum}
 	if err != nil {
 		result.Error = err.Error()

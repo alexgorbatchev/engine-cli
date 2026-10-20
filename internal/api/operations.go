@@ -21,12 +21,14 @@ import (
 )
 
 type operation struct {
-	Name       string            `json:"name"`
-	Mutates    bool              `json:"mutates"`
-	Effect     string            `json:"effect"`
-	Parameters map[string]string `json:"parameters"`
-	Required   []string          `json:"required"`
-	bind       func(json.RawMessage) (*boundOperation, error)
+	Name              string            `json:"name"`
+	Mutates           bool              `json:"mutates"`
+	Effect            string            `json:"effect"`
+	ParameterEffects  map[string]string `json:"parameter_effects,omitempty"`
+	AdditionalEffects []string          `json:"additional_effects,omitempty"`
+	Parameters        map[string]string `json:"parameters"`
+	Required          []string          `json:"required"`
+	bind              func(json.RawMessage) (*boundOperation, error)
 }
 
 type boundOperation struct {
@@ -34,6 +36,7 @@ type boundOperation struct {
 	preview bool
 	library string
 	effect  string
+	paths   []string
 }
 
 type parameterValidator interface{ validate() error }
@@ -58,7 +61,15 @@ func defineEffect[P any](name, effect string, required []string, run func(contex
 		}
 		params[f.Tag.Get("json")] = f.Type.String()
 	}
-	return operation{Name: name, Mutates: effect != "read", Effect: effect, Parameters: params, Required: required,
+	var parameterEffects map[string]string
+	if _, ok := params["auto_install"]; ok {
+		parameterEffects = map[string]string{"auto_install": "system"}
+	}
+	var additionalEffects []string
+	if name == "staging.retry" {
+		additionalEffects = []string{"system"}
+	}
+	return operation{Name: name, Mutates: effect != "read", Effect: effect, ParameterEffects: parameterEffects, AdditionalEffects: additionalEffects, Parameters: params, Required: required,
 		bind: func(raw json.RawMessage) (*boundOperation, error) {
 			var values map[string]json.RawMessage
 			if err := json.Unmarshal(raw, &values); err != nil || values == nil {
@@ -102,7 +113,11 @@ func defineEffect[P any](name, effect string, required []string, run func(contex
 			if v, ok := any(p).(interface{ operationEffect() string }); ok {
 				boundEffect = v.operationEffect()
 			}
-			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: undo.DryRun || sync.DryRun, library: undo.Library, effect: boundEffect}, nil
+			var paths []string
+			if v, ok := any(p).(interface{ operationPaths() []string }); ok {
+				paths = v.operationPaths()
+			}
+			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: undo.DryRun || sync.DryRun, library: undo.Library, effect: boundEffect, paths: paths}, nil
 		}}
 }
 
@@ -129,6 +144,14 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 		effect = op.Effect
 	}
 	err = progress.Run(ctx, op.Name, func(ctx context.Context) error {
+		if effect == "filesystem" {
+			var e error
+			effect, e = s.mediaPathsEffect(ctx, bound.paths)
+			if e != nil {
+				return e
+			}
+		}
+		ctx = context.WithValue(ctx, mediaEffectKey{}, effect)
 		if effect == "collection" && !bound.preview {
 			r, e := s.checkSystem(ctx, nil)
 			if e != nil {
@@ -147,8 +170,8 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 				return e
 			}
 		}
-		if (effect == "collection" || effect == "staging") && !bound.preview && op.Name != "library.undo" && op.Name != "library.sync" {
-			if effect == "staging" {
+		if (effect == "collection" || effect == "staging" || effect == "filesystem") && !bound.preview && op.Name != "library.undo" && op.Name != "library.sync" {
+			if effect == "staging" || effect == "filesystem" {
 				if e := os.MkdirAll(lib, 0700); e != nil {
 					return e
 				}

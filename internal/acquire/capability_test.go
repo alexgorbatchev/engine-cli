@@ -63,7 +63,7 @@ func TestInspectToolNativeCapability(t *testing.T) {
 }
 
 func TestInspectToolReportsSupportedReleaseForMissingContract(t *testing.T) {
-	for tool, minimum := range map[string]string{"fetch-track": "1.10.0", "fetch-mix": "2.1.0", "tag-track": "1.1.0"} {
+	for tool, minimum := range map[string]string{"fetch-track": "1.10.1", "fetch-mix": "2.1.1", "tag-track": "1.1.1"} {
 		t.Run(tool, func(t *testing.T) {
 			client := Client{Runner: func(_ context.Context, name string, args ...string) ([]byte, error) {
 				if name != tool {
