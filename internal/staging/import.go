@@ -13,6 +13,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
@@ -36,8 +37,9 @@ func (i Imported) MarshalJSON() ([]byte, error) {
 }
 
 type Failure struct {
-	ID    string `json:"id"`
-	Error string `json:"error"`
+	ID        string `json:"id"`
+	Error     string `json:"error"`
+	ErrorCode string `json:"error_code,omitempty"`
 }
 type ImportReport struct {
 	// Imported records completed collection changes, even if staged cleanup fails.
@@ -74,7 +76,7 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 			report.Imported = append(report.Imported, Imported{ID: item.ID, Track: result.Track})
 		}
 		if err != nil {
-			report.Failed = append(report.Failed, Failure{ID: item.ID, Error: err.Error()})
+			report.Failed = append(report.Failed, Failure{ID: item.ID, Error: err.Error(), ErrorCode: progress.ErrorCode(err)})
 			continue
 		}
 	}

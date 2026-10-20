@@ -60,14 +60,16 @@ type TagFile struct {
 	OutputFile string       `json:"output_file,omitempty"`
 	Status     string       `json:"status"`
 	Error      string       `json:"error,omitempty"`
+	ErrorCode  string       `json:"error_code,omitempty"`
 	Inspection *Inspection  `json:"inspection,omitempty"`
 	Metadata   *TagMetadata `json:"metadata,omitempty"`
 	DryRun     bool         `json:"dry_run"`
 }
 type TagResult struct {
-	Status  string    `json:"status"`
-	Error   string    `json:"error,omitempty"`
-	Results []TagFile `json:"results"`
+	Status    string    `json:"status"`
+	Error     string    `json:"error,omitempty"`
+	ErrorCode string    `json:"error_code,omitempty"`
+	Results   []TagFile `json:"results"`
 }
 
 func (c Client) Tags(ctx context.Context, action, path, work string, opts TagOptions) (*TagResult, error) {

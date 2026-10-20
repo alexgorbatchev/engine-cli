@@ -79,6 +79,27 @@ Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`
 
 The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
 
+## Failure codes
+
+Request and job errors use `{code,message}`. The code is the stable consumer contract; `message` is diagnostic text and must not be displayed directly in a user interface. Map known codes to user-friendly guidance and use a safe generic message for unknown codes. Do the same for partial failures inside results and upstream progress details.
+
+Progress events, acquisition results (including per-track, tag-file, and dependency failures), staged items, import and migration failures, and newly recorded history entries retain string-valued `error` and add `error_code`. Saved migration state pairs `errorMsg` with `error_code`. Successful records omit the code. Persisted records written before codes were introduced may lack it; consumers must handle that as an unclassified failure without displaying the diagnostic text.
+
+| Code | Meaning and recovery |
+| --- | --- |
+| `library_not_found` | The configured library database is absent. Add or connect the library on the server computer, then refresh. No database is created by this read. |
+| `library_unavailable` | The library could not be opened. Check the selected library and drive. |
+| `permission_denied` | File access was denied. Check permissions on the server computer. |
+| `resource_not_found` | A required file is missing. Restore access or choose another file. |
+| `tool_unavailable` | A required executable or supported machine interface is unavailable. Install or update the tool. |
+| `tool_failed` | A dependent music tool reported a failure, including partial result failures. Check the tool and retry. |
+| `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
+| `cancelled` | Work was cancelled. Completed changes may remain. |
+| `operation_failed` | Unclassified failure. Inspect current state before retrying. |
+| `invalid_response` | Engine could not encode a response. Refresh or update Engine. |
+
+Existing request validation, origin protection, missing-entity, media, and desktop-check codes keep their meanings. Job status and its terminal progress event report the same failure code. Error classification follows wrapped Go error causes, not diagnostic message strings.
+
 ## Library sync previews
 
 Submit `library.sync` with explicit library paths and exactly one scope:
@@ -137,6 +158,7 @@ Command results remain on stdout. Human CLI output displays the same overall per
 | `metadata` | Optional metadata object forwarded from Fetch Track |
 | `result` | Optional result payload; Fetch Track's acquired artifact remains under `source.result` |
 | `error` | Optional string for failure or cancellation; HTTP job/status and request errors separately use `{code,message}` |
+| `error_code` | Stable code accompanying a string-valued failure; consumers map it to user-friendly guidance |
 
 Percentages describe completed stages or items, not elapsed time. A phase may remain at the same percentage while it works. Only successful completion emits 100%; errors and cancellations retain the last percentage.
 

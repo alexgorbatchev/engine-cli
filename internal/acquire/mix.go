@@ -24,6 +24,7 @@ type MixTrack struct {
 	Status     string `json:"status"`
 	OutputFile string `json:"output_file,omitempty"`
 	Error      string `json:"error,omitempty"`
+	ErrorCode  string `json:"error_code,omitempty"`
 }
 type MixCandidate struct {
 	Title string `json:"title"`
@@ -37,6 +38,7 @@ type SkippedItem struct {
 type MixResult struct {
 	Status     string         `json:"status"`
 	Error      string         `json:"error,omitempty"`
+	ErrorCode  string         `json:"error_code,omitempty"`
 	Title      string         `json:"title"`
 	SourceURL  string         `json:"source_url"`
 	Tracks     []MixTrack     `json:"tracks"`

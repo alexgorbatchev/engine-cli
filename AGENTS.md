@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-18 17:33
+last_modified: 2026-10-20 16:38
 status: current
 ---
 
@@ -69,6 +69,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Copied Library Registration:** Require explicit registration to assign a copied library its own instance identity. Preserve identity when a library is relocated; do not derive instance identity from mount paths or silently treat cloned sidecar IDs as distinct sync peers.
 - **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
 - **Shared Progress Schema:** Keep CLI and HTTP progress field names and types aligned with Fetch Track, including `job_id`, `sequence`, and string-valued `error`. Preserve upstream event details under `source`; retain structured `{code,message}` errors for HTTP job/status and request responses.
+- **Failure Codes:** Every reported failure must carry a stable code: `code` in structured HTTP errors and `error_code` alongside string-valued progress, acquisition, staging, migration, and history errors. Classify typed causes rather than parsing messages. Use `operation_failed` for unclassified failures and document new codes in `docs/http-api.md`. Diagnostic messages are not UI copy; browser consumers must map codes to user-friendly guidance and never render raw server errors.
 - **Track Upgrades:** Use Fetch Track CLI to acquire replacement audio. Preserve the original track's curated metadata. Replacing a radio edit with an extended mix is intended upgrade behavior.
 - **Entity Selection:** Prefer opaque `eng:<instance>:<kind>:<entity>` references from registered libraries. Numeric IDs remain library-scoped; exact track paths remain explicit selectors. Names, titles, and file basenames are display/search fields only. Track entity identity derives from Engine's origin pair; playlist lineage is persisted in `.engine-cli/identity.json`. Acoustic matches are evidence, not an immutable entity identity. See [fingerprints and references](docs/fingerprints.md) for batch selectors and sync behavior.
 - **Library Sync:** Sync direction is explicit source to destination; USB selection resolves to the same path-based operation. Scope is selected playlist IDs (including descendants) or the library root. Dry runs are read-only previews shared by CLI and HTTP. Preserve destination-only content by default, require explicit mirroring for removals, and refuse unresolved conflicts. Sync baselines and mappings live in portable `.engine-cli/sync/` storage and must participate in undo.

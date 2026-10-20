@@ -13,6 +13,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
+
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
@@ -25,6 +27,7 @@ type Entry struct {
 	LibraryID string     `json:"library_id"`
 	State     string     `json:"state"`
 	Error     string     `json:"error,omitempty"`
+	ErrorCode string     `json:"error_code,omitempty"`
 	UndoOf    string     `json:"undo_of,omitempty"`
 	Entities  []Entity   `json:"entities,omitempty"`
 	Moves     []fileMove `json:"moves,omitempty"`
@@ -199,6 +202,7 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, paths []
 	if runErr != nil {
 		e.State = "failed"
 		e.Error = runErr.Error()
+		e.ErrorCode = progress.ErrorCode(runErr)
 	}
 	e.Entities, err = changedEntities(finish, e)
 	if err != nil {

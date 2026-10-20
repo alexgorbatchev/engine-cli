@@ -158,12 +158,12 @@ func TestAtomicStatePersistenceAndErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	state.SetTrackError("src", errors.New("copy failed"))
-	if state.GetTrackStatus("src").ErrorMsg == "" {
+	if state.GetTrackStatus("src").ErrorMsg == "" || state.GetTrackStatus("src").ErrorCode != "operation_failed" {
 		t.Fatal("error not stored")
 	}
 	state.SetTrackError("src", nil)
 	state.SetTrackStatus("src", StatusPending, "dst", 5)
-	if state.GetTrackStatus("src").ErrorMsg != "" {
+	if state.GetTrackStatus("src").ErrorMsg != "" || state.GetTrackStatus("src").ErrorCode != "" {
 		t.Fatal("stale error not cleared")
 	}
 	var wg sync.WaitGroup

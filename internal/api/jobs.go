@@ -5,9 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"mime"
 	"net/http"
 	"sort"
@@ -164,11 +162,7 @@ func (s *Server) work(ctx context.Context, j *job, op operation, run *boundOpera
 		if ctx.Err() != nil {
 			j.view.State = "cancelled"
 		}
-		j.view.Error = &progress.Failure{Code: j.terminal.Type, Message: j.terminal.Error}
-		var checkError *systemcheck.Error
-		if errors.As(err, &checkError) {
-			j.view.Error.Code = checkError.Code
-		}
+		j.view.Error = &progress.Failure{Code: j.terminal.ErrorCode, Message: j.terminal.Error}
 	}
 	j.append(*j.terminal)
 }
@@ -207,7 +201,7 @@ func (s *Server) cancel(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, status int, value any) {
 	data, err := json.Marshal(value)
 	if err != nil {
-		http.Error(w, "response encoding failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "invalid_response", "response encoding failed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

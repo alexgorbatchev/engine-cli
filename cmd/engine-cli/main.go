@@ -32,7 +32,7 @@ func reportCLIError(cmd *cobra.Command, err error) {
 			return
 		}
 		ctx := progress.WithReporter(context.Background(), func(e progress.Event) { _ = json.NewEncoder(cmd.ErrOrStderr()).Encode(e) })
-		progress.Emit(ctx, progress.Event{Type: "error", Phase: "command", Error: progress.PublicError(err)})
+		progress.Emit(ctx, progress.Event{Type: "error", Phase: "command", Error: progress.PublicError(err), ErrorCode: progress.ErrorCode(err)})
 		return
 	}
 	if agent.IsAgentMode() {

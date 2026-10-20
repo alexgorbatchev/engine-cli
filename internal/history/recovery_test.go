@@ -119,7 +119,7 @@ func TestUndoFailedOperationAndRedo(t *testing.T) {
 		}
 		return failure
 	})
-	if !errors.Is(err, failure) || r.State != "failed" {
+	if !errors.Is(err, failure) || r.State != "failed" || r.ErrorCode != "operation_failed" {
 		t.Fatalf("entry=%+v err=%v", r, err)
 	}
 	u, err := Undo(ctx, lib, r.ID, UndoOptions{})

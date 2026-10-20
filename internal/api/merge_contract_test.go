@@ -97,7 +97,7 @@ func TestAPIProgressFailureIsStringAndJobFailureIsStructured(t *testing.T) {
 	id := submitAPIJob(t, s, "playlist.rm", `{"identifier":"missing"}`)
 	job := awaitAPIJob(t, s, id)
 	structured, ok := job["error"].(map[string]any)
-	if !ok || structured["code"] != "error" || structured["message"] == "" {
+	if !ok || structured["code"] != "operation_failed" || structured["message"] == "" {
 		t.Fatalf("job error is not structured: %+v", job)
 	}
 	progress, ok := job["progress"].(map[string]any)

@@ -145,6 +145,7 @@ func (c Client) execute(ctx context.Context, tool string, args []string, result 
 		}
 		return fmt.Errorf("%s did not return its machine JSON result; install a version supporting --json: %w", tool, err)
 	}
+	setFailureCodes(result)
 	if runErr != nil {
 		return fmt.Errorf("%s failed: %w", tool, runErr)
 	}
@@ -174,7 +175,7 @@ func checkStatus(status, message string) error {
 	if message == "" {
 		message = "unexpected result status " + strconv.Quote(status)
 	}
-	return fmt.Errorf("%s", progress.PublicError(fmt.Errorf("%s", message)))
+	return &progress.Error{Code: "tool_failed", Cause: fmt.Errorf("%s", progress.PublicError(fmt.Errorf("%s", message)))}
 }
 func stringArg(args []string, name, value string) []string {
 	if value != "" {

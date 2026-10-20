@@ -55,7 +55,7 @@ func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {
 	if err != nil || len(report.Imported) != 1 || len(report.Failed) != 1 {
 		t.Fatalf("installed track must survive cleanup failure in report: %+v %v", report, err)
 	}
-	if report.Imported[0].ID != item.ID || report.Failed[0].ID != item.ID || !strings.Contains(report.Failed[0].Error, "imported but staged cleanup failed") {
+	if report.Imported[0].ID != item.ID || report.Failed[0].ID != item.ID || report.Failed[0].ErrorCode != "operation_failed" || !strings.Contains(report.Failed[0].Error, "imported but staged cleanup failed") {
 		t.Fatalf("cleanup result %+v", report)
 	}
 	trackID := report.Imported[0].Track.ID

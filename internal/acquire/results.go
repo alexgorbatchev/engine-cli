@@ -37,6 +37,7 @@ type TrackResult struct {
 	Target            string        `json:"target"`
 	Status            string        `json:"status"`
 	Error             string        `json:"error,omitempty"`
+	ErrorCode         string        `json:"error_code,omitempty"`
 	CandidateCount    int           `json:"candidate_count,omitempty"`
 	SelectedCandidate *Candidate    `json:"selected_candidate,omitempty"`
 	Candidates        []Candidate   `json:"candidates,omitempty"`

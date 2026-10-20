@@ -82,9 +82,11 @@ func (s Service) fetchTrack(ctx context.Context, store *staging.Store, item *sta
 	if fetchErr != nil {
 		item.Status = "failed"
 		item.Error = progress.PublicError(fetchErr)
+		item.ErrorCode = progress.ErrorCode(fetchErr)
 	} else {
 		item.Status = "ready"
 		item.Error = ""
+		item.ErrorCode = ""
 		if result.Metadata != nil {
 			item.Title = result.Metadata.Title
 			item.Artist = result.Metadata.Artist
@@ -152,13 +154,14 @@ func (s Service) fetchMix(ctx context.Context, store *staging.Store, item *stagi
 	if fetchErr != nil {
 		item.Status = "failed"
 		item.Error = progress.PublicError(fetchErr)
+		item.ErrorCode = progress.ErrorCode(fetchErr)
 	}
 	if result != nil {
 		item.Title = result.Title
 		item.SourceURL = result.SourceURL
 		for _, track := range result.Tracks {
 			query := track.Artist + " - " + track.Title
-			child, err := store.Create(ctx, staging.Item{Kind: "track", ParentID: item.ID, Index: track.Index, Title: track.Title, Artist: track.Artist, Query: query, Status: "failed", Error: track.Error, Request: encodeRequest(TrackRequest{Query: query, Options: acquire.TrackOptions{Sources: request.Options.Sources, SkipVerify: request.Options.SkipVerify, SkipMetadata: request.Options.SkipMetadata, NoCache: request.Options.NoCache, AutoInstall: request.Options.AutoInstall}})})
+			child, err := store.Create(ctx, staging.Item{Kind: "track", ParentID: item.ID, Index: track.Index, Title: track.Title, Artist: track.Artist, Query: query, Status: "failed", Error: track.Error, ErrorCode: track.ErrorCode, Request: encodeRequest(TrackRequest{Query: query, Options: acquire.TrackOptions{Sources: request.Options.Sources, SkipVerify: request.Options.SkipVerify, SkipMetadata: request.Options.SkipMetadata, NoCache: request.Options.NoCache, AutoInstall: request.Options.AutoInstall}})})
 			if err != nil {
 				return report, err
 			}
@@ -188,6 +191,7 @@ func (s Service) fetchMix(ctx context.Context, store *staging.Store, item *stagi
 				item.Status = "failed"
 				if child.Error == "" {
 					child.Error = "track download did not produce audio"
+					child.ErrorCode = "tool_failed"
 				}
 			}
 			if err := store.Update(ctx, *child); err != nil {
@@ -216,6 +220,7 @@ func (s Service) fetchMix(ctx context.Context, store *staging.Store, item *stagi
 func saveFailure(ctx context.Context, store *staging.Store, item *staging.Item, failure error) error {
 	item.Status = "failed"
 	item.Error = progress.PublicError(failure)
+	item.ErrorCode = progress.ErrorCode(failure)
 	return store.Update(ctx, *item)
 }
 
@@ -281,6 +286,7 @@ func (s Service) Retry(ctx context.Context, id string) (any, error) {
 	}
 	item.Status = "ready"
 	item.Error = ""
+	item.ErrorCode = ""
 	readyCount := 0
 	var retryErr error
 	for _, child := range item.Items {
@@ -303,6 +309,7 @@ func (s Service) Retry(ctx context.Context, id string) (any, error) {
 	}
 	if retryErr != nil {
 		item.Error = progress.PublicError(retryErr)
+		item.ErrorCode = progress.ErrorCode(retryErr)
 	}
 	completionCtx := context.WithoutCancel(ctx)
 	if err := store.Update(completionCtx, *item); err != nil {

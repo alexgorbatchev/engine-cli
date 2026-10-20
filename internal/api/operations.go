@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -125,11 +126,18 @@ func (s *Server) database(ctx context.Context, run func(*sql.DB) (any, error)) (
 	path := filepath.Join(s.config.LibraryDir, "Database2", "m.db")
 	// Never let a misspelled library create a new empty database.
 	if _, err := os.Stat(path); err != nil {
-		return nil, err
+		code := "library_unavailable"
+		if errors.Is(err, os.ErrNotExist) {
+			code = "library_not_found"
+		}
+		if errors.Is(err, os.ErrPermission) {
+			code = "permission_denied"
+		}
+		return nil, &progress.Error{Code: code, Cause: err}
 	}
 	database, err := db.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, &progress.Error{Code: "library_unavailable", Cause: err}
 	}
 	defer database.Close()
 	if err := ctx.Err(); err != nil {

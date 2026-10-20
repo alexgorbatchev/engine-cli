@@ -21,8 +21,9 @@ type Options struct {
 }
 
 type TrackFailure struct {
-	Source string `json:"source"`
-	Error  string `json:"error"`
+	Source    string `json:"source"`
+	Error     string `json:"error"`
+	ErrorCode string `json:"error_code,omitempty"`
 }
 
 type Report struct {
@@ -105,7 +106,7 @@ func Export(ctx context.Context, opts Options) (*Report, error) {
 		case djsync.StatusFailed:
 			report.Failed++
 			state.SetTrackError(mapping.SourcePath, err)
-			report.Failures = append(report.Failures, TrackFailure{Source: mapping.SourcePath, Error: progress.PublicError(err)})
+			report.Failures = append(report.Failures, TrackFailure{Source: mapping.SourcePath, Error: progress.PublicError(err), ErrorCode: progress.ErrorCode(err)})
 			failures = errors.Join(failures, err)
 		}
 		if err := state.Save(); err != nil {

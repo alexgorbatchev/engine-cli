@@ -211,7 +211,7 @@ func TestReportCLIErrorCoverage(t *testing.T) {
 					count++
 				}
 			}
-			if count != 1 || last.Error == "" {
+			if count != 1 || last.Error == "" || last.ErrorCode == "" {
 				t.Fatalf("terminal count=%d event=%+v", count, last)
 			}
 		})

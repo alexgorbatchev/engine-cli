@@ -200,7 +200,7 @@ func TestExportCopyFailurePublishesOnlyAvailableTracks(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, err := Export(context.Background(), Options{Source: source, Target: target})
-	if err == nil || r.Failed != 1 || len(r.Failures) != 1 {
+	if err == nil || r.Failed != 1 || len(r.Failures) != 1 || r.Failures[0].ErrorCode != "operation_failed" {
 		t.Fatalf("failure=%+v %v", r, err)
 	}
 	doc, err := rbxml.OpenDocument(r.XML)

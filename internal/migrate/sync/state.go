@@ -6,6 +6,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 type Status string
@@ -25,6 +27,7 @@ type TrackSyncInfo struct {
 	Status         Status    `json:"status"`
 	Size           int64     `json:"size"`
 	ErrorMsg       string    `json:"errorMsg,omitempty"`
+	ErrorCode      string    `json:"error_code,omitempty"`
 	LastUpdated    time.Time `json:"lastUpdated"`
 }
 
@@ -87,6 +90,7 @@ func (s *SyncState) SetTrackStatus(sourcePath string, status Status, targetLocat
 	info.LastUpdated = time.Now()
 	if status != StatusFailed {
 		info.ErrorMsg = ""
+		info.ErrorCode = ""
 	}
 
 	s.tracks[sourcePath] = info
@@ -101,6 +105,7 @@ func (s *SyncState) SetTrackError(sourcePath string, err error) {
 	info.Status = StatusFailed
 	if err != nil {
 		info.ErrorMsg = err.Error()
+		info.ErrorCode = progress.ErrorCode(err)
 	}
 	info.LastUpdated = time.Now()
 

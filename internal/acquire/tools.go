@@ -3,6 +3,8 @@ package acquire
 import (
 	"context"
 	"fmt"
+
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 type Dependency struct {
@@ -12,17 +14,20 @@ type Dependency struct {
 	MinVersion      string `json:"minVersion"`
 	Satisfied       bool   `json:"satisfied"`
 	Error           string `json:"error,omitempty"`
+	ErrorCode       string `json:"error_code,omitempty"`
 }
 type Dependencies struct {
 	Status       string       `json:"status"`
 	Dependencies []Dependency `json:"dependencies"`
 	Changed      []string     `json:"changed"`
 	Error        string       `json:"error,omitempty"`
+	ErrorCode    string       `json:"error_code,omitempty"`
 }
 type Upgrade struct {
-	Status  string `json:"status"`
-	Version string `json:"version"`
-	Error   string `json:"error,omitempty"`
+	Status    string `json:"status"`
+	Version   string `json:"version"`
+	Error     string `json:"error,omitempty"`
+	ErrorCode string `json:"error_code,omitempty"`
 }
 type Tool struct {
 	Name           string        `json:"name"`
@@ -32,6 +37,7 @@ type Tool struct {
 	NativeJSON     bool          `json:"native_json"`
 	Dependencies   *Dependencies `json:"dependencies,omitempty"`
 	Error          string        `json:"error,omitempty"`
+	ErrorCode      string        `json:"error_code,omitempty"`
 }
 type Provider struct {
 	ID           string
@@ -99,6 +105,7 @@ func (c Client) InspectTool(ctx context.Context, tool string) (*Tool, error) {
 	result := &Tool{Name: tool, Available: err == nil, MinimumVersion: minimum}
 	if err != nil {
 		result.Error = err.Error()
+		result.ErrorCode = progress.ErrorCode(err)
 		return result, nil
 	}
 	// --version has a documented raw single-line contract, not human status output.
@@ -119,6 +126,7 @@ func (c Client) InspectTool(ctx context.Context, tool string) (*Tool, error) {
 		result.NativeJSON = true
 		result.Dependencies = dependencies
 	} else {
+		result.ErrorCode = "tool_unavailable"
 		result.Error = fmt.Sprintf("%s JSON contract unavailable; upgrade %s to >=%s for --json dependencies", tool, tool, minimum)
 		if probeErr != nil {
 			result.Error += ": " + probeErr.Error()

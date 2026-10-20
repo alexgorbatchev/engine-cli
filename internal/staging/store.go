@@ -33,6 +33,7 @@ type Item struct {
 	Query       string          `json:"query,omitempty"`
 	Status      string          `json:"status"`
 	Error       string          `json:"error,omitempty"`
+	ErrorCode   string          `json:"error_code,omitempty"`
 	AudioPath   string          `json:"audio_path,omitempty"`
 	ArtworkPath string          `json:"artwork_path,omitempty"`
 	CreatedAt   time.Time       `json:"created_at"`

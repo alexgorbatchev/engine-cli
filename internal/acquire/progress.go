@@ -90,6 +90,7 @@ func readProgress(ctx context.Context, conn net.Conn, tool string) error {
 		}
 		if source.Error != "" {
 			source.Error = progress.PublicError(errors.New(source.Error))
+			source.ErrorCode = "tool_failed"
 		}
 		// Engine owns terminal events; retain the original child event under source.
 		event := progress.Event{Type: "progress", Phase: "acquire", Subphase: source.Phase, Percent: percent, Message: source.Message, Candidate: source.Candidate, Metadata: source.Metadata, Source: &progress.Source{Name: tool, Event: source}}

@@ -57,11 +57,11 @@ func TestFailedAcquisitionRetainsRetryRecord(t *testing.T) {
 	if err == nil {
 		t.Fatal("failed download reported success")
 	}
-	if r.Item.Status != "failed" || r.Item.Error == "" {
+	if r.Item.Status != "failed" || r.Item.Error == "" || r.Item.ErrorCode != "tool_failed" {
 		t.Fatalf("item=%+v", r.Item)
 	}
 	items, err := staging.New(lib).List(context.Background())
-	if err != nil || len(items) != 1 {
+	if err != nil || len(items) != 1 || items[0].ErrorCode != "tool_failed" {
 		t.Fatalf("items=%+v error=%v", items, err)
 	}
 }

@@ -38,6 +38,7 @@ type Event struct {
 	Metadata   json.RawMessage `json:"metadata,omitempty"`
 	Result     json.RawMessage `json:"result,omitempty"`
 	Error      string          `json:"error,omitempty"`
+	ErrorCode  string          `json:"error_code,omitempty"`
 }
 
 type reporterKey struct{}
@@ -107,6 +108,9 @@ func Emit(ctx context.Context, e Event) {
 	if e.Type == "" {
 		e.Type = "progress"
 	}
+	if e.Error != "" && e.ErrorCode == "" {
+		e.ErrorCode = "operation_failed"
+	}
 	r.done = e.Type == "complete" || e.Type == "error" || e.Type == "cancelled"
 	r.report(e)
 }
@@ -131,7 +135,7 @@ func Run(ctx context.Context, operation string, fn func(context.Context) error) 
 		if ctx.Err() != nil {
 			kind = "cancelled"
 		}
-		Emit(ctx, Event{Type: kind, Phase: operation, Error: PublicError(err)})
+		Emit(ctx, Event{Type: kind, Phase: operation, Error: PublicError(err), ErrorCode: ErrorCode(err)})
 	}
 	return err
 }
