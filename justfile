@@ -6,11 +6,11 @@ default:
 
 # Run CLI in human mode (default)
 run *args:
-    go run ./cmd/engine-cli {{args}}
+    go run ./cmd/engine-cli {{ args }}
 
 # Run CLI in agent-facing mode
 run-ai *args:
-    AGENT=1 go run ./cmd/engine-cli {{args}}
+    AGENT=1 go run ./cmd/engine-cli {{ args }}
 
 # Run test suite
 test:
@@ -44,3 +44,7 @@ check:
 # Clean up build binaries and temporary files
 clean:
     rm -rf bin coverage.out .tmp dist
+
+# Download project dependencies for local development
+setup:
+    go mod download
