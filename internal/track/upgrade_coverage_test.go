@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
@@ -130,7 +131,7 @@ func TestFetchUpgradeRejectsUnusableDownloads(t *testing.T) {
 			runner := func(context.Context, string, ...string) ([]byte, error) {
 				return json.Marshal(map[string]any{"status": "success", "output_file": file, "verification": verification})
 			}
-			_, err := fetchUpgrade(context.Background(), runner, "Artist - Title", work)
+			_, err := fetchUpgrade(context.Background(), runner, "Artist - Title", work, acquire.TrackOptions{})
 			if err == nil {
 				t.Fatal("unusable audio accepted")
 			}

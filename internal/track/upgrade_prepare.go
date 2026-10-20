@@ -83,7 +83,7 @@ func originalUpgradePath(t *db.Track, libDir string) (string, error) {
 
 func (j *upgradeJob) prepare(ctx context.Context, work string) (*preparedUpgrade, error) {
 	progress.Stage(ctx, "acquire", 15)
-	acquired, err := fetchUpgrade(ctx, j.opts.Runner, j.query, work)
+	acquired, err := fetchUpgrade(ctx, j.opts.Runner, j.query, work, j.opts.Acquisition)
 	if err != nil {
 		return nil, err
 	}

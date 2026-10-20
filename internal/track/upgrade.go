@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
@@ -28,6 +29,7 @@ type UpgradeOptions struct {
 	KeepTiming  bool
 	ClearTiming bool
 	Runner      sync.CommandRunner
+	Acquisition acquire.TrackOptions
 }
 
 // UpgradeResult describes the replacement and the retained original audio file.
@@ -103,8 +105,13 @@ type acquiredUpgrade struct {
 	BandwidthHz int
 }
 
-func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work string) (*acquiredUpgrade, error) {
-	output, err := runFetchProgress(ctx, runner, []string{"--json", "--skip-metadata", "--out-dir", work, "--", query})
+func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work string, options acquire.TrackOptions) (*acquiredUpgrade, error) {
+	if err := options.Validate(); err != nil {
+		return nil, err
+	}
+	args := append([]string{"--json", "--out-dir", work}, options.Args()...)
+	args = append(args, "--", query)
+	output, err := runFetchProgress(ctx, runner, args)
 	if err != nil {
 		return nil, fmt.Errorf("fetch-track acquisition failed (install fetch-track and its dependencies): %w", err)
 	}
@@ -119,6 +126,21 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 	if err := json.Unmarshal(output, &result); err != nil {
 		return nil, fmt.Errorf("fetch-track did not return valid JSON; use a version with working --json output: %w", err)
 	}
+	if options.SkipVerify && result.Status == "success" {
+		verified, err := (acquire.Client{Runner: runner}).Verify(ctx, result.OutputFile, acquire.VerifyOptions{MinBandwidthKHz: options.MinBandwidthKHz, AutoInstall: options.AutoInstall})
+		if err != nil {
+			return nil, err
+		}
+		data, err := json.Marshal(verified)
+		if err != nil {
+			return nil, err
+		}
+		if err = json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		// Verification identifies the input as target rather than output_file.
+		result.OutputFile = verified.Target
+	}
 	if result.Status != "success" || result.Verification == nil || result.Verification.BandwidthHz < minimumUpgradeBandwidth {
 		return nil, fmt.Errorf("fetch-track did not return a verified high-quality replacement (status %q)", result.Status)
 	}
@@ -128,6 +150,10 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 	path, err := filepath.EvalSymlinks(result.OutputFile)
 	if err != nil {
 		return nil, fmt.Errorf("opening downloaded audio: %w", err)
+	}
+	work, err = filepath.EvalSymlinks(work)
+	if err != nil {
+		return nil, fmt.Errorf("opening upgrade workspace: %w", err)
 	}
 	rel, err := filepath.Rel(work, path)
 	if err != nil || outsideUpgradeDir(rel) {
