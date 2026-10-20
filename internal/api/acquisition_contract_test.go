@@ -371,7 +371,7 @@ func TestAcquisitionFetchStagesAndOptionallyImports(t *testing.T) {
 						t.Fatal(err)
 					}
 					if kind == "mix" {
-						return json.Marshal(map[string]any{"status": "success", "title": "Mix", "tracks": []map[string]any{{"index": 1, "title": "Song", "output_file": path}}})
+						return json.Marshal(map[string]any{"status": "success", "title": "Mix", "tracks": []map[string]any{{"index": 1, "title": "Song", "status": "completed", "output_file": path}}})
 					}
 					return json.Marshal(map[string]any{"status": "success", "output_file": path})
 				}
