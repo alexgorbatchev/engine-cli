@@ -2,6 +2,7 @@ package acquire
 
 import (
 	"context"
+	"encoding/json"
 	"image"
 	"image/png"
 	"os"
@@ -109,6 +110,41 @@ func TestUpstreamBinaries(t *testing.T) {
 			}
 			if result.Dependencies[0].Name == "" || result.Dependencies[0].MinVersion == "" {
 				t.Fatalf("invalid native report: %+v", result)
+			}
+		})
+	}
+}
+
+func TestUpstreamJSONFailures(t *testing.T) {
+	root := os.Getenv("ENGINE_UPSTREAM_WORKSPACES")
+	if root == "" {
+		t.Skip("set ENGINE_UPSTREAM_WORKSPACES to test released upstream binaries")
+	}
+	tests := []struct {
+		tool string
+		args []string
+	}{
+		{"fetch-track", []string{"verify", "--json"}},
+		{"fetch-mix", []string{"--json"}},
+		{"tag-track", []string{"artwork", "embed", "--json", filepath.Join(t.TempDir(), "missing.m4a")}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.tool, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, filepath.Join(root, tt.tool+"-cli", "bin", tt.tool), tt.args...)
+			output, err := cmd.Output()
+			if err == nil {
+				t.Fatalf("invalid request succeeded: %s", output)
+			}
+			var result struct {
+				Status string `json:"status"`
+			}
+			if err := json.Unmarshal(output, &result); err != nil {
+				t.Fatalf("failure response is not one JSON document: %q: %v", output, err)
+			}
+			if result.Status != "error" {
+				t.Fatalf("failure status = %q: %s", result.Status, output)
 			}
 		})
 	}
