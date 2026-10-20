@@ -18,10 +18,10 @@ func newPlaylistCommand() *cobra.Command {
 		Long: `Inspect and manage playlists and folders in your Engine DJ collection.
 
   - Use 'engine-cli playlist list' to view the full folder and playlist tree.
-  - Use 'engine-cli playlist inspect <pl|id>' to view the songs inside a playlist.
+  - Use 'engine-cli playlist inspect <id>' to view the songs inside a playlist.
   - Use 'engine-cli playlist create <name>' to create a playlist or folder.
-  - Use 'engine-cli playlist rm <pl|id>' to remove a playlist.
-  - Use 'engine-cli playlist move <pl|id>' to move a playlist under a parent folder.
+  - Use 'engine-cli playlist rm <id>' to remove a playlist.
+  - Use 'engine-cli playlist move <id>' to move a playlist under a parent folder.
   - Use 'engine-cli playlist track' to manage song memberships inside playlists.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -30,8 +30,9 @@ func newPlaylistCommand() *cobra.Command {
 	}
 
 	plCmd.AddCommand(newPlaylistListCommand())
-	plCmd.AddCommand(newPlaylistInspectCommand())
+	plCmd.AddCommand(newDetailsCommand("playlist"))
 	plCmd.AddCommand(newPlaylistCreateCommand())
+	plCmd.AddCommand(newPlaylistRenameCommand())
 	plCmd.AddCommand(newPlaylistRmCommand())
 	plCmd.AddCommand(newPlaylistMoveCommand())
 	plCmd.AddCommand(newPlaylistTrackCommand())
@@ -83,56 +84,6 @@ In AGENT=1 mode, displays a compact token-conservative bulleted list.`,
 	}
 }
 
-func newPlaylistInspectCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "inspect <pl|id>",
-		Short: "Display all songs inside a playlist",
-		Long: `Display all songs and track lengths inside a specific playlist.
-
-Arguments:
-  <pl|id>   The name or numeric ID of the playlist (e.g. "Tech House" or 2). Run 'engine-cli playlist list' to see all playlists.`,
-		Example: `  engine-cli playlist inspect 2
-  engine-cli playlist inspect "Tech House"
-  engine-cli -l "/Volumes/DJ_USB/Engine Library" playlist inspect 43`,
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			dbPath := filepath.Join(libDirFlag, "Database2", "m.db")
-			database, err := db.Open(dbPath, true)
-			if err != nil {
-				return err
-			}
-			defer database.Close()
-
-			details, err := playlist.InspectPlaylist(cmd.Context(), database, args[0])
-			if err != nil {
-				return err
-			}
-
-			if len(details.Tracks) == 0 {
-				if agent.IsAgentMode() {
-					cmd.Println("status: empty")
-					return nil
-				}
-				cmd.Println("No tracks in playlist.")
-				return nil
-			}
-
-			if agent.IsAgentMode() {
-				for _, t := range details.Tracks {
-					cmd.Printf("- %s\n", playlist.FormatTrackLine(t))
-				}
-				return nil
-			}
-
-			for _, t := range details.Tracks {
-				cmd.Println(playlist.FormatTrackLine(t))
-			}
-
-			return nil
-		},
-	}
-}
-
 func newPlaylistCreateCommand() *cobra.Command {
 	var parentFlag string
 	var folderFlag bool
@@ -145,7 +96,7 @@ func newPlaylistCreateCommand() *cobra.Command {
 Arguments:
   <name>   The title for the new playlist or folder.`,
 		Example: `  engine-cli playlist create "Deep House"
-  engine-cli playlist create "Afro House" --parent "House"
+  engine-cli playlist create "Afro House" --parent 2
   engine-cli playlist create "Genres" --folder`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -192,7 +143,7 @@ Arguments:
 		},
 	}
 
-	cmd.Flags().StringVarP(&parentFlag, "parent", "p", "", "Parent playlist or folder name or ID")
+	cmd.Flags().StringVarP(&parentFlag, "parent", "p", "", "Parent playlist or folder numeric ID")
 	cmd.Flags().BoolVar(&folderFlag, "folder", false, "Create a folder container instead of a regular playlist")
 
 	return cmd
@@ -202,15 +153,15 @@ func newPlaylistRmCommand() *cobra.Command {
 	var forceFlag bool
 
 	cmd := &cobra.Command{
-		Use:   "rm <pl|id>",
+		Use:   "rm <id>",
 		Short: "Delete a playlist or folder",
 		Long: `Delete a playlist or folder from your Engine DJ collection.
 
 Songs inside the playlist will remain in your master collection.
 
 Arguments:
-  <pl|id>   The name or numeric ID of the playlist to delete.`,
-		Example: `  engine-cli playlist rm "Old Playlist"
+  <id>   The numeric ID of the playlist to delete.`,
+		Example: `  engine-cli playlist rm 2
   engine-cli playlist rm 14 --force`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -259,13 +210,13 @@ func newPlaylistMoveCommand() *cobra.Command {
 	var toFlag string
 
 	cmd := &cobra.Command{
-		Use:   "move <pl|id>",
+		Use:   "move <id>",
 		Short: "Relocate a playlist or folder under a parent folder",
 		Long: `Move a playlist or folder under a new parent folder in your Engine DJ collection hierarchy.
 
 Arguments:
-  <pl|id>   The name or numeric ID of the playlist to move.`,
-		Example: `  engine-cli playlist move "Deep House" --to "House"
+  <id>   The numeric ID of the playlist to move.`,
+		Example: `  engine-cli playlist move 3 --to 2
   engine-cli playlist move 15 --to 0`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -315,7 +266,7 @@ Arguments:
 		},
 	}
 
-	cmd.Flags().StringVar(&toFlag, "to", "", "Destination parent folder name, ID, or 'Collection' (root)")
+	cmd.Flags().StringVar(&toFlag, "to", "", "Destination parent playlist ID, or 0 for the library root")
 	_ = cmd.MarkFlagRequired("to")
 
 	return cmd
@@ -327,9 +278,9 @@ func newPlaylistTrackCommand() *cobra.Command {
 		Short: "Manage track memberships inside playlists",
 		Long: `Manage track memberships inside Engine DJ playlists.
 
-  - Use 'engine-cli playlist track add <pl|id> <tr|id|path...>' to add tracks to a playlist.
-  - Use 'engine-cli playlist track rm <pl|id> <tr|id|path...>' to remove tracks from a playlist.
-  - Use 'engine-cli playlist track move <src-pl|id> <dst-pl|id> <tr|id|path...>' to move tracks between playlists.`,
+  - Use 'engine-cli playlist track add <id> <id|path...>' to add tracks to a playlist.
+  - Use 'engine-cli playlist track rm <id> <id|path...>' to remove tracks from a playlist.
+  - Use 'engine-cli playlist track move <src-id> <dst-id> <id|path...>' to move tracks between playlists.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
@@ -345,15 +296,15 @@ func newPlaylistTrackCommand() *cobra.Command {
 
 func newPlaylistTrackAddCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "add <pl|id> <tr|id|path...>",
+		Use:   "add <id> <id|path...>",
 		Short: "Add track(s) to a playlist",
 		Long: `Add one or more tracks to a playlist.
 
 Arguments:
-  <pl|id>           The name or numeric ID of the playlist.
-  <tr|id|path...>   One or more track titles, IDs, or file paths already in the collection.`,
-		Example: `  engine-cli playlist track add "Tech House" 42
-  engine-cli playlist track add "House" "Song Title" "Another Song"`,
+  <id>           The numeric ID of the playlist.
+  <id|path...>   One or more track IDs, or file paths already in the collection.`,
+		Example: `  engine-cli playlist track add 2 42
+  engine-cli playlist track add 3 42 43`,
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
@@ -402,17 +353,17 @@ Arguments:
 
 func newPlaylistTrackRmCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "rm <pl|id> <tr|id|path...>",
+		Use:   "rm <id> <id|path...>",
 		Short: "Remove track(s) from a playlist",
 		Long: `Remove one or more tracks from a playlist.
 
 This removes the track from the playlist only; the track remains in your master collection.
 
 Arguments:
-  <pl|id>           The name or numeric ID of the playlist.
-  <tr|id|path...>   One or more track titles, IDs, or file paths to remove from the playlist.`,
-		Example: `  engine-cli playlist track rm "Tech House" 42
-  engine-cli playlist track rm "House" "Song Title"`,
+  <id>           The numeric ID of the playlist.
+  <id|path...>   One or more track IDs, or file paths to remove from the playlist.`,
+		Example: `  engine-cli playlist track rm 2 42
+  engine-cli playlist track rm 3 43`,
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
@@ -461,16 +412,16 @@ Arguments:
 
 func newPlaylistTrackMoveCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "move <src-pl|id> <dst-pl|id> <tr|id|path...>",
+		Use:   "move <src-id> <dst-id> <id|path...>",
 		Short: "Move track(s) from one playlist to another",
 		Long: `Move track memberships from a source playlist to a destination playlist.
 
 Arguments:
-  <src-pl|id>       The name or numeric ID of the source playlist.
-  <dst-pl|id>       The name or numeric ID of the destination playlist.
-  <tr|id|path...>   One or more track titles, IDs, or file paths to transfer.`,
-		Example: `  engine-cli playlist track move "House" "Tech House" 42
-  engine-cli playlist track move "House" "Techno" "Song Title"`,
+  <src-id>       The numeric ID of the source playlist.
+  <dst-id>       The numeric ID of the destination playlist.
+  <id|path...>   One or more track IDs, or file paths to transfer.`,
+		Example: `  engine-cli playlist track move 2 3 42
+  engine-cli playlist track move 2 4 43`,
 		Args: cobra.MinimumNArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)

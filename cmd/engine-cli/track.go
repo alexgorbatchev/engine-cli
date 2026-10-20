@@ -19,8 +19,9 @@ func newTrackCommand() *cobra.Command {
 		Long: `Manage audio files and track entries in your master Engine DJ collection.
 
   - Use 'engine-cli track add <path...>' to import audio files into your collection.
-  - Use 'engine-cli track rm <tr|id|path...>' to remove tracks from your collection.
-  - Use 'engine-cli track move <tr|id|path> <dest-path>' to move audio files on disk and update their database paths.
+  - Use 'engine-cli track upgrade <id|path>' to fetch replacement audio while keeping your track information.
+  - Use 'engine-cli track rm <id|path...>' to remove tracks from your collection.
+  - Use 'engine-cli track move <id|path> <dest-path>' to move audio files on disk and update their database paths.
   - Use 'engine-cli track relocate' to batch-fix broken audio file paths across drives or folders.
   - Use 'engine-cli track artwork' to manage embedded cover art.`,
 		Args: cobra.NoArgs,
@@ -29,11 +30,15 @@ func newTrackCommand() *cobra.Command {
 		},
 	}
 
+	trCmd.AddCommand(newDetailsCommand("track"))
 	trCmd.AddCommand(newTrackAddCommand())
+	trCmd.AddCommand(newTrackEditCommand())
+	trCmd.AddCommand(newTrackUpgradeCommand())
 	trCmd.AddCommand(newTrackRmCommand())
 	trCmd.AddCommand(newTrackMoveCommand())
 	trCmd.AddCommand(newTrackRelocateCommand())
 	trCmd.AddCommand(newTrackArtworkCommand())
+	trCmd.AddCommand(newDuplicateCommand())
 
 	return trCmd
 }
@@ -52,8 +57,8 @@ Optionally moves the audio file to your Engine Library storage and/or assigns it
 
 Automatically saves a safety backup of your library before making changes unless --no-backup is specified.`,
 		Example: `  engine-cli track add "/path/to/song.mp3"
-  engine-cli track add --to-playlist "Tech House" "/path/to/song.mp3"
-  engine-cli track add --move --to-playlist "House" "/Downloads/song1.mp3" "/Downloads/song2.mp3"`,
+  engine-cli track add --to-playlist 2 "/path/to/song.mp3"
+  engine-cli track add --move --to-playlist 3 "/Downloads/song1.mp3" "/Downloads/song2.mp3"`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
@@ -122,7 +127,7 @@ func newTrackRmCommand() *cobra.Command {
 	var deleteFileFlag bool
 
 	cmd := &cobra.Command{
-		Use:   "rm <tr|id|path...>",
+		Use:   "rm <id|path...>",
 		Short: "Remove track(s) from your collection",
 		Long: `Remove one or more tracks from your Engine DJ collection and all playlists.
 
@@ -130,7 +135,7 @@ Optionally deletes the physical audio file from disk with --delete-file.
 
 Automatically saves a safety backup of your library before making changes unless --no-backup is specified.`,
 		Example: `  engine-cli track rm 42
-  engine-cli track rm "Song Title" "Another Song"
+  engine-cli track rm 42 43
   engine-cli track rm "/Music/track.mp3" --delete-file`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -188,15 +193,15 @@ Automatically saves a safety backup of your library before making changes unless
 
 func newTrackMoveCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "move <tr|id|path> <dest-path>",
+		Use:   "move <id|path> <dest-path>",
 		Short: "Move an audio file on disk and update its collection path",
 		Long: `Move an audio file to a new location on disk and update its path in the Engine DJ collection database.
 
 Arguments:
-  <tr|id|path>   The track title, ID, file name, or current path to move.
+  <id|path>   The track ID or exact stored path to move.
   <dest-path>    The destination file or directory path.`,
 		Example: `  engine-cli track move 42 "/Volumes/DJ_USB/Music/House/song.mp3"
-  engine-cli track move "song.mp3" "/Volumes/DJ_USB/Music/House/"`,
+  engine-cli track move "Music/song.mp3" "/Volumes/DJ_USB/Music/House/"`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)

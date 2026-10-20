@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
@@ -55,6 +55,17 @@ func AddTrack(
 	if filePath == "" {
 		return nil, fmt.Errorf("file path cannot be empty")
 	}
+	var targetPlaylist *db.Playlist
+	if strings.TrimSpace(toPlaylist) != "" {
+		var err error
+		targetPlaylist, err = db.FindPlaylist(ctx, database, toPlaylist)
+		if err != nil {
+			return nil, err
+		}
+		if targetPlaylist == nil {
+			return nil, fmt.Errorf("playlist ID %s not found", toPlaylist)
+		}
+	}
 
 	runner := defaultRunner
 	if len(runnerOpt) > 0 && runnerOpt[0] != nil {
@@ -77,7 +88,7 @@ func AddTrack(
 		}
 		dest := filepath.Join(targetDir, filepath.Base(filePath))
 		if filepath.Clean(filePath) != filepath.Clean(dest) {
-			if err := moveFileOnDisk(filePath, dest); err != nil {
+			if err := history.MoveFile(ctx, filePath, dest); err != nil {
 				return nil, fmt.Errorf("moving file to %q: %w", dest, err)
 			}
 			actualPath = dest
@@ -204,23 +215,11 @@ func AddTrack(
 	}
 
 	// Link to playlist if specified
-	if strings.TrimSpace(toPlaylist) != "" {
-		pl, err := db.FindPlaylist(ctx, database, toPlaylist)
-		if err != nil {
-			return nil, fmt.Errorf("finding playlist %q: %w", toPlaylist, err)
-		}
-		if pl == nil {
-			plID, err := db.CreatePlaylist(ctx, database, toPlaylist, 0, false)
-			if err != nil {
-				return nil, fmt.Errorf("creating playlist %q: %w", toPlaylist, err)
-			}
-			pl = &db.Playlist{ID: plID, Title: toPlaylist}
-		}
-
-		if _, err := db.AddTrackToPlaylist(ctx, database, pl.ID, t.ID); err != nil {
+	if targetPlaylist != nil {
+		if _, err := db.AddTrackToPlaylist(ctx, database, targetPlaylist.ID, t.ID); err != nil {
 			return nil, fmt.Errorf("adding track to playlist: %w", err)
 		}
-		result.Playlist = pl
+		result.Playlist = targetPlaylist
 	}
 
 	return result, nil
@@ -246,6 +245,9 @@ func RemoveTrack(ctx context.Context, database *sql.DB, libDir string, identifie
 			fullPath := pathStr
 			if !filepath.IsAbs(fullPath) {
 				fullPath = filepath.Join(libDir, fullPath)
+			}
+			if err := history.Preserve(ctx, fullPath); err != nil {
+				return nil, err
 			}
 			if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
 				return nil, fmt.Errorf("deleting audio file %q: %w", fullPath, err)
@@ -295,7 +297,7 @@ func MoveTrackFile(ctx context.Context, database *sql.DB, libDir string, identif
 	}
 
 	if filepath.Clean(sourcePath) != filepath.Clean(targetPath) {
-		if err := moveFileOnDisk(sourcePath, targetPath); err != nil {
+		if err := history.MoveFile(ctx, sourcePath, targetPath); err != nil {
 			return nil, fmt.Errorf("moving audio file: %w", err)
 		}
 	}
@@ -322,32 +324,4 @@ func MoveTrackFile(ctx context.Context, database *sql.DB, libDir string, identif
 // RelocateTracks batch replaces directory prefixes for tracks in the database.
 func RelocateTracks(ctx context.Context, database *sql.DB, oldPrefix string, newPrefix string) (int, error) {
 	return db.RelocateTracks(ctx, database, oldPrefix, newPrefix)
-}
-
-func moveFileOnDisk(src, dst string) error {
-	if err := os.Rename(src, dst); err == nil {
-		return nil
-	}
-	return copyAndRemoveFile(src, dst)
-}
-
-func copyAndRemoveFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, in); err != nil {
-		return err
-	}
-	_ = in.Close()
-	_ = os.Remove(src)
-	return nil
 }

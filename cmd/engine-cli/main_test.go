@@ -13,6 +13,7 @@ import (
 
 func createTestLibrary(t *testing.T) string {
 	t.Helper()
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	dir := t.TempDir()
 
 	db2Dir := filepath.Join(dir, "Database2")
@@ -47,10 +48,19 @@ func createTestLibrary(t *testing.T) string {
 	// Insert Nested Playlist (Folder 1 -> Child 2)
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (1, 'EDM Folder', 0);")
 	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (2, 'House Child', 1);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId) VALUES (2, 1);")
+	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (2, 1, 'fixture');")
 
-	// Insert root m.db
-	_ = os.WriteFile(filepath.Join(dir, "m.db"), []byte("sample root m.db"), 0644)
+	// Root database fixtures must be valid SQLite, just like Database2/m.db.
+	rootDB, err := db.Open(filepath.Join(dir, "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rootDB.Exec("CREATE TABLE fixture(value TEXT); INSERT INTO fixture VALUES('sample root m.db')"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rootDB.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create Artwork dir
 	artDir := filepath.Join(dir, "Artwork")
@@ -143,6 +153,23 @@ func TestLibraryBackupAndRestoreCommand(t *testing.T) {
 	}
 }
 
+func TestBackupHelpExplainsSnapshotConsistency(t *testing.T) {
+	for _, mode := range []string{"0", "1"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Setenv("AGENT", mode)
+			out, err := executeCommand("library", "backup", "--help")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, term := range []string{"committed", "independently"} {
+				if !strings.Contains(out, term) {
+					t.Fatalf("backup help missing %q: %s", term, out)
+				}
+			}
+		})
+	}
+}
+
 func TestLibraryVerifyCommand(t *testing.T) {
 	t.Setenv("AGENT", "0")
 	libDir := createTestLibrary(t)
@@ -185,13 +212,13 @@ func TestLibrarySyncAndPruneCommand(t *testing.T) {
 	libDir := createTestLibrary(t)
 
 	// 1. Sync success (with unindexed file)
-	_, err := executeCommand("-l", libDir, "library", "sync")
+	_, err := executeCommand("-l", libDir, "library", "refresh")
 	if err != nil {
 		t.Fatalf("sync command failed: %v", err)
 	}
 
 	// 2. Sync with --no-backup
-	_, err = executeCommand("-l", libDir, "--no-backup", "library", "sync")
+	_, err = executeCommand("-l", libDir, "--no-backup", "library", "refresh")
 	if err != nil {
 		t.Fatalf("sync --no-backup failed: %v", err)
 	}
@@ -209,7 +236,7 @@ func TestLibrarySyncAndPruneCommand(t *testing.T) {
 	}
 
 	// 5. Errors on bad lib path
-	_, err = executeCommand("-l", "/nonexistent/lib", "library", "sync")
+	_, err = executeCommand("-l", "/nonexistent/lib", "library", "refresh")
 	if err == nil {
 		t.Error("expected error for nonexistent lib in sync")
 	}
@@ -246,7 +273,7 @@ func TestPlaylistCommand(t *testing.T) {
 	if strings.Contains(inspectOut, "===") || strings.Contains(inspectOut, "Tracks:") {
 		t.Errorf("inspect output should not contain headers, got: %s", inspectOut)
 	}
-	if !strings.Contains(inspectOut, "Sample Artist - Sample Title [id:1 5:00]") {
+	if !strings.Contains(inspectOut, "track: 1 artist: Sample Artist title: Sample Title") {
 		t.Errorf("expected track line 'Sample Artist - Sample Title [id:1 5:00]', got: %s", inspectOut)
 	}
 
@@ -255,14 +282,14 @@ func TestPlaylistCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("playlist inspect 1 failed: %v", err)
 	}
-	if !strings.Contains(emptyInspectOut, "No tracks in playlist.") {
+	if !strings.Contains(emptyInspectOut, "playlist: 1 title: EDM Folder") {
 		t.Errorf("expected 'No tracks in playlist.', got: %s", emptyInspectOut)
 	}
 
 	// 3. Inspect non-existent ID
-	_, err = executeCommand("-l", libDir, "playlist", "inspect", "99999")
-	if err == nil {
-		t.Error("expected error for nonexistent playlist ID")
+	missingOut, err := executeCommand("-l", libDir, "playlist", "inspect", "99999")
+	if err != nil || !strings.Contains(missingOut, "error: not_found") {
+		t.Error("expected per-item error for nonexistent playlist ID")
 	}
 
 	// 4. List error on bad lib path
@@ -356,7 +383,7 @@ func TestAgentMode_AllCommands(t *testing.T) {
 	}
 
 	// 7. Sync in AGENT mode
-	sOut, err := executeCommand("-l", libDir, "library", "sync")
+	sOut, err := executeCommand("-l", libDir, "library", "refresh")
 	if err != nil {
 		t.Fatalf("sync in agent mode failed: %v", err)
 	}
@@ -369,7 +396,7 @@ func TestAgentMode_AllCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("playlist inspect in agent mode failed: %v", err)
 	}
-	if !strings.Contains(piOut, "- Sample Artist - Sample Title [id:1 5:00]") {
+	if !strings.Contains(piOut, "track: 1 artist: Sample Artist title: Sample Title") {
 		t.Errorf("unexpected agent playlist inspect output: %s", piOut)
 	}
 
@@ -378,7 +405,7 @@ func TestAgentMode_AllCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("playlist inspect 1 in agent mode failed: %v", err)
 	}
-	if !strings.Contains(piEmptyOut, "status: empty") {
+	if !strings.Contains(piEmptyOut, "playlist: 1 title: EDM Folder") {
 		t.Errorf("unexpected agent empty playlist inspect output: %s", piEmptyOut)
 	}
 
@@ -431,7 +458,7 @@ func TestUnknownCommandsAndArgs(t *testing.T) {
 		{"library unknown subcommand bar", []string{"-l", libDir, "library", "bar"}},
 		{"root unknown command", []string{"-l", libDir, "unknown-cmd"}},
 		{"library verify extra arg", []string{"-l", libDir, "library", "verify", "extra"}},
-		{"library sync extra arg", []string{"-l", libDir, "library", "sync", "extra"}},
+		{"library refresh extra arg", []string{"-l", libDir, "library", "refresh", "extra"}},
 		{"playlist list extra arg", []string{"-l", libDir, "playlist", "list", "extra"}},
 		{"track artwork normalize extra arg", []string{"-l", libDir, "track", "artwork", "normalize", "extra"}},
 		{"library prune extra arg", []string{"-l", libDir, "library", "prune", "extra"}},
@@ -459,9 +486,9 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "playlist inspect help",
 			args: []string{"playlist", "inspect", "--help"},
 			wantSubstr: []string{
-				"<pl|id>",
-				"Arguments:",
-				"playlist list",
+				"<id...>",
+				"--json",
+				"playlist IDs",
 			},
 		},
 		{
@@ -490,8 +517,8 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			},
 		},
 		{
-			name: "library sync help",
-			args: []string{"library", "sync", "--help"},
+			name: "library refresh help",
+			args: []string{"library", "refresh", "--help"},
 			wantSubstr: []string{
 				"Scan your audio files",
 				"--no-backup",
@@ -533,7 +560,7 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "playlist rm help",
 			args: []string{"playlist", "rm", "--help"},
 			wantSubstr: []string{
-				"<pl|id>",
+				"<id>",
 				"--force",
 			},
 		},
@@ -541,7 +568,7 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "playlist move help",
 			args: []string{"playlist", "move", "--help"},
 			wantSubstr: []string{
-				"<pl|id>",
+				"<id>",
 				"--to",
 			},
 		},
@@ -549,21 +576,21 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "playlist track add help",
 			args: []string{"playlist", "track", "add", "--help"},
 			wantSubstr: []string{
-				"<pl|id> <tr|id|path...>",
+				"<id> <id|path...>",
 			},
 		},
 		{
 			name: "playlist track rm help",
 			args: []string{"playlist", "track", "rm", "--help"},
 			wantSubstr: []string{
-				"<pl|id> <tr|id|path...>",
+				"<id> <id|path...>",
 			},
 		},
 		{
 			name: "playlist track move help",
 			args: []string{"playlist", "track", "move", "--help"},
 			wantSubstr: []string{
-				"<src-pl|id> <dst-pl|id> <tr|id|path...>",
+				"<src-id> <dst-id> <id|path...>",
 			},
 		},
 		{
@@ -579,7 +606,7 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "track rm help",
 			args: []string{"track", "rm", "--help"},
 			wantSubstr: []string{
-				"<tr|id|path...>",
+				"<id|path...>",
 				"--delete-file",
 			},
 		},
@@ -587,7 +614,7 @@ func TestHelpScreens_DescriptionsAndArguments(t *testing.T) {
 			name: "track move help",
 			args: []string{"track", "move", "--help"},
 			wantSubstr: []string{
-				"<tr|id|path> <dest-path>",
+				"<id|path> <dest-path>",
 			},
 		},
 		{
@@ -657,7 +684,7 @@ func TestAgentMode_HelpScreens(t *testing.T) {
 			args: []string{"playlist", "inspect", "--help"},
 			wantSubstr: []string{
 				"command: engine-cli playlist inspect",
-				"args: <pl|id>",
+				"args: <id...>",
 			},
 		},
 		{
@@ -708,7 +735,7 @@ func TestNewPlaylistCommands_E2E(t *testing.T) {
 	}
 
 	// 2. Create folder under parent
-	outFolder, err := executeCommand("-l", libDir, "playlist", "create", "Subgenres", "--parent", "EDM Folder", "--folder")
+	outFolder, err := executeCommand("-l", libDir, "playlist", "create", "Subgenres", "--parent", "1", "--folder")
 	if err != nil {
 		t.Fatalf("playlist create folder failed: %v", err)
 	}
@@ -717,7 +744,7 @@ func TestNewPlaylistCommands_E2E(t *testing.T) {
 	}
 
 	// 3. Move playlist
-	outMove, err := executeCommand("-l", libDir, "playlist", "move", "Melodic House", "--to", "Subgenres")
+	outMove, err := executeCommand("-l", libDir, "playlist", "move", "3", "--to", "4")
 	if err != nil {
 		t.Fatalf("playlist move failed: %v", err)
 	}
@@ -726,7 +753,7 @@ func TestNewPlaylistCommands_E2E(t *testing.T) {
 	}
 
 	// 4. Playlist track add
-	outAddTrack, err := executeCommand("-l", libDir, "playlist", "track", "add", "Melodic House", "1")
+	outAddTrack, err := executeCommand("-l", libDir, "playlist", "track", "add", "3", "1")
 	if err != nil {
 		t.Fatalf("playlist track add failed: %v", err)
 	}
@@ -735,7 +762,7 @@ func TestNewPlaylistCommands_E2E(t *testing.T) {
 	}
 
 	// 5. Playlist track move
-	outMoveTrack, err := executeCommand("-l", libDir, "playlist", "track", "move", "Melodic House", "House Child", "1")
+	outMoveTrack, err := executeCommand("-l", libDir, "playlist", "track", "move", "3", "2", "1")
 	if err != nil {
 		t.Fatalf("playlist track move failed: %v", err)
 	}
@@ -744,7 +771,7 @@ func TestNewPlaylistCommands_E2E(t *testing.T) {
 	}
 
 	// 6. Playlist track rm
-	outRmTrack, err := executeCommand("-l", libDir, "playlist", "track", "rm", "House Child", "1")
+	outRmTrack, err := executeCommand("-l", libDir, "playlist", "track", "rm", "2", "1")
 	if err != nil {
 		t.Fatalf("playlist track rm failed: %v", err)
 	}
@@ -753,7 +780,7 @@ func TestNewPlaylistCommands_E2E(t *testing.T) {
 	}
 
 	// 7. Playlist rm
-	outRmPL, err := executeCommand("-l", libDir, "playlist", "rm", "Melodic House")
+	outRmPL, err := executeCommand("-l", libDir, "playlist", "rm", "3")
 	if err != nil {
 		t.Fatalf("playlist rm failed: %v", err)
 	}
@@ -771,7 +798,7 @@ func TestNewTrackCommands_E2E(t *testing.T) {
 	_ = os.WriteFile(newAudio, []byte("incoming track dummy bytes"), 0o644)
 
 	// 1. Track add with --to-playlist and --move
-	outAdd, err := executeCommand("-l", libDir, "track", "add", "--to-playlist", "Incoming Playlist", "--move", newAudio)
+	outAdd, err := executeCommand("-l", libDir, "track", "add", "--to-playlist", "2", "--move", newAudio)
 	if err != nil {
 		t.Fatalf("track add failed: %v", err)
 	}
@@ -781,7 +808,7 @@ func TestNewTrackCommands_E2E(t *testing.T) {
 
 	// 2. Track move
 	destPath := filepath.Join(libDir, "Music", "Custom", "relocated_song.mp3")
-	outMove, err := executeCommand("-l", libDir, "track", "move", "incoming", destPath)
+	outMove, err := executeCommand("-l", libDir, "track", "move", "2", destPath)
 	if err != nil {
 		t.Fatalf("track move failed: %v", err)
 	}
@@ -799,7 +826,7 @@ func TestNewTrackCommands_E2E(t *testing.T) {
 	}
 
 	// 4. Track rm with --delete-file
-	outRm, err := executeCommand("-l", libDir, "track", "rm", "incoming", "--delete-file")
+	outRm, err := executeCommand("-l", libDir, "track", "rm", "2", "--delete-file")
 	if err != nil {
 		t.Fatalf("track rm failed: %v", err)
 	}
@@ -822,7 +849,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 	}
 
 	// 2. Playlist move in AGENT mode
-	mOut, err := executeCommand("-l", libDir, "playlist", "move", "AgentPL", "--to", "EDM Folder")
+	mOut, err := executeCommand("-l", libDir, "playlist", "move", "3", "--to", "1")
 	if err != nil {
 		t.Fatalf("playlist move in agent mode failed: %v", err)
 	}
@@ -831,7 +858,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 	}
 
 	// 3. Playlist track add in AGENT mode
-	ptaOut, err := executeCommand("-l", libDir, "playlist", "track", "add", "AgentPL", "1")
+	ptaOut, err := executeCommand("-l", libDir, "playlist", "track", "add", "3", "1")
 	if err != nil {
 		t.Fatalf("playlist track add in agent mode failed: %v", err)
 	}
@@ -840,7 +867,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 	}
 
 	// 4. Playlist track move in AGENT mode
-	ptmOut, err := executeCommand("-l", libDir, "playlist", "track", "move", "AgentPL", "House Child", "1")
+	ptmOut, err := executeCommand("-l", libDir, "playlist", "track", "move", "3", "2", "1")
 	if err != nil {
 		t.Fatalf("playlist track move in agent mode failed: %v", err)
 	}
@@ -849,7 +876,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 	}
 
 	// 5. Playlist track rm in AGENT mode
-	ptrOut, err := executeCommand("-l", libDir, "playlist", "track", "rm", "House Child", "1")
+	ptrOut, err := executeCommand("-l", libDir, "playlist", "track", "rm", "2", "1")
 	if err != nil {
 		t.Fatalf("playlist track rm in agent mode failed: %v", err)
 	}
@@ -858,7 +885,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 	}
 
 	// 6. Playlist rm in AGENT mode
-	prmOut, err := executeCommand("-l", libDir, "playlist", "rm", "AgentPL")
+	prmOut, err := executeCommand("-l", libDir, "playlist", "rm", "3")
 	if err != nil {
 		t.Fatalf("playlist rm in agent mode failed: %v", err)
 	}
@@ -879,7 +906,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 
 	// 8. Track move in AGENT mode
 	destPath := filepath.Join(libDir, "Music", "agent_moved.mp3")
-	tmOut, err := executeCommand("-l", libDir, "track", "move", "agent_song", destPath)
+	tmOut, err := executeCommand("-l", libDir, "track", "move", "2", destPath)
 	if err != nil {
 		t.Fatalf("track move in agent mode failed: %v", err)
 	}
@@ -897,7 +924,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 	}
 
 	// 10. Track rm in AGENT mode
-	trmOut, err := executeCommand("-l", libDir, "track", "rm", "agent_song")
+	trmOut, err := executeCommand("-l", libDir, "track", "rm", "2")
 	if err != nil {
 		t.Fatalf("track rm in agent mode failed: %v", err)
 	}
@@ -936,16 +963,16 @@ func TestCommandHelpAndErrorBranches(t *testing.T) {
 	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "create", "NoBackupPL"); err != nil {
 		t.Fatalf("playlist create --no-backup error: %v", err)
 	}
-	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "track", "add", "NoBackupPL", "nobackup"); err != nil {
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "track", "add", "3", "2"); err != nil {
 		t.Fatalf("playlist track add --no-backup error: %v", err)
 	}
-	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "track", "rm", "NoBackupPL", "nobackup"); err != nil {
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "track", "rm", "3", "2"); err != nil {
 		t.Fatalf("playlist track rm --no-backup error: %v", err)
 	}
-	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "move", "NoBackupPL", "--to", "0"); err != nil {
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "move", "3", "--to", "0"); err != nil {
 		t.Fatalf("playlist move --no-backup error: %v", err)
 	}
-	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "rm", "NoBackupPL"); err != nil {
+	if _, err := executeCommand("-l", libDir, "--no-backup", "playlist", "rm", "3"); err != nil {
 		t.Fatalf("playlist rm --no-backup error: %v", err)
 	}
 
@@ -954,8 +981,8 @@ func TestCommandHelpAndErrorBranches(t *testing.T) {
 	if _, err := executeCommand("-l", badLib, "library", "verify"); err == nil {
 		t.Error("expected error for bad lib in library verify")
 	}
-	if _, err := executeCommand("-l", badLib, "library", "sync"); err == nil {
-		t.Error("expected error for bad lib in library sync")
+	if _, err := executeCommand("-l", badLib, "library", "refresh"); err == nil {
+		t.Error("expected error for bad lib in library refresh")
 	}
 	if _, err := executeCommand("-l", badLib, "library", "backup"); err == nil {
 		t.Error("expected error for bad lib in library backup")

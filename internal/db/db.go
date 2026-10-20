@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/alexgorbatchev/engine-cli/internal/identity"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -47,6 +48,8 @@ func Open(path string, readonly ...bool) (*sql.DB, error) {
 // InitSchema creates the necessary Engine DJ schema tables for synthetic tests.
 func InitSchema(ctx context.Context, database *sql.DB) error {
 	schema := `
+	CREATE TABLE IF NOT EXISTS Information (id INTEGER PRIMARY KEY, uuid TEXT);
+	INSERT OR IGNORE INTO Information(id,uuid) VALUES(1,'fixture');
 	CREATE TABLE IF NOT EXISTS Track (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		playOrder INTEGER,
@@ -74,8 +77,15 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 		isAnalyzed BOOLEAN,
 		isAvailable BOOLEAN,
 		lastEditTime DATETIME,
-		albumArtSourceHash CHAR(40)
+		albumArtSourceHash CHAR(40),
+		originDatabaseUuid TEXT,
+		originTrackId INTEGER
 	);
+	CREATE TRIGGER IF NOT EXISTS trigger_after_insert_Track_fix_origin AFTER INSERT ON Track
+	WHEN IFNULL(NEW.originTrackId,0)=0 OR IFNULL(NEW.originDatabaseUuid,'')=''
+	BEGIN
+		UPDATE Track SET originTrackId=NEW.id,originDatabaseUuid=(SELECT uuid FROM Information) WHERE id=NEW.id;
+	END;
 
 	CREATE TABLE IF NOT EXISTS AlbumArt (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,13 +97,17 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		title TEXT,
 		parentListId INTEGER,
-		isFolder BOOLEAN
+		isPersisted BOOLEAN,
+		nextListId INTEGER,
+		lastEditTime DATETIME,
+		isExplicitlyExported BOOLEAN
 	);
 
 	CREATE TABLE IF NOT EXISTS PlaylistEntity (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		listId INTEGER,
 		trackId INTEGER,
+		databaseUuid TEXT,
 		nextEntityId INTEGER,
 		membershipReference INTEGER
 	);
@@ -236,7 +250,7 @@ func GetPlaylistTracks(ctx context.Context, database *sql.DB, listID int64) ([]T
 		       t.composer, t.remixer, t.key, t.rating, t.albumArt, t.fileType, t.isAnalyzed, t.isAvailable,
 		       t.lastEditTime, t.albumArtSourceHash
 		FROM PlaylistEntity pe
-		JOIN Track t ON t.id = pe.trackId
+		JOIN Track t ON t.originTrackId = pe.trackId AND t.originDatabaseUuid = pe.databaseUuid
 		WHERE pe.listId = ?
 		ORDER BY pe.id ASC;
 	`
@@ -333,12 +347,19 @@ func InsertOrUpdateAlbumArt(ctx context.Context, database *sql.DB, hash string, 
 	return id, nil
 }
 
-// FindPlaylist finds a playlist by numeric ID or by title.
+// FindPlaylist finds a playlist by library-scoped numeric ID.
 func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Playlist, error) {
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
 	}
 	idOrTitle = strings.TrimSpace(idOrTitle)
+	if strings.HasPrefix(idOrTitle, "eng:") {
+		id, err := identity.ResolveDatabase(ctx, database, "playlist", idOrTitle)
+		if err != nil {
+			return nil, err
+		}
+		idOrTitle = strconv.FormatInt(id, 10)
+	}
 	if idOrTitle == "" {
 		return nil, fmt.Errorf("empty playlist identifier")
 	}
@@ -346,27 +367,17 @@ func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Pla
 	// Try numeric ID first
 	if id, err := strconv.ParseInt(idOrTitle, 10, 64); err == nil && id > 0 {
 		var p Playlist
-		var isFolder sql.NullBool
-		err := database.QueryRowContext(ctx, "SELECT id, title, parentListId, isFolder FROM Playlist WHERE id = ?", id).
-			Scan(&p.ID, &p.Title, &p.ParentListID, &isFolder)
+		err := database.QueryRowContext(ctx, "SELECT id, title, parentListId FROM Playlist WHERE id = ?", id).
+			Scan(&p.ID, &p.Title, &p.ParentListID)
 		if err == nil {
-			p.IsFolder = isFolder.Bool
 			return &p, nil
 		} else if err != sql.ErrNoRows {
 			return nil, fmt.Errorf("querying playlist by id %d: %w", id, err)
 		}
 	}
 
-	// Fallback to title lookup (case-insensitive)
-	var p Playlist
-	var isFolder sql.NullBool
-	err := database.QueryRowContext(ctx, "SELECT id, title, parentListId, isFolder FROM Playlist WHERE title = ? COLLATE NOCASE ORDER BY id ASC LIMIT 1", idOrTitle).
-		Scan(&p.ID, &p.Title, &p.ParentListID, &isFolder)
-	if err == nil {
-		p.IsFolder = isFolder.Bool
-		return &p, nil
-	} else if err != sql.ErrNoRows {
-		return nil, fmt.Errorf("querying playlist by title %q: %w", idOrTitle, err)
+	if id, err := strconv.ParseInt(idOrTitle, 10, 64); err != nil || id <= 0 {
+		return nil, fmt.Errorf("playlist identifier must be a positive numeric ID; list playlists to choose an ID")
 	}
 
 	return nil, nil
@@ -393,8 +404,10 @@ func CreatePlaylist(ctx context.Context, database *sql.DB, title string, parentL
 		}
 	}
 
-	query := "INSERT INTO Playlist (title, parentListId, isFolder) VALUES (?, ?, ?)"
-	res, err := database.ExecContext(ctx, query, title, parentListID, isFolder)
+	// Engine uses the same persisted row for playlists and folders. Its insert
+	// triggers link the new tail (nextListId=0) into the parent's sibling chain.
+	query := "INSERT INTO Playlist (title, parentListId, isPersisted, nextListId, lastEditTime, isExplicitlyExported) VALUES (?, ?, 1, 0, ?, 1)"
+	res, err := database.ExecContext(ctx, query, title, parentListID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return 0, fmt.Errorf("creating playlist %q: %w", title, err)
 	}
@@ -545,8 +558,9 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 		return 0, fmt.Errorf("checking playlist %d: %w", listID, err)
 	}
 
-	var tExists bool
-	err = database.QueryRowContext(ctx, "SELECT 1 FROM Track WHERE id = ?", trackID).Scan(&tExists)
+	var originID int64
+	var originUUID string
+	err = database.QueryRowContext(ctx, "SELECT originTrackId, originDatabaseUuid FROM Track WHERE id = ?", trackID).Scan(&originID, &originUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, fmt.Errorf("track ID %d not found", trackID)
@@ -556,7 +570,7 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 
 	// Check if already in playlist
 	var existingEntityID int64
-	err = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND trackId = ?", listID, trackID).Scan(&existingEntityID)
+	err = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND trackId = ? AND databaseUuid = ?", listID, originID, originUUID).Scan(&existingEntityID)
 	if err == nil {
 		return existingEntityID, nil // already present
 	} else if err != sql.ErrNoRows {
@@ -567,7 +581,7 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 	var tailID int64
 	_ = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND (nextEntityId = 0 OR nextEntityId IS NULL) ORDER BY id DESC LIMIT 1", listID).Scan(&tailID)
 
-	res, err := database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, nextEntityId, membershipReference) VALUES (?, ?, 0, 0)", listID, trackID)
+	res, err := database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid, nextEntityId, membershipReference) VALUES (?, ?, ?, 0, 0)", listID, originID, originUUID)
 	if err != nil {
 		return 0, fmt.Errorf("inserting playlist entity: %w", err)
 	}
@@ -592,7 +606,9 @@ func RemoveTrackFromPlaylist(ctx context.Context, database *sql.DB, listID int64
 
 	var entityID int64
 	var nextEntityID sql.NullInt64
-	err := database.QueryRowContext(ctx, "SELECT id, nextEntityId FROM PlaylistEntity WHERE listId = ? AND trackId = ?", listID, trackID).Scan(&entityID, &nextEntityID)
+	err := database.QueryRowContext(ctx, `SELECT pe.id, pe.nextEntityId FROM PlaylistEntity pe
+	JOIN Track t ON t.originTrackId=pe.trackId AND t.originDatabaseUuid=pe.databaseUuid
+	WHERE pe.listId=? AND t.id=?`, listID, trackID).Scan(&entityID, &nextEntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("track ID %d not found in playlist %d", trackID, listID)
@@ -684,7 +700,8 @@ func DeleteTrack(ctx context.Context, database *sql.DB, id int64) error {
 		return fmt.Errorf("checking track %d: %w", id, err)
 	}
 
-	if _, err := database.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE trackId = ?", id); err != nil {
+	if _, err := database.ExecContext(ctx, `DELETE FROM PlaylistEntity WHERE (trackId,databaseUuid) IN
+	(SELECT originTrackId,originDatabaseUuid FROM Track WHERE id=?)`, id); err != nil {
 		return fmt.Errorf("deleting playlist entities for track %d: %w", id, err)
 	}
 
@@ -695,12 +712,19 @@ func DeleteTrack(ctx context.Context, database *sql.DB, id int64) error {
 	return nil
 }
 
-// FindTrack finds a track by numeric ID, path, or filename.
+// FindTrack finds a track by numeric ID or its exact stored path.
 func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, error) {
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
 	}
 	idOrPath = strings.TrimSpace(idOrPath)
+	if strings.HasPrefix(idOrPath, "eng:") {
+		id, err := identity.ResolveDatabase(ctx, database, "track", idOrPath)
+		if err != nil {
+			return nil, err
+		}
+		return GetTrackByID(ctx, database, id)
+	}
 	if idOrPath == "" {
 		return nil, fmt.Errorf("empty track identifier")
 	}
@@ -711,22 +735,19 @@ func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, 
 		if err != nil {
 			return nil, err
 		}
-		if t != nil {
-			return t, nil
-		}
+		return t, nil
 	}
 
-	// Lookup by path, filename, or title (exact or relative match)
+	// Paths match exactly; titles, basenames, and path prefixes are not selectors.
 	query := `
 		SELECT id, playOrder, length, bpm, year, path, filename, bitrate, bpmAnalyzed,
 		       albumArtId, fileBytes, title, artist, album, genre, comment, label,
 		       composer, remixer, key, rating, albumArt, fileType, isAnalyzed, isAvailable,
 		       lastEditTime, albumArtSourceHash
 		FROM Track
-		WHERE path = ? OR filename = ? OR title = ? COLLATE NOCASE OR path LIKE ? OR path LIKE ?
-		ORDER BY id ASC LIMIT 1;
+		WHERE path = ?;
 	`
-	row := database.QueryRowContext(ctx, query, idOrPath, idOrPath, idOrPath, "%"+idOrPath, idOrPath+"%")
+	row := database.QueryRowContext(ctx, query, idOrPath)
 	var t Track
 	err := row.Scan(
 		&t.ID, &t.PlayOrder, &t.Length, &t.BPM, &t.Year, &t.Path, &t.Filename, &t.Bitrate, &t.BPMAnalyzed,

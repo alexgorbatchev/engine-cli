@@ -180,7 +180,7 @@ func MovePlaylist(ctx context.Context, database *sql.DB, identifier string, toPa
 
 	var parentID int64
 	var parentPL *db.Playlist
-	if strings.TrimSpace(toParentIdentifier) != "" && toParentIdentifier != "0" && !strings.EqualFold(toParentIdentifier, "Collection") {
+	if strings.TrimSpace(toParentIdentifier) != "" && toParentIdentifier != "0" {
 		parentPL, err = db.FindPlaylist(ctx, database, toParentIdentifier)
 		if err != nil {
 			return nil, nil, fmt.Errorf("resolving destination parent %q: %w", toParentIdentifier, err)

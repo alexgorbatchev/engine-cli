@@ -6,6 +6,22 @@ import (
 )
 
 var techCatalog = cobrahelptree.TechCatalog{
+	"engine-cli track inspect":           {Summary: "Read ordered details for up to 500 track IDs with per-item errors", Args: "<id...>"},
+	"engine-cli system check":            {Summary: "Return read-only runtime checks for UI decisions; no selected library required"},
+	"engine-cli library discover":        {Summary: "Discover current Engine DJ libraries in Music and attached local drives", Args: "[path...]", Description: "Read-only, nonrecursive discovery. Optional paths replace automatic locations. Returns libraries and warnings; does not require a selected library."},
+	"engine-cli library history":         {Summary: "List retained operations and persistent identities of affected entities"},
+	"engine-cli library undo":            {Summary: "Undo an operation; refuse conflicts unless --force is given", Args: "[id]", MutatesDB: true, AutoBackup: true},
+	"engine-cli track duplicate":         {Summary: "Find, inspect, and reversibly merge duplicate candidates"},
+	"engine-cli track duplicate list":    {Summary: "List non-overlapping duplicate candidates by metadata or filename and duration"},
+	"engine-cli track duplicate scan":    {Summary: "Fingerprint audio and record a portable, reversible index", MutatesDB: true, AutoBackup: true},
+	"engine-cli library register":        {Summary: "Register a library or explicitly give a copied library its own identity", MutatesDB: true, AutoBackup: true},
+	"engine-cli library entity list":     {Summary: "List stable entity references and native IDs"},
+	"engine-cli track duplicate inspect": {Summary: "Compare track quality, performance data, and origin-based playlist memberships", Args: "<id...>"},
+	"engine-cli track duplicate merge":   {Summary: "Merge explicit duplicates into --keep while retaining audio; record undo history", Args: "<id...>", MutatesDB: true, AutoBackup: true},
+	"engine-cli api serve": {
+		Summary:     "Serve all operations over loopback HTTP with JSON jobs and SSE progress",
+		Description: "GET /v1/operations lists accepted parameters. POST /v1/operations/{name} starts a job; GET /v1/jobs/{id} reports its result and GET /v1/jobs/{id}/events streams resumable progress. POST /v1/jobs/{id}/cancel requests cancellation. Job status and progress last for the server process lifetime; library undo history is stored separately.",
+	},
 	"engine-cli": {
 		Summary:     "Engine DJ SQLite database and artwork CLI management utility",
 		Description: "CLI utility for inspecting, repairing, synchronizing, and backing up Engine DJ collection databases (Database2/m.db, p.db) and Artwork/ cache.",
@@ -19,6 +35,12 @@ var techCatalog = cobrahelptree.TechCatalog{
 		Description: "Audits Track, Playlist, PlaylistEntity, and AlbumArt tables in Database2/m.db for missing audio files on disk, fileBytes mismatches, orphaned entity foreign keys, missing album art, and empty playlists.",
 	},
 	"engine-cli library sync": {
+		Summary:     "Sync selected playlist IDs or the whole library between explicit paths",
+		Description: "Directional sync with read-only dry runs, conflict detection, reversible destination changes, and explicit mirroring.",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli library refresh": {
 		Summary:     "Synchronize audio tags and file sizes on disk with Track table in Database2/m.db",
 		Description: "Scans on-disk audio files referenced in Track table, updates title, artist, BPM, and fileBytes columns when modified on disk, and detects unindexed audio files.",
 		MutatesDB:   true,
@@ -26,7 +48,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"engine-cli library backup": {
 		Summary:     "Create atomic snapshot of Engine DJ SQLite databases and Artwork/ cache",
-		Description: "Creates atomic timestamped snapshot directory containing Database2/*.db, Root/*.db, and Artwork/* into default XDG backup directory or custom path.",
+		Description: "Captures each database's committed SQLite content, including WAL pages, independently into Database2/*.db and Root/*.db, copies Artwork/*, then atomically publishes a unique timestamped snapshot directory in the library’s .engine-cli/backups directory or custom path.",
 		Args:        "[path]",
 	},
 	"engine-cli library restore": {
@@ -52,8 +74,8 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"engine-cli playlist inspect": {
 		Summary:     "Query and list Track records associated with a playlist",
-		Description: "Queries PlaylistEntity joined with Track in Database2/m.db for specified playlist name or ID and outputs track list.",
-		Args:        "<pl|id>",
+		Description: "Queries PlaylistEntity joined with Track in Database2/m.db for specified playlist numeric ID and outputs track list.",
+		Args:        "<id...>",
 	},
 	"engine-cli playlist create": {
 		Summary:     "Create a new playlist or folder in the collection hierarchy",
@@ -62,17 +84,19 @@ var techCatalog = cobrahelptree.TechCatalog{
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
+	"engine-cli playlist rename": {Summary: "Rename a playlist without changing its identity or memberships", Args: "<pl|id> <name>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track update":    {Summary: "Update supplied metadata fields and star rating while preserving audio and timing", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli playlist rm": {
 		Summary:     "Delete a playlist or folder and its membership references",
 		Description: "Deletes PlaylistEntity associations and Playlist record from Database2/m.db without deleting underlying Track records.",
-		Args:        "<pl|id>",
+		Args:        "<id>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
 	"engine-cli playlist move": {
 		Summary:     "Relocate or reparent a playlist or folder in the hierarchy",
 		Description: "Updates parentListId for target playlist in Database2/m.db, preventing circular loops.",
-		Args:        "<pl|id>",
+		Args:        "<id>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
@@ -83,21 +107,21 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli playlist track add": {
 		Summary:     "Add track(s) to a playlist",
 		Description: "Creates PlaylistEntity linked-list records in Database2/m.db linking specified tracks to target playlist.",
-		Args:        "<pl|id> <tr|id|path...>",
+		Args:        "<id> <id|path...>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
 	"engine-cli playlist track rm": {
 		Summary:     "Remove track(s) from a playlist",
 		Description: "Deletes PlaylistEntity records for specified tracks in target playlist and relinks adjacent entities.",
-		Args:        "<pl|id> <tr|id|path...>",
+		Args:        "<id> <id|path...>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
 	"engine-cli playlist track move": {
 		Summary:     "Move track membership from source playlist to destination playlist",
 		Description: "Transfers PlaylistEntity associations from source playlist to destination playlist in Database2/m.db.",
-		Args:        "<src-pl|id> <dst-pl|id> <tr|id|path...>",
+		Args:        "<src-id> <dst-id> <id|path...>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
@@ -115,14 +139,21 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli track rm": {
 		Summary:     "Remove track(s) from collection and all playlists",
 		Description: "Deletes Track and cascading PlaylistEntity records from Database2/m.db, optionally deleting audio file on disk.",
-		Args:        "<tr|id|path...>",
+		Args:        "<id|path...>",
+		MutatesDB:   true,
+		AutoBackup:  true,
+	},
+	"engine-cli track upgrade": {
+		Summary:     "Fetch replacement audio and preserve curated metadata and playlist membership",
+		Description: "Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.",
+		Args:        "<id|path>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
 	"engine-cli track move": {
 		Summary:     "Move audio file on disk and update collection path",
 		Description: "Moves physical audio file on filesystem and updates path and filename columns in Database2/m.db.",
-		Args:        "<tr|id|path> <dest-path>",
+		Args:        "<id|path> <dest-path>",
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},

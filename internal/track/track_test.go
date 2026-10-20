@@ -68,7 +68,11 @@ func TestAddTrack_Success(t *testing.T) {
 	}`
 
 	// 1. Add track with --move and --to-playlist
-	res, err := AddTrack(ctx, database, libDir, srcAudio, "Summer Playlist", true, fakeRunner(tagsJSON))
+	playlistID, err := db.CreatePlaylist(ctx, database, "Summer Playlist", 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := AddTrack(ctx, database, libDir, srcAudio, strconv.FormatInt(playlistID, 10), true, fakeRunner(tagsJSON))
 	if err != nil {
 		t.Fatalf("AddTrack error: %v", err)
 	}
@@ -113,7 +117,7 @@ func TestAddTrack_Success(t *testing.T) {
 	}
 
 	// 2. Add same track again (updates metadata)
-	res2, err := AddTrack(ctx, database, libDir, destAudio, "Summer Playlist", false, fakeRunner(tagsJSON))
+	res2, err := AddTrack(ctx, database, libDir, destAudio, strconv.FormatInt(playlistID, 10), false, fakeRunner(tagsJSON))
 	if err != nil {
 		t.Fatalf("AddTrack second call error: %v", err)
 	}
@@ -184,10 +188,12 @@ func TestRemoveTrack(t *testing.T) {
 	_ = os.MkdirAll(filepath.Dir(audioPath), 0o755)
 	_ = os.WriteFile(audioPath, []byte("data"), 0o644)
 
-	_, _ = AddTrack(ctx, database, libDir, audioPath, "PlaylistX", false, nil)
+	if _, err := AddTrack(ctx, database, libDir, audioPath, "", false, nil); err != nil {
+		t.Fatal(err)
+	}
 
 	// Remove with deleteFile = true
-	rmTrack, err := RemoveTrack(ctx, database, libDir, "delete_me.mp3", true)
+	rmTrack, err := RemoveTrack(ctx, database, libDir, "Music/delete_me.mp3", true)
 	if err != nil {
 		t.Fatalf("RemoveTrack error: %v", err)
 	}
@@ -201,7 +207,7 @@ func TestRemoveTrack(t *testing.T) {
 	}
 
 	// Verify track deleted from DB
-	tFound, _ := db.FindTrack(ctx, database, "delete_me.mp3")
+	tFound, _ := db.FindTrack(ctx, database, "Music/delete_me.mp3")
 	if tFound != nil {
 		t.Errorf("expected track to be deleted from DB, got %v", tFound)
 	}
@@ -226,7 +232,7 @@ func TestRelocateTracks(t *testing.T) {
 		t.Fatalf("expected 1 track relocated, got %d", count)
 	}
 
-	tUpdated, _ := db.FindTrack(ctx, database, "song.mp3")
+	tUpdated, _ := db.FindTrack(ctx, database, "/Volumes/NewUSB/Music/song.mp3")
 	if tUpdated.PathString() != "/Volumes/NewUSB/Music/song.mp3" {
 		t.Errorf("expected relocated path, got %q", tUpdated.PathString())
 	}
@@ -289,37 +295,6 @@ func TestTrack_ValidationAndErrors(t *testing.T) {
 	}
 }
 
-func TestMoveFileOnDisk(t *testing.T) {
-	tempDir := t.TempDir()
-	src := filepath.Join(tempDir, "source.txt")
-	dst := filepath.Join(tempDir, "dest.txt")
-
-	_ = os.WriteFile(src, []byte("content"), 0o644)
-	if err := moveFileOnDisk(src, dst); err != nil {
-		t.Fatalf("moveFileOnDisk failed: %v", err)
-	}
-
-	// Error when source does not exist
-	if err := moveFileOnDisk(filepath.Join(tempDir, "nonexistent.txt"), dst); err == nil {
-		t.Error("expected error moving nonexistent file")
-	}
-
-	// Test copyAndRemoveFile directly
-	src2 := filepath.Join(tempDir, "source2.txt")
-	dst2 := filepath.Join(tempDir, "dest2.txt")
-	_ = os.WriteFile(src2, []byte("content2"), 0o644)
-	if err := copyAndRemoveFile(src2, dst2); err != nil {
-		t.Fatalf("copyAndRemoveFile failed: %v", err)
-	}
-	// Test copyAndRemoveFile errors
-	if err := copyAndRemoveFile(filepath.Join(tempDir, "nonexistent.txt"), dst2); err == nil {
-		t.Error("expected error opening nonexistent src")
-	}
-	if err := copyAndRemoveFile(src2, filepath.Join(tempDir, "nonexistent_dir", "sub", "dest.txt")); err == nil {
-		t.Error("expected error creating destination in nonexistent dir")
-	}
-}
-
 func TestAddTrack_ExistingPlaylistAndAlternateTags(t *testing.T) {
 	database, libDir, _ := createTestDB(t)
 	ctx := context.Background()
@@ -343,7 +318,7 @@ func TestAddTrack_ExistingPlaylistAndAlternateTags(t *testing.T) {
 		}
 	}`
 
-	res, err := AddTrack(ctx, database, libDir, audioPath, "ExistingPL", false, fakeRunner(tagsJSON))
+	res, err := AddTrack(ctx, database, libDir, audioPath, strconv.FormatInt(pID, 10), false, fakeRunner(tagsJSON))
 	if err != nil {
 		t.Fatalf("AddTrack error: %v", err)
 	}
@@ -400,7 +375,7 @@ func TestRemoveTrack_KeepFile(t *testing.T) {
 	_, _ = AddTrack(ctx, database, libDir, audioPath, "", false, nil)
 
 	// Remove with deleteFile = false
-	_, err := RemoveTrack(ctx, database, libDir, "keep_me.mp3", false)
+	_, err := RemoveTrack(ctx, database, libDir, "Music/keep_me.mp3", false)
 	if err != nil {
 		t.Fatalf("RemoveTrack error: %v", err)
 	}

@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 // BackupInfo contains metadata about a created backup snapshot.
@@ -21,25 +24,33 @@ type BackupInfo struct {
 	SizeBytes int64     `json:"sizeBytes"`
 }
 
-// GetDefaultBackupDir returns the default directory for storing backup snapshots following the XDG Base Directory specification.
-func GetDefaultBackupDir() (string, error) {
-	if xdgData := os.Getenv("XDG_DATA_HOME"); xdgData != "" {
-		return filepath.Join(xdgData, "engine-cli", "backups"), nil
+// GetDefaultBackupDir keeps snapshots beside their source library.
+func GetDefaultBackupDir(lib string) (string, error) {
+	if lib == "" {
+		return "", fmt.Errorf("empty engine library directory")
 	}
-	home, err := os.UserHomeDir()
+	abs, err := filepath.Abs(lib)
 	if err != nil {
-		return "", fmt.Errorf("resolving user home directory: %w", err)
+		return "", err
 	}
-	return filepath.Join(home, ".local", "share", "engine-cli", "backups"), nil
+	return filepath.Join(abs, ".engine-cli", "backups"), nil
 }
 
 // CreateBackup creates an atomic timestamped snapshot of Engine DJ databases and Artwork cache.
 func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo, error) {
+	return createBackup(ctx, engineLibDir, outDir, true)
+}
+
+func createBackup(ctx context.Context, engineLibDir, outDir string, artwork bool) (*BackupInfo, error) {
+	progress.Stage(ctx, "backup", 0)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if engineLibDir == "" {
 		return nil, fmt.Errorf("empty engine library directory")
 	}
 	if outDir == "" {
-		defaultDir, err := GetDefaultBackupDir()
+		defaultDir, err := GetDefaultBackupDir(engineLibDir)
 		if err != nil {
 			return nil, fmt.Errorf("resolving default backup directory: %w", err)
 		}
@@ -51,12 +62,26 @@ func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo
 	}
 
 	timestamp := time.Now().UTC()
-	backupName := fmt.Sprintf("backup_%s", timestamp.Format("20060102_150405"))
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return nil, fmt.Errorf("creating backup directory: %w", err)
+	}
+	// Stage beside the final snapshot so publication is one filesystem rename.
+	staging, err := os.MkdirTemp(outDir, ".backup-*")
+	if err != nil {
+		return nil, fmt.Errorf("creating pending snapshot: %w", err)
+	}
+	published := false
+	defer func() {
+		if !published {
+			_ = os.RemoveAll(staging)
+		} // Best-effort cleanup of an incomplete snapshot.
+	}()
+	backupName := fmt.Sprintf("backup_%s_%s", timestamp.Format("20060102_150405"), strings.TrimPrefix(filepath.Base(staging), ".backup-"))
 	targetDir := filepath.Join(outDir, backupName)
 
-	db2Target := filepath.Join(targetDir, "Database2")
-	rootTarget := filepath.Join(targetDir, "Root")
-	artTarget := filepath.Join(targetDir, "Artwork")
+	db2Target := filepath.Join(staging, "Database2")
+	rootTarget := filepath.Join(staging, "Root")
+	artTarget := filepath.Join(staging, "Artwork")
 
 	if err := os.MkdirAll(db2Target, 0755); err != nil {
 		return nil, fmt.Errorf("creating backup db2 directory: %w", err)
@@ -65,61 +90,35 @@ func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo
 		return nil, fmt.Errorf("creating backup root directory: %w", err)
 	}
 
-	dbCount := 0
+	dbCount, dbBytes, err := snapshotDirectory(ctx, filepath.Join(engineLibDir, "Database2"), db2Target)
+	if err != nil {
+		return nil, err
+	}
+	progress.Stage(ctx, "backup.root", 40)
+	rootCount, rootBytes, err := snapshotDirectory(ctx, engineLibDir, rootTarget)
+	if err != nil {
+		return nil, err
+	}
+	dbCount += rootCount
+	totalSize := dbBytes + rootBytes
+	progress.Stage(ctx, "backup.artwork", 70)
 	artCount := 0
-	var totalSize int64
-
-	// Copy Database2/*.db
-	db2Src := filepath.Join(engineLibDir, "Database2")
-	if entries, err := os.ReadDir(db2Src); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".db") {
-				srcFile := filepath.Join(db2Src, e.Name())
-				dstFile := filepath.Join(db2Target, e.Name())
-				n, errCopy := copyFile(srcFile, dstFile)
-				if errCopy != nil {
-					return nil, fmt.Errorf("copying %s to backup: %w", srcFile, errCopy)
-				}
-				dbCount++
-				totalSize += n
-			}
+	if artwork {
+		var artBytes int64
+		artCount, artBytes, err = copyArtwork(ctx, filepath.Join(engineLibDir, "Artwork"), artTarget)
+		if err != nil {
+			return nil, err
 		}
+		totalSize += artBytes
 	}
-
-	// Copy root *.db
-	if entries, err := os.ReadDir(engineLibDir); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".db") {
-				srcFile := filepath.Join(engineLibDir, e.Name())
-				dstFile := filepath.Join(rootTarget, e.Name())
-				n, errCopy := copyFile(srcFile, dstFile)
-				if errCopy != nil {
-					return nil, fmt.Errorf("copying %s to backup: %w", srcFile, errCopy)
-				}
-				dbCount++
-				totalSize += n
-			}
-		}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
-
-	// Copy Artwork/ cache if exists
-	artSrc := filepath.Join(engineLibDir, "Artwork")
-	if stat, err := os.Stat(artSrc); err == nil && stat.IsDir() {
-		_ = os.MkdirAll(artTarget, 0755)
-		if entries, err := os.ReadDir(artSrc); err == nil {
-			for _, e := range entries {
-				if !e.IsDir() {
-					srcFile := filepath.Join(artSrc, e.Name())
-					dstFile := filepath.Join(artTarget, e.Name())
-					n, errCopy := copyFile(srcFile, dstFile)
-					if errCopy == nil {
-						artCount++
-						totalSize += n
-					}
-				}
-			}
-		}
+	if err := os.Rename(staging, targetDir); err != nil {
+		return nil, fmt.Errorf("publishing backup snapshot: %w", err)
 	}
+	published = true
+	progress.Stage(ctx, "backup.saved", 95)
 
 	return &BackupInfo{
 		Path:      targetDir,
@@ -131,16 +130,74 @@ func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo
 	}, nil
 }
 
+func copyArtwork(ctx context.Context, src, dst string) (count int, size int64, err error) {
+	entries, err := os.ReadDir(src)
+	if os.IsNotExist(err) {
+		return 0, 0, nil
+	}
+	if err != nil {
+		return 0, 0, fmt.Errorf("reading artwork: %w", err)
+	}
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return 0, 0, err
+	}
+	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return 0, 0, err
+		}
+		if entry.IsDir() {
+			continue
+		}
+		n, err := copyFile(filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name()))
+		if err != nil {
+			return 0, 0, fmt.Errorf("copying artwork %s: %w", entry.Name(), err)
+		}
+		count++
+		size += n
+	}
+	return count, size, nil
+}
+
+func snapshotDirectory(ctx context.Context, src, dst string) (count int, size int64, err error) {
+	entries, err := os.ReadDir(src)
+	if os.IsNotExist(err) {
+		return 0, 0, nil
+	}
+	if err != nil {
+		return 0, 0, fmt.Errorf("reading database directory %s: %w", src, err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".db") {
+			continue
+		}
+		n, err := snapshotDatabase(ctx, filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name()))
+		if err != nil {
+			return 0, 0, fmt.Errorf("snapshotting %s: %w", entry.Name(), err)
+		}
+		count++
+		size += n
+	}
+	return count, size, nil
+}
+
 // AutoBackupIfNeeded creates an automated backup snapshot before a modifying operation unless disabled.
 func AutoBackupIfNeeded(ctx context.Context, engineLibDir string, noBackup bool) (*BackupInfo, error) {
 	if noBackup {
 		return nil, nil
 	}
-	return CreateBackup(ctx, engineLibDir, "")
+	info, err := createBackup(progress.Range(ctx, 0, 10), engineLibDir, "", false)
+	if err == nil {
+		progress.Stage(ctx, "backup.saved", 10)
+	}
+	return info, err
 }
 
 // RestoreBackup restores databases and artwork from a backup directory into the Engine Library directory.
 func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
+	progress.Stage(ctx, "restore", 10)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if backupDir == "" {
 		return fmt.Errorf("empty backup directory")
 	}
@@ -162,6 +219,9 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 	// Restore Database2/*.db
 	if entries, err := os.ReadDir(db2Src); err == nil {
 		for _, e := range entries {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".db") {
 				src := filepath.Join(db2Src, e.Name())
 				dst := filepath.Join(db2Dest, e.Name())
@@ -173,9 +233,13 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 	}
 
 	// Restore Root/*.db
+	progress.Stage(ctx, "restore.root", 50)
 	rootSrc := filepath.Join(backupDir, "Root")
 	if entries, err := os.ReadDir(rootSrc); err == nil {
 		for _, e := range entries {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".db") {
 				src := filepath.Join(rootSrc, e.Name())
 				dst := filepath.Join(engineLibDir, e.Name())
@@ -187,16 +251,25 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 	}
 
 	// Restore Artwork/
+	progress.Stage(ctx, "restore.artwork", 75)
 	artSrc := filepath.Join(backupDir, "Artwork")
 	if stat, err := os.Stat(artSrc); err == nil && stat.IsDir() {
 		artDest := filepath.Join(engineLibDir, "Artwork")
 		_ = os.MkdirAll(artDest, 0755)
 		if entries, err := os.ReadDir(artSrc); err == nil {
 			for _, e := range entries {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				if !e.IsDir() {
 					src := filepath.Join(artSrc, e.Name())
 					dst := filepath.Join(artDest, e.Name())
-					_, _ = copyFile(src, dst)
+					if err := history.Preserve(ctx, dst); err != nil {
+						return err
+					}
+					if _, err := copyFile(src, dst); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -206,9 +279,9 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 }
 
 // ListBackups scans a directory for created backup snapshots.
-func ListBackups(backupBaseDir string) ([]BackupInfo, error) {
+func ListBackups(lib, backupBaseDir string) ([]BackupInfo, error) {
 	if backupBaseDir == "" {
-		defaultDir, err := GetDefaultBackupDir()
+		defaultDir, err := GetDefaultBackupDir(lib)
 		if err != nil {
 			return nil, fmt.Errorf("resolving default backup directory: %w", err)
 		}

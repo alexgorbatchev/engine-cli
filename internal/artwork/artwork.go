@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 // CommandRunner abstracts external command execution for testability.
@@ -53,6 +55,10 @@ type PruneReport struct {
 // NormalizeArtwork inspects all tracks, extracts embedded artwork, normalizes non-square images to 1:1 square,
 // and synchronizes AlbumArt database rows and disk cache.
 func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCacheDir string, runnerOpt ...CommandRunner) (*NormalizeReport, error) {
+	progress.Stage(ctx, "artwork.normalize", 10)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
 	}
@@ -84,7 +90,11 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 		TotalTracks: len(tracks),
 	}
 
-	for _, t := range tracks {
+	for i, t := range tracks {
+		progress.Item(progress.Range(ctx, 10, 65), "artwork.tracks", i, len(tracks))
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		pathStr := t.PathString()
 		if pathStr == "" {
 			report.NoArtCount++
@@ -205,8 +215,9 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 		if artCacheDir != "" {
 			cacheFileBase64 := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", hashBase64URL))
 			cacheFileHex := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", hashHex))
-			_ = os.WriteFile(cacheFileBase64, squareBytes, 0644)
-			_ = os.WriteFile(cacheFileHex, squareBytes, 0644)
+			if err := writeCache(ctx, squareBytes, cacheFileBase64, cacheFileHex); err != nil {
+				return nil, err
+			}
 		}
 
 		if w == h && w >= 1000 {
@@ -217,9 +228,17 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 	}
 
 	// 7. Normalize all existing rows in AlbumArt table if they contain non-square BLOBs
+	progress.Stage(ctx, "artwork.database", 70)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	allArtRows, errArtRows := db.GetAllAlbumArt(ctx, database)
 	if errArtRows == nil {
-		for _, artRow := range allArtRows {
+		for i, artRow := range allArtRows {
+			progress.Item(progress.Range(ctx, 70, 80), "artwork.database.items", i, len(allArtRows))
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			if len(artRow.AlbumArt) == 0 {
 				continue
 			}
@@ -253,8 +272,9 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 							if artCacheDir != "" {
 								cacheFileBase64 := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", hashBase64URL))
 								cacheFileHex := filepath.Join(artCacheDir, fmt.Sprintf("%s.jpg", newHash))
-								_ = os.WriteFile(cacheFileBase64, sqBytes, 0644)
-								_ = os.WriteFile(cacheFileHex, sqBytes, 0644)
+								if err := writeCache(ctx, sqBytes, cacheFileBase64, cacheFileHex); err != nil {
+									return nil, err
+								}
 							}
 							report.NormalizedCount++
 						}
@@ -265,9 +285,17 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 	}
 
 	// Clean any remaining non-square files in artCacheDir
+	progress.Stage(ctx, "artwork.cache", 85)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if artCacheDir != "" && existsDir(artCacheDir) {
 		entries, _ := os.ReadDir(artCacheDir)
-		for _, e := range entries {
+		for i, e := range entries {
+			progress.Item(progress.Range(ctx, 85, 95), "artwork.cache.items", i, len(entries))
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".jpg") {
 				p := filepath.Join(artCacheDir, e.Name())
 				probeOut, errProbe := runner(ctx, "ffprobe", "-v", "error", "-show_entries", "stream=width,height", "-of", "json", p)
@@ -285,7 +313,9 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 							_, errCrop := runner(ctx, "ffmpeg", "-v", "quiet", "-hide_banner", "-y", "-i", p, "-vf", "crop='min(iw,ih)':'min(iw,ih)',scale=1400:1400", "-q:v", "2", tmpSquare)
 							if errCrop == nil {
 								if sqBytes, errR := os.ReadFile(tmpSquare); errR == nil {
-									_ = os.WriteFile(p, sqBytes, 0644)
+									if err := writeCache(ctx, sqBytes, p); err != nil {
+										return nil, err
+									}
 								}
 							}
 						}
@@ -295,11 +325,15 @@ func NormalizeArtwork(ctx context.Context, database *sql.DB, musicBaseDir, artCa
 		}
 	}
 
-	return report, nil
+	return report, ctx.Err()
 }
 
 // PruneArtwork deletes unreferenced AlbumArt table rows and orphaned disk thumbnails.
 func PruneArtwork(ctx context.Context, database *sql.DB, artCacheDir string) (*PruneReport, error) {
+	progress.Stage(ctx, "artwork.prune", 10)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if database == nil {
 		return nil, fmt.Errorf("database cannot be nil")
 	}
@@ -332,7 +366,11 @@ func PruneArtwork(ctx context.Context, database *sql.DB, artCacheDir string) (*P
 	}
 
 	deletedRows := 0
-	for _, art := range allArt {
+	for i, art := range allArt {
+		progress.Item(progress.Range(ctx, 10, 65), "artwork.prune.database", i, len(allArt))
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if !referencedArtIDs[art.ID] {
 			if errDel := db.DeleteAlbumArt(ctx, database, art.ID); errDel == nil {
 				deletedRows++
@@ -349,16 +387,27 @@ func PruneArtwork(ctx context.Context, database *sql.DB, artCacheDir string) (*P
 	}
 
 	// Prune disk cache
+	progress.Stage(ctx, "artwork.prune.cache", 75)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	deletedFiles := 0
 	if artCacheDir != "" && existsDir(artCacheDir) {
 		entries, errDir := os.ReadDir(artCacheDir)
 		if errDir == nil {
-			for _, e := range entries {
+			for i, e := range entries {
+				progress.Item(progress.Range(ctx, 75, 95), "artwork.prune.cache.items", i, len(entries))
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
 				if !e.IsDir() {
 					name := e.Name()
 					baseName := strings.TrimSuffix(name, filepath.Ext(name))
 					if !referencedHashes[strings.ToLower(baseName)] {
 						filePath := filepath.Join(artCacheDir, name)
+						if err := history.Preserve(ctx, filePath); err != nil {
+							return nil, err
+						}
 						if errRem := os.Remove(filePath); errRem == nil {
 							deletedFiles++
 						}
@@ -377,4 +426,16 @@ func PruneArtwork(ctx context.Context, database *sql.DB, artCacheDir string) (*P
 func existsDir(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && st.IsDir()
+}
+
+func writeCache(ctx context.Context, data []byte, paths ...string) error {
+	if err := history.Preserve(ctx, paths...); err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := os.WriteFile(path, data, 0644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
