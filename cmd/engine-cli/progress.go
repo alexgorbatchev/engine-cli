@@ -54,7 +54,12 @@ func wrapProgress(cmd *cobra.Command, jsonEvents *bool) {
 		cmd.SetContext(ctx)
 		defer cmd.SetContext(original)
 		operation := strings.ReplaceAll(strings.TrimPrefix(cmd.CommandPath(), cmd.Root().Name()+" "), " ", ".")
-		err := progress.Run(ctx, operation, func(context.Context) error { return run(cmd, args) })
+		var err error
+		if cmd.Annotations["engine-api-operation"] == "true" {
+			err = run(cmd, args)
+		} else {
+			err = progress.Run(ctx, operation, func(context.Context) error { return run(cmd, args) })
+		}
 		joined := errors.Join(err, outputErr)
 		if joined != nil && *jsonEvents && outputErr == nil {
 			return &progressReportedError{joined}

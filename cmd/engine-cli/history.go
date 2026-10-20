@@ -16,7 +16,7 @@ func installHistory(root *cobra.Command) {
 		for _, child := range c.Commands() {
 			walk(child)
 		}
-		if !techCatalog[c.CommandPath()].MutatesDB || c.RunE == nil || c.CommandPath() == root.Name()+" library undo" || c.CommandPath() == root.Name()+" library sync" {
+		if c.Annotations["engine-api-operation"] == "true" || !techCatalog[c.CommandPath()].MutatesDB || c.RunE == nil || c.CommandPath() == root.Name()+" library undo" || c.CommandPath() == root.Name()+" library sync" {
 			return
 		}
 		run := c.RunE

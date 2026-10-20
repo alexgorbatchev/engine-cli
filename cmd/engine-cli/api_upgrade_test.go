@@ -124,12 +124,23 @@ func TestUpgradeProgressCLIAndHTTP(t *testing.T) {
 				var stderr, stdout bytes.Buffer
 				cmd.SetOut(&stdout)
 				cmd.SetErr(&stderr)
-				cmd.SetArgs([]string{"-l", lib, "--no-backup", "--progress-json", "track", "upgrade", "1"})
+				cmd.SetArgs([]string{"-l", lib, "--no-backup", "--progress-json", "track", "upgrade", "1", "--json"})
 				if err := cmd.Execute(); err != nil {
 					t.Fatal(err)
 				}
+				var result struct {
+					Track      map[string]any `json:"track"`
+					Original   string         `json:"original_path"`
+					Reanalysis bool           `json:"reanalysis_required"`
+				}
+				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Track["title"] != "Curated title" || result.Original != original || !result.Reanalysis {
+					t.Fatalf("JSON upgrade result %s: %v", stdout.String(), err)
+				}
 				scanner := bufio.NewScanner(&stderr)
 				for scanner.Scan() {
+					if strings.HasPrefix(scanner.Text(), "operation_id: ") {
+						continue
+					}
 					var e progress.Event
 					if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
 						t.Fatal(err)

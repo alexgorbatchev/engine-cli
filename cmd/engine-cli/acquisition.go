@@ -1,0 +1,180 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/dj/engine-cli/internal/api"
+	enginesync "github.com/dj/engine-cli/internal/sync"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+)
+
+// Injectable process boundary keeps command tests independent of installed tools.
+var acquisitionRunner enginesync.CommandRunner
+
+type acquisitionFlag struct{ name, kind, description string }
+
+var trackFetchFlags = []acquisitionFlag{
+	{"sources", "string", "Comma-separated sources: youtube, soundcloud, bandcamp"},
+	{"skip-verify", "bool", "Skip audio quality verification"}, {"skip-metadata", "bool", "Skip online metadata lookup"},
+	{"no-cache", "bool", "Bypass cached results"}, {"auto-install", "bool", "Install missing upstream dependencies"},
+	{"min-bandwidth-khz", "float", "Minimum accepted spectral bandwidth in kHz"},
+	{"confirm-fingerprint", "bool", "Require fingerprint confirmation (explicit true or false)"},
+	{"js-runtime", "string", "JavaScript runtime used by the downloader"},
+}
+var mixFetchFlags = []acquisitionFlag{
+	{"extractor", "string", "Tracklist extractor: auto or youtube-comments"},
+	{"llm-provider", "string", "AI provider used to extract tracklists"}, {"llm-model", "string", "AI model used to extract tracklists"},
+	{"sources", "string", "Comma-separated audio sources"}, {"skip-verify", "bool", "Skip audio quality verification"},
+	{"skip-metadata", "bool", "Skip online metadata lookup"}, {"no-cache", "bool", "Bypass cached results"},
+	{"auto-install", "bool", "Install missing upstream dependencies"},
+}
+var continuationFlags = []acquisitionFlag{{"selection-token", "string", "Persisted candidate selection token"}, {"candidate-url", "string", "URL from the selected candidate set"}}
+var importFlags = []acquisitionFlag{{"import", "bool", "Import successful downloads into the collection"}, {"to-playlist", "string", "Assign imported tracks to this playlist"}}
+var tagFlags = []acquisitionFlag{
+	{"artist", "string", "Set artist; an explicit empty value clears it"}, {"title", "string", "Set title; an explicit empty value clears it"},
+	{"album", "string", "Set album; an explicit empty value clears it"}, {"date", "string", "Set release date; an explicit empty value clears it"},
+	{"genre", "string", "Set genre; an explicit empty value clears it"}, {"comment", "string", "Set comment; an explicit empty value clears it"},
+	{"artwork", "string", "Artwork file path or URL"}, {"source-url", "string", "Metadata lookup source URL"},
+	{"refresh", "bool", "Refresh metadata using online sources"}, {"dry-run", "bool", "Preview the tag update"},
+	{"no-cache", "bool", "Bypass cached metadata"}, {"auto-install", "bool", "Install missing upstream dependencies"},
+}
+
+func addAcquisitionCommands(root *cobra.Command) {
+	track, _, _ := root.Find([]string{"track"})
+	for _, action := range []string{"fetch", "candidates"} {
+		flags := append([]acquisitionFlag{}, trackFetchFlags...)
+		if action == "fetch" {
+			flags = append(flags, continuationFlags...)
+			flags = append(flags, importFlags...)
+		}
+		track.AddCommand(acquisitionCommand("track."+action, action+" <query>", "Find and acquire individual audio tracks", "query", flags))
+	}
+	track.AddCommand(acquisitionCommand("track.verify", "verify [identifier]", "Verify the spectral quality of collection or staged audio", "identifier", []acquisitionFlag{{"staging-id", "string", "Verify this staged item instead of a collection track"}, {"min-bandwidth-khz", "float", "Minimum accepted bandwidth in kHz"}, {"auto-install", "bool", "Install missing verification dependencies"}}))
+	tags := &cobra.Command{Use: "tags", Short: "Inspect and update tags embedded in audio files", Args: cobra.NoArgs}
+	tags.AddCommand(acquisitionCommand("track.tags.inspect", "inspect [identifier]", "Inspect actual audio file tags", "identifier", []acquisitionFlag{{"staging-id", "string", "Inspect this staged item"}}))
+	tags.AddCommand(acquisitionCommand("track.tags.update", "update [identifier]", "Update embedded tags while preserving original audio and collection metadata", "identifier", append([]acquisitionFlag{{"staging-id", "string", "Update this staged item"}}, tagFlags...)))
+	track.AddCommand(tags)
+	artwork, _, _ := track.Find([]string{"artwork"})
+	artwork.AddCommand(acquisitionCommand("track.artwork.embed", "embed [identifier]", "Embed artwork without re-encoding audio", "identifier", []acquisitionFlag{{"staging-id", "string", "Update this staged item"}, {"artwork", "string", "Artwork file path or URL"}}))
+	mix := &cobra.Command{Use: "mix", Short: "Extract tracklists and acquire ordered mixes", Args: cobra.NoArgs}
+	for _, action := range []string{"inspect", "candidates", "fetch"} {
+		flags := append([]acquisitionFlag{}, mixFetchFlags...)
+		if action == "fetch" {
+			flags = append(flags, continuationFlags...)
+			flags = append(flags, importFlags...)
+		}
+		mix.AddCommand(acquisitionCommand("mix."+action, action+" <query>", "Inspect or acquire a mix using native extraction", "query", flags))
+	}
+	root.AddCommand(mix)
+	ai := &cobra.Command{Use: "ai", Short: "Inspect tracklist AI providers", Args: cobra.NoArgs}
+	ai.AddCommand(acquisitionCommand("ai.list", "list", "List available AI providers", "", nil), acquisitionCommand("ai.inspect", "inspect <provider>", "Inspect an AI provider", "provider", nil))
+	root.AddCommand(ai)
+	tool := &cobra.Command{Use: "tool", Short: "Manage acquisition tools and their dependencies", Args: cobra.NoArgs}
+	for _, action := range []string{"inspect", "upgrade"} {
+		tool.AddCommand(acquisitionCommand("tool."+action, action+" <tool>", "Inspect or upgrade an acquisition tool", "tool", nil))
+	}
+	deps := &cobra.Command{Use: "dependencies", Short: "Inspect, install, or update upstream dependencies", Args: cobra.NoArgs}
+	for _, action := range []string{"inspect", "install", "update"} {
+		var flags []acquisitionFlag
+		if action != "inspect" {
+			flags = []acquisitionFlag{{"dependencies", "strings", "Dependency names; repeat or use commas (default: all)"}}
+		}
+		deps.AddCommand(acquisitionCommand("tool.dependencies."+action, action+" <tool>", "Manage native upstream dependencies", "tool", flags))
+	}
+	tool.AddCommand(deps)
+	root.AddCommand(tool)
+	staged, _, _ := root.Find([]string{"staging"})
+	staged.AddCommand(acquisitionCommand("staging.retry", "retry <id>", "Retry a staged acquisition or its failed mix tracks", "id", nil))
+}
+
+func acquisitionCommand(operation, use, short, positional string, flags []acquisitionFlag) *cobra.Command {
+	var asJSON bool
+	command := &cobra.Command{Use: use, Short: short, Args: cobra.NoArgs, Annotations: map[string]string{"engine-api-operation": "true"}}
+	if positional != "" {
+		command.Args = cobra.ExactArgs(1)
+		if positional == "identifier" {
+			command.Args = cobra.MaximumNArgs(1)
+		}
+	}
+	for _, flag := range flags {
+		switch flag.kind {
+		case "bool":
+			command.Flags().Bool(flag.name, false, flag.description)
+		case "float":
+			command.Flags().Float64(flag.name, 0, flag.description)
+		case "strings":
+			command.Flags().StringSlice(flag.name, nil, flag.description)
+		default:
+			command.Flags().String(flag.name, "", flag.description)
+		}
+	}
+	command.Flags().BoolVar(&asJSON, "json", false, "Print compact structured results")
+	command.RunE = func(c *cobra.Command, args []string) error {
+		values := map[string]any{}
+		if positional != "" && len(args) > 0 {
+			values[positional] = args[0]
+		}
+		var flagErr error
+		c.LocalNonPersistentFlags().VisitAll(func(flag *pflag.Flag) {
+			if !flag.Changed || flag.Name == "json" {
+				return
+			}
+			key := strings.ReplaceAll(flag.Name, "-", "_")
+			var value any
+			var err error
+			switch flag.Value.Type() {
+			case "bool":
+				value, err = c.Flags().GetBool(flag.Name)
+			case "float64":
+				value, err = c.Flags().GetFloat64(flag.Name)
+			case "stringSlice":
+				value, err = c.Flags().GetStringSlice(flag.Name)
+			default:
+				value, err = c.Flags().GetString(flag.Name)
+			}
+			if err != nil {
+				flagErr = err
+			}
+			values[key] = value
+		})
+		if flagErr != nil {
+			return flagErr
+		}
+		parameters, err := json.Marshal(values)
+		if err != nil {
+			return err
+		}
+		server, err := api.New(api.Config{LibraryDir: libDirFlag, NoBackup: noBackupFlag, CheckSystem: querySystem, ToolRunner: acquisitionRunner})
+		if err != nil {
+			return err
+		}
+		defer server.Close()
+		result, historyID, runErr := server.RunOperation(c.Context(), operation, parameters)
+		if historyID != "" {
+			historyOutput := c.ErrOrStderr()
+			if operation == "track.upgrade" && !asJSON {
+				historyOutput = c.OutOrStdout()
+			}
+			if _, err := fmt.Fprintf(historyOutput, "operation_id: %s\n", historyID); err != nil {
+				return err
+			}
+		}
+		if result != nil {
+			if operation == "track.upgrade" && !asJSON && runErr == nil {
+				return printTrackUpgrade(c, result.(map[string]any))
+			}
+			encoder := json.NewEncoder(c.OutOrStdout())
+			if !asJSON {
+				encoder.SetIndent("", "  ")
+			}
+			if err := encoder.Encode(result); err != nil {
+				return err
+			}
+		}
+		return runErr
+	}
+	return command
+}

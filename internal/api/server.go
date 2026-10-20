@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
+	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 )
 
@@ -27,6 +28,7 @@ type Config struct {
 	AllowedOrigins []string
 	CheckSystem    func(context.Context, []string) (*systemcheck.Report, error)
 	ArtworkRunner  artwork.CommandRunner
+	ToolRunner     enginesync.CommandRunner
 }
 
 type Server struct {
@@ -71,10 +73,17 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.duplicateOperations()...)
 	ops = append(ops, s.systemOperations()...)
 	ops = append(ops, s.migrationOperations()...)
+	ops = append(ops, s.stagingOperations()...)
+	ops = append(ops, s.acquisitionOperations()...)
+	ops = append(ops, s.mediaOperations()...)
+	ops = append(ops, s.toolOperations()...)
 	for _, op := range ops {
 		s.operations[op.Name] = op
 	}
 	s.mux.HandleFunc("GET /v1/operations", s.catalog)
+	s.mux.HandleFunc("GET /v1/staging", s.stagedList)
+	s.mux.HandleFunc("GET /v1/staging/{id}/audio", s.stagedMedia(false))
+	s.mux.HandleFunc("GET /v1/staging/{id}/artwork", s.stagedMedia(true))
 	s.mux.HandleFunc("GET /v1/system/check", s.systemCheck)
 	s.mux.HandleFunc("GET /v1/tracks", s.batchDetails("track"))
 	s.mux.HandleFunc("GET /v1/playlists", s.batchDetails("playlist"))

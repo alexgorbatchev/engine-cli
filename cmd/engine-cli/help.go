@@ -6,6 +6,10 @@ import (
 )
 
 var techCatalog = cobrahelptree.TechCatalog{
+	"engine-cli staging list":            {Summary: "List persistent staged tracks and mixes"},
+	"engine-cli staging inspect":         {Summary: "Inspect a staged item and its mix children", Args: "<id>"},
+	"engine-cli staging rm":              {Summary: "Remove staged items with undo history; collection remains unchanged", Args: "<ids...>"},
+	"engine-cli staging import":          {Summary: "Install selected staged audio and import it with snapshots and undo", Args: "<ids...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track inspect":           {Summary: "Read ordered details for up to 500 track IDs with per-item errors", Args: "<id...>"},
 	"engine-cli system check":            {Summary: "Return read-only runtime checks for UI decisions; no selected library required"},
 	"engine-cli library discover":        {Summary: "Discover current Engine DJ libraries in Music and attached local drives", Args: "[path...]", Description: "Read-only, nonrecursive discovery. Optional paths replace automatic locations. Returns libraries and warnings; does not require a selected library."},

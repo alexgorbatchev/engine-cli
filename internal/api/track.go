@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
@@ -30,10 +32,20 @@ type relocateParams struct {
 	To   string `json:"to"`
 }
 type upgradeParams struct {
-	Identifier  string `json:"identifier"`
-	Query       string `json:"query"`
-	KeepTiming  bool   `json:"keep_timing"`
-	ClearTiming bool   `json:"clear_timing"`
+	SelectionToken     string  `json:"selection_token"`
+	CandidateURL       string  `json:"candidate_url"`
+	Sources            string  `json:"sources"`
+	SkipVerify         bool    `json:"skip_verify"`
+	SkipMetadata       bool    `json:"skip_metadata"`
+	NoCache            bool    `json:"no_cache"`
+	AutoInstall        bool    `json:"auto_install"`
+	MinBandwidthKHz    float64 `json:"min_bandwidth_khz"`
+	ConfirmFingerprint *bool   `json:"confirm_fingerprint"`
+	JSRuntime          string  `json:"js_runtime"`
+	Identifier         string  `json:"identifier"`
+	Query              string  `json:"query"`
+	KeepTiming         bool    `json:"keep_timing"`
+	ClearTiming        bool    `json:"clear_timing"`
 }
 
 type metadataParams track.MetadataEdit
@@ -44,7 +56,11 @@ func (p upgradeParams) validate() error {
 	if p.KeepTiming && p.ClearTiming {
 		return fmt.Errorf("choose keep_timing or clear_timing, not both")
 	}
-	return nil
+	return p.acquisitionOptions().Validate()
+}
+
+func (p upgradeParams) acquisitionOptions() acquire.TrackOptions {
+	return acquire.TrackOptions{Sources: p.Sources, SkipVerify: p.SkipVerify, SkipMetadata: p.SkipMetadata, NoCache: p.NoCache, AutoInstall: p.AutoInstall, MinBandwidthKHz: p.MinBandwidthKHz, ConfirmFingerprint: p.ConfirmFingerprint, JSRuntime: p.JSRuntime}
 }
 
 func (s *Server) trackOperations() []operation {
@@ -98,8 +114,15 @@ func (s *Server) trackOperations() []operation {
 			})
 		}),
 		define("track.upgrade", true, []string{"identifier"}, func(ctx context.Context, p upgradeParams) (any, error) {
+			options := p.acquisitionOptions()
+			if p.SelectionToken != "" || p.CandidateURL != "" {
+				if err := s.acquisitionService().ValidateSelection(ctx, p.SelectionToken, "track", acquisition.TrackRequest{Query: p.Query, Options: options}, p.CandidateURL); err != nil {
+					return nil, err
+				}
+				options.CandidateURL = p.CandidateURL
+			}
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				r, err := track.UpgradeTrack(ctx, d, s.config.LibraryDir, p.Identifier, track.UpgradeOptions{Query: p.Query, KeepTiming: p.KeepTiming, ClearTiming: p.ClearTiming})
+				r, err := track.UpgradeTrack(ctx, d, s.config.LibraryDir, p.Identifier, track.UpgradeOptions{Query: p.Query, KeepTiming: p.KeepTiming, ClearTiming: p.ClearTiming, Acquisition: options, Runner: s.config.ToolRunner})
 				return upgradeResult(r), err
 			})
 		}),

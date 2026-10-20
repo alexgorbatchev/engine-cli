@@ -165,6 +165,30 @@ The server retains up to 128 jobs and 1,024 events per job in memory. It evicts 
 
 ## Operations
 
+### Staged music
+
+Staged acquisitions live under `<lib-dir>/.engine-cli/staging/`, independently of collection rows. Each item has a stable opaque `id`, `kind` (`track` or `mix`), `title`, `status` (`pending`, `ready`, or `failed`), and UTC `created_at`. Optional fields include `artist`, `album`, `source_url`, `query`, `error`, `audio_path`, `artwork_path`, `parent_id`, and `index`. Paths are relative to staging storage so moving the library preserves acquisitions. A track's `parent_id` identifies its mix; `index` preserves mix order. Failed or missing acquisitions remain available for retry after restarting the server.
+
+`GET /v1/staging` and the `staging.list` job return a flat array, including mix groups and their child tracks; empty storage returns `[]`. `staging.inspect` accepts `{"id":"..."}` and returns one item, with an additional `items` array for a mix's children. `staging.duplicates` accepts the same parameters and returns collection candidates using the existing case-insensitive, trimmed title-and-artist metadata matcher. These candidates are evidence for review, not proof of identical audio.
+
+`GET /v1/staging/{id}/audio` and `/artwork` stream the staged item's media, with normal origin checks and HTTP byte ranges. Media paths cannot be supplied by clients; paths and symlinks are confined to staging storage. Missing items or media return `404`; unsupported media types return `415`.
+
+`staging.import` accepts `{"ids":["..."],"to_playlist":"optional existing playlist ID"}`. Individual track IDs select tracks; a mix ID selects all its child tracks. Repeated selections are deduplicated. The result contains `imported` (`{id,track}` entries) and `failed` (`{id,error}` entries), always arrays. Failed/pending children remain staged. Each ready track is installed under `Music/staging/<id>/`, imported through the ordinary Engine track operation, and optionally assigned to the playlist before its staged item is removed. Failed imports retain their acquisition for retry. Completed mix groups disappear only after all children have been imported. Partial success is represented by both arrays; inspect `failed` even when the job succeeds.
+
+`staging.rm` accepts `{"ids":["..."]}` and returns `{"removed":["..."]}`. Selecting a mix removes its children too. Removal records the actual manifests and media in undo history and leaves collection rows untouched. Import requires the ordinary fresh desktop check and safety snapshot. Undoing import restores staged acquisitions and reverses installed files, collection records, and playlist changes. Stage-only removal does not require a desktop check or collection snapshot.
+
+The CLI equivalents are `engine-cli staging list [--json]`, `staging inspect <id> [--json]`, `staging rm <ids...> [--json]`, and `staging import <ids...> [--to-playlist <id>] [--json]`.
+
+The operation catalog includes `effect`: `read`, `staging`, `collection`, or `system`. `mutates` identifies an operation that changes any state; `effect` distinguishes its scope. Collection effects receive desktop protection and snapshots. Staging effects retain undo history without collection snapshots. A fetch request that also imports is treated as a collection effect when executed.
+
+`mix.inspect` previews a tracklist without writing library files or undo history. `track.candidates` and `mix.candidates` persist selection tokens, so they have a staging effect. These three lookup operations accept query and acquisition options; import, playlist assignment, and candidate continuation parameters belong only to fetch operations. `track.tags.inspect` accepts only `identifier` or `staging_id`. `track.verify` additionally accepts `min_bandwidth_khz` and `auto_install`; the CLI equivalents are `--min-bandwidth-khz` and `--auto-install`. Tag-update preview results preserve comments, including explicitly cleared comments.
+
+`tool.inspect` distinguishes executable availability (`available`) from machine-interface support (`native_json`). Inspection reads `--version` and safely probes `--json dependencies`; it never installs dependencies. Supported tools include their typed dependency reports, including unsatisfied dependencies. Older tools retain their detected version and return an actionable upgrade message when their JSON contract is unavailable.
+
+`track.upgrade` accepts the same acquisition options as `track.fetch`: `sources`, `skip_verify`, `skip_metadata`, `no_cache`, `auto_install`, `min_bandwidth_khz`, nullable `confirm_fingerprint`, and `js_runtime`. Omitting fingerprint confirmation preserves the upstream default; explicitly setting `false` disables it. Engine independently verifies replacement quality even when upstream verification is skipped. Curated metadata, playlist membership, the original audio, snapshot protection, and undo remain part of the upgrade operation.
+
+To upgrade from a reviewed source, first call `track.candidates`, then supply its `selection_token`, a listed `candidate_url`, and the exact original `query` and acquisition options to `track.upgrade`, together with the collection `identifier` and timing choice. Tokens bind the original request and permitted candidate URLs; an arbitrary URL without a matching token is rejected before acquisition. The equivalent CLI supports `track upgrade <id|path> --query <query> --selection-token <token> --candidate-url <url>` and the corresponding hyphenated acquisition flags. `--json` writes the same normalized upgrade result as the API to stdout: `track`, `original_path`, `timing_cleared`, and `reanalysis_required`. Progress and the undo operation ID go to stderr in JSON mode.
+
 ### Collection editing and artwork
 
 `track.update` accepts `identifier` plus any supplied `title`, `artist`, `album`, `genre`, `comment`, `label`, `composer`, `remixer`, `year`, and `rating_stars`. At least one editable field is required. Omitted fields remain unchanged. Optional text can be cleared with an empty string; titles must contain text. Year is an integer from 0 to 9999, with 0 clearing the year. Rating is an integer from 0 (unrated) to 5 stars. Track responses include `ratingStars`; the stored `rating` field uses Engine's 0–100 scale. These edits change collection metadata, leave audio files and saved timing untouched, and support ordinary snapshots and undo. JSON null does not clear a field.
@@ -226,7 +250,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `track.rm` | `tracks` array, `delete_file?` |
 | `track.move` | `identifier`, `destination` |
 | `track.relocate` | `from`, `to` |
-| `track.upgrade` | `identifier`, `query?`, `keep_timing?`, `clear_timing?` |
+| `track.upgrade` | `identifier`, `query?`, `keep_timing?`, `clear_timing?`, acquisition options, `selection_token?`, `candidate_url?`; see upgrade workflow above |
 | `track.artwork.normalize` | `{}` |
 | `track.duplicate.list` | `type?`: `all` (default), `metadata`, or `filename-len` |
 | `track.duplicate.inspect` | Either `ids` array of positive integers or `refs` array of stable references |
