@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dj/engine-cli/internal/progress"
-	enginesync "github.com/dj/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
 type Client struct{ Runner enginesync.CommandRunner }

@@ -10,9 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/history"
-	"github.com/dj/engine-cli/internal/sidecar"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/sidecar"
 )
 
 type Selection[T any] struct {

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/db"
-	"github.com/dj/engine-cli/internal/track"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
 
 type mediaParams struct {

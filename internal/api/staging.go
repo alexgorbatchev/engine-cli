@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dj/engine-cli/internal/duplicate"
-	"github.com/dj/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
 type stagedIDParams struct {

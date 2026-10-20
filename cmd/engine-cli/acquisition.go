@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dj/engine-cli/internal/api"
-	enginesync "github.com/dj/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/api"
+	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

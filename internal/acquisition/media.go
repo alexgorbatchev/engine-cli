@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/history"
-	"github.com/dj/engine-cli/internal/staging"
-	"github.com/dj/engine-cli/internal/track"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
 
 type StagedTagReport struct {

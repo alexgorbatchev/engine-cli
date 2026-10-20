@@ -3,8 +3,8 @@ package acquisition
 import (
 	"context"
 	"encoding/json"
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"os"
 	"path/filepath"
 	"testing"

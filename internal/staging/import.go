@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dj/engine-cli/internal/db"
-	"github.com/dj/engine-cli/internal/details"
-	"github.com/dj/engine-cli/internal/history"
-	enginesync "github.com/dj/engine-cli/internal/sync"
-	"github.com/dj/engine-cli/internal/track"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
 
 type ImportOptions struct {

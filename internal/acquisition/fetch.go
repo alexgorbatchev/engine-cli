@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/history"
-	"github.com/dj/engine-cli/internal/progress"
-	"github.com/dj/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
 type Service struct {

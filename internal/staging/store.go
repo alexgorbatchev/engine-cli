@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dj/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )

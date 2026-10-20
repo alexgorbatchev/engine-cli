@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 func TestExtractArtwork(t *testing.T) {

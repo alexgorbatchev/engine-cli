@@ -10,8 +10,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/dj/engine-cli/internal/progress"
-	enginesync "github.com/dj/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
 const progressDrainTimeout = 2 * time.Second

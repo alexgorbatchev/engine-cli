@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dj/engine-cli/internal/backup"
-	"github.com/dj/engine-cli/internal/db"
-	"github.com/dj/engine-cli/internal/history"
-	"github.com/dj/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/backup"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/spf13/cobra"
 )
 

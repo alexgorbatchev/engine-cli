@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/acquisition"
-	"github.com/dj/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
 type fetchParams struct {

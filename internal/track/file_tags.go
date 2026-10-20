@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/artwork"
-	"github.com/dj/engine-cli/internal/db"
-	"github.com/dj/engine-cli/internal/history"
-	enginesync "github.com/dj/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/artwork"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
 type FileTagOptions struct {

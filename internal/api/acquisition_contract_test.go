@@ -13,10 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/acquisition"
-	"github.com/dj/engine-cli/internal/history"
-	"github.com/dj/engine-cli/internal/staging"
-	"github.com/dj/engine-cli/internal/systemcheck"
+	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 )
 
 func TestAcquisitionSelectionBoundToOriginalRequest(t *testing.T) {

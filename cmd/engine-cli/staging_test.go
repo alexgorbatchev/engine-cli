@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
 func TestStagingCommands(t *testing.T) {

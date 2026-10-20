@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 )
 
 func TestFetchUpgradeForwardsAcquisitionOptionsAndReverifies(t *testing.T) {

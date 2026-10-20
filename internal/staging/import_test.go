@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/db"
-	"github.com/dj/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 )
 
 func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {

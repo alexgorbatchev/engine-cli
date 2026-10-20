@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 )
 
 func TestFileTagsReconcilesClearedDateAndRemainingMetadata(t *testing.T) {

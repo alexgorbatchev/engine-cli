@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dj/engine-cli/internal/acquire"
-	"github.com/dj/engine-cli/internal/staging"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
 func TestInvalidRequestsDoNotAllocateItems(t *testing.T) {
