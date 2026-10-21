@@ -7,6 +7,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/state"
 	"github.com/spf13/cobra"
 )
 
@@ -65,14 +66,28 @@ func newHistoryCommand() *cobra.Command {
 
 func newUndoCommand() *cobra.Command {
 	var force, dryRun bool
+	var statePath string
 	c := &cobra.Command{Use: "undo [id]", Short: "Undo a library operation, preserving unrelated later edits", Args: cobra.MaximumNArgs(1),
 		Long: "Undo the latest operation, or an operation ID from library history. Conflicts are refused unless --force is given. Use --dry-run to check first. Close Engine DJ before modifying the library. Forced undo also retains recovery history.",
 		RunE: func(c *cobra.Command, args []string) error {
+			var store *state.Store
 			id := ""
 			if len(args) > 0 {
 				id = args[0]
 			}
 			if !dryRun {
+				var err error
+				if statePath == "" {
+					statePath, err = state.DefaultPath()
+					if err != nil {
+						return err
+					}
+				}
+				store, err = state.Open(statePath)
+				if err != nil {
+					return err
+				}
+				defer store.Close()
 				if _, err := backup.AutoBackupIfNeeded(c.Context(), libDirFlag, noBackupFlag); err != nil {
 					return err
 				}
@@ -81,10 +96,16 @@ func newUndoCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if store != nil {
+				if err = store.RecordUndo(c.Context(), e); err != nil {
+					return err
+				}
+			}
 			_, err = fmt.Fprintf(c.OutOrStdout(), "operation_id: %s\ndry_run: %t\n", e.ID, dryRun)
 			return err
 		}}
 	c.Flags().BoolVar(&force, "force", false, "Restore prior values even when affected records or files have changed")
+	c.Flags().StringVar(&statePath, "state-db", "", "Persistent library preferences database")
 	c.Flags().BoolVar(&dryRun, "dry-run", false, "Check undo conflicts without changing the library")
 	return c
 }

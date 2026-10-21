@@ -68,6 +68,13 @@ func schema(c *sqlite.Conn) ([]string, error) {
 }
 
 // fingerprint is logical: WAL layout and checkpoint activity are not edits.
+func DatabaseFingerprint(ctx context.Context, path string) (string, error) {
+	return fingerprint(ctx, path)
+}
+
+// SnapshotDatabase exposes the journal's online SQLite backup for read-only plans.
+func SnapshotDatabase(ctx context.Context, src, dst string) error { return copyDatabase(ctx, src, dst) }
+
 func fingerprint(ctx context.Context, path string) (string, error) {
 	c, err := open(ctx, path, sqlite.OpenReadOnly)
 	if err != nil {

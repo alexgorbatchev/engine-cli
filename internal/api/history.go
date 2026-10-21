@@ -34,7 +34,11 @@ func (s *Server) historyOperations() []operation {
 			if lib == "" {
 				lib = s.config.LibraryDir
 			}
-			return history.Undo(ctx, lib, p.ID, history.UndoOptions{Force: p.Force, DryRun: p.DryRun})
+			entry, err := history.Undo(ctx, lib, p.ID, history.UndoOptions{Force: p.Force, DryRun: p.DryRun})
+			if err == nil && !p.DryRun && entry != nil {
+				err = s.state.RecordUndo(ctx, entry)
+			}
+			return entry, err
 		}),
 	}
 }

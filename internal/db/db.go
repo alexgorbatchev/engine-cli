@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -19,16 +20,22 @@ func Open(path string, readonly ...bool) (*sql.DB, error) {
 		return nil, fmt.Errorf("empty database path")
 	}
 
-	dsn := path
-	if len(readonly) > 0 && readonly[0] {
-		if strings.Contains(dsn, "?") {
-			dsn += "&mode=ro"
-		} else {
-			dsn += "?mode=ro"
-		}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolving database path: %w", err)
 	}
+	uriPath := filepath.ToSlash(absolute)
+	if !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath
+	}
+	uri := url.URL{Scheme: "file", Path: uriPath}
+	query := url.Values{"mode": {"rwc"}}
+	if len(readonly) > 0 && readonly[0] {
+		query.Set("mode", "ro")
+	}
+	uri.RawQuery = query.Encode()
 
-	database, err := sql.Open("sqlite", dsn)
+	database, err := sql.Open("sqlite", uri.String())
 	if err != nil {
 		return nil, fmt.Errorf("opening database %s: %w", path, err)
 	}

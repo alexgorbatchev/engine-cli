@@ -17,6 +17,7 @@ import (
 
 func (s *Server) libraryOperations() []operation {
 	return []operation{
+		define("library.create", true, []string{"path"}, func(ctx context.Context, p createLibraryParams) (any, error) { return createLibrary(ctx, p) }),
 		define("library.register", true, nil, func(ctx context.Context, p registerParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				if err := history.Preserve(ctx, identity.Path(s.config.LibraryDir)); err != nil {
@@ -28,7 +29,18 @@ func (s *Server) libraryOperations() []operation {
 		define("library.entity.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return identity.List(ctx, d, s.config.LibraryDir) })
 		}),
-		define("library.discover", false, nil, func(ctx context.Context, p discoverParams) (any, error) { return discovery.Discover(ctx, p.Paths) }),
+		define("library.discover", false, nil, func(ctx context.Context, p discoverParams) (any, error) {
+			r, err := discovery.Discover(ctx, p.Paths)
+			if err != nil {
+				return nil, err
+			}
+			for _, lib := range r.Libraries {
+				if err = s.state.Remember(ctx, lib.Path); err != nil {
+					return nil, err
+				}
+			}
+			return r, nil
+		}),
 		define("library.verify", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return verify.VerifyLibrary(ctx, d, s.config.LibraryDir) })
 		}),

@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/api"
+	"github.com/alexgorbatchev/engine-cli/internal/libraryops"
+	"github.com/alexgorbatchev/engine-cli/internal/state"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -95,6 +97,10 @@ func addAcquisitionCommands(root *cobra.Command) {
 func acquisitionCommand(operation, use, short, positional string, flags []acquisitionFlag) *cobra.Command {
 	var asJSON bool
 	command := &cobra.Command{Use: use, Short: short, Args: cobra.NoArgs, Annotations: map[string]string{"engine-api-operation": "true"}}
+	var statePath string
+	if strings.HasPrefix(operation, "library.") {
+		command.Flags().StringVar(&statePath, "state-db", "", "Library preferences database (default: XDG state directory)")
+	}
 	if positional != "" {
 		command.Args = cobra.ExactArgs(1)
 		if positional == "identifier" {
@@ -148,7 +154,7 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 		}
 		var flagErr error
 		c.LocalNonPersistentFlags().VisitAll(func(flag *pflag.Flag) {
-			if !flag.Changed || flag.Name == "json" {
+			if !flag.Changed || flag.Name == "json" || flag.Name == "state-db" {
 				return
 			}
 			key := strings.ReplaceAll(flag.Name, "-", "_")
@@ -176,7 +182,13 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 		if err != nil {
 			return err
 		}
-		server, err := api.New(api.Config{LibraryDir: libDirFlag, NoBackup: noBackupFlag, CheckSystem: querySystem, ToolRunner: acquisitionRunner})
+		if strings.HasPrefix(operation, "library.") && statePath == "" {
+			statePath, err = state.DefaultPath()
+			if err != nil {
+				return err
+			}
+		}
+		server, err := api.New(api.Config{StatePath: statePath, LibraryDir: libDirFlag, NoBackup: noBackupFlag, CheckSystem: querySystem, ToolRunner: acquisitionRunner})
 		if err != nil {
 			return err
 		}
@@ -192,6 +204,21 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 			}
 		}
 		if result != nil {
+			if created, ok := result.(*api.CreatedLibrary); ok {
+				display := *created
+				display.Path = displayPath(display.Path)
+				result = &display
+			}
+			if plan, ok := result.(*libraryops.Plan); ok {
+				result = displayLibraryPlan(plan)
+			}
+			if libraries, ok := result.([]state.Library); ok {
+				display := append([]state.Library{}, libraries...)
+				for i := range display {
+					display[i].Path = displayPath(display[i].Path)
+				}
+				result = display
+			}
 			if operation == "track.upgrade" && !asJSON && runErr == nil {
 				return printTrackUpgrade(c, result.(map[string]any))
 			}

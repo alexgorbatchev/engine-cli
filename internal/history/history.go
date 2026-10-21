@@ -20,19 +20,21 @@ import (
 )
 
 type Entry struct {
-	ID        string     `json:"id"`
-	Operation string     `json:"operation"`
-	Created   time.Time  `json:"created"`
-	Library   string     `json:"library"`
-	LibraryID string     `json:"library_id"`
-	State     string     `json:"state"`
-	Error     string     `json:"error,omitempty"`
-	ErrorCode string     `json:"error_code,omitempty"`
-	UndoOf    string     `json:"undo_of,omitempty"`
-	Entities  []Entity   `json:"entities,omitempty"`
-	Moves     []fileMove `json:"moves,omitempty"`
-	Before    *snapshot  `json:"before"`
-	After     *snapshot  `json:"after,omitempty"`
+	RelocationFrom string `json:"relocation_from,omitempty"`
+	cleanup        func() error
+	ID             string     `json:"id"`
+	Operation      string     `json:"operation"`
+	Created        time.Time  `json:"created"`
+	Library        string     `json:"library"`
+	LibraryID      string     `json:"library_id"`
+	State          string     `json:"state"`
+	Error          string     `json:"error,omitempty"`
+	ErrorCode      string     `json:"error_code,omitempty"`
+	UndoOf         string     `json:"undo_of,omitempty"`
+	Entities       []Entity   `json:"entities,omitempty"`
+	Moves          []fileMove `json:"moves,omitempty"`
+	Before         *snapshot  `json:"before"`
+	After          *snapshot  `json:"after,omitempty"`
 }
 
 type Entity struct {
@@ -144,7 +146,7 @@ func List(lib string) ([]Entry, error) {
 	return entries(dir)
 }
 
-func Run(ctx context.Context, lib, operation string, paths []string, run func(context.Context) error) (*Entry, error) {
+func Run(ctx context.Context, lib, operation string, paths []string, run func(context.Context) error) (result *Entry, err error) {
 	dir, err := storeDir(lib)
 	if err != nil {
 		return nil, err
@@ -154,7 +156,12 @@ func Run(ctx context.Context, lib, operation string, paths []string, run func(co
 	if err != nil {
 		return nil, err
 	}
-	defer l.Close()
+	defer func() {
+		err = errors.Join(err, l.Close())
+		if result != nil && result.cleanup != nil {
+			err = errors.Join(err, result.cleanup())
+		}
+	}()
 	previous, err := entries(dir)
 	if err != nil {
 		return nil, err
@@ -190,7 +197,10 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, paths []
 	if err = writeEntry(dir, e); err != nil {
 		return nil, err
 	}
-	runErr := run(context.WithValue(ctx, recorderKey{}, &recorder{entry: e, dir: dir}))
+	r := &recorder{entry: e, dir: dir}
+	runErr := run(context.WithValue(ctx, recorderKey{}, r))
+	lib, dir = e.Library, r.dir
+	work = filepath.Join(dir, e.ID)
 	// Capture actual partial changes after a cancellation or failure too.
 	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Minute)
 	defer cancel()
@@ -216,7 +226,7 @@ type UndoOptions struct {
 	DryRun bool
 }
 
-func Undo(ctx context.Context, lib, id string, opts UndoOptions) (*Entry, error) {
+func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry, err error) {
 	dir, err := storeDir(lib)
 	if err != nil {
 		return nil, err
@@ -226,7 +236,12 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (*Entry, error)
 	if err != nil {
 		return nil, err
 	}
-	defer l.Close()
+	defer func() {
+		err = errors.Join(err, l.Close())
+		if result != nil && result.cleanup != nil {
+			err = errors.Join(err, result.cleanup())
+		}
+	}()
 	all, err := entries(dir)
 	if err != nil {
 		return nil, err
@@ -248,6 +263,11 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (*Entry, error)
 	if undone[target.ID] {
 		return nil, fmt.Errorf("operation %s has already been undone", target.ID)
 	}
+	if target.RelocationFrom != "" {
+		if _, e := os.Lstat(target.RelocationFrom); !os.IsNotExist(e) {
+			return nil, fmt.Errorf("undo conflict: previous library location is occupied")
+		}
+	}
 	recovered := target.After == nil
 	if recovered {
 		if !opts.Force {
@@ -266,7 +286,15 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (*Entry, error)
 	if opts.DryRun {
 		return target, nil
 	}
-	entry, err := runLocked(ctx, abs, dir, "library.undo", target.ID, nil, func(ctx context.Context) error { return plan.apply(ctx, filepath.Join(dir, "objects")) })
+	entry, err := runLocked(ctx, abs, dir, "library.undo", target.ID, nil, func(ctx context.Context) error {
+		if err := plan.apply(ctx, filepath.Join(dir, "objects")); err != nil {
+			return err
+		}
+		if target.RelocationFrom != "" {
+			return RelocateLibrary(ctx, abs, target.RelocationFrom)
+		}
+		return nil
+	})
 	if err == nil && recovered {
 		target.State = "recovered"
 		err = writeEntry(dir, target)

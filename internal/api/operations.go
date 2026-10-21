@@ -33,6 +33,7 @@ type operation struct {
 }
 
 type boundOperation struct {
+	before  func(context.Context) error
 	run     func(context.Context) (any, error)
 	preview bool
 	library string
@@ -109,6 +110,10 @@ func defineEffect[P any](name, effect string, required []string, run func(contex
 				}
 			}
 			undo, _ := any(p).(undoParams)
+			library := undo.Library
+			if v, ok := any(p).(interface{ operationLibrary() string }); ok {
+				library = v.operationLibrary()
+			}
 			sync, _ := any(p).(transfer.Options)
 			boundEffect := effect
 			if v, ok := any(p).(interface{ operationEffect() string }); ok {
@@ -118,7 +123,11 @@ func defineEffect[P any](name, effect string, required []string, run func(contex
 			if v, ok := any(p).(interface{ operationPaths() []string }); ok {
 				paths = v.operationPaths()
 			}
-			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: undo.DryRun || sync.DryRun, library: undo.Library, effect: boundEffect, paths: paths}, nil
+			preview := undo.DryRun || sync.DryRun
+			if v, ok := any(p).(interface{ operationPreview() bool }); ok {
+				preview = v.operationPreview()
+			}
+			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, effect: boundEffect, paths: paths}, nil
 		}}
 }
 
@@ -152,6 +161,11 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 		effect = op.Effect
 	}
 	err = progress.Run(ctx, op.Name, func(ctx context.Context) error {
+		if bound.before != nil {
+			if err := bound.before(ctx); err != nil {
+				return err
+			}
+		}
 		if effect == "filesystem" {
 			var e error
 			effect, e = s.mediaPathsEffect(ctx, bound.paths)
@@ -173,7 +187,14 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 		if bound.library != "" {
 			lib = bound.library
 		}
-		if effect == "collection" && !bound.preview && op.Name != "library.sync" {
+		if op.Name == "library.create" {
+			if e := os.MkdirAll(lib, 0700); e != nil {
+				return e
+			}
+		}
+		// Creation has no pre-existing database to back up. Its before/after
+		// history still records the new databases so creation can be undone.
+		if effect == "collection" && !bound.preview && op.Name != "library.sync" && op.Name != "library.create" {
 			if _, e := backup.AutoBackupIfNeeded(ctx, lib, s.config.NoBackup); e != nil {
 				return e
 			}
@@ -184,7 +205,7 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 					return e
 				}
 			}
-			entry, e := history.Run(ctx, s.config.LibraryDir, op.Name, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
+			entry, e := history.Run(ctx, lib, op.Name, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
 			if entry != nil {
 				historyID = entry.ID
 			}

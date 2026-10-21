@@ -14,7 +14,7 @@ func TestPlaylistUsesOriginIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer d.Close()
-	schema, err := os.ReadFile("../transfer/testdata/schema.sql")
+	schema, err := os.ReadFile("../db/library_schema.sql")
 	if err != nil {
 		t.Fatal(err)
 	}

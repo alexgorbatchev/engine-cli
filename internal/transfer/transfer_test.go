@@ -3,7 +3,6 @@ package transfer
 import (
 	"context"
 	"database/sql"
-	_ "embed"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"os"
@@ -11,11 +10,12 @@ import (
 	"testing"
 )
 
-//go:embed testdata/schema.sql
-var schema string
-
 func library(t *testing.T, uuid string) (string, *sql.DB) {
 	t.Helper()
+	schema, err := os.ReadFile("../db/library_schema.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := t.TempDir()
 	if err := os.Mkdir(filepath.Join(p, "Database2"), 0700); err != nil {
 		t.Fatal(err)
@@ -25,7 +25,7 @@ func library(t *testing.T, uuid string) (string, *sql.DB) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { d.Close() })
-	if _, err = d.Exec(schema); err != nil {
+	if _, err = d.Exec(string(schema)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = d.Exec("INSERT INTO Information(uuid,schemaVersionMajor,schemaVersionMinor,schemaVersionPatch) VALUES(?,3,0,2)", uuid); err != nil {

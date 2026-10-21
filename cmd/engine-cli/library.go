@@ -34,6 +34,8 @@ func newLibraryCommand() *cobra.Command {
 
 	libCmd.AddCommand(newLibraryVerifyCommand())
 	libCmd.AddCommand(newLibraryDiscoverCommand())
+	libCmd.AddCommand(acquisitionCommand("library.create", "create <path>", "Create a new Engine library at this path", "path", nil))
+	addLibraryLifecycleCommands(libCmd)
 	libCmd.AddCommand(newLibraryRegisterCommand(), newLibraryEntitiesCommand())
 	libCmd.AddCommand(newLibraryRefreshCommand())
 	libCmd.AddCommand(newLibraryTransferCommand())

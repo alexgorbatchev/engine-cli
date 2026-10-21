@@ -6,11 +6,13 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/discovery"
+	"github.com/alexgorbatchev/engine-cli/internal/state"
 	"github.com/spf13/cobra"
 )
 
 func newLibraryDiscoverCommand() *cobra.Command {
 	var asJSON bool
+	var statePath string
 	cmd := &cobra.Command{
 		Use:   "discover [path...]",
 		Short: "Find Engine DJ libraries on this computer and attached drives",
@@ -21,10 +23,29 @@ func newLibraryDiscoverCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if len(report.Libraries) > 0 {
+				if statePath == "" {
+					statePath, err = state.DefaultPath()
+					if err != nil {
+						return err
+					}
+				}
+				store, err := state.Open(statePath)
+				if err != nil {
+					return err
+				}
+				defer store.Close()
+				for _, lib := range report.Libraries {
+					if err = store.Remember(c.Context(), lib.Path); err != nil {
+						return err
+					}
+				}
+			}
 			return printDiscovery(c, report, asJSON)
 		},
 	}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Print discovered libraries and warnings as JSON")
+	cmd.Flags().StringVar(&statePath, "state-db", "", "Persistent known-library and sidebar preferences database")
 	return cmd
 }
 

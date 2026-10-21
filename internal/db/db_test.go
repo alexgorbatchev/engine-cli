@@ -43,9 +43,15 @@ func TestOpen_ErrorsAndReadonly(t *testing.T) {
 	}
 	defer roDB.Close()
 
-	roDB2, err := Open(dbPath+"?cache=shared", true)
+	specialPath := filepath.Join(t.TempDir(), "library #100%.db")
+	specialDB, err := Open(specialPath)
 	if err != nil {
-		t.Fatalf("Open with query in readonly failed: %v", err)
+		t.Fatal(err)
+	}
+	_ = specialDB.Close()
+	roDB2, err := Open(specialPath, true)
+	if err != nil {
+		t.Fatalf("Open literal special-character path in readonly failed: %v", err)
 	}
 	defer roDB2.Close()
 

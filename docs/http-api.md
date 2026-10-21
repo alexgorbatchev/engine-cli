@@ -1,5 +1,8 @@
 # HTTP API and progress
 
+See [library creation and opening](library-opening.md) for creating native empty
+libraries with `library.create` and opening one or more explicit paths.
+
 See [audio duplicates, stable references, and sync](fingerprints.md) for library registration, fingerprint scans, reference-based batch selection, and audio reuse during sync.
 
 ## Runtime checks and mutation protection
@@ -42,6 +45,20 @@ Other browser origins are rejected. The server has no authentication and is inte
 The server can start when the configured library directory is absent so clients can discover libraries first. Submit `POST /v1/operations/library.discover` with `{}` to check Music and attached local drives on macOS/Windows, or `{"paths":["/Volumes/My Drive"]}` to check only specified roots. Each root is checked directly and at `Engine Library/` and `Music/Engine Library/`; discovery is nonrecursive and recognizes current `Database2/m.db` files. Legacy root-level databases are ignored. Windows uses the redirected Music folder and fixed/removable drive letters. Automatic scans exclude network drives.
 
 The job result contains `libraries` and `warnings` arrays. Each library has `name` (for example `Local library` or `Drive: PRIME-128GB`), `source` (`local`, `drive`, or `folder`), and absolute `path` and `database` fields. Use `name` as a picker label and `path` as secondary text; names are not unique identifiers. Warnings contain `path` and `message`. Discovery does not select a library, create history, or modify databases. Start the server with the chosen `--lib-dir` to operate on it.
+
+## Library state and file lifecycle
+
+`api serve --state-db <path>` selects the machine-local SQLite state database; the default is `$XDG_STATE_HOME/engine-cli/state.db`, falling back to `$HOME/.local/state/engine-cli/state.db`. Keep it outside managed library folders. It stores known paths, cosmetic names, hidden entries, and tombstones for deleted or moved paths. It never replaces Engine's collection databases.
+
+`GET /v1/library-preferences` returns an array of `{path,name,hidden,retired}`. `PATCH /v1/library-preferences` accepts an absolute `path` and optional `name` and `hidden`. The corresponding catalog operations are `library.preferences.list` and `library.preferences.update`, with effect `state`. Hiding changes only sidebar visibility: discovery still reports the library, its media remains intact, and it still participates in shared-media checks. Updating a cosmetic name does not rename any folder or Engine database.
+
+`library.delete`, `library.move`, and `library.media.aggregate` accept an absolute `path`. First submit `dry_run:true`. Their result includes `action`, `path`, optional `destination`, `applicable`, `files`, `affected_libraries`, `unavailable_libraries`, `warnings`, and `plan_token`. Each file supplies its source, optional destination, action, content hash, missing status, and referencing known libraries. Preview does not create snapshots or history. Apply with `dry_run:false` and the reviewed `plan_token`; changes to files, collections, or options invalidate the token. Normal Engine Desktop protection, safety snapshots, and undo apply to execution.
+
+- Delete additionally requires `confirm_path` equal to the complete canonical preview path. It removes `.db` files directly in the library root and `Database2/`, plus files under `Artwork/`. Referenced audio is retained unless `delete_media:true`; `keep_shared:true` retains media referenced by another known library. Recovery history, staging data, other files, and unreferenced audio remain in place. This is not recursive folder deletion.
+- Move requires `destination`, an unused path with an existing parent. It moves the complete folder, including its internal media and portable history, preserving collection identity. External audio remains in place. Other libraries referencing media inside the moved folder can lose access; preview lists them. Undo relocates the folder back and refuses an occupied original location, including with force.
+- Aggregate uses `mode:"copy"|"move"` and `shared_mode:"copy"|"move"` (both default to copy). It gathers referenced external audio into deterministic paths under `Media/`, then updates this collection's track paths without re-encoding. When moving with `shared_mode:"copy"`, shared files are copied while private files move. Other collections' track paths are never silently rewritten.
+
+Shared-file checks cover previously opened or discovered libraries, including hidden ones. Unavailable known libraries are reported; protection conservatively keeps or copies candidate files, while unsafe deletion/moving is blocked. Libraries unknown to this service cannot be checked. Deletion and relocation retire the old registry entry; successful undo reconciles its visibility.
 
 ## Submit, observe, cancel
 

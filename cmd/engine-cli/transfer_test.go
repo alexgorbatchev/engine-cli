@@ -22,7 +22,7 @@ func transferLibrary(t *testing.T, uuid string) string {
 		t.Fatal(err)
 	}
 	defer d.Close()
-	schema, err := os.ReadFile("../../internal/transfer/testdata/schema.sql")
+	schema, err := os.ReadFile("../../internal/db/library_schema.sql")
 	if err != nil {
 		t.Fatal(err)
 	}

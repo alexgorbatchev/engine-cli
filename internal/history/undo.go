@@ -165,8 +165,13 @@ func (p *undoPlan) apply(ctx context.Context, objects string) error {
 			if err := removeDatabase(path); err != nil {
 				return err
 			}
-		} else if err := copyDatabase(ctx, image, path); err != nil {
-			return err
+		} else {
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				return err
+			}
+			if err := copyDatabase(ctx, image, path); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

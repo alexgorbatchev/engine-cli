@@ -14,6 +14,7 @@ import (
 func createTestLibrary(t *testing.T) string {
 	t.Helper()
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	dir := t.TempDir()
 
 	db2Dir := filepath.Join(dir, "Database2")

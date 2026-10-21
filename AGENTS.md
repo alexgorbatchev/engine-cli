@@ -19,6 +19,9 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Verify Library Integrity:** `bin/engine-cli library verify`
 - **Check Desktop Status:** `bin/engine-cli system check [--checks engine_desktop] [--json]`; HTTP `GET /v1/system/check` or `system.check`.
 - **Discover Libraries:** `bin/engine-cli library discover` and HTTP `library.discover` inspect common macOS/Windows locations and attached drives without modifying libraries.
+- **Library State:** `library preferences list` and `library preferences update <path> --name <text> --hidden=<bool>` store cosmetic names and visibility in a separate SQLite state database. `--state-db` overrides `$XDG_STATE_HOME/engine-cli/state.db` (fallback `$HOME/.local/state/engine-cli/state.db`). Discovery continues reporting hidden libraries.
+- **Library Lifecycle:** `library delete <path>`, `library move <path> --destination <new-path>`, and `library media aggregate <path> --mode copy|move --shared-mode copy|move` share API operations of the same names. Review with `--dry-run`, then apply with its `--plan-token`; deletion also requires `--confirm-path <complete-path>`. Delete removes managed databases/artwork, retains recovery/unrelated files, and optionally removes referenced media using `--delete-media`, with `--keep-shared` protection. Shared-media checks include previously opened/discovered hidden libraries; unavailable peers block unsafe shared-file changes. Moves preserve library identity and undo history, including across filesystems.
+- **Create Library:** `bin/engine-cli library create <path> [--json]` and HTTP `library.create` initialize native schema 3.0.2 at an explicit path, with desktop protection and undo history in the new library. Never overwrite an existing `Database2` directory. Use the canonical `internal/db/library_schema.sql`; test-only synthetic schemas are not suitable for user libraries.
 - **Backup Library:** `bin/engine-cli library backup [path] [--list]`
 - **Restore Library:** `bin/engine-cli library restore <path>`
 - **Refresh On-Disk Metadata:** `bin/engine-cli library refresh`
@@ -51,6 +54,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 ## Setup & Environment
 - **Prerequisites:** Go 1.26+, `ffmpeg`, `ffprobe`, `just`; `fetch-track` with JSON download output for track upgrades.
 - **Default Library Directory:** `$HOME/Music/Engine Library` (override with `-l <dir>` / `--lib-dir`).
+- **API Startup Libraries:** `ENGINE_LIBRARY_PATHS` supplies semicolon-separated existing library directories to `api serve`; ignore empty entries and trim surrounding whitespace. Explicit `--library` flags replace the environment list; `--lib-dir` still selects the unscoped default library.
 - **Portable Library Storage:** Store default backups in `<lib-dir>/.engine-cli/backups/` and undo history in `<lib-dir>/.engine-cli/history/`. Library-contained history paths must follow the library when it moves.
 - **Temporary Files:** Production code uses the OS temporary directory for disposable workspaces, never project `.tmp/`. Agent development artifacts may use project `.tmp/`. Atomic publication staging stays beside its destination to support same-filesystem rename.
 

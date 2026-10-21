@@ -13,7 +13,7 @@ require (
 require (
 	github.com/alexgorbatchev/gochromaprint v1.6.1-0.20261018234412-8ac11c575443
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/nateranda/djtools v0.0.0-00010101000000-000000000000
