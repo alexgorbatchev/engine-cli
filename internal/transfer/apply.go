@@ -82,7 +82,7 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 	if !p.report.Applicable {
 		return p.report, fmt.Errorf("sync has %d unresolved conflicts; preview and resolve them before applying", len(p.report.Conflicts))
 	}
-	if len(p.report.Changes) == 0 && len(p.copy) == 0 && len(p.artwork) == 0 && reflect.DeepEqual(d.State.Peers[s.Instance], p.baseline) {
+	if len(p.report.Changes) == 0 && len(p.copy) == 0 && len(p.artwork) == 0 && reflect.DeepEqual(d.State.peer(s), p.baseline) {
 		return p.report, nil
 	}
 	progress.Stage(ctx, "sync.backup", 20)
@@ -104,7 +104,7 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 			after.State.Playlists[strconv.FormatInt(id, 10)] = key
 		}
 		after.State.Peers[s.Instance] = p.baseline
-		after.State.Revisions[s.Instance] = max(s.State.Revisions[d.Instance], d.State.Revisions[s.Instance]) + 1
+		after.State.Revisions[s.Instance] = max(s.State.revision(d), d.State.revision(s)) + 1
 		for key, b := range p.baseline {
 			if e := after.Entities[key]; e != nil {
 				if e.Kind == "track" {

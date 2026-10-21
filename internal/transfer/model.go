@@ -100,6 +100,22 @@ type state struct {
 	Revisions map[string]uint64
 	Tracks    map[string]string
 }
+
+// Registration replaces the Engine UUID a library synced under with its
+// instance ID, so state recorded before registration still belongs to it.
+func (st state) peer(c *collection) map[string]baseline {
+	if b, ok := st.Peers[c.Instance]; ok {
+		return b
+	}
+	return st.Peers[c.UUID]
+}
+func (st state) revision(c *collection) uint64 {
+	if r, ok := st.Revisions[c.Instance]; ok {
+		return r
+	}
+	return st.Revisions[c.UUID]
+}
+
 type collection struct {
 	Path      string
 	UUID      string

@@ -9,7 +9,7 @@ engine-cli -l "$HOME/Music/Engine Library" library register --json
 engine-cli -l "$HOME/Music/Engine Library" library entity list --json
 ```
 
-Registration stores an instance ID and playlist identities in `.engine-cli/identity.json`. Moving the whole library, including this folder, preserves its identity. After copying a registered library to USB, register the copy explicitly:
+Registration stores an instance ID and playlist identities in `.engine-cli/identity.json`. Moving the whole library, including this folder, preserves its identity. Sync identifies an unregistered library by its Engine database UUID and a registered one by its instance ID; registering a library that has already synced keeps the sync baselines recorded under its UUID, so its next sync still recognizes earlier edits and mirror removals stay protected. After copying a registered library to USB, register the copy explicitly:
 
 ```sh
 engine-cli -l "/Volumes/PRIME-128GB/Engine Library" library register --new-copy --json

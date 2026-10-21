@@ -163,12 +163,12 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 			p.conflict(Change{Entity: "track", ID: key, Reason: "selected playlist references a missing source track"})
 		}
 	}
-	for k, b := range d.State.Peers[s.Instance] {
+	for k, b := range d.State.peer(s) {
 		p.baseline[k] = b
 	}
-	if s.State.Revisions[d.Instance] > d.State.Revisions[s.Instance] || len(p.baseline) == 0 {
+	if s.State.revision(d) > d.State.revision(s) || len(p.baseline) == 0 {
 		p.baseline = map[string]baseline{}
-		for k, b := range s.State.Peers[d.Instance] {
+		for k, b := range s.State.peer(d) {
 			p.baseline[k] = baseline{Source: b.Destination, Destination: b.Source}
 		}
 	}
