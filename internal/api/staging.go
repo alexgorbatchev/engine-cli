@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"io"
 	"mime"
 	"net/http"
 	"path/filepath"
@@ -88,9 +89,16 @@ func (s *Server) stagedMedia(artwork bool) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", typ)
-		if !artwork {
-			w.Header().Set("Cache-Control", audioCacheControl)
+		if artwork {
+			data, err := io.ReadAll(f)
+			if err != nil {
+				writeError(w, http.StatusServiceUnavailable, "staged_media_unavailable", "This staged media is unavailable.")
+				return
+			}
+			serveArtworkContent(w, r, data)
+			return
 		}
+		w.Header().Set("Cache-Control", audioCacheControl)
 		http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 	}
 }

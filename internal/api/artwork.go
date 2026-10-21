@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
@@ -58,6 +59,13 @@ func (s *Server) trackArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
+	serveArtworkContent(w, r, data)
+}
+
+func serveArtworkContent(w http.ResponseWriter, r *http.Request, data []byte) {
+	w.Header().Set("Cache-Control", "private, no-cache")
+	digest := sha256.Sum256(data)
+	w.Header().Set("ETag", `"`+hex.EncodeToString(digest[:])+`"`)
 	http.ServeContent(w, r, "artwork", time.Time{}, bytes.NewReader(data))
 }
 
