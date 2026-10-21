@@ -82,6 +82,33 @@ func TestDeleteLibraryPreviewProtectionAndUndo(t *testing.T) {
 	}
 }
 
+func TestRejectedPlansWriteNoSnapshotOrHistory(t *testing.T) {
+	_, lib := testAPI(t)
+	s, err := New(Config{LibraryDir: lib})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	raw, _ := json.Marshal(libraryops.Options{Path: lib, DryRun: true})
+	result, _, err := s.RunOperation(context.Background(), "library.delete", raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := result.(*libraryops.Plan).PlanToken
+	for _, opts := range []libraryops.Options{
+		{Path: lib, PlanToken: token, ConfirmPath: filepath.Join(lib, "elsewhere")},
+		{Path: lib, PlanToken: "stale", ConfirmPath: lib},
+	} {
+		raw, _ = json.Marshal(opts)
+		if _, _, err = s.RunOperation(context.Background(), "library.delete", raw); err == nil {
+			t.Fatalf("unreviewed deletion accepted: %+v", opts)
+		}
+		if _, err = os.Stat(filepath.Join(lib, ".engine-cli")); !os.IsNotExist(err) {
+			t.Fatalf("rejected plan wrote a snapshot or history: %v", err)
+		}
+	}
+}
+
 func TestMoveLibraryKeepsSidebarNameAndRetiresOldPath(t *testing.T) {
 	s, lib := testAPI(t)
 	ctx := context.Background()

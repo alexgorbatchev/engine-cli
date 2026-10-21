@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 
@@ -33,7 +32,28 @@ func (s *Server) knownLibraries(ctx context.Context) ([]libraryops.Library, erro
 func (s *Server) libraryLifecycleOperations() []operation {
 	result := []operation{}
 	for _, item := range []struct{ name, action string }{{"library.delete", "delete"}, {"library.move", "move"}, {"library.media.aggregate", "aggregate"}} {
-		op := define(item.name, true, []string{"path"}, func(ctx context.Context, p manageLibraryParams) (any, error) {
+		// Applying a plan rechecks it and pins its canonical library before snapshots; previews need neither.
+		before := func(ctx context.Context, p manageLibraryParams, bound *boundOperation) error {
+			if p.DryRun {
+				return nil
+			}
+			if err := s.libraryStatePlacement(p.Path); err != nil {
+				return err
+			}
+			opts := libraryops.Options(p)
+			opts.Action = item.action
+			known, err := s.knownLibraries(ctx)
+			if err != nil {
+				return err
+			}
+			plan, err := libraryops.Check(ctx, opts, known)
+			if err != nil {
+				return err
+			}
+			bound.library = filepath.Clean(plan.Path)
+			return nil
+		}
+		result = append(result, defineChecked(item.name, "collection", []string{"path"}, before, func(ctx context.Context, p manageLibraryParams) (any, error) {
 			if err := s.libraryStatePlacement(p.Path); err != nil {
 				return nil, err
 			}
@@ -72,38 +92,7 @@ func (s *Server) libraryLifecycleOperations() []operation {
 				}
 			}
 			return plan, nil
-		})
-		bind := op.bind
-		op.bind = func(raw json.RawMessage) (*boundOperation, error) {
-			bound, err := bind(raw)
-			if err != nil {
-				return nil, err
-			}
-			var opts libraryops.Options
-			if err = json.Unmarshal(raw, &opts); err != nil {
-				return nil, err
-			}
-			opts.Action = item.action
-			if !opts.DryRun {
-				bound.before = func(ctx context.Context) error {
-					if err := s.libraryStatePlacement(opts.Path); err != nil {
-						return err
-					}
-					known, err := s.knownLibraries(ctx)
-					if err != nil {
-						return err
-					}
-					plan, err := libraryops.Check(ctx, opts, known)
-					if err != nil {
-						return err
-					}
-					bound.library = filepath.Clean(plan.Path)
-					return nil
-				}
-			}
-			return bound, nil
-		}
-		result = append(result, op)
+		}))
 	}
 	return result
 }

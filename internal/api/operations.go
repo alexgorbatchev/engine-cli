@@ -54,6 +54,12 @@ func define[P any](name string, mutates bool, required []string, run func(contex
 }
 
 func defineEffect[P any](name, effect string, required []string, run func(context.Context, P) (any, error)) operation {
+	return defineChecked(name, effect, required, nil, run)
+}
+
+// defineChecked adds an optional before check that runs inside the job, ahead of
+// snapshots and history, with the decoded parameters and their bound operation.
+func defineChecked[P any](name, effect string, required []string, before func(context.Context, P, *boundOperation) error, run func(context.Context, P) (any, error)) operation {
 	params := make(map[string]string)
 	typ := reflect.TypeFor[P]()
 	for i := 0; i < typ.NumField(); i++ {
@@ -127,7 +133,11 @@ func defineEffect[P any](name, effect string, required []string, run func(contex
 			if v, ok := any(p).(interface{ operationPreview() bool }); ok {
 				preview = v.operationPreview()
 			}
-			return &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, effect: boundEffect, paths: paths}, nil
+			bound := &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, effect: boundEffect, paths: paths}
+			if before != nil {
+				bound.before = func(ctx context.Context) error { return before(ctx, p, bound) }
+			}
+			return bound, nil
 		}}
 }
 
