@@ -84,5 +84,7 @@ func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
+	// Private clients may reuse audio-derived waveforms after checking the file validators.
+	w.Header().Set("Cache-Control", audioCacheControl)
 	http.ServeContent(w, r, info.Name(), info.ModTime(), file)
 }

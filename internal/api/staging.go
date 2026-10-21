@@ -88,6 +88,9 @@ func (s *Server) stagedMedia(artwork bool) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", typ)
+		if !artwork {
+			w.Header().Set("Cache-Control", audioCacheControl)
+		}
 		http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 	}
 }

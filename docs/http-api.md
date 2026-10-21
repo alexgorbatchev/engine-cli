@@ -253,6 +253,8 @@ Audio requests accept only positive numeric database IDs. Engine resolves the fi
 
 Cross-origin audio elements must set `crossorigin="anonymous"` so the browser sends its origin. Browser media requests that omit the origin are rejected; ordinary command-line HTTP clients can still read audio.
 
+Successful collection and staged audio responses use `Cache-Control: private, no-cache`: only private clients may cache them, and every reuse must revalidate with the server. `HEAD` returns `Last-Modified` and the complete `Content-Length` without transferring audio. Clients may reuse derived waveform peaks when both validators match; changed or missing validators require fresh analysis. Conditional `GET` requests use native HTTP `If-Modified-Since` handling, including `304` for unchanged files. Error responses, artwork, metadata, and other API data retain `no-store`.
+
 Fields marked `?` are optional. Playlist identifiers are positive numeric IDs encoded as strings. Track identifiers are numeric IDs encoded as strings or exact stored paths. Names, titles, basenames, and path-prefix matches are not selectors. Creation requests still specify the new entity's display name. The live operation catalog is the authoritative list of accepted parameters.
 
 | Operation | JSON parameters |
