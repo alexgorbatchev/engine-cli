@@ -29,6 +29,7 @@ func Track(t *db.Track) map[string]any {
 		"bitrate":            valueOrNull(t.Bitrate.Int64, t.Bitrate.Valid),
 		"bpmAnalyzed":        valueOrNull(t.BPMAnalyzed.Float64, t.BPMAnalyzed.Valid),
 		"albumArtId":         valueOrNull(t.AlbumArtID.Int64, t.AlbumArtID.Valid),
+		"hasArtwork":         valueOrNull(t.HasArtwork.Bool, t.HasArtwork.Valid),
 		"fileBytes":          valueOrNull(t.FileBytes.Int64, t.FileBytes.Valid),
 		"title":              valueOrNull(t.Title.String, t.Title.Valid),
 		"artist":             valueOrNull(t.Artist.String, t.Artist.Valid),

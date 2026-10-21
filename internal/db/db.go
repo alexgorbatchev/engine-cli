@@ -153,6 +153,7 @@ func GetAllTracks(ctx context.Context, database *sql.DB) ([]Track, error) {
 		return nil, fmt.Errorf("iterating tracks: %w", err)
 	}
 
+	populateArtworkAvailability(ctx, database, tracks)
 	return tracks, nil
 }
 
@@ -180,7 +181,9 @@ func GetTrackByID(ctx context.Context, database *sql.DB, id int64) (*Track, erro
 		}
 		return nil, fmt.Errorf("getting track %d: %w", id, err)
 	}
-	return &t, nil
+	populated := []Track{t}
+	populateArtworkAvailability(ctx, database, populated)
+	return &populated[0], nil
 }
 
 // UpdateTrackMetadata updates a track's metadata, path, fileBytes, and lastEditTime.
@@ -278,6 +281,7 @@ func GetPlaylistTracks(ctx context.Context, database *sql.DB, listID int64) ([]T
 		return nil, fmt.Errorf("iterating playlist tracks: %w", err)
 	}
 
+	populateArtworkAvailability(ctx, database, tracks)
 	return tracks, nil
 }
 
@@ -761,7 +765,9 @@ func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, 
 		}
 		return nil, fmt.Errorf("finding track %q: %w", idOrPath, err)
 	}
-	return &t, nil
+	populated := []Track{t}
+	populateArtworkAvailability(ctx, database, populated)
+	return &populated[0], nil
 }
 
 // RelocateTracks replaces oldPrefix with newPrefix in Track.path for matching tracks.

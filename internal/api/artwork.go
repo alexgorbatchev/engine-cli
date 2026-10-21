@@ -2,10 +2,8 @@ package api
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"net/http"
@@ -13,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/alexgorbatchev/engine-cli/internal/artworkcache"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
@@ -72,28 +71,16 @@ func serveArtworkContent(w http.ResponseWriter, r *http.Request, data []byte) {
 // Engine stores cache-backed SHA-1 hashes as binary BLOBs as well as hexadecimal
 // text. Generate filenames from decoded hashes, never from database paths.
 func (s *Server) cachedArtwork(hashes ...[]byte) ([]byte, error) {
-	for _, hash := range hashes {
-		if len(hash) == hex.EncodedLen(sha1.Size) {
-			decoded, err := hex.DecodeString(string(hash))
-			if err != nil {
-				continue
-			}
-			hash = decoded
-		}
-		if len(hash) != sha1.Size {
+	for _, path := range artworkcache.Paths(s.config.LibraryDir, hashes...) {
+		data, err := os.ReadFile(path)
+		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
-		for _, name := range []string{base64.RawURLEncoding.EncodeToString(hash), hex.EncodeToString(hash)} {
-			data, err := os.ReadFile(filepath.Join(s.config.LibraryDir, "Artwork", name+".jpg"))
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			if err != nil {
-				return nil, err
-			}
-			if len(data) > 0 {
-				return data, nil
-			}
+		if err != nil {
+			return nil, err
+		}
+		if len(data) > 0 {
+			return data, nil
 		}
 	}
 	return nil, nil

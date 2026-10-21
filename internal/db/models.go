@@ -14,6 +14,7 @@ type Track struct {
 	Bitrate            sql.NullInt64   `json:"bitrate"`
 	BPMAnalyzed        sql.NullFloat64 `json:"bpmAnalyzed"`
 	AlbumArtID         sql.NullInt64   `json:"albumArtId"`
+	HasArtwork         sql.NullBool    `json:"-"`
 	FileBytes          sql.NullInt64   `json:"fileBytes"`
 	Title              sql.NullString  `json:"title"`
 	Artist             sql.NullString  `json:"artist"`
