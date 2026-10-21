@@ -13,8 +13,6 @@ import (
 
 const EngineDesktop = "engine_desktop"
 
-var errUnsupported = errors.New("Engine DJ Desktop detection is supported on macOS and Windows")
-
 type Error struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -71,10 +69,6 @@ func run(ctx context.Context, checks []string, snapshot func(context.Context) ([
 	if err != nil {
 		r.Status = "error"
 		r.Error = &Error{Code: "process_query_failed", Message: "Could not check Engine DJ Desktop. Retry before changing a library."}
-		if errors.Is(err, errUnsupported) {
-			r.Status = "unsupported"
-			r.Error = &Error{Code: "unsupported_platform", Message: errUnsupported.Error()}
-		}
 	} else {
 		for _, p := range processes {
 			if strings.EqualFold(p.name, "Engine DJ") || strings.EqualFold(p.name, "Engine DJ.exe") {

@@ -4,4 +4,5 @@ package systemcheck
 
 import "context"
 
-func listProcesses(context.Context) ([]process, error) { return nil, errUnsupported }
+// Engine DJ Desktop does not run natively on these platforms.
+func listProcesses(context.Context) ([]process, error) { return nil, nil }

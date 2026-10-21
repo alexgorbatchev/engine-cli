@@ -19,7 +19,6 @@ func TestCheckDesktop(t *testing.T) {
 		{"absent", []process{{1, "engine-cli"}, {2, "Engine DJ Helper"}}, nil, "ok", new(false), []int{}},
 		{"running", []process{{9, "Engine DJ"}, {3, "engine dj.exe"}, {4, "Engine DJ.exe.bak"}}, nil, "ok", new(true), []int{3, 9}},
 		{"failure", nil, errors.New("denied"), "error", nil, []int{}},
-		{"unsupported", nil, errUnsupported, "unsupported", nil, []int{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			calls := 0

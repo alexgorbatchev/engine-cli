@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-20 16:38
+last_modified: 2026-10-21 07:07
 status: current
 ---
 
@@ -58,7 +58,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **UI-Driven Contracts:** UI workflows drive HTTP API design and associated CLI output. Extend or reshape shared results when the UI needs richer data rather than constraining the UI to an existing response shape. Keep CLI and HTTP results aligned, preserve stable entity identity, and retain snapshot/undo guarantees for mutations.
 - **Collection Editing:** Track metadata updates change only explicitly supplied fields, preserve audio and performance data, and support snapshot/undo through CLI and API. Expose `ratingStars` from 0 to 5 and store Engine ratings in units of 20. Playlist renaming preserves identity, hierarchy, and memberships. Artwork previews read linked inline bytes or Engine’s hash-addressed cache without modifying the collection. Artwork edits stage with metadata, support upload/unset, preserve audio files, normalize to square 1400×1400 cache images and 256×256 thumbnails, and participate in the same snapshot/undo operation.
 - **Batch UI Reads:** When a UI needs details for multiple entities, accept multiple explicit identifiers in one CLI/API request and return identifiable results together; do not require one request per item. Define ordering, limits, and per-item failure behavior. Ask for clarification when the UI workflow or required response is unclear.
-- **Runtime Checks:** Provide read-only, structured checks for UI decisions, including whether Engine DJ Desktop is running. Distinguish a negative result from an unavailable or failed check; never report detection failure as “not running.” Keep CLI JSON and HTTP check results aligned.
+- **Runtime Checks:** Check whether Engine DJ Desktop is running, not whether it supports the host platform. Linux always reports `status: "ok"`, `running: false`, and empty PIDs without scanning processes. macOS and Windows inspect their native process snapshots; distinguish a negative result from a failed check there. Keep CLI JSON and HTTP check results aligned.
 - **Desktop Mutation Guard:** Recheck Engine DJ Desktop immediately before CLI/API library mutations, before snapshots or history writes. Refuse mutations while it is running or its status is unknown. Read-only operations and dry runs remain available. A UI status observation is not a lock or authorization to skip the fresh check.
 - **Library Discovery:** Recognize current `Database2/m.db` libraries; ignore legacy root-level database leftovers. Keep enumeration read-only and provide a friendly `name`, `source`, and absolute path for UI library pickers through the HTTP API.
 - **Reversible Library Operations:** Every operation that modifies the source library must support undo, including database changes and changes to audio files or artwork. Apply this requirement to existing operations as well as duplicate-track operations, through both the CLI and HTTP API.
