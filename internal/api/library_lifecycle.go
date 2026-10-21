@@ -14,12 +14,6 @@ type manageLibraryParams libraryops.Options
 
 func (p manageLibraryParams) operationLibrary() string { return p.Path }
 func (p manageLibraryParams) operationPreview() bool   { return p.DryRun }
-func (p manageLibraryParams) validate() error {
-	if p.Path == "" {
-		return fmt.Errorf("path is required")
-	}
-	return nil
-}
 
 func (s *Server) knownLibraries(ctx context.Context) ([]libraryops.Library, error) {
 	entries, err := s.state.List(ctx)

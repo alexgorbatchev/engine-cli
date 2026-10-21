@@ -134,6 +134,46 @@ func TestDeleteChoicesPreserveUnrelatedDataAndUndo(t *testing.T) {
 	}
 }
 
+func TestAggregateLeavesMediaAlreadyInsideTheLibrary(t *testing.T) {
+	ctx := context.Background()
+	media := filepath.Join(t.TempDir(), "external.mp3")
+	writeMedia(t, media)
+	source := fixture(t, media)
+	writeMedia(t, filepath.Join(source, "Music", "inside.mp3"))
+	d, err := db.Open(filepath.Join(source, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = d.Exec("INSERT INTO Track(id,path,filename,title) VALUES(2,'Music/inside.mp3','inside.mp3','Already gathered')"); err != nil {
+		t.Fatal(err)
+	}
+	d.Close()
+	opts := Options{Path: source, Action: "aggregate", Mode: "move", SharedMode: "copy"}
+	plan, err := Preview(ctx, opts, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts.PlanToken = plan.PlanToken
+	if _, err = history.Run(ctx, source, "library.media.aggregate", nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = os.Stat(filepath.Join(source, "Music", "inside.mp3")); err != nil {
+		t.Fatalf("library media was moved: %v", err)
+	}
+	d, err = db.Open(filepath.Join(source, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	var inside, gathered string
+	if err = d.QueryRow("SELECT (SELECT path FROM Track WHERE id=2),(SELECT path FROM Track WHERE id=1)").Scan(&inside, &gathered); err != nil {
+		t.Fatal(err)
+	}
+	if inside != "Music/inside.mp3" || filepath.Dir(filepath.Dir(gathered)) != "Media" {
+		t.Fatalf("inside track %q, gathered track %q", inside, gathered)
+	}
+}
+
 func TestAggregateCopyMoveAndReuseWithDuplicateReferences(t *testing.T) {
 	for _, tt := range []struct {
 		mode  string

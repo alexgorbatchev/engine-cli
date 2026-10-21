@@ -72,6 +72,40 @@ func TestCreateLibraryCancellation(t *testing.T) {
 	}
 }
 
+// cancelAfterStart reports cancellation only after CreateLibrary's initial check,
+// so the failure happens once Database2 already exists.
+type cancelAfterStart struct {
+	context.Context
+	checked bool
+}
+
+func (c *cancelAfterStart) Err() error {
+	if !c.checked {
+		c.checked = true
+		return nil
+	}
+	return context.Canceled
+}
+
+func (c *cancelAfterStart) Done() <-chan struct{} {
+	done := make(chan struct{})
+	close(done)
+	return done
+}
+
+func TestFailedCreationRemovesPartialDatabaseSoRetrySucceeds(t *testing.T) {
+	root := t.TempDir()
+	if _, err := CreateLibrary(&cancelAfterStart{Context: context.Background()}, root); !errors.Is(err, context.Canceled) {
+		t.Fatalf("interrupted creation: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "Database2")); !os.IsNotExist(err) {
+		t.Fatalf("interrupted creation left a partial library: %v", err)
+	}
+	if _, err := CreateLibrary(context.Background(), root); err != nil {
+		t.Fatalf("retry after interruption: %v", err)
+	}
+}
+
 func TestCreateLibraryRequiresExplicitDirectory(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, path := range []string{"", "   "} {

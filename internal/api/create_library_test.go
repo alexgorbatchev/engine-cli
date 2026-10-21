@@ -30,3 +30,18 @@ func TestCreateLibraryAtExplicitPathAndUndo(t *testing.T) {
 		t.Fatalf("undo retained created database: %v", err)
 	}
 }
+
+func TestCreateLibraryRejectsFilePathsBeforeStartingJobs(t *testing.T) {
+	s, _ := testAPI(t)
+	file := filepath.Join(t.TempDir(), "notes.txt")
+	if err := os.WriteFile(file, []byte("set list"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	response := requestAPI(t, s, http.MethodPost, "/v1/operations/library.create", fmt.Sprintf(`{"path":%q}`, file))
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("library creation started inside a file: %d %s", response.Code, response.Body)
+	}
+	if content, err := os.ReadFile(file); err != nil || string(content) != "set list" {
+		t.Fatalf("rejected creation changed the file: %q %v", content, err)
+	}
+}

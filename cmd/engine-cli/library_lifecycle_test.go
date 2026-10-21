@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/libraryops"
@@ -65,5 +66,34 @@ func TestLifecycleCLIRequiresReviewedPlan(t *testing.T) {
 		if err := root.Execute(); err == nil {
 			t.Fatal("unreviewed file change accepted")
 		}
+	}
+}
+
+func TestLibraryPlanDisplayAbbreviatesEveryHomePath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	peer := libraryops.Library{Path: filepath.Join(home, "Peer"), Name: "Peer"}
+	offline := libraryops.Library{Path: filepath.Join(home, "Offline")}
+	plan := &libraryops.Plan{
+		Path:        filepath.Join(home, "Library"),
+		Destination: filepath.Join(home, "Moved"),
+		Files: []libraryops.File{{
+			Path:        filepath.Join(home, "Library", "song.mp3"),
+			Destination: filepath.Join(home, "Moved", "song.mp3"),
+			Libraries:   []libraryops.Library{peer},
+		}},
+		AffectedLibraries:    []libraryops.Library{peer},
+		UnavailableLibraries: []libraryops.Library{offline},
+	}
+	display := displayLibraryPlan(plan)
+	file := display.Files[0]
+	for _, path := range []string{display.Path, display.Destination, file.Path, file.Destination, file.Libraries[0].Path, display.AffectedLibraries[0].Path, display.UnavailableLibraries[0].Path} {
+		if !strings.HasPrefix(path, "~"+string(filepath.Separator)) {
+			t.Fatalf("home path not abbreviated: %q in %+v", path, display)
+		}
+	}
+	// The reviewed plan keeps canonical paths; only its displayed copy changes.
+	if plan.Files[0].Libraries[0].Path != peer.Path || plan.AffectedLibraries[0].Path != peer.Path || plan.UnavailableLibraries[0].Path != offline.Path {
+		t.Fatalf("display rewrote the reviewed plan: %+v", plan)
 	}
 }
