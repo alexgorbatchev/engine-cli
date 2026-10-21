@@ -50,9 +50,22 @@ While the server is running, send `POST /v1/libraries` with
 {"paths":["/Music/Engine Library","/Volumes/DJ/Engine Library"]}
 ```
 
-The response is `200` with an array of `{path,url,default}` objects, in input order with
+The response is `200` with an array of
+`{path,url,key,default,instance,engine_uuid,registration}` objects, in input order with
 duplicate paths removed. Paths are absolute and symlinks are resolved. Each
-`url` is a server-relative API base, such as `/v1/libraries/<opaque-key>`.
+`url` is a server-relative API base, such as `/v1/libraries/<opaque-key>`, and
+`key` is its final segment. The key derives from the canonical path, so it
+changes when a library moves.
+
+`instance` is the identity sync uses: the registered instance ID, or the Engine
+database UUID (`engine_uuid`) while the library is unregistered. Use it to
+recognize a library across moves and server restarts. `registration` is
+`registered`, `unregistered`, `invalid_identity` (the registration belongs to
+another Engine library; `instance` is omitted), `identity_conflict` (another
+known library has the same `instance`, such as a hand copy; register one copy
+with `--new-copy`), or `unavailable` (the database cannot be read; identity
+fields are omitted). Identities are read when the list is requested, so
+registration is reflected immediately.
 Append `/operations`, `/operations/playlist.list`, `/tracks/12/audio`, or the
 other existing resource paths directly to that base, without another `/v1`.
 Job `Location` headers use the same library base, as do status, cancellation,

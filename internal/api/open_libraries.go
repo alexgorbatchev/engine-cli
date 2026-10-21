@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/libraryops"
+	"github.com/alexgorbatchev/engine-cli/internal/state"
 )
 
 const maxOpenLibraries = 64
@@ -23,8 +24,83 @@ var errLibraryServerClosed = errors.New("server is closed")
 type openedLibrary struct {
 	Path    string `json:"path"`
 	URL     string `json:"url"`
+	Key     string `json:"key"`
 	Default bool   `json:"default"`
 	server  *Server
+}
+
+// Listings carry the instance identity sync uses, so clients recognize a
+// library across moves, server restarts, and registration.
+type libraryListing struct {
+	openedLibrary
+	libraryops.Identity
+}
+
+type KnownLibrary struct {
+	state.Library
+	libraryops.Identity
+}
+
+// Identities are judged across every known library, so the opened and known
+// listings agree about which libraries share an identity.
+func (s *Server) describeLibraries(ctx context.Context, opened []openedLibrary) ([]state.Library, map[string]libraryops.Identity, error) {
+	known, err := s.state.List(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	paths := make([]string, 0, len(known)+len(opened))
+	seen := make(map[string]bool)
+	for _, lib := range known {
+		paths = append(paths, lib.Path)
+		seen[lib.Path] = true
+	}
+	for _, lib := range opened {
+		if !seen[lib.Path] {
+			paths = append(paths, lib.Path)
+		}
+	}
+	identities, err := libraryops.DescribeAll(ctx, paths)
+	if err != nil {
+		return nil, nil, err
+	}
+	byPath := make(map[string]libraryops.Identity, len(paths))
+	for i, path := range paths {
+		byPath[path] = identities[i]
+	}
+	return known, byPath, nil
+}
+
+func (s *Server) listedLibraries(ctx context.Context, opened []openedLibrary) ([]libraryListing, error) {
+	_, identities, err := s.describeLibraries(ctx, opened)
+	if err != nil {
+		return nil, err
+	}
+	listings := make([]libraryListing, len(opened))
+	for i, lib := range opened {
+		listings[i] = libraryListing{openedLibrary: lib, Identity: identities[lib.Path]}
+	}
+	return listings, nil
+}
+
+func (s *Server) libraryPreferenceListings(ctx context.Context) ([]KnownLibrary, error) {
+	known, identities, err := s.describeLibraries(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	listings := make([]KnownLibrary, len(known))
+	for i, lib := range known {
+		listings[i] = KnownLibrary{Library: lib, Identity: identities[lib.Path]}
+	}
+	return listings, nil
+}
+
+func (s *Server) writeLibraries(w http.ResponseWriter, r *http.Request, opened []openedLibrary) {
+	listings, err := s.listedLibraries(r.Context(), opened)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "state_unavailable", "Library identities could not be read.")
+		return
+	}
+	writeJSON(w, http.StatusOK, listings)
 }
 
 func libraryPath(path string) (string, error) {
@@ -59,7 +135,7 @@ func (s *Server) openLibraries(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_library", err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, opened)
+	s.writeLibraries(w, r, opened)
 }
 
 func (s *Server) openLibraryPaths(requested []string) ([]openedLibrary, error) {
@@ -105,7 +181,8 @@ func (s *Server) openLibraryPaths(requested []string) ([]openedLibrary, error) {
 		lib, ok := s.libraries[path]
 		if !ok {
 			hash := sha256.Sum256([]byte(path))
-			lib = openedLibrary{Path: path, URL: "/v1/libraries/" + hex.EncodeToString(hash[:])}
+			key := hex.EncodeToString(hash[:])
+			lib = openedLibrary{Path: path, URL: "/v1/libraries/" + key, Key: key}
 			if canonical, err := filepath.EvalSymlinks(s.config.LibraryDir); err == nil && canonical == path {
 				lib.server = s
 				lib.Default = true
@@ -139,13 +216,14 @@ func (s *Server) openLibraryPaths(requested []string) ([]openedLibrary, error) {
 
 func (s *Server) listLibraries(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	libs := make([]openedLibrary, 0, len(s.libraries))
 	for _, lib := range s.libraries {
 		libs = append(libs, lib)
 	}
+	s.mu.Unlock()
 	sort.Slice(libs, func(i, j int) bool { return libs[i].Path < libs[j].Path })
-	writeJSON(w, http.StatusOK, libs)
+	// Identities are read outside the lock; reading databases must not block opening others.
+	s.writeLibraries(w, r, libs)
 }
 
 func (s *Server) libraryRequest(w http.ResponseWriter, r *http.Request) {

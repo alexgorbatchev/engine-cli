@@ -51,6 +51,22 @@ func Load(lib string) (*Registry, error) {
 	return &r, nil
 }
 
+// Instance is the identity sync and clients use for a library: its registered
+// instance ID, or its Engine database UUID until the library is registered.
+func Instance(lib, engineUUID string) (string, *Registry, error) {
+	r, err := Load(lib)
+	if err != nil {
+		return "", nil, err
+	}
+	if r == nil {
+		return engineUUID, nil, nil
+	}
+	if r.EngineUUID != engineUUID {
+		return "", nil, fmt.Errorf("registered identity belongs to a different Engine library")
+	}
+	return r.ID, r, nil
+}
+
 // Register is idempotent unless newCopy explicitly forks the instance identity.
 // Playlist lineage remains shared across copies; location is never an identity.
 func Register(ctx context.Context, d *sql.DB, lib string, newCopy bool) (*Registry, error) {

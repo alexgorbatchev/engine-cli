@@ -104,3 +104,55 @@ func TestRegistrationAndReferences(t *testing.T) {
 		t.Fatal("clone lost playlist lineage")
 	}
 }
+
+func TestInstanceFollowsRegistration(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name           string
+		register       bool
+		uuid           string
+		wantRegistered bool
+		wantErr        bool
+	}{
+		{name: "unregistered library uses its Engine UUID", uuid: "native"},
+		{name: "registered library uses its instance ID", register: true, uuid: "native", wantRegistered: true},
+		{name: "identity of another Engine library is rejected", register: true, uuid: "replaced", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, lib := fixture(t)
+			var registered *Registry
+			if tt.register {
+				r, err := Register(ctx, d, lib, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				registered = r
+			}
+			instance, r, err := Instance(lib, tt.uuid)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Instance error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			want := tt.uuid
+			if tt.wantRegistered {
+				want = registered.ID
+			}
+			if instance != want || (r != nil) != tt.wantRegistered {
+				t.Fatalf("Instance = %q %v, want %q registered=%v", instance, r, want, tt.wantRegistered)
+			}
+		})
+	}
+	damaged := t.TempDir()
+	if err := os.MkdirAll(filepath.Dir(Path(damaged)), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(Path(damaged), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := Instance(damaged, "native"); err == nil {
+		t.Fatal("damaged identity accepted")
+	}
+}

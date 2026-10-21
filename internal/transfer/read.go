@@ -18,16 +18,9 @@ func readCollection(ctx context.Context, q queryer, path string, current *state)
 		return nil, fmt.Errorf("unsupported Engine database schema %d.%d.%d; sync requires verified schema 3.0.2", major, minor, patch)
 	}
 	var err error
-	c.Instance = c.UUID
-	c.Registry, err = libraryidentity.Load(path)
+	c.Instance, c.Registry, err = libraryidentity.Instance(path, c.UUID)
 	if err != nil {
 		return nil, err
-	}
-	if c.Registry != nil {
-		if c.Registry.EngineUUID != c.UUID {
-			return nil, fmt.Errorf("registered identity belongs to a different Engine library")
-		}
-		c.Instance = c.Registry.ID
 	}
 	c.State, err = loadState(path, c.UUID)
 	if err != nil {

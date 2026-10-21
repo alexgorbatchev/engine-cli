@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-21 07:07
+last_modified: 2026-10-21 16:31
 status: current
 ---
 
@@ -70,6 +70,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Undo Conflicts:** Reverse an operation even after later library changes when there are no conflicts. Refuse conflicting undo by default; provide an explicit `--force` override.
 - **Entity Identity:** Track changed tracks, playlists, and other entities using stable UUIDs or hashes so history and undo retain identity across moves, relocations, and playlist membership changes; names, paths, and membership alone are not identities.
 - **Audio-Based Duplicate Recognition:** Account for independently imported copies of the same audio using acoustic fingerprint evidence, such as Chromaprint. Engine row IDs and origin identities alone do not establish musical uniqueness; duplicate detection must go beyond titles, filenames, and import lineage.
+- **Library Listings Identity:** Opened-library and known-library listings expose the opaque path `key`, Engine `engine_uuid`, and the sync `instance` identity with its `registration` state, read fresh on each request; clients build links on `instance`, never on paths or keys.
 - **Copied Library Registration:** Require explicit registration to assign a copied library its own instance identity. Preserve identity when a library is relocated; do not derive instance identity from mount paths or silently treat cloned sidecar IDs as distinct sync peers.
 - **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
 - **Shared Progress Schema:** Keep CLI and HTTP progress field names and types aligned with Fetch Track, including `job_id`, `sequence`, and string-valued `error`. Preserve upstream event details under `source`; retain structured `{code,message}` errors for HTTP job/status and request responses.

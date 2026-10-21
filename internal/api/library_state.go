@@ -27,18 +27,18 @@ func (p libraryPreferenceParams) validate() error {
 
 func (s *Server) libraryStateOperations() []operation {
 	return []operation{
-		define("library.preferences.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) { return s.state.List(ctx) }),
+		define("library.preferences.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) { return s.libraryPreferenceListings(ctx) }),
 		defineEffect("library.preferences.update", "state", []string{"path"}, func(ctx context.Context, p libraryPreferenceParams) (any, error) {
 			if err := s.state.Update(ctx, p.Path, p.Name, p.Hidden); err != nil {
 				return nil, err
 			}
-			return s.state.List(ctx)
+			return s.libraryPreferenceListings(ctx)
 		}),
 	}
 }
 
 func (s *Server) libraryPreferences(w http.ResponseWriter, r *http.Request) {
-	entries, err := s.state.List(r.Context())
+	entries, err := s.libraryPreferenceListings(r.Context())
 	if err != nil {
 		writeError(w, 500, "state_unavailable", "Library preferences could not be read.")
 		return

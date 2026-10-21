@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/engine-cli/internal/api"
 	"github.com/alexgorbatchev/engine-cli/internal/libraryops"
-	"github.com/alexgorbatchev/engine-cli/internal/state"
 )
 
 func TestLibraryPreferencesCLIReopensState(t *testing.T) {
@@ -30,12 +30,13 @@ func TestLibraryPreferencesCLIReopensState(t *testing.T) {
 		if err := root.Execute(); err != nil {
 			t.Fatalf("preferences: %v %s", err, output.String())
 		}
-		var libraries []state.Library
+		var libraries []api.KnownLibrary
 		if err := json.Unmarshal(output.Bytes(), &libraries); err != nil {
 			t.Fatal(err)
 		}
 		wantHidden := action[len(action)-1] != "--hidden=false"
-		if len(libraries) != 1 || libraries[0].Name != "Evening sets" || libraries[0].Hidden != wantHidden || libraries[0].Path != "~/Library" {
+		// The remembered folder holds no library, so its identity cannot be read.
+		if len(libraries) != 1 || libraries[0].Name != "Evening sets" || libraries[0].Hidden != wantHidden || libraries[0].Path != "~/Library" || libraries[0].Registration != libraryops.RegistrationUnavailable {
 			t.Fatalf("preferences result: %+v", libraries)
 		}
 	}

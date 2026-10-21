@@ -212,8 +212,8 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 			if plan, ok := result.(*libraryops.Plan); ok {
 				result = displayLibraryPlan(plan)
 			}
-			if libraries, ok := result.([]state.Library); ok {
-				display := append([]state.Library{}, libraries...)
+			if libraries, ok := result.([]api.KnownLibrary); ok {
+				display := append([]api.KnownLibrary{}, libraries...)
 				for i := range display {
 					display[i].Path = displayPath(display[i].Path)
 				}
