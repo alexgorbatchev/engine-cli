@@ -181,10 +181,7 @@ func fileHash(path string) (fileState, error) {
 
 func restoreFile(ctx context.Context, path, objects string, state fileState) error {
 	if state.Hash == "" {
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		return nil
+		return removeFile(path)
 	}
 	if strings.ContainsAny(state.Hash, "/\\") {
 		return fmt.Errorf("invalid saved file hash")

@@ -38,6 +38,12 @@ type Entry struct {
 	After          *snapshot  `json:"after,omitempty"`
 }
 
+// Entry IDs are random, hex encoded, and name the entry and its work directory.
+const entryIDBytes = 16
+
+// entryTempPrefix names entries being written atomically.
+const entryTempPrefix = "entry-"
+
 type Entity struct {
 	ID    string `json:"id"`
 	Table string `json:"table"`
@@ -88,7 +94,7 @@ func writeEntry(dir string, e *Entry) error {
 
 func writeAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
-	f, err := os.CreateTemp(dir, "entry-")
+	f, err := os.CreateTemp(dir, entryTempPrefix)
 	if err != nil {
 		return err
 	}
@@ -179,11 +185,14 @@ func Run(ctx context.Context, lib, operation string, scope Scope, paths []string
 			return nil, fmt.Errorf("operation %s was interrupted; inspect it and use library undo %s --force to recover", e.ID, e.ID)
 		}
 	}
+	if err = collect(dir, previous); err != nil {
+		return nil, fmt.Errorf("removing unreferenced operation history: %w", err)
+	}
 	return runLocked(ctx, abs, dir, operation, "", scope, paths, run)
 }
 
 func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Scope, paths []string, run func(context.Context) error) (*Entry, error) {
-	var id [16]byte
+	var id [entryIDBytes]byte
 	if _, err := rand.Read(id[:]); err != nil {
 		return nil, err
 	}

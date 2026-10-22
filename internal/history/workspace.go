@@ -1,7 +1,6 @@
 package history
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,36 +35,15 @@ func insideAny(path string, dirs []string) bool {
 }
 
 // discard removes an entry and the content only it preserved. The entry record
-// goes first so an interruption can leave unreferenced objects but never an
-// entry pointing at missing snapshots.
+// goes first so an interruption can leave unreferenced storage, which the next
+// operation collects, but never an entry pointing at missing snapshots.
 func discard(dir string, e *Entry) error {
 	if err := os.Remove(filepath.Join(dir, e.ID+".json")); err != nil {
-		return err
-	}
-	if err := os.RemoveAll(filepath.Join(dir, e.ID)); err != nil {
 		return err
 	}
 	others, err := entries(dir)
 	if err != nil {
 		return err
 	}
-	referenced := make(map[string]bool)
-	for _, other := range others {
-		for _, state := range other.Before.Files {
-			referenced[state.Hash] = true
-		}
-		for _, move := range other.Moves {
-			referenced[move.State.Hash] = true
-		}
-	}
-	var errs []error
-	for _, state := range e.Before.Files {
-		if state.Hash == "" || referenced[state.Hash] {
-			continue
-		}
-		if err := os.Remove(filepath.Join(dir, "objects", state.Hash)); err != nil && !os.IsNotExist(err) {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
+	return collect(dir, others)
 }
