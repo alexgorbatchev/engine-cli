@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-21 21:50
+last_modified: 2026-10-21 22:00
 status: current
 ---
 
@@ -99,8 +99,9 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Temporary Folder Cleanup:** Remove production temporary workspaces on completion; never remove their shared OS temporary parent directory.
 
 ## Git Workflow
-- Make every change in a linked worktree under `.workspaces/<name>` on a new branch created from local `main` (`git worktree add -b <branch> .workspaces/<name> main`). Never edit the main checkout directly; other sessions share it.
-- Validate and commit in the worktree, then fast-forward `main` from the main checkout (`git merge --ff-only <branch>`; rebase the branch onto `main` first when `main` has moved). Afterwards remove the worktree and delete the branch (`git worktree remove .workspaces/<name>`, `git branch -d <branch>`). Finish by confirming `main` is level with `origin/main` (`git fetch`, then `git status -sb` shows no ahead or behind count); the hook only attempts the push. Yield the turn to the user only after the change is merged into `main`, synced with `origin/main`, and its worktree removed.
+- Start every unit of work from the latest revision: `git fetch`, then fast-forward local `main` to `origin/main` in the main checkout (`git merge --ff-only origin/main`). If it cannot fast-forward, `main` holds commits from a failed push; run `git pull --rebase` and `git push` before anything else. Never begin work on a stale `main`.
+- Make every change in a linked worktree under `.workspaces/<name>` on a new branch created from that up-to-date `main` (`git worktree add -b <branch> .workspaces/<name> main`). Never edit the main checkout directly; other sessions share it.
+- Validate and commit in the worktree, then bring `main` level with `origin/main` again and fast-forward it from the main checkout (`git merge --ff-only <branch>`; rebase the branch onto `main` first when `main` has moved). Afterwards remove the worktree and delete the branch (`git worktree remove .workspaces/<name>`, `git branch -d <branch>`). Finish by confirming `main` is level with `origin/main` (`git fetch`, then `git status -sb` shows no ahead or behind count); the hook only attempts the push. Yield the turn to the user only after the change is merged into `main`, synced with `origin/main`, and its worktree removed.
 - `just setup` installs `.githooks` as `core.hooksPath`. Its post-commit and post-merge hooks push a branch to its same-named upstream after every commit or merge, so `main` reaches `origin/main` immediately; branches without one, including worktree branches, stay local. Hooks act only on this repository, wherever it is checked out; never invoke enclosing repositories or their recipes. `bash scripts/test-git-hooks.sh .githooks` tests them.
 - A merge into `main` publishes it on GitHub, though not as a release. Never amend, rebase, or force-push commits already on `origin/main`; fix mistakes with a follow-up change. Inspect staged changes for private hostnames before committing. When a push is rejected because `origin/main` moved, run `git pull --rebase` on `main`, then `git push`.
 
