@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -139,6 +140,33 @@ func TestDiscardedHistoryKeepsObjectsSharedWithOtherEntries(t *testing.T) {
 	}
 	if data, err := os.ReadFile(other); err != nil || string(data) != "failed" {
 		t.Fatalf("restored %q err=%v", data, err)
+	}
+}
+
+func TestDiscardFailureIsReportedWithOperationFailure(t *testing.T) {
+	lib, _, _ := fixture(t)
+	workspace := filepath.Join(lib, ".engine-cli", "staging", "item")
+	if err := os.MkdirAll(workspace, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "existing.json"), []byte("failed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	objects := filepath.Join(lib, ".engine-cli", "history", "objects")
+	failure := errors.New("tool failed")
+	e, err := Run(context.Background(), lib, "track.fetch", nil, func(ctx context.Context) error {
+		if err := Workspace(ctx, workspace); err != nil {
+			return err
+		}
+		if err := writeWorkspaceFile(ctx, workspace, "existing.json", "retried"); err != nil {
+			return err
+		}
+		// Unremovable objects make discarding the failed entry fail.
+		return errors.Join(os.Chmod(objects, 0o500), failure)
+	})
+	t.Cleanup(func() { _ = os.Chmod(objects, 0o700) })
+	if e != nil || !errors.Is(err, failure) || !strings.Contains(err.Error(), "discarding history") {
+		t.Fatalf("entry=%+v err=%v", e, err)
 	}
 }
 
