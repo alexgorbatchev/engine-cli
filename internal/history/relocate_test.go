@@ -24,7 +24,7 @@ func TestRelocationRequiresJournalAndVacantDestination(t *testing.T) {
 	if err := os.WriteFile(marker, []byte("keep"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Run(ctx, source, "library.move", nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, destination) }); err == nil {
+	if _, err := Run(ctx, source, "library.move", ScopeCollection, nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, destination) }); err == nil {
 		t.Fatal("occupied destination overwritten")
 	}
 	if b, err := os.ReadFile(marker); err != nil || string(b) != "keep" {
@@ -115,7 +115,7 @@ func TestRelocationCancellationAndMissingCopyInputs(t *testing.T) {
 	ctx := context.Background()
 	source, d, _ := fixture(t)
 	d.Close()
-	if _, err := Run(ctx, source, "library.move", nil, func(ctx context.Context) error {
+	if _, err := Run(ctx, source, "library.move", ScopeCollection, nil, func(ctx context.Context) error {
 		ctx, cancel := context.WithCancel(ctx)
 		cancel()
 		return RelocateLibrary(ctx, source, filepath.Join(t.TempDir(), "moved"))
@@ -126,7 +126,7 @@ func TestRelocationCancellationAndMissingCopyInputs(t *testing.T) {
 	if err := os.WriteFile(blocked, []byte("keep"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Run(ctx, source, "library.move", nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, filepath.Join(blocked, "moved")) }); err == nil {
+	if _, err := Run(ctx, source, "library.move", ScopeCollection, nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, filepath.Join(blocked, "moved")) }); err == nil {
 		t.Fatal("invalid destination parent accepted")
 	}
 	missing := filepath.Join(t.TempDir(), "missing")
@@ -137,7 +137,7 @@ func TestRelocationCancellationAndMissingCopyInputs(t *testing.T) {
 		t.Fatal("missing move source accepted")
 	}
 	destination := filepath.Join(t.TempDir(), "moved")
-	entry, err := Run(ctx, source, "library.move", nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, destination) })
+	entry, err := Run(ctx, source, "library.move", ScopeCollection, nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, destination) })
 	if err != nil {
 		t.Fatal(err)
 	}

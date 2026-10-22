@@ -15,7 +15,7 @@ func TestConcurrentFileRecording(t *testing.T) {
 	if err := os.WriteFile(other, []byte("other"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(context.Background(), lib, "moves", nil, func(ctx context.Context) error {
+	e, err := Run(context.Background(), lib, "moves", ScopeCollection, nil, func(ctx context.Context) error {
 		var wg sync.WaitGroup
 		errs := make(chan error, 2)
 		for _, path := range []string{src, other} {
@@ -102,7 +102,7 @@ func TestMoveUndoConflicts(t *testing.T) {
 			lib, _, src := fixture(t)
 			ctx := context.Background()
 			dst := filepath.Join(lib, "moved.mp3")
-			e, err := Run(ctx, lib, "move", nil, func(ctx context.Context) error { return MoveFile(ctx, src, dst) })
+			e, err := Run(ctx, lib, "move", ScopeCollection, nil, func(ctx context.Context) error { return MoveFile(ctx, src, dst) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,7 +163,7 @@ func TestMoveFailureRecovery(t *testing.T) {
 			lib, _, src := fixture(t)
 			dst := filepath.Join(lib, "moved.mp3")
 			ctx := context.Background()
-			e, err := Run(ctx, lib, "move", nil, func(ctx context.Context) error {
+			e, err := Run(ctx, lib, "move", ScopeCollection, nil, func(ctx context.Context) error {
 				switch scenario {
 				case "missing source":
 					return MoveFile(ctx, src+"-missing", dst)
@@ -222,7 +222,7 @@ func TestCreatedFileUndo(t *testing.T) {
 	lib, _, _ := fixture(t)
 	ctx := context.Background()
 	var path string
-	e, err := Run(ctx, lib, "create", nil, func(ctx context.Context) error {
+	e, err := Run(ctx, lib, "create", ScopeCollection, nil, func(ctx context.Context) error {
 		f, err := os.CreateTemp(lib, "new-")
 		if err != nil {
 			return err

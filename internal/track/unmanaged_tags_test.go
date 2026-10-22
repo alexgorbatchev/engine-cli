@@ -71,7 +71,7 @@ func TestUnmanagedTagsRetainOriginalUntilVerified(t *testing.T) {
 				return json.Marshal(acquire.TagResult{Status: "success", Results: []acquire.TagFile{{Status: "success", OutputFile: output}}})
 			}
 			var result *acquire.TagResult
-			entry, err := history.Run(ctx, lib, "track.tags.update", nil, func(ctx context.Context) error {
+			entry, err := history.Run(ctx, lib, "track.tags.update", history.ScopeCollection, nil, func(ctx context.Context) error {
 				var e error
 				result, e = UpdateUnmanagedFileTags(ctx, original, opts)
 				return e

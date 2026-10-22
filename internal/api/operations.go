@@ -210,12 +210,15 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 			}
 		}
 		if (effect == "collection" || effect == "staging" || effect == "filesystem") && !bound.preview && op.Name != "library.undo" && op.Name != "library.sync" {
+			// Staging and server-file effects never write Engine databases.
+			scope := history.ScopeCollection
 			if effect == "staging" || effect == "filesystem" {
+				scope = history.ScopeFiles
 				if e := os.MkdirAll(lib, 0700); e != nil {
 					return e
 				}
 			}
-			entry, e := history.Run(ctx, lib, op.Name, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
+			entry, e := history.Run(ctx, lib, op.Name, scope, nil,func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
 			if entry != nil {
 				historyID = entry.ID
 			}

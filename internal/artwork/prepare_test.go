@@ -78,7 +78,7 @@ func TestArtworkStoreFailures(t *testing.T) {
 		t.Fatal("overwrote a directory as artwork")
 	}
 	tx.Rollback()
-	_, err = history.Run(ctx, lib, "upload", nil, func(ctx context.Context) error {
+	_, err = history.Run(ctx, lib, "upload", history.ScopeCollection, nil, func(ctx context.Context) error {
 		tx, err := d.BeginTx(ctx, nil)
 		if err != nil {
 			return err

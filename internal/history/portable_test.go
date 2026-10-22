@@ -46,7 +46,7 @@ func TestPortableDeletedFiles(t *testing.T) {
 				}
 			}
 			ctx := context.Background()
-			e, err := Run(ctx, lib, "delete", nil, func(ctx context.Context) error {
+			e, err := Run(ctx, lib, "delete", ScopeCollection, nil, func(ctx context.Context) error {
 				if err := Preserve(ctx, file); err != nil {
 					return err
 				}
@@ -87,7 +87,7 @@ func TestPortableHistory(t *testing.T) {
 	lib, d, file := fixture(t)
 	ctx := context.Background()
 	dest := filepath.Join(lib, "moved.mp3")
-	e, err := Run(ctx, lib, "move", nil, func(ctx context.Context) error {
+	e, err := Run(ctx, lib, "move", ScopeCollection, nil, func(ctx context.Context) error {
 		if err := MoveFile(ctx, file, dest); err != nil {
 			return err
 		}
@@ -141,7 +141,7 @@ func TestPortableHistory(t *testing.T) {
 func TestUndoUsesOSTemporaryWorkspace(t *testing.T) {
 	lib, d, _ := fixture(t)
 	ctx := context.Background()
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}

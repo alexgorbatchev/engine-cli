@@ -78,6 +78,7 @@ func TestStagingAPIReadMediaAndRemoveUndo(t *testing.T) {
 	if result["history_id"] == nil {
 		t.Fatalf("no undo %+v", result)
 	}
+	assertHistoryScope(t, lib, result["history_id"].(string), history.ScopeFiles)
 	if _, err := history.Undo(ctx, lib, result["history_id"].(string), history.UndoOptions{}); err != nil {
 		t.Fatal(err)
 	}

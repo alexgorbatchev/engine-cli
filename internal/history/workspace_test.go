@@ -77,7 +77,7 @@ func TestFailedWorkspaceOnlyOperationsLeaveNoHistory(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(workspace, "existing.json"), []byte("failed"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			e, err := Run(ctx, lib, "track.fetch", nil, func(ctx context.Context) error {
+			e, err := Run(ctx, lib, "track.fetch", ScopeCollection, nil, func(ctx context.Context) error {
 				if err := Workspace(ctx, workspace); err != nil {
 					return err
 				}
@@ -122,12 +122,12 @@ func TestDiscardedHistoryKeepsObjectsSharedWithOtherEntries(t *testing.T) {
 	if err := os.WriteFile(other, []byte("failed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	kept, err := Run(ctx, lib, "edit", []string{other}, func(context.Context) error { return os.Remove(other) })
+	kept, err := Run(ctx, lib, "edit", ScopeCollection, []string{other}, func(context.Context) error { return os.Remove(other) })
 	if err != nil {
 		t.Fatal(err)
 	}
 	failure := errors.New("tool failed")
-	if _, err = Run(ctx, lib, "track.fetch", nil, func(ctx context.Context) error {
+	if _, err = Run(ctx, lib, "track.fetch", ScopeCollection, nil, func(ctx context.Context) error {
 		if err := Workspace(ctx, workspace); err != nil {
 			return err
 		}
@@ -154,7 +154,7 @@ func TestDiscardFailureIsReportedWithOperationFailure(t *testing.T) {
 	}
 	objects := filepath.Join(lib, ".engine-cli", "history", "objects")
 	failure := errors.New("tool failed")
-	e, err := Run(context.Background(), lib, "track.fetch", nil, func(ctx context.Context) error {
+	e, err := Run(context.Background(), lib, "track.fetch", ScopeCollection, nil, func(ctx context.Context) error {
 		if err := Workspace(ctx, workspace); err != nil {
 			return err
 		}

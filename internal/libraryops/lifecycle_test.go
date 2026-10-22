@@ -44,7 +44,7 @@ func TestMoveInternalMediaRetainsRelativePathsAndReportsSharedUsers(t *testing.T
 		t.Fatalf("internal media impact missing: %+v", plan)
 	}
 	opts.PlanToken = plan.PlanToken
-	entry, err := history.Run(ctx, root, "library.move", nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
+	entry, err := history.Run(ctx, root, "library.move", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestDeleteChoicesPreserveUnrelatedDataAndUndo(t *testing.T) {
 			}
 			opts.PlanToken = p.PlanToken
 			opts.ConfirmPath = source
-			e, err := history.Run(ctx, source, "library.delete", nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
+			e, err := history.Run(ctx, source, "library.delete", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -154,7 +154,7 @@ func TestAggregateLeavesMediaAlreadyInsideTheLibrary(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts.PlanToken = plan.PlanToken
-	if _, err = history.Run(ctx, source, "library.media.aggregate", nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) }); err != nil {
+	if _, err = history.Run(ctx, source, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) }); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = os.Stat(filepath.Join(source, "Music", "inside.mp3")); err != nil {
@@ -209,7 +209,7 @@ func TestAggregateCopyMoveAndReuseWithDuplicateReferences(t *testing.T) {
 				t.Fatal(err)
 			}
 			opts.PlanToken = plan.PlanToken
-			e, err := history.Run(ctx, source, "library.media.aggregate", nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) })
+			e, err := history.Run(ctx, source, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -337,7 +337,7 @@ func TestUnknownLibrariesPreserveMediaAndDistinctHardLinksRemainAvailable(t *tes
 	}
 	opts.PlanToken = p.PlanToken
 	opts.ConfirmPath = source
-	if _, err = history.Run(ctx, source, "library.delete", nil, func(ctx context.Context) error { return Apply(ctx, opts, []Library{{Path: peer}}) }); err != nil {
+	if _, err = history.Run(ctx, source, "library.delete", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, []Library{{Path: peer}}) }); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = os.Stat(alias); err != nil {

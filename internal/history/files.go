@@ -27,33 +27,11 @@ type snapshot struct {
 	Files     map[string]fileState     `json:"files"`
 }
 
-func capture(ctx context.Context, lib, dir, objects string, extra []string) (*snapshot, error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, err
-	}
+func capture(ctx context.Context, lib string, scope Scope, dir, objects string, extra []string) (*snapshot, error) {
 	s := &snapshot{Databases: make(map[string]databaseState), Files: make(map[string]fileState)}
-	for _, base := range []string{lib, filepath.Join(lib, "Database2")} {
-		entries, err := os.ReadDir(base)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
+	if scope.capturesDatabases() {
+		if err := captureDatabases(ctx, lib, dir, s.Databases); err != nil {
 			return nil, err
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || filepath.Ext(entry.Name()) != ".db" {
-				continue
-			}
-			path := filepath.Join(base, entry.Name())
-			target := filepath.Join(dir, hashText(path)+".db")
-			if err := copyDatabase(ctx, path, target); err != nil {
-				return nil, err
-			}
-			digest, err := fingerprint(ctx, target)
-			if err != nil {
-				return nil, err
-			}
-			s.Databases[path] = databaseState{Path: target, Hash: digest}
 		}
 	}
 	for _, path := range extra {
@@ -73,8 +51,40 @@ func capture(ctx context.Context, lib, dir, objects string, extra []string) (*sn
 	return s, nil
 }
 
-func captureAfter(ctx context.Context, lib, dir string, before *snapshot) (*snapshot, error) {
-	s, err := capture(ctx, lib, dir, "", nil)
+// captureDatabases copies every Engine database of the library into dir.
+func captureDatabases(ctx context.Context, lib, dir string, databases map[string]databaseState) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	for _, base := range []string{lib, filepath.Join(lib, "Database2")} {
+		entries, err := os.ReadDir(base)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || filepath.Ext(entry.Name()) != ".db" {
+				continue
+			}
+			path := filepath.Join(base, entry.Name())
+			target := filepath.Join(dir, hashText(path)+".db")
+			if err := copyDatabase(ctx, path, target); err != nil {
+				return err
+			}
+			digest, err := fingerprint(ctx, target)
+			if err != nil {
+				return err
+			}
+			databases[path] = databaseState{Path: target, Hash: digest}
+		}
+	}
+	return nil
+}
+
+func captureAfter(ctx context.Context, lib string, scope Scope, dir string, before *snapshot) (*snapshot, error) {
+	s, err := capture(ctx, lib, scope, dir, "", nil)
 	if err != nil {
 		return nil, err
 	}

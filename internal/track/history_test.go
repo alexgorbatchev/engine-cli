@@ -27,7 +27,7 @@ func TestTrackFileHistory(t *testing.T) {
 			if err := os.Symlink(original, unrelated); err != nil {
 				t.Fatal(err)
 			}
-			entry, err := history.Run(ctx, lib, operation, nil, func(ctx context.Context) error {
+			entry, err := history.Run(ctx, lib, operation, history.ScopeCollection, nil, func(ctx context.Context) error {
 				switch operation {
 				case "remove record", "delete audio":
 					_, err := RemoveTrack(ctx, d, lib, "1", operation == "delete audio")

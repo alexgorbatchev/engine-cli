@@ -62,7 +62,7 @@ func TestRestorePreservesOnlyOverwrittenArtwork(t *testing.T) {
 	if err = os.WriteFile(unrelated, []byte("untouched"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	e, err := history.Run(ctx, lib, "library.restore", nil, func(ctx context.Context) error { return RestoreBackup(ctx, backup.Path, lib) })
+	e, err := history.Run(ctx, lib, "library.restore", history.ScopeCollection, nil, func(ctx context.Context) error { return RestoreBackup(ctx, backup.Path, lib) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestRestoreRefusesUnpreservableArtwork(t *testing.T) {
 			}
 			restore := func(ctx context.Context) error { return RestoreBackup(ctx, b.Path, lib) }
 			if recording {
-				_, err = history.Run(ctx, lib, "restore", nil, restore)
+				_, err = history.Run(ctx, lib, "restore", history.ScopeCollection, nil, restore)
 			} else {
 				err = restore(ctx)
 			}

@@ -60,7 +60,7 @@ func TestCorruptPreferenceRowsAndUndoStateFailuresAreReported(t *testing.T) {
 		t.Fatal("corrupt visibility was silently accepted")
 	}
 	lib := stateLibrary(t)
-	entry, err := history.Run(ctx, lib, "track.update", nil, func(context.Context) error { return nil })
+	entry, err := history.Run(ctx, lib, "track.update", history.ScopeCollection, nil, func(context.Context) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -22,13 +22,13 @@ func TestCaptureRejectsUnpreservableFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err = Run(ctx, lib, "edit", []string{link}, func(context.Context) error { called = true; return nil }); err == nil || called {
+	if _, err = Run(ctx, lib, "edit", ScopeCollection, []string{link}, func(context.Context) error { called = true; return nil }); err == nil || called {
 		t.Fatal("modified library before preserving files")
 	}
 	if err = os.Remove(link); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "interrupted", []string{link}, func(context.Context) error { return os.Symlink(file, link) })
+	e, err := Run(ctx, lib, "interrupted", ScopeCollection, []string{link}, func(context.Context) error { return os.Symlink(file, link) })
 	if err == nil || e == nil {
 		t.Fatalf("missing pending record %v %v", e, err)
 	}
@@ -44,7 +44,7 @@ func TestCaptureRejectsUnpreservableFiles(t *testing.T) {
 	if _, err = d.Exec("DROP TABLE Track"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = capture(ctx, lib, filepath.Join(dir, "invalid"), filepath.Join(dir, "objects"), nil); err != nil {
+	if _, err = capture(ctx, lib, ScopeCollection, filepath.Join(dir, "invalid"), filepath.Join(dir, "objects"), nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -56,7 +56,7 @@ func TestCaptureExcludesOwnStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err := capture(ctx, lib, filepath.Join(dir, "test"), filepath.Join(dir, "objects"), []string{""})
+	s, err := capture(ctx, lib, ScopeCollection, filepath.Join(dir, "test"), filepath.Join(dir, "objects"), []string{""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestCaptureExcludesOwnStorage(t *testing.T) {
 		t.Fatalf("captured own storage: %v", s.Files)
 	}
 	empty := t.TempDir()
-	if _, err = capture(ctx, empty, filepath.Join(dir, "empty"), filepath.Join(dir, "objects"), nil); err != nil {
+	if _, err = capture(ctx, empty, ScopeCollection, filepath.Join(dir, "empty"), filepath.Join(dir, "objects"), nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -81,7 +81,7 @@ func TestUndoDatabasePresenceConflicts(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			e, err := Run(ctx, lib, "database", nil, func(context.Context) error {
+			e, err := Run(ctx, lib, "database", ScopeCollection, nil, func(context.Context) error {
 				if created {
 					return copyDatabase(ctx, source, extra)
 				}
@@ -116,7 +116,7 @@ func TestUndoRestoresTriggerEffectsOnce(t *testing.T) {
  CREATE TRIGGER audit_edit AFTER UPDATE ON Track BEGIN INSERT INTO Audit(value) VALUES(NEW.title);END`); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestUndoRestoresTriggerEffectsOnce(t *testing.T) {
 func TestForceAlreadyRemovedInsertion(t *testing.T) {
 	lib, d, _ := fixture(t)
 	ctx := context.Background()
-	e, err := Run(ctx, lib, "add", nil, func(context.Context) error {
+	e, err := Run(ctx, lib, "add", ScopeCollection, nil, func(context.Context) error {
 		_, err := d.Exec("INSERT INTO Track VALUES(2,'New','new.mp3','origin',8)")
 		return err
 	})
@@ -175,7 +175,7 @@ func TestHistoryReadAndLockErrors(t *testing.T) {
 	if err = os.WriteFile(filepath.Join(dir, "bad.json"), []byte("broken"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = Run(ctx, lib, "edit", nil, func(context.Context) error { return nil }); err == nil {
+	if _, err = Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { return nil }); err == nil {
 		t.Fatal("accepted bad history")
 	}
 	if _, err = Undo(ctx, lib, "", UndoOptions{}); err == nil {
@@ -216,7 +216,7 @@ func TestUndoPreflightDamagedFiles(t *testing.T) {
 		t.Run(damage, func(t *testing.T) {
 			lib, d, file := fixture(t)
 			ctx := context.Background()
-			e, err := Run(ctx, lib, "edit", []string{file}, func(context.Context) error {
+			e, err := Run(ctx, lib, "edit", ScopeCollection, []string{file}, func(context.Context) error {
 				if _, err := d.Exec("UPDATE Track SET title='Edited'"); err != nil {
 					return err
 				}

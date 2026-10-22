@@ -50,7 +50,7 @@ func TestArtworkHistoryPreservesOnlyChangedCacheFiles(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			e, err := history.Run(ctx, lib, operation, nil, func(ctx context.Context) error {
+			e, err := history.Run(ctx, lib, operation, history.ScopeCollection, nil, func(ctx context.Context) error {
 				if operation == "prune" || operation == "prune preservation failure" {
 					_, err := PruneArtwork(ctx, d, cache)
 					return err

@@ -101,9 +101,9 @@ func TestHistoryStorageFailures(t *testing.T) {
 		name string
 		run  func() error
 	}{
-		{"capture destination", func() error { _, err := capture(ctx, lib, file, filepath.Join(dir, "objects"), nil); return err }},
+		{"capture destination", func() error { _, err := capture(ctx, lib, ScopeCollection, file, filepath.Join(dir, "objects"), nil); return err }},
 		{"capture invalid library", func() error {
-			_, err := capture(ctx, file, filepath.Join(dir, "bad"), filepath.Join(dir, "objects"), nil)
+			_, err := capture(ctx, file, ScopeCollection, filepath.Join(dir, "bad"), filepath.Join(dir, "objects"), nil)
 			return err
 		}},
 		{"lock directory", func() error { _, err := lock(ctx, file); return err }},
@@ -144,7 +144,7 @@ func TestUndoPlanDetectsRacingEdits(t *testing.T) {
 		t.Run(map[bool]string{false: "file", true: "database"}[database], func(t *testing.T) {
 			lib, d, file := fixture(t)
 			ctx := context.Background()
-			e, err := Run(ctx, lib, "edit", []string{file}, func(context.Context) error {
+			e, err := Run(ctx, lib, "edit", ScopeCollection, []string{file}, func(context.Context) error {
 				if _, err := d.Exec("UPDATE Track SET title='Edited'"); err != nil {
 					return err
 				}
@@ -187,7 +187,7 @@ func TestHistoryUUIDAndMovedLibrary(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE Information(id INTEGER PRIMARY KEY,uuid TEXT);INSERT INTO Information VALUES(1,'library-uuid')"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Changed'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Changed'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func TestHistoryUUIDAndMovedLibrary(t *testing.T) {
 func TestUndoRefusesChangedSchema(t *testing.T) {
 	lib, d, _ := fixture(t)
 	ctx := context.Background()
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Changed'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Changed'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestForceMissingCompositeKey(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE Extra(a TEXT,b BLOB,value TEXT,PRIMARY KEY(a,b));INSERT INTO Extra VALUES('key',x'1234','before')"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Extra SET value='after'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Extra SET value='after'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestUndoCannotBreakForeignReferences(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE Child(id INTEGER PRIMARY KEY,parent INTEGER REFERENCES Playlist(id))"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "create", nil, func(context.Context) error { _, err := d.Exec("INSERT INTO Playlist VALUES(2,'Created')"); return err })
+	e, err := Run(ctx, lib, "create", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("INSERT INTO Playlist VALUES(2,'Created')"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}

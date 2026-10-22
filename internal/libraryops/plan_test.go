@@ -47,7 +47,7 @@ func TestAggregateProtectsSharedFilesAndUndo(t *testing.T) {
 		t.Fatalf("unsafe plan: %+v", plan)
 	}
 	opts.PlanToken = plan.PlanToken
-	entry, err := history.Run(ctx, source, "library.media.aggregate", nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
+	entry, err := history.Run(ctx, source, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestMoveLibraryAndUndoPreserveIdentityAndExternalPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts.PlanToken = p.PlanToken
-	e, err := history.Run(ctx, source, "library.move", nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) })
+	e, err := history.Run(ctx, source, "library.move", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) })
 	if err != nil {
 		t.Fatal(err)
 	}

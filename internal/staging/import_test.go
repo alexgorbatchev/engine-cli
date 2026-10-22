@@ -129,7 +129,7 @@ func TestImportAndUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	var report *ImportReport
-	entry, err := history.Run(ctx, lib, "staging.import", nil, func(ctx context.Context) error {
+	entry, err := history.Run(ctx, lib, "staging.import", history.ScopeCollection, nil, func(ctx context.Context) error {
 		var err error
 		report, err = s.Import(ctx, database, ImportOptions{IDs: []string{mix.ID}, Runner: func(context.Context, string, ...string) ([]byte, error) {
 			return []byte(`{"format":{"tags":{"title":"Tagged"}}}`), nil

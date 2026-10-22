@@ -63,7 +63,7 @@ func newStagingCommand() *cobra.Command {
 				return err
 			}
 			if action == "rm" {
-				_, err := history.Run(c.Context(), libDirFlag, "staging.rm", nil, run)
+				_, err := history.Run(c.Context(), libDirFlag, "staging.rm", history.ScopeFiles, nil, run)
 				if err != nil {
 					return err
 				}

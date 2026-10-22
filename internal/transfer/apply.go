@@ -89,7 +89,7 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 	if _, err = backup.AutoBackupIfNeeded(ctx, o.Destination, o.NoBackup); err != nil {
 		return p.report, err
 	}
-	entry, err := history.Run(ctx, o.Destination, "library.sync", nil, func(ctx context.Context) error {
+	entry, err := history.Run(ctx, o.Destination, "library.sync", history.ScopeCollection, nil, func(ctx context.Context) error {
 		defer conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK") // Release failed writes before history captures the result.
 		if err := p.apply(ctx, conn); err != nil {
 			return err

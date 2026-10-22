@@ -55,7 +55,7 @@ func TestStore(t *testing.T) {
 func TestStoreUndo(t *testing.T) {
 	lib := t.TempDir()
 	a := Index{"a": evidence(1, 30)}
-	entry, err := history.Run(context.Background(), lib, "fingerprint.scan", nil, func(ctx context.Context) error { return Save(ctx, lib, a) })
+	entry, err := history.Run(context.Background(), lib, "fingerprint.scan", history.ScopeCollection, nil, func(ctx context.Context) error { return Save(ctx, lib, a) })
 	if err != nil {
 		t.Fatal(err)
 	}

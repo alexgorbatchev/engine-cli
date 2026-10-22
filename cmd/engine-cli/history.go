@@ -23,7 +23,7 @@ func installHistory(root *cobra.Command) {
 		run := c.RunE
 		c.RunE = func(c *cobra.Command, args []string) error {
 			operation := strings.ReplaceAll(strings.TrimPrefix(c.CommandPath(), root.Name()+" "), " ", ".")
-			e, err := history.Run(c.Context(), libDirFlag, operation, nil, func(ctx context.Context) error {
+			e, err := history.Run(c.Context(), libDirFlag, operation, history.ScopeCollection, nil, func(ctx context.Context) error {
 				previous := c.Context()
 				c.SetContext(ctx)
 				defer c.SetContext(previous)

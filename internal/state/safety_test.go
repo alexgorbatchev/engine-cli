@@ -176,7 +176,7 @@ func TestUndoReconcilesMovedLibraryLocations(t *testing.T) {
 	if err = s.Remember(ctx, source); err != nil {
 		t.Fatal(err)
 	}
-	e, err := history.Run(ctx, source, "library.move", nil, func(ctx context.Context) error { return history.RelocateLibrary(ctx, source, destination) })
+	e, err := history.Run(ctx, source, "library.move", history.ScopeCollection, nil, func(ctx context.Context) error { return history.RelocateLibrary(ctx, source, destination) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestUndoCreationRetiresTheRemovedLibrary(t *testing.T) {
 	}
 	defer s.Close()
 	lib := t.TempDir()
-	entry, err := history.Run(ctx, lib, "library.create", nil, func(ctx context.Context) error {
+	entry, err := history.Run(ctx, lib, "library.create", history.ScopeCollection, nil, func(ctx context.Context) error {
 		if err := os.Mkdir(filepath.Join(lib, "Database2"), 0700); err != nil {
 			return err
 		}

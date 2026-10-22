@@ -56,7 +56,7 @@ func TestAcquisitionHistoryRecordsOnlyUndoableChanges(t *testing.T) {
 			lib := t.TempDir()
 			s := Service{Library: lib, Client: acquire.Client{Runner: toolRunner(t, tt.result)}}
 			ctx := context.Background()
-			entry, err := history.Run(ctx, lib, "track.fetch", nil, func(ctx context.Context) error { return tt.run(ctx, s) })
+			entry, err := history.Run(ctx, lib, "track.fetch", history.ScopeFiles, nil, func(ctx context.Context) error { return tt.run(ctx, s) })
 			if (err == nil) != tt.recorded {
 				t.Fatalf("err=%v", err)
 			}
@@ -77,7 +77,7 @@ func TestFailedRetryLeavesNoHistory(t *testing.T) {
 	if err == nil {
 		t.Fatal("failed download reported success")
 	}
-	entry, err := history.Run(ctx, lib, "staging.retry", nil, func(ctx context.Context) error {
+	entry, err := history.Run(ctx, lib, "staging.retry", history.ScopeFiles, nil, func(ctx context.Context) error {
 		_, err := s.Retry(ctx, report.Item.ID)
 		return err
 	})

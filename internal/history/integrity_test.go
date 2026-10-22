@@ -14,7 +14,7 @@ func TestUndoPreservesExactRealValues(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE Analysis(id INTEGER PRIMARY KEY,bpm REAL);INSERT INTO Analysis VALUES(1,120.0)"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "analysis", nil, func(context.Context) error {
+	e, err := Run(ctx, lib, "analysis", ScopeCollection, nil, func(context.Context) error {
 		_, err := d.Exec("UPDATE Analysis SET bpm=?", math.Nextafter(120, 121))
 		return err
 	})
@@ -36,7 +36,7 @@ func TestUndoPreservesNonUTF8Text(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE Imported(id INTEGER PRIMARY KEY,value TEXT);INSERT INTO Imported VALUES(1,CAST(x'ff' AS TEXT))"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error {
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error {
 		_, err := d.Exec("UPDATE Imported SET value=CAST(x'fe' AS TEXT)")
 		return err
 	})
@@ -55,7 +55,7 @@ func TestUndoPreservesNonUTF8Text(t *testing.T) {
 func TestUndoRefusesDamagedDatabaseSnapshot(t *testing.T) {
 	lib, d, _ := fixture(t)
 	ctx := context.Background()
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestCaptureRepairsDamagedRetainedContent(t *testing.T) {
 	if err = os.WriteFile(filepath.Join(dir, "objects", state.Hash), []byte("damaged"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", []string{file}, func(context.Context) error { return os.WriteFile(file, []byte("modified"), 0600) })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, []string{file}, func(context.Context) error { return os.WriteFile(file, []byte("modified"), 0600) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestHistoryRejectsBlockedStorage(t *testing.T) {
 func TestInterruptedOperationRecovery(t *testing.T) {
 	lib, d, _ := fixture(t)
 	ctx := context.Background()
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestInterruptedOperationRecovery(t *testing.T) {
 	if err = writeEntry(dir, e); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = Run(ctx, lib, "blocked", nil, func(context.Context) error { t.Fatal("ran pending operation"); return nil }); err == nil {
+	if _, err = Run(ctx, lib, "blocked", ScopeCollection, nil, func(context.Context) error { t.Fatal("ran pending operation"); return nil }); err == nil {
 		t.Fatal("accepted pending")
 	}
 	if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); err == nil {
@@ -155,7 +155,7 @@ func TestInterruptedOperationRecovery(t *testing.T) {
 	if _, err = Undo(ctx, lib, e.ID, UndoOptions{Force: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = Run(ctx, lib, "next", nil, func(context.Context) error { return nil }); err != nil {
+	if _, err = Run(ctx, lib, "next", ScopeCollection, nil, func(context.Context) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
 }

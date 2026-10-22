@@ -30,7 +30,7 @@ func TestFailedAggregateRetainsRecoverableAudio(t *testing.T) {
 		t.Fatal(err)
 	}
 	opts.PlanToken = plan.PlanToken
-	entry, err := history.Run(ctx, source, "library.media.aggregate", nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) })
+	entry, err := history.Run(ctx, source, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, nil) })
 	if err == nil || entry == nil {
 		t.Fatalf("expected recorded failure: %+v %v", entry, err)
 	}
@@ -78,7 +78,7 @@ func TestMediaInstallerRejectsUnsafeDestinations(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			entry, err := history.Run(ctx, root, "library.media.aggregate", nil, func(ctx context.Context) error {
+			entry, err := history.Run(ctx, root, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error {
 				if kind == "cancelled" {
 					var cancel context.CancelFunc
 					ctx, cancel = context.WithCancel(ctx)
@@ -352,7 +352,7 @@ func TestMediaJournalRegistrationFailuresAreRecoverable(t *testing.T) {
 		t.Fatal(err)
 	}
 	destination := filepath.Join(root, "Media", "song.mp3")
-	entry, err := history.Run(ctx, root, "library.media.aggregate", nil, func(ctx context.Context) error {
+	entry, err := history.Run(ctx, root, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error {
 		if err := history.Preserve(ctx, destination); err != nil {
 			return err
 		}
@@ -369,7 +369,7 @@ func TestMediaJournalRegistrationFailuresAreRecoverable(t *testing.T) {
 	}
 	directory := t.TempDir()
 	writeMedia(t, filepath.Join(directory, "keep"))
-	if _, err = history.Run(ctx, root, "library.delete", nil, func(ctx context.Context) error {
+	if _, err = history.Run(ctx, root, "library.delete", history.ScopeCollection, nil, func(ctx context.Context) error {
 		return deleteFiles(ctx, &Plan{Files: []File{{Path: directory, Action: "artwork"}}})
 	}); err == nil {
 		t.Fatal("unsupported preservation was ignored")

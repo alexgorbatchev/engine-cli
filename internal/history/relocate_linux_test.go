@@ -35,7 +35,7 @@ func TestLibraryRelocationAcrossFilesystemsAndUndo(t *testing.T) {
 			t.Skip("temporary roots use the same filesystem")
 		}
 		ctx := context.Background()
-		entry, err := Run(ctx, source, "library.move", nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, destination) })
+		entry, err := Run(ctx, source, "library.move", ScopeCollection, nil, func(ctx context.Context) error { return RelocateLibrary(ctx, source, destination) })
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -12,12 +12,12 @@ import (
 func TestHistoryStableIdentityAcrossRelocation(t *testing.T) {
 	lib, d, p := fixture(t)
 	ctx := context.Background()
-	r, err := Run(ctx, lib, "track.title", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	r, err := Run(ctx, lib, "track.title", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
 	dest := filepath.Join(lib, "moved.mp3")
-	moved, err := Run(ctx, lib, "track.move", nil, func(ctx context.Context) error {
+	moved, err := Run(ctx, lib, "track.move", ScopeCollection, nil, func(ctx context.Context) error {
 		if err := MoveFile(ctx, p, dest); err != nil {
 			return err
 		}
@@ -48,11 +48,11 @@ func TestHistoryTracksPlaylistMembershipByEntity(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE PlaylistEntity(id INTEGER PRIMARY KEY,listId INTEGER,trackId INTEGER,databaseUuid TEXT);INSERT INTO PlaylistEntity VALUES(1,1,7,'origin');INSERT INTO Playlist VALUES(2,'Other')"); err != nil {
 		t.Fatal(err)
 	}
-	edit, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	edit, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
-	move, err := Run(ctx, lib, "playlist.track.move", nil, func(context.Context) error { _, err := d.Exec("UPDATE PlaylistEntity SET listId=2"); return err })
+	move, err := Run(ctx, lib, "playlist.track.move", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE PlaylistEntity SET listId=2"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestHistoryDistinguishesBinaryEntityKeys(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE BinaryEntity(id BLOB PRIMARY KEY,value TEXT);INSERT INTO BinaryEntity VALUES(x'ff','before'),(x'fe','before'),(CAST(x'ff' AS TEXT),'before'),(CAST(x'fe' AS TEXT),'before')"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(context.Background(), lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE BinaryEntity SET value='after'"); return err })
+	e, err := Run(context.Background(), lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE BinaryEntity SET value='after'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestHistoryDistinguishesRealEntityKeys(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE RealEntity(id REAL PRIMARY KEY,value TEXT);INSERT INTO RealEntity VALUES(1.0,'before'),(1.0000000000000002,'before')"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(context.Background(), lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE RealEntity SET value='after'"); return err })
+	e, err := Run(context.Background(), lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE RealEntity SET value='after'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestUndoFailedOperationAndRedo(t *testing.T) {
 	lib, d, p := fixture(t)
 	ctx := context.Background()
 	failure := errors.New("failed after modifying track")
-	r, err := Run(ctx, lib, "partial", []string{p}, func(context.Context) error {
+	r, err := Run(ctx, lib, "partial", ScopeCollection, []string{p}, func(context.Context) error {
 		if _, err := d.Exec("UPDATE Track SET title='Partial'"); err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func TestUndoLatestWalksBackHistory(t *testing.T) {
 	lib, d, _ := fixture(t)
 	ctx := context.Background()
 	for _, title := range []string{"First", "Second"} {
-		if _, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title=?", title); return err }); err != nil {
+		if _, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title=?", title); return err }); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -166,7 +166,7 @@ func TestUndoLibraryUUIDReplacement(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE Information(id INTEGER PRIMARY KEY,uuid TEXT);INSERT INTO Information VALUES(1,'original-library')"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "library.restore", nil, func(context.Context) error {
+	e, err := Run(ctx, lib, "library.restore", ScopeCollection, nil, func(context.Context) error {
 		_, err := d.Exec("UPDATE Information SET uuid='replacement-library';UPDATE Track SET title='Replacement',originDatabaseUuid='replacement-origin',originTrackId=88")
 		return err
 	})
@@ -187,7 +187,7 @@ func TestForceMissingTrackAndForeignIdentity(t *testing.T) {
 		t.Run(map[bool]string{false: "missing", true: "different identity"}[identity], func(t *testing.T) {
 			lib, d, _ := fixture(t)
 			ctx := context.Background()
-			r, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+			r, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -220,7 +220,7 @@ func TestForceMissingTrackAndForeignIdentity(t *testing.T) {
 func TestUndoRefusesLostTrackIdentity(t *testing.T) {
 	lib, d, _ := fixture(t)
 	ctx := context.Background()
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestUndoDatabaseCreationAndDeletion(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			r, err := Run(ctx, lib, "database", nil, func(context.Context) error {
+			r, err := Run(ctx, lib, "database", ScopeCollection, nil, func(context.Context) error {
 				if remove {
 					return os.Remove(path)
 				}
@@ -275,7 +275,7 @@ func TestUndoSchemaChangesAndUnkeyedTables(t *testing.T) {
 			if _, err := d.Exec("CREATE TABLE Unkeyed(value TEXT);INSERT INTO Unkeyed VALUES('before')"); err != nil {
 				t.Fatal(err)
 			}
-			r, err := Run(ctx, lib, "restore", nil, func(context.Context) error {
+			r, err := Run(ctx, lib, "restore", ScopeCollection, nil, func(context.Context) error {
 				q := "UPDATE Unkeyed SET value='after'"
 				if schemaChange {
 					q = "CREATE TABLE Custom(id INTEGER PRIMARY KEY)"
@@ -319,13 +319,13 @@ func TestHistoryLockCancellationAndStorageErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err = Run(ctx, lib, "locked", nil, func(context.Context) error { called = true; return nil }); err == nil || called {
+	if _, err = Run(ctx, lib, "locked", ScopeCollection, nil, func(context.Context) error { called = true; return nil }); err == nil || called {
 		t.Fatal("concurrent operation ran")
 	}
 	l.Close()
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, err = Run(cancelled, lib, "cancelled", nil, func(context.Context) error { called = true; return nil }); err == nil || called {
+	if _, err = Run(cancelled, lib, "cancelled", ScopeCollection, nil, func(context.Context) error { called = true; return nil }); err == nil || called {
 		t.Fatal("cancelled operation ran")
 	}
 	if _, err = Undo(ctx, lib, "missing", UndoOptions{}); err == nil {

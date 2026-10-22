@@ -66,7 +66,7 @@ func TestForceRefusesConstraintConflict(t *testing.T) {
 	if _, err := d.Exec("CREATE UNIQUE INDEX unique_title ON Playlist(title)"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Playlist SET title='Edited'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Playlist SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestForceRefusesUnsupportedMissingIdentity(t *testing.T) {
 	if _, err := d.Exec("CREATE TABLE Extra(id REAL PRIMARY KEY,value TEXT);INSERT INTO Extra VALUES(1.5,'before')"); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Extra SET value='after'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Extra SET value='after'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestForceRefusesUnsupportedMissingIdentity(t *testing.T) {
 func TestRestoreImageUnavailableInputs(t *testing.T) {
 	lib, d, file := fixture(t)
 	ctx := context.Background()
-	e, err := Run(ctx, lib, "edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
+	e, err := Run(ctx, lib, "edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Track SET title='Edited'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestStoragePermissionFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Chmod(lib, 0700)
-	if _, err = capture(ctx, lib, filepath.Join(root, "capture"), objects, nil); err == nil {
+	if _, err = capture(ctx, lib, ScopeCollection, filepath.Join(root, "capture"), objects, nil); err == nil {
 		t.Fatal("captured inaccessible source")
 	}
 }

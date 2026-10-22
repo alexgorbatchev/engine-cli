@@ -12,7 +12,7 @@ func TestDatabaseOnlyDoesNotCaptureFiles(t *testing.T) {
 	if err := os.Symlink(file, filepath.Join(lib, "unrelated-link")); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(context.Background(), lib, "playlist.edit", nil, func(context.Context) error { _, err := d.Exec("UPDATE Playlist SET title='Changed'"); return err })
+	e, err := Run(context.Background(), lib, "playlist.edit", ScopeCollection, nil, func(context.Context) error { _, err := d.Exec("UPDATE Playlist SET title='Changed'"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestPreserveOnlySelectedFile(t *testing.T) {
 	if err := os.WriteFile(unrelated, []byte("unrelated"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "delete", nil, func(ctx context.Context) error {
+	e, err := Run(ctx, lib, "delete", ScopeCollection, nil, func(ctx context.Context) error {
 		if err := Preserve(ctx, file); err != nil {
 			return err
 		}
@@ -60,7 +60,7 @@ func TestMoveUndoWithoutAudioCopies(t *testing.T) {
 	lib, _, file := fixture(t)
 	ctx := context.Background()
 	dest := filepath.Join(lib, "moved.mp3")
-	e, err := Run(ctx, lib, "move", nil, func(ctx context.Context) error { return MoveFile(ctx, file, dest) })
+	e, err := Run(ctx, lib, "move", ScopeCollection, nil, func(ctx context.Context) error { return MoveFile(ctx, file, dest) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestMoveOverwrittenDestinationRoundTrip(t *testing.T) {
 	if err := os.WriteFile(dest, []byte("overwritten"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Run(ctx, lib, "move", nil, func(ctx context.Context) error { return MoveFile(ctx, file, dest) })
+	e, err := Run(ctx, lib, "move", ScopeCollection, nil, func(ctx context.Context) error { return MoveFile(ctx, file, dest) })
 	if err != nil {
 		t.Fatal(err)
 	}
