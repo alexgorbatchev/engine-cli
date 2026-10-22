@@ -54,9 +54,16 @@ func requestAPI(t *testing.T, s http.Handler, method, path, body string) *httpte
 	return w
 }
 
+// jobReportMargin leaves time to report an unfinished job before go test times out.
+const jobReportMargin = 5 * time.Second
+
 func awaitAPIJob(t *testing.T, s http.Handler, id string) map[string]any {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	// Jobs sync every snapshot and history write, so parallel test packages
+	// contending for disk syncs slow healthy jobs well past any fixed limit. The
+	// go test -timeout bounds a job that never finishes; stop just before it so
+	// the failure reports the job instead of a goroutine dump.
+	deadline, bounded := t.Deadline()
 	for {
 		w := requestAPI(t, s, http.MethodGet, "/v1/jobs/"+id, "")
 		if w.Code != http.StatusOK {
@@ -70,7 +77,7 @@ func awaitAPIJob(t *testing.T, s http.Handler, id string) map[string]any {
 		if state != "queued" && state != "running" {
 			return job
 		}
-		if time.Now().After(deadline) {
+		if bounded && time.Until(deadline) < jobReportMargin {
 			t.Fatalf("job did not complete: %+v", job)
 		}
 		time.Sleep(time.Millisecond)
