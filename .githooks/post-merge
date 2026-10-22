@@ -1,0 +1,3 @@
+#!/bin/sh
+# Publishes merges into a tracking branch. Fast-forward merges create no commit, so post-commit never sees them.
+. "$(dirname "$0")/post-commit"

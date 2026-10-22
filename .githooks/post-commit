@@ -1,0 +1,19 @@
+#!/bin/sh
+# Pushes the current branch to its same-named upstream after a commit, so work merged into main is published at once.
+# `just setup` installs this directory as core.hooksPath. The hook acts only on this repository, wherever it is checked
+# out. Branches without an upstream, such as worktree branches, stay local; a failed push leaves the commit local.
+set -u
+
+# Detached HEAD covers rebases, bisects, and checked-out revisions.
+branch="$(git symbolic-ref --quiet --short HEAD)" || exit 0
+remote="$(git config --get "branch.$branch.remote")" || exit 0
+upstream="$(git config --get "branch.$branch.merge")" || exit 0
+# A branch started from another remote branch, such as a worktree branch created from origin/main, never pushes there.
+[ "$upstream" = "refs/heads/$branch" ] || exit 0
+# Nothing to publish, such as after a pull that was already up to date.
+[ "$(git rev-parse HEAD)" != "$(git rev-parse --verify --quiet '@{upstream}')" ] || exit 0
+
+if ! git push "$remote" "HEAD:$upstream"; then
+    printf 'post-commit: push of %s to %s failed; the commit is kept locally.\n' "$branch" "$remote" >&2
+fi
+exit 0

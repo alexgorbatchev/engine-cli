@@ -12,9 +12,10 @@ run *args:
 run-ai *args:
     AGENT=1 go run ./cmd/engine-cli {{ args }}
 
-# Run test suite
+# Run test suite and Git hook tests
 test:
     go test -v ./...
+    bash scripts/test-git-hooks.sh .githooks
 
 # Build binary into bin/
 build:
@@ -36,15 +37,17 @@ vet: lint
 fmt:
     go fmt ./...
 
-# Run static analysis and test suite in sequence
+# Run static analysis, test suite, and Git hook tests in sequence
 check:
     go vet ./...
     go test -v ./...
+    bash scripts/test-git-hooks.sh .githooks
 
 # Clean up build binaries and temporary files
 clean:
     rm -rf bin coverage.out .tmp dist
 
-# Download project dependencies for local development
+# Download project dependencies and install the publishing Git hooks
 setup:
     go mod download
+    git config core.hooksPath .githooks
