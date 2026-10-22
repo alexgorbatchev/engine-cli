@@ -110,7 +110,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `resource_not_found` | A required file is missing. Restore access or choose another file. |
 | `tool_unavailable` | A required music tool is not installed or cannot run. Install it with `tool.upgrade`. |
 | `tool_outdated` | An installed music tool is older than the release providing Engine's machine interface, reports an unrecognized version, or lacks that interface. Update it with `tool.upgrade`. |
-| `tool_install_failed` | Downloading or installing a music tool release failed. Check the connection and retry `tool.upgrade`. |
+| `tool_install_failed` | Downloading or installing a music tool release failed, through `tool.upgrade` or `auto_install`. Check the connection and retry. |
 | `tool_failed` | A dependent music tool reported a failure, including partial result failures. Check the tool and retry. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
@@ -232,7 +232,7 @@ Tag updates support nullable string overrides `artist`, `title`, `album`, `date`
 
 Raw file mutations resolve collection ownership, including symlink and hard-link aliases, before execution. Collection files use the normal desktop guard, snapshot, metadata update, and undo workflow. Staged files update their manifests and retain staging undo. Other files use durable file history and an atomic replacement only after verifying compressed audio packets are unchanged. Native outputs must remain inside a private workspace and preserve the file extension. A failed validation retains the original file; undo restores completed replacements.
 
-Engine requires `fetch-track` 1.10.1, `fetch-mix` 2.1.1, and `tag-track` 1.1.1 or newer, the releases providing its machine interfaces. Before running one, Engine reads its raw single-line `--version` and refuses a missing tool with `tool_unavailable` or an older or unrecognized version with `tool_outdated`; `dev` builds pass the version check.
+Engine requires `fetch-track` 1.10.1, `fetch-mix` 2.1.1, and `tag-track` 1.1.1 or newer, the releases providing its machine interfaces. Before running one, Engine reads its `--version` and refuses a missing tool with `tool_unavailable` or an older or unrecognized version with `tool_outdated`; `dev` builds pass the version check. With `auto_install:true`, Engine first installs a missing tool or updates an outdated one into the managed tool directory, then runs it only when the installed release meets the requirement; a failed download reports `tool_install_failed`, and a latest release that is still too old reports `tool_outdated`. The same option asks the tool to install its own missing dependencies.
 
 `tool.inspect` reports `version`, `minimum_version`, executable availability (`available`), whether the tool meets Engine's requirement (`satisfied`), and machine-interface support (`native_json`). A satisfied version is confirmed by safely probing `--json dependencies`; inspection never installs anything. Supported tools include their typed dependency reports, including unsatisfied dependencies. Unsatisfied tools return `tool_unavailable` or `tool_outdated` with an actionable message and are not probed.
 

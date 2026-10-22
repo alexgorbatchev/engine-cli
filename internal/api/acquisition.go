@@ -109,7 +109,7 @@ func (p mixLookupParams) options() acquire.MixOptions {
 func (p mixLookupParams) validate() error { return p.options().Validate() }
 
 func (s *Server) acquisitionService() acquisition.Service {
-	return acquisition.Service{Library: s.config.LibraryDir, Client: acquire.Client{Runner: s.config.ToolRunner}}
+	return acquisition.Service{Library: s.config.LibraryDir, Client: s.toolClient()}
 }
 func (s *Server) acquisitionOperations() []operation {
 	return []operation{

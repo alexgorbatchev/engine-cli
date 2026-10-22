@@ -81,7 +81,7 @@ Keep `~/.local/bin` on your PATH in future terminal sessions. Intel Macs use the
 # Setup
 
 - [`ffmpeg` & `ffprobe`](https://ffmpeg.org/download.html) are required for audio tag probing and artwork processing. Make both commands available on your PATH.
-- [Fetch Track](https://github.com/alexgorbatchev/fetch-track-cli) 1.10.1+, [Fetch Mix](https://github.com/alexgorbatchev/fetch-mix-cli) 2.1.1+, and [Tag Track](https://github.com/alexgorbatchev/tag-track-cli) 1.1.1+ acquire and tag audio. `engine-cli tool upgrade fetch-track` (likewise `fetch-mix`, `tag-track`) installs or updates the latest release in `~/.local/share/engine-cli/bin`, which `engine-cli` searches before your PATH. A missing or older tool stops the command with instructions to run that upgrade.
+- [Fetch Track](https://github.com/alexgorbatchev/fetch-track-cli) 1.10.1+, [Fetch Mix](https://github.com/alexgorbatchev/fetch-mix-cli) 2.1.1+, and [Tag Track](https://github.com/alexgorbatchev/tag-track-cli) 1.1.1+ acquire and tag audio. `engine-cli tool upgrade fetch-track` (likewise `fetch-mix`, `tag-track`) installs or updates the latest release in `~/.local/share/engine-cli/bin`, which `engine-cli` searches before your PATH. A missing or older tool stops the command with instructions to run that upgrade, unless the command passes `--auto-install`, which installs or updates the tool first.
 
 # Quick Start
 

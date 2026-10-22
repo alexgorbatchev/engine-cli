@@ -114,9 +114,9 @@ func (c Client) Tags(ctx context.Context, action, path, work string, opts TagOpt
 	var result TagResult
 	var err error
 	if action == "update" {
-		err = c.runStream(ctx, "tag-track", args, &result)
+		err = c.installing(opts.AutoInstall).runStream(ctx, "tag-track", args, &result)
 	} else {
-		err = c.run(ctx, "tag-track", args, &result)
+		err = c.installing(opts.AutoInstall).run(ctx, "tag-track", args, &result)
 	}
 	if err != nil {
 		return &result, err

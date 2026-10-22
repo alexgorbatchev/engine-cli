@@ -136,7 +136,7 @@ func (s *Server) mediaPath(ctx context.Context, p mediaParams) (string, error) {
 	return value.(string), nil
 }
 func (s *Server) mediaOperations() []operation {
-	client := acquire.Client{Runner: s.config.ToolRunner}
+	client := s.toolClient()
 	ops := []operation{
 		defineEffect("staging.retry", "staging", []string{"id"}, func(ctx context.Context, p stagedIDParams) (any, error) {
 			return s.acquisitionService().Retry(ctx, p.ID)

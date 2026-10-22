@@ -116,7 +116,7 @@ func (s *Server) tagSelection(ctx context.Context, p mediaSelection, action stri
 type mediaEffectKey struct{}
 
 func (s *Server) tagItem(ctx context.Context, field, item, action string, opts acquire.TagOptions) (any, error) {
-	client := acquire.Client{Runner: s.config.ToolRunner}
+	client := s.toolClient()
 	if action == "inspect" {
 		path := item
 		var err error

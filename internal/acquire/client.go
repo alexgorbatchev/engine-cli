@@ -21,6 +21,15 @@ type Client struct {
 	Runner enginesync.CommandRunner
 	// Installer replaces the GitHub release installer for managed tools.
 	Installer godeps.Installer
+	// autoInstall installs a missing or outdated managed tool before running it.
+	autoInstall bool
+}
+
+// installing applies a request's auto_install option, which also asks the tool
+// to install its own missing dependencies.
+func (c Client) installing(autoInstall bool) Client {
+	c.autoInstall = autoInstall
+	return c
 }
 
 type TrackOptions struct {
@@ -78,7 +87,7 @@ func (c Client) TrackCandidates(ctx context.Context, query string, opts TrackOpt
 	args := append([]string{"--list-candidates"}, opts.Args()...)
 	args = append(args, "--", query)
 	var result TrackResult
-	if err := c.runStream(ctx, "fetch-track", args, &result); err != nil {
+	if err := c.installing(opts.AutoInstall).runStream(ctx, "fetch-track", args, &result); err != nil {
 		return &result, err
 	}
 	return &result, checkStatus(result.Status, result.Error)
@@ -94,7 +103,7 @@ func (c Client) FetchTrack(ctx context.Context, query, work string, opts TrackOp
 	args := append([]string{"--out-dir", work}, opts.Args()...)
 	args = append(args, "--", query)
 	var result TrackResult
-	if err := c.runStream(ctx, "fetch-track", args, &result); err != nil {
+	if err := c.installing(opts.AutoInstall).runStream(ctx, "fetch-track", args, &result); err != nil {
 		return &result, err
 	}
 	return &result, checkStatus(result.Status, result.Error)
@@ -113,7 +122,7 @@ func (c Client) Verify(ctx context.Context, path string, options VerifyOptions) 
 	args := append([]string{"verify"}, opts.Args()...)
 	args = append(args, "--", path)
 	var result TrackResult
-	if err := c.run(ctx, "fetch-track", args, &result); err != nil {
+	if err := c.installing(opts.AutoInstall).run(ctx, "fetch-track", args, &result); err != nil {
 		return &result, err
 	}
 	return &result, checkStatus(result.Status, result.Error)
@@ -131,6 +140,10 @@ func (c Client) execute(ctx context.Context, tool string, args []string, result 
 	}
 	runner := c.Runner
 	if runner == nil {
+		// Only a real tool process has a release to check; injected runners stand in for one.
+		if err := c.requireTool(ctx, tool); err != nil {
+			return err
+		}
 		runner = runCommand
 	}
 	args = append([]string{"--json"}, args...)
@@ -158,9 +171,6 @@ func (c Client) execute(ctx context.Context, tool string, args []string, result 
 }
 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	if err := requireTool(ctx, name); err != nil {
-		return nil, err
-	}
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = append(os.Environ(), "AGENT=1")
 	var stdout, stderr bytes.Buffer

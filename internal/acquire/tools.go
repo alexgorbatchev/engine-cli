@@ -94,18 +94,12 @@ func (c Client) Upgrade(ctx context.Context, tool string) (*Upgrade, error) {
 	if !before.Installed {
 		install = m.Install
 	}
-	if err := install(ctx, tool); err != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return failedUpgrade(&progress.Error{Code: "tool_install_failed", Cause: fmt.Errorf("installing the latest %s release: %w", tool, err)})
-	}
-	after := requirementReport(ctx, m)
+	after, err := verifyInstalled(ctx, m, tool, install(ctx, tool))
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	if !after.Satisfied {
-		return failedUpgrade(requirementError(after))
+	if err != nil {
+		return failedUpgrade(err)
 	}
 	status := "success"
 	if before.Satisfied && before.DetectedVersion == after.DetectedVersion {

@@ -78,7 +78,7 @@ func (c Client) Mix(ctx context.Context, query, work string, opts MixOptions, in
 	}
 	args = append(args, "--", query)
 	var result MixResult
-	if err := c.runStream(ctx, "fetch-mix", args, &result); err != nil {
+	if err := c.installing(opts.AutoInstall).runStream(ctx, "fetch-mix", args, &result); err != nil {
 		return &result, err
 	}
 	return &result, checkStatus(result.Status, result.Error)

@@ -12,7 +12,7 @@ import (
 	"github.com/alexgorbatchev/godeps"
 )
 
-func TestRunCommandRequiresSupportedTool(t *testing.T) {
+func TestToolsRunOnlyWhenSupported(t *testing.T) {
 	tests := []struct {
 		name    string
 		tool    string
@@ -34,7 +34,8 @@ func TestRunCommandRequiresSupportedTool(t *testing.T) {
 			if tt.version != "" {
 				writeTool(t, dir, tt.tool, tt.version, marker)
 			}
-			_, err := runCommand(context.Background(), tt.tool, "--json", "work")
+			var result map[string]any
+			err := Client{}.run(context.Background(), tt.tool, []string{"work"}, &result)
 			if code := progress.ErrorCode(err); code != tt.code {
 				t.Fatalf("code=%q err=%v", code, err)
 			}
@@ -46,13 +47,14 @@ func TestRunCommandRequiresSupportedTool(t *testing.T) {
 	}
 }
 
-func TestRunCommandCancelledDuringRequirementCheck(t *testing.T) {
+func TestToolCancelledDuringRequirementCheck(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 	writeTool(t, dir, "fetch-track", "1.10.1", filepath.Join(dir, "ran"))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := runCommand(ctx, "fetch-track", "--json"); !errors.Is(err, context.Canceled) {
+	var result map[string]any
+	if err := (Client{}).run(ctx, "fetch-track", nil, &result); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err=%v", err)
 	}
 }
@@ -191,7 +193,14 @@ func (r *recordingInstaller) record(method, target string) error {
 
 func writeTool(t *testing.T, dir, name, version, marker string) {
 	t.Helper()
-	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo " + version + "; exit 0; fi\n: > " + marker + "\nprintf '{\"status\":\"ok\"}'\n"
+	writeToolResult(t, dir, name, version, marker, `{"status":"ok"}`)
+}
+
+// writeToolResult writes a tool reporting version that records each run in
+// marker and prints result.
+func writeToolResult(t *testing.T, dir, name, version, marker, result string) {
+	t.Helper()
+	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo " + version + "; exit 0; fi\n: > " + marker + "\nprintf '" + result + "'\n"
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}

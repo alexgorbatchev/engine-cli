@@ -69,17 +69,44 @@ func requirementError(r godeps.DependencyReport) error {
 }
 
 // requireTool refuses to run a managed tool that is missing or older than the
-// release providing Engine's machine interfaces.
-func requireTool(ctx context.Context, name string) error {
+// release providing Engine's machine interfaces. When the caller requested
+// auto_install, it installs a missing tool or updates an outdated one first.
+func (c Client) requireTool(ctx context.Context, name string) error {
 	if _, managed := requirements[name]; !managed {
 		return nil
 	}
-	r := requirementReport(ctx, (Client{}).toolManager(name))
+	m := c.toolManager(name)
+	r := requirementReport(ctx, m)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	if !r.Satisfied {
+	if r.Satisfied {
+		return nil
+	}
+	if !c.autoInstall {
 		return requirementError(r)
 	}
-	return nil
+	progress.Stage(ctx, "installing "+name, 0)
+	_, err := m.InstallUnsatisfied(ctx)
+	_, err = verifyInstalled(ctx, m, name, err)
+	return err
+}
+
+// verifyInstalled classifies an installation's outcome: a failed download, or
+// an installed release that still does not meet the requirement.
+func verifyInstalled(ctx context.Context, m *godeps.Manager, name string, installErr error) (godeps.DependencyReport, error) {
+	if ctx.Err() != nil {
+		return godeps.DependencyReport{}, ctx.Err()
+	}
+	if installErr != nil {
+		return godeps.DependencyReport{}, &progress.Error{Code: "tool_install_failed", Cause: fmt.Errorf("installing the latest %s release: %w", name, installErr)}
+	}
+	r := requirementReport(ctx, m)
+	if ctx.Err() != nil {
+		return r, ctx.Err()
+	}
+	if !r.Satisfied {
+		return r, requirementError(r)
+	}
+	return r, nil
 }

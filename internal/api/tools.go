@@ -16,8 +16,13 @@ type providerParams struct {
 	Provider string `json:"provider"`
 }
 
+// toolClient runs and installs music tools as the server is configured to.
+func (s *Server) toolClient() acquire.Client {
+	return acquire.Client{Runner: s.config.ToolRunner, Installer: s.config.ToolInstaller}
+}
+
 func (s *Server) toolOperations() []operation {
-	client := acquire.Client{Runner: s.config.ToolRunner, Installer: s.config.ToolInstaller}
+	client := s.toolClient()
 	return []operation{
 		defineEffect("tool.inspect", "read", []string{"tool"}, func(ctx context.Context, p toolParams) (any, error) { return client.InspectTool(ctx, p.Tool) }),
 		defineEffect("tool.upgrade", "system", []string{"tool"}, func(ctx context.Context, p toolParams) (any, error) { return client.Upgrade(ctx, p.Tool) }),
