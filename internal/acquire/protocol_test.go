@@ -63,13 +63,6 @@ func TestMachineOperations(t *testing.T) {
 			return e
 		}},
 		{"dependencies update", "fetch-track", `{"status":"ok"}`, []string{"--json", "dependencies", "update"}, func(c Client) error { _, e := c.Dependencies(ctx, "fetch-track", "update", nil); return e }},
-		{"upgrade", "fetch-track", `{"status":"current","version":"1.0.0"}`, []string{"--json", "upgrade"}, func(c Client) error {
-			r, e := c.Upgrade(ctx, "fetch-track")
-			if e == nil && r.Version != "1.0.0" {
-				t.Fatal("version lost")
-			}
-			return e
-		}},
 		{"providers", "fetch-mix", `{"providers":[{"ID":"provider","Active":true}]}`, []string{"--json", "ai", "list"}, func(c Client) error {
 			r, e := c.Providers(ctx)
 			if e == nil && len(r.Providers) != 1 {
@@ -144,7 +137,6 @@ func TestMachineOperationFailuresAndValidation(t *testing.T) {
 		func() error { _, e := c.Verify(ctx, "file", VerifyOptions{}); return e },
 		func() error { _, e := c.Tags(ctx, "inspect", "file", "", TagOptions{}); return e },
 		func() error { _, e := c.Dependencies(ctx, "fetch-track", "inspect", nil); return e },
-		func() error { _, e := c.Upgrade(ctx, "fetch-track"); return e },
 	} {
 		if e := call(); e == nil {
 			t.Fatal("upstream failure accepted")
@@ -159,7 +151,7 @@ func TestMachineOperationFailuresAndValidation(t *testing.T) {
 	c.Runner = func(context.Context, string, ...string) ([]byte, error) {
 		return []byte(`{"status":"ok"}`), errors.New("failed")
 	}
-	if _, e := c.Upgrade(ctx, "tag-track"); e == nil {
+	if _, e := c.Dependencies(ctx, "tag-track", "inspect", nil); e == nil {
 		t.Fatal("process failure ignored")
 	}
 	canceled, cancel := context.WithCancel(ctx)
@@ -185,8 +177,8 @@ func TestToolInspectionAndNativeRunner(t *testing.T) {
 		out       string
 		err       error
 		available bool
-		wantErr   bool
-	}{{"1.2.3\r\n", nil, true, false}, {"", errors.New("missing"), false, false}, {"", nil, true, true}} {
+		code      string
+	}{{"1.10.1\r\n", nil, true, ""}, {"", errors.New("missing"), false, "tool_unavailable"}, {"", nil, true, "tool_outdated"}} {
 		c := Client{Runner: func(_ context.Context, name string, args ...string) ([]byte, error) {
 			if reflect.DeepEqual(args, []string{"--json", "dependencies"}) {
 				return []byte(`{"status":"ok","dependencies":[],"changed":[]}`), nil
@@ -197,10 +189,10 @@ func TestToolInspectionAndNativeRunner(t *testing.T) {
 			return []byte(tc.out), tc.err
 		}}
 		r, e := c.InspectTool(ctx, "fetch-track")
-		if (e != nil) != tc.wantErr {
+		if e != nil {
 			t.Fatal(e)
 		}
-		if e == nil && (r.Available != tc.available || (tc.available && r.Version != "1.2.3")) {
+		if r.Available != tc.available || r.ErrorCode != tc.code || (tc.code == "" && r.Version != "1.10.1") {
 			t.Fatalf("%+v", r)
 		}
 	}
@@ -211,7 +203,7 @@ func TestToolInspectionAndNativeRunner(t *testing.T) {
 	}
 	dir := t.TempDir()
 	script := filepath.Join(dir, "fetch-track")
-	if e := os.WriteFile(script, []byte("#!/bin/sh\nif [ \"$AGENT\" != 1 ]; then exit 8; fi\nprintf '{\"status\":\"ok\"}'\n"), 0700); e != nil {
+	if e := os.WriteFile(script, []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.10.1; exit 0; fi\nif [ \"$AGENT\" != 1 ]; then exit 8; fi\nprintf '{\"status\":\"ok\"}'\n"), 0700); e != nil {
 		t.Fatal(e)
 	}
 	t.Setenv("PATH", dir)

@@ -17,6 +17,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
+	"github.com/alexgorbatchev/godeps"
 )
 
 func TestAcquisitionSelectionBoundToOriginalRequest(t *testing.T) {
@@ -158,8 +159,8 @@ func TestAcquisitionToolsAndProviderDispatch(t *testing.T) {
 		name, raw, tool, output string
 		args                    []string
 	}{
-		{"tool.inspect", `{"tool":"fetch-track"}`, "fetch-track", "1.2.3\n", []string{"--version"}},
-		{"tool.upgrade", `{"tool":"tag-track"}`, "tag-track", `{"status":"current"}`, []string{"--json", "upgrade"}},
+		{"tool.inspect", `{"tool":"fetch-track"}`, "fetch-track", "1.10.1\n", []string{"--version"}},
+		{"tool.upgrade", `{"tool":"tag-track"}`, "tag-track", "1.1.1\n", []string{"--version"}},
 		{"tool.dependencies.inspect", `{"tool":"fetch-mix"}`, "fetch-mix", `{"status":"success"}`, []string{"--json", "dependencies"}},
 		{"tool.dependencies.install", `{"tool":"fetch-track","dependencies":["ffmpeg","deno"]}`, "fetch-track", `{"status":"success"}`, []string{"--json", "dependencies", "install", "ffmpeg", "deno"}},
 		{"tool.dependencies.update", `{"tool":"tag-track","dependencies":["ffmpeg"]}`, "tag-track", `{"status":"success"}`, []string{"--json", "dependencies", "update", "ffmpeg"}},
@@ -181,12 +182,18 @@ func TestAcquisitionToolsAndProviderDispatch(t *testing.T) {
 				}
 				return []byte(tc.output), nil
 			}
+			t.Setenv("XDG_DATA_HOME", t.TempDir())
+			installs := 0
+			s.config.ToolInstaller = godeps.InstallerFunc(func(context.Context, string) error { installs++; return nil })
 			for _, op := range s.toolOperations() {
 				s.operations[op.Name] = op
 			}
 			result, id, err := s.RunOperation(context.Background(), tc.name, json.RawMessage(tc.raw))
 			if err != nil || result == nil || id != "" {
 				t.Fatalf("dispatch result %v %s %v", result, id, err)
+			}
+			if wantInstalls := map[bool]int{true: 1}[tc.name == "tool.upgrade"]; installs != wantInstalls {
+				t.Fatalf("installs=%d", installs)
 			}
 			if _, err := os.Stat(filepath.Join(lib, ".engine-cli")); !os.IsNotExist(err) {
 				t.Fatalf("tool operation wrote library history: %v", err)

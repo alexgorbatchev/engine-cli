@@ -14,9 +14,14 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/godeps"
 )
 
-type Client struct{ Runner enginesync.CommandRunner }
+type Client struct {
+	Runner enginesync.CommandRunner
+	// Installer replaces the GitHub release installer for managed tools.
+	Installer godeps.Installer
+}
 
 type TrackOptions struct {
 	CandidateURL       string  `json:"candidate_url"`
@@ -153,6 +158,9 @@ func (c Client) execute(ctx context.Context, tool string, args []string, result 
 }
 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
+	if err := requireTool(ctx, name); err != nil {
+		return nil, err
+	}
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = append(os.Environ(), "AGENT=1")
 	var stdout, stderr bytes.Buffer

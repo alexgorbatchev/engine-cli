@@ -34,6 +34,7 @@ type Tool struct {
 	Version        string        `json:"version"`
 	MinimumVersion string        `json:"minimum_version"`
 	Available      bool          `json:"available"`
+	Satisfied      bool          `json:"satisfied"`
 	NativeJSON     bool          `json:"native_json"`
 	Dependencies   *Dependencies `json:"dependencies,omitempty"`
 	Error          string        `json:"error,omitempty"`
@@ -79,42 +80,58 @@ func (c Client) Dependencies(ctx context.Context, tool, action string, names []s
 	}
 	return &result, checkStatus(result.Status, result.Error)
 }
+
+// Upgrade installs the tool's latest release into the managed tool directory.
+// It never runs the installed tool's own updater, which releases predating the
+// machine interface cannot perform.
 func (c Client) Upgrade(ctx context.Context, tool string) (*Upgrade, error) {
 	if err := validTool(tool); err != nil {
 		return nil, err
 	}
-	var result Upgrade
-	if err := c.run(ctx, tool, []string{"upgrade"}, &result); err != nil {
-		return &result, err
+	m := c.toolManager(tool)
+	before := requirementReport(ctx, m)
+	install := m.Update
+	if !before.Installed {
+		install = m.Install
 	}
-	return &result, checkStatus(result.Status, result.Error)
+	if err := install(ctx, tool); err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return failedUpgrade(&progress.Error{Code: "tool_install_failed", Cause: fmt.Errorf("installing the latest %s release: %w", tool, err)})
+	}
+	after := requirementReport(ctx, m)
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if !after.Satisfied {
+		return failedUpgrade(requirementError(after))
+	}
+	status := "success"
+	if before.Satisfied && before.DetectedVersion == after.DetectedVersion {
+		status = "current"
+	}
+	return &Upgrade{Status: status, Version: after.DetectedVersion}, nil
 }
+
+func failedUpgrade(err error) (*Upgrade, error) {
+	return &Upgrade{Status: "error", Error: err.Error(), ErrorCode: progress.ErrorCode(err)}, err
+}
+
 func (c Client) InspectTool(ctx context.Context, tool string) (*Tool, error) {
 	if err := validTool(tool); err != nil {
 		return nil, err
 	}
-	runner := c.Runner
-	if runner == nil {
-		runner = runCommand
-	}
-	data, err := runner(ctx, tool, "--version")
+	r := requirementReport(ctx, c.toolManager(tool))
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	minimum := map[string]string{"fetch-track": "1.10.1", "fetch-mix": "2.1.1", "tag-track": "1.1.1"}[tool]
-	result := &Tool{Name: tool, Available: err == nil, MinimumVersion: minimum}
-	if err != nil {
+	result := &Tool{Name: tool, Version: r.DetectedVersion, MinimumVersion: r.MinVersion, Available: r.Installed, Satisfied: r.Satisfied}
+	if !r.Satisfied {
+		err := requirementError(r)
 		result.Error = err.Error()
 		result.ErrorCode = progress.ErrorCode(err)
 		return result, nil
-	}
-	// --version has a documented raw single-line contract, not human status output.
-	result.Version = string(data)
-	for len(result.Version) > 0 && (result.Version[len(result.Version)-1] == '\n' || result.Version[len(result.Version)-1] == '\r') {
-		result.Version = result.Version[:len(result.Version)-1]
-	}
-	if result.Version == "" {
-		return nil, fmt.Errorf("%s returned an empty version", tool)
 	}
 	dependencies, probeErr := c.Dependencies(ctx, tool, "inspect", nil)
 	if ctx.Err() != nil {
@@ -126,8 +143,10 @@ func (c Client) InspectTool(ctx context.Context, tool string) (*Tool, error) {
 		result.NativeJSON = true
 		result.Dependencies = dependencies
 	} else {
-		result.ErrorCode = "tool_unavailable"
-		result.Error = fmt.Sprintf("%s JSON contract unavailable; upgrade %s to >=%s for --json dependencies", tool, tool, minimum)
+		// A development build can pass the version check without the machine interface.
+		result.Satisfied = false
+		result.ErrorCode = "tool_outdated"
+		result.Error = fmt.Sprintf("%s JSON contract unavailable; update it with `engine-cli tool upgrade %s`", tool, tool)
 		if probeErr != nil {
 			result.Error += ": " + probeErr.Error()
 		}

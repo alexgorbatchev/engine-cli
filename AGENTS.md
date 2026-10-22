@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-21 16:31
+last_modified: 2026-10-21 17:51
 status: current
 ---
 
@@ -52,7 +52,8 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Undo an Operation:** `bin/engine-cli library undo [id] [--dry-run] [--force]`
 
 ## Setup & Environment
-- **Prerequisites:** Go 1.26+, `ffmpeg`, `ffprobe`, `just`; `fetch-track` with JSON download output for track upgrades.
+- **Prerequisites:** Go 1.26+, `ffmpeg`, `ffprobe`, `just`. `fetch-track`, `fetch-mix`, and `tag-track` are managed dependencies.
+- **Managed Tool Dependencies:** Install, update, and verify `fetch-track`, `fetch-mix`, and `tag-track` through `github.com/alexgorbatchev/godeps`; never call a tool's own updater. `internal/acquire/requirements.go` owns minimum versions and release repositories. Managed releases live in `$XDG_DATA_HOME/engine-cli/bin`, which startup puts ahead of `PATH`. Running a missing or outdated tool fails with `tool_unavailable` or `tool_outdated`; install failures use `tool_install_failed`. Versions are parsed strictly so unrecognized output never satisfies a requirement.
 - **Default Library Directory:** `$HOME/Music/Engine Library` (override with `-l <dir>` / `--lib-dir`).
 - **API Startup Libraries:** `ENGINE_LIBRARY_PATHS` supplies semicolon-separated existing library directories to `api serve`; ignore empty entries and trim surrounding whitespace. Explicit `--library` flags replace the environment list; `--lib-dir` still selects the unscoped default library.
 - **Portable Library Storage:** Store default backups in `<lib-dir>/.engine-cli/backups/` and undo history in `<lib-dir>/.engine-cli/history/`. Library-contained history paths must follow the library when it moves.

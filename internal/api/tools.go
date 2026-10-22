@@ -17,7 +17,7 @@ type providerParams struct {
 }
 
 func (s *Server) toolOperations() []operation {
-	client := acquire.Client{Runner: s.config.ToolRunner}
+	client := acquire.Client{Runner: s.config.ToolRunner, Installer: s.config.ToolInstaller}
 	return []operation{
 		defineEffect("tool.inspect", "read", []string{"tool"}, func(ctx context.Context, p toolParams) (any, error) { return client.InspectTool(ctx, p.Tool) }),
 		defineEffect("tool.upgrade", "system", []string{"tool"}, func(ctx context.Context, p toolParams) (any, error) { return client.Upgrade(ctx, p.Tool) }),

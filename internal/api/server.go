@@ -17,6 +17,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/state"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
+	"github.com/alexgorbatchev/godeps"
 )
 
 const maxJobs = 128
@@ -33,6 +34,8 @@ type Config struct {
 	CheckSystem    func(context.Context, []string) (*systemcheck.Report, error)
 	ArtworkRunner  artwork.CommandRunner
 	ToolRunner     enginesync.CommandRunner
+	// ToolInstaller replaces release downloads for managed tools.
+	ToolInstaller godeps.Installer
 }
 
 type Server struct {

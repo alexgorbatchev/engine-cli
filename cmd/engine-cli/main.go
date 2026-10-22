@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/spf13/cobra"
@@ -17,6 +18,10 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if err := acquire.UseManagedTools(); err != nil {
+		// Tools installed elsewhere on PATH remain usable without the managed directory.
+		fmt.Fprintf(os.Stderr, "[WARN] managed tool directory unavailable: %v\n", err)
+	}
 	cmd := newRootCommand()
 	if err := cmd.ExecuteContext(ctx); err != nil {
 		reportCLIError(cmd, err)
