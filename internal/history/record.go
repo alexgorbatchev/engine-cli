@@ -10,9 +10,28 @@ import (
 
 type recorderKey struct{}
 type recorder struct {
-	mu    sync.Mutex
-	entry *Entry
-	dir   string
+	mu         sync.Mutex
+	entry      *Entry
+	dir        string
+	workspaces []string
+}
+
+// Workspace declares a directory that holds the operation's own retryable work,
+// such as a staged acquisition. A failed operation whose only changes are inside
+// its workspaces leaves no undo history; any other change keeps the failure undoable.
+func Workspace(ctx context.Context, path string) error {
+	r, _ := ctx.Value(recorderKey{}).(*recorder)
+	if r == nil {
+		return ctx.Err()
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.workspaces = append(r.workspaces, abs)
+	return nil
 }
 
 // Preserve durably registers exact files before they are overwritten or removed.

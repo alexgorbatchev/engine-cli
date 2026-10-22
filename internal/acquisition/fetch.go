@@ -59,7 +59,7 @@ func (s Service) fetchTrack(ctx context.Context, store *staging.Store, item *sta
 			returnErr = errors.Join(returnErr, saveFailure(context.WithoutCancel(ctx), store, item, returnErr))
 		}
 	}()
-	work, err := store.Directory(ctx, item.ID)
+	work, err := stagedWorkspace(ctx, store, item.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (s Service) fetchMix(ctx context.Context, store *staging.Store, item *stagi
 			returnErr = errors.Join(returnErr, saveFailure(context.WithoutCancel(ctx), store, item, returnErr))
 		}
 	}()
-	work, err := store.Directory(ctx, item.ID)
+	work, err := stagedWorkspace(ctx, store, item.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -165,16 +165,16 @@ func (s Service) fetchMix(ctx context.Context, store *staging.Store, item *stagi
 			if err != nil {
 				return report, err
 			}
+			dir, err := stagedWorkspace(ctx, store, child.ID)
+			if err != nil {
+				return report, err
+			}
 			if track.Status == "completed" && track.OutputFile != "" && track.Error == "" {
 				if err := containedOutput(work, track.OutputFile); err != nil {
 					return report, err
 				}
 				if _, err := store.Relative(track.OutputFile); err != nil {
 					return report, fmt.Errorf("mix output: %w", err)
-				}
-				dir, err := store.Directory(ctx, child.ID)
-				if err != nil {
-					return report, err
 				}
 				path := filepath.Join(dir, filepath.Base(track.OutputFile))
 				if err := copyFile(ctx, track.OutputFile, path); err != nil {
@@ -215,6 +215,17 @@ func (s Service) fetchMix(ctx context.Context, store *staging.Store, item *stagi
 		return report, errors.Join(fetchErr, fmt.Errorf("mix did not download any tracks"))
 	}
 	return report, nil
+}
+
+// stagedWorkspace resolves a staged item's directory and declares it as the
+// acquisition's retryable workspace: a failed acquisition stays in staging for
+// retry or discard rather than becoming undo history.
+func stagedWorkspace(ctx context.Context, store *staging.Store, id string) (string, error) {
+	dir, err := store.Directory(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return dir, history.Workspace(ctx, dir)
 }
 
 func saveFailure(ctx context.Context, store *staging.Store, item *staging.Item, failure error) error {

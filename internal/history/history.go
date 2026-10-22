@@ -208,6 +208,16 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, paths []
 	if err != nil {
 		return e, errors.Join(runErr, fmt.Errorf("operation history is pending; original data is retained: %w", err))
 	}
+	r.mu.Lock()
+	workspaces := r.workspaces
+	r.mu.Unlock()
+	// A failure that only touched its own retryable workspace is not a library change to undo.
+	if runErr != nil && onlyWorkspaceChanges(e, workspaces) {
+		if err = discard(dir, e); err != nil {
+			return nil, errors.Join(runErr, fmt.Errorf("discarding history of a failed operation: %w", err))
+		}
+		return nil, runErr
+	}
 	e.State = "complete"
 	if runErr != nil {
 		e.State = "failed"

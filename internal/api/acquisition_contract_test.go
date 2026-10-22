@@ -559,7 +559,8 @@ func TestFailedAcquisitionJobsRetainStagingReports(t *testing.T) {
 			}
 			id := submitAPIJob(t, s, kind+".fetch", `{"query":"Unavailable"}`)
 			job := awaitAPIJob(t, s, id)
-			if job["state"] != "failed" || job["history_id"] == nil || job["error"] == nil {
+			// A failed acquisition stays in staging for retry; it is not an undoable change.
+			if job["state"] != "failed" || job["history_id"] != nil || job["error"] == nil {
 				t.Fatalf("failure outcome: %+v", job)
 			}
 			result, ok := job["result"].(map[string]any)
