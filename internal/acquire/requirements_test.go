@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -65,7 +66,7 @@ func TestInspectToolReportsRequirement(t *testing.T) {
 		satisfied  bool
 		code       string
 	}{
-		{name: "missing", versionErr: errors.New("exec: not found"), code: "tool_unavailable"},
+		{name: "missing", versionErr: &exec.Error{Name: "fetch-track", Err: exec.ErrNotFound}, code: "tool_unavailable"},
 		{name: "outdated", version: "1.5.0", available: true, code: "tool_outdated"},
 		{name: "supported", version: "1.10.1", available: true, satisfied: true},
 	}
@@ -123,7 +124,7 @@ func TestUpgradeInstallsManagedRelease(t *testing.T) {
 					t.Fatalf("upgrade ran the tool itself: %s %v", name, args)
 				}
 				if version == "" {
-					return nil, errors.New("exec: not found")
+					return nil, &exec.Error{Name: "fetch-track", Err: exec.ErrNotFound}
 				}
 				return []byte(version + "\n"), nil
 			}}

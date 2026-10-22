@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/alexgorbatchev/cobra-help-tree v1.1.0
-	github.com/alexgorbatchev/godeps v1.0.0
+	github.com/alexgorbatchev/godeps v1.1.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sys v0.47.0
 	modernc.org/sqlite v1.57.0

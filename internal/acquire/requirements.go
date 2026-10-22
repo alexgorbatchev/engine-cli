@@ -3,8 +3,6 @@ package acquire
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/godeps"
@@ -28,26 +26,10 @@ var requirements = map[string]requirement{
 	"tag-track":   {minVersion: "1.1.1", repo: "tag-track-cli"},
 }
 
-var releaseVersion = regexp.MustCompile(`^v?\d+(\.\d+)*([-+][0-9A-Za-z.-]+)?$`)
-
 // UseManagedTools puts the managed tool directory ahead of PATH so releases
 // installed by tool upgrades take precedence over other copies.
 func UseManagedTools() error {
 	return godeps.InitManagedPath(managedApp)
-}
-
-// parseReleaseVersion accepts only the raw single-line --version contract, so
-// output from tools predating it never satisfies a requirement.
-func parseReleaseVersion(_, output string) string {
-	line, _, _ := strings.Cut(strings.TrimSpace(output), "\n")
-	line = strings.TrimSpace(line)
-	if line == "dev" {
-		return line
-	}
-	if releaseVersion.MatchString(line) {
-		return strings.TrimPrefix(line, "v")
-	}
-	return ""
 }
 
 func (c Client) toolManager(tool string) *godeps.Manager {
@@ -61,11 +43,10 @@ func (c Client) toolManager(tool string) *godeps.Manager {
 		runner = godeps.CommandRunner(c.Runner)
 	}
 	return godeps.New(godeps.Config{AppName: managedApp, Runner: runner, Dependencies: []godeps.Dependency{{
-		Name:         tool,
-		MinVersion:   req.minVersion,
-		InstallURL:   "https://github.com/" + releaseOwner + "/" + req.repo,
-		ParseVersion: parseReleaseVersion,
-		Installer:    installer,
+		Name:       tool,
+		MinVersion: req.minVersion,
+		InstallURL: "https://github.com/" + releaseOwner + "/" + req.repo,
+		Installer:  installer,
 	}}})
 }
 
