@@ -5,19 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"time"
 
-	"charm.land/fantasy"
-	"charm.land/fantasy/object"
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/llm"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 const batchSize = 25
 const maxBatchBytes = 64 * 1024
-const maxOutputTokens = 8192
-const batchTimeout = 2 * time.Minute
 
 type promptBatch struct {
 	tracks []inputTrack
@@ -26,12 +21,15 @@ type promptBatch struct {
 
 // Run reads a selection, closes its read-only database connection, and returns
 // proposals. A failure discards all batches; no partial result can look complete.
-func Run(ctx context.Context, library string, selection Selection, config llm.Config) (*Report, error) {
+func Run(ctx context.Context, library string, selection Selection, options acquire.AskOptions, client acquire.Client) (*Report, error) {
 	if err := selection.Validate(); err != nil {
 		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if err := options.Validate(); err != nil {
+		return nil, &progress.Error{Code: "invalid_request", Cause: err}
 	}
 	d, err := db.Open(filepath.Join(library, "Database2", "m.db"), true)
 	if err != nil {
@@ -60,16 +58,12 @@ func Run(ctx context.Context, library string, selection Selection, config llm.Co
 	if err != nil {
 		return nil, &progress.Error{Code: "suggestion_selection_failed", Cause: err}
 	}
-	model, err := llm.NewModel(ctx, config)
-	if err != nil {
-		return nil, err
-	}
 	refs := make(map[int64]string, len(selected.Items))
 	for _, item := range selected.Items {
 		refs[item.ID] = item.Ref
 	}
 	for _, batch := range batches {
-		items, err := generateBatch(ctx, model, batch, refs)
+		items, err := generateBatch(ctx, client, options, batch, refs)
 		if err != nil {
 			return nil, err
 		}
@@ -79,25 +73,24 @@ func Run(ctx context.Context, library string, selection Selection, config llm.Co
 	return result, nil
 }
 
-func generateBatch(ctx context.Context, model fantasy.LanguageModel, batch promptBatch, refs map[int64]string) ([]Item, error) {
-	ctx, cancel := context.WithTimeout(ctx, batchTimeout)
-	defer cancel()
-	call := fantasy.ObjectCall{
-		Prompt:     fantasy.Prompt{fantasy.NewSystemMessage(cleanupPrompt), fantasy.NewUserMessage(batch.data)},
-		SchemaName: "track_metadata_suggestions", MaxOutputTokens: new(int64(maxOutputTokens)),
-	}
-	response, err := object.Generate[modelResponse](ctx, model, call)
+func generateBatch(ctx context.Context, client acquire.Client, options acquire.AskOptions, batch promptBatch, refs map[int64]string) ([]Item, error) {
+	output, err := client.Ask(ctx, options, cleanupPrompt, batch.data, outputSchema)
 	if err != nil {
-		return nil, llm.RequestError(err)
+		return nil, err
 	}
-	if response.FinishReason != fantasy.FinishReasonStop && response.FinishReason != fantasy.FinishReasonToolCalls {
-		return nil, llm.ResponseError(fmt.Errorf("model did not finish successfully"))
+	var response modelResponse
+	if err := json.Unmarshal(output, &response); err != nil {
+		return nil, responseError(err)
 	}
-	items, err := validateResponse(response.Object, batch.tracks, refs)
+	items, err := validateResponse(response, batch.tracks, refs)
 	if err != nil {
-		return nil, llm.ResponseError(err)
+		return nil, responseError(err)
 	}
 	return items, nil
+}
+
+func responseError(err error) error {
+	return &progress.Error{Code: "llm_response_invalid", Cause: fmt.Errorf("invalid metadata suggestions: %w", err)}
 }
 
 func makeBatches(tracks []inputTrack) ([]promptBatch, error) {

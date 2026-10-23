@@ -54,14 +54,17 @@ type Providers struct {
 }
 
 func validTool(tool string) error {
-	if !oneOf(tool, "fetch-track", "fetch-mix", "tag-track") {
-		return fmt.Errorf("tool must be fetch-track, fetch-mix, or tag-track")
+	if _, ok := requirements[tool]; !ok {
+		return fmt.Errorf("tool must be fetch-track, fetch-mix, tag-track, or agent-ask-cli")
 	}
 	return nil
 }
 func (c Client) Dependencies(ctx context.Context, tool, action string, names []string) (*Dependencies, error) {
 	if err := validTool(tool); err != nil {
 		return nil, err
+	}
+	if tool == "agent-ask-cli" {
+		return nil, fmt.Errorf("agent-ask-cli does not expose dependency management; configure Claude Code or Codex directly")
 	}
 	args := []string{"dependencies"}
 	if action != "inspect" {
@@ -125,6 +128,10 @@ func (c Client) InspectTool(ctx context.Context, tool string) (*Tool, error) {
 		err := requirementError(r)
 		result.Error = err.Error()
 		result.ErrorCode = progress.ErrorCode(err)
+		return result, nil
+	}
+	if tool == "agent-ask-cli" {
+		result.NativeJSON = true
 		return result, nil
 	}
 	dependencies, probeErr := c.Dependencies(ctx, tool, "inspect", nil)

@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
-	"github.com/alexgorbatchev/engine-cli/internal/llm"
 	"github.com/alexgorbatchev/engine-cli/internal/state"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
@@ -27,7 +26,6 @@ const maxEvents = 1024
 const maxRequestBytes = 1 << 20
 
 type Config struct {
-	LLM            llm.Config
 	StatePath      string
 	state          *state.Store
 	LibraryDir     string

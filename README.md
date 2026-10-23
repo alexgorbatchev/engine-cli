@@ -37,7 +37,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 
 - Existing playlists are selected by numeric ID. Tracks are selected by numeric ID or their exact stored path; titles and file basenames never establish a match. Use playlist listings and the HTTP `track.list` operation to obtain IDs.
 - `track inspect <id...> --json` and `playlist inspect <id...> --json` return details for up to 500 IDs in one call, preserving request order and reporting missing IDs individually. The HTTP API offers the same results through `GET /v1/tracks?ids=12,34` and `GET /v1/playlists?ids=7,9`.
-- `track suggest 12 34 --json` or `track suggest --playlists 7,9 --json` sends selected titles, artists, albums, and filenames to your configured AI service. It returns original values with proposed fixes and explanations. Overlapping playlists share one result per track; playlist descendants require their own IDs. Processing uses batches of up to 25 tracks and never changes the library, creates backups, or writes undo history. Provider usage may incur charges. Review suggestions before applying individual edits with `track update`.
+- `track suggest 12 34 --harness codex --json` or `track suggest --playlists 7,9 --harness claude --json` sends selected titles, artists, albums, and filenames through the authenticated harness using `agent-ask-cli`. It returns original values with proposed fixes and explanations. Overlapping playlists share one result per track; playlist descendants require their own IDs. Processing uses batches of up to 25 tracks and never changes the library, creates backups, or writes undo history. Harness account limits and billing apply. Review suggestions before applying individual edits with `track update`.
 - `library sync --from <path> --to <path>` requires source `--playlist-id <id>` (repeatable, including descendants) or `--root`. Ancestors preserve hierarchy without copying their other tracks. Root sync includes tracks outside playlists, smartlist definitions, and the prepare queue. Both paths must contain existing libraries with matching, verified Engine database schema 3.0.2 and distinct database UUIDs.
 - Sync matches track origins and explicit playlist mappings. Use `--map-playlist <source-id>:<destination-id>` to match existing playlists. Names never establish identity. Unmapped playlists are created unless a sibling title collision prevents it. Source changes propagate while destination-only edits remain. Conflicting edits are refused unless `--conflict source` or `--conflict destination` chooses a side.
 - Sync preserves destination-only entries by default. `--mirror` propagates removals within the selected scope while retaining tracks referenced by kept playlists. Removed audio is preserved for undo. `--media none` requires matching destination audio and copies no audio; artwork may still be transferred. New audio goes under `Music/engine-cli/` inside the destination, without re-encoding. Audio changes outside the destination library are refused.
@@ -84,7 +84,7 @@ Keep `~/.local/bin` on your PATH in future terminal sessions. Intel Macs use the
 
 - [`ffmpeg` & `ffprobe`](https://ffmpeg.org/download.html) are required for audio tag probing and artwork processing. Make both commands available on your PATH.
 - [Fetch Track](https://github.com/alexgorbatchev/fetch-track-cli) 1.10.1+, [Fetch Mix](https://github.com/alexgorbatchev/fetch-mix-cli) 2.1.1+, and [Tag Track](https://github.com/alexgorbatchev/tag-track-cli) 1.1.1+ acquire and tag audio. `engine-cli tool upgrade fetch-track` (likewise `fetch-mix`, `tag-track`) installs or updates the latest release in `~/.local/share/engine-cli/bin`, which `engine-cli` searches before your PATH. A missing or older tool stops the command with instructions to run that upgrade, unless the command passes `--auto-install`, which installs or updates the tool first.
-- AI suggestions require a model and credentials for `openai` (default), `anthropic`, or `openrouter`, or an `openai-compat` endpoint supporting structured tool calls. Set `ENGINE_LLM_MODEL` and `ENGINE_LLM_API_KEY`, or use the selected service's `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENROUTER_API_KEY`. Set `ENGINE_LLM_PROVIDER` to select a service. See [AI suggestion setup](docs/http-api.md#metadata-cleanup-suggestions) for local endpoints, flags, and API examples.
+- AI suggestions require [agent-ask-cli](https://github.com/alexgorbatchev/agent-ask-cli) 1.0.0+ and an installed, authenticated [Claude Code](https://code.claude.com/docs/en/setup) or [Codex](https://developers.openai.com/codex/cli/) harness. Run `engine-cli tool upgrade agent-ask-cli` to install the wrapper, or pass `--auto-install` on `track suggest`. Choose `--harness claude` or `--harness codex`; model and reasoning options use the harness defaults unless explicitly supplied. No separate provider API key is needed. See [AI suggestion setup](docs/http-api.md#metadata-cleanup-suggestions) for configuration options and HTTP examples.
 
 # Quick Start
 
@@ -177,9 +177,15 @@ Human and agent text results contain `copied`, `existing`, `failed`, `unavailabl
 | :--- | :--- | :--- | :--- |
 | `--playlists <id|ref,...>` | `-` | none | Select direct playlist members instead of track arguments; comma-separated or repeatable |
 | `--json` | `-` | `false` | Original title/artist values and reviewable suggestions |
-| `--llm-provider <name>` | `-` | `ENGINE_LLM_PROVIDER` or `openai` | `openai`, `anthropic`, `openrouter`, or `openai-compat`; also available on `api serve` |
-| `--llm-model <name>` | `-` | `ENGINE_LLM_MODEL` or none | Explicit model name; required for nonempty selections; also available on `api serve` |
-| `--llm-base-url <url>` | `-` | `ENGINE_LLM_BASE_URL` or provider default | Custom API URL; required for `openai-compat`; also available on `api serve` |
+| `--harness <name>` | `-` | required | Authenticated `claude` or `codex` harness |
+| `--model <name>` | `-` | harness default | Native model name |
+| `--effort <level>` | `-` | harness default | Native reasoning effort |
+| `--thinking <mode>` | `-` | `auto` | Native `auto`, `on`, or `off`; support depends on harness/model |
+| `--harness-config-mode <mode>` | `-` | `inherit` | Use existing configuration or `clean` customization isolation |
+| `--harness-config-file <path>` | `-` | none | Native Claude JSON or Codex TOML configuration file |
+| `--harness-home-dir <path>` | `-` | harness default | Alternate harness configuration, state, and authentication directory |
+| `--timeout <duration>` | `-` | `5m` | Deadline per batch |
+| `--auto-install` | `-` | `false` | Install or update agent-ask-cli when missing or outdated |
 
 `engine-cli library sync`
 

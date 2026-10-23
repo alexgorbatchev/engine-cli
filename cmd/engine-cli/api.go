@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/api"
-	"github.com/alexgorbatchev/engine-cli/internal/llm"
 	"github.com/alexgorbatchev/engine-cli/internal/state"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +25,6 @@ func newAPICommand() *cobra.Command {
 	var origins []string
 	var libraries []string
 	var statePath string
-	modelConfig := llm.FromEnv()
 	serve := &cobra.Command{
 		Use: "serve", Short: "Start the HTTP API on this machine",
 		Long: "Expose all library, playlist, and track operations on 127.0.0.1.\nJobs report progress through JSON status and server-sent events.\nClose Engine DJ before changing or restoring your library.\nJob status and progress are cleared when this server stops. Library undo history is stored separately.",
@@ -47,11 +45,10 @@ func newAPICommand() *cobra.Command {
 					return err
 				}
 			}
-			return serveAPI(cmd.Context(), api.Config{LLM: modelConfig, StatePath: statePath, LibraryDir: libDirFlag, LibraryPaths: libraries, NoBackup: noBackupFlag, AllowedOrigins: origins}, port, cmd.OutOrStdout())
+			return serveAPI(cmd.Context(), api.Config{StatePath: statePath, LibraryDir: libDirFlag, LibraryPaths: libraries, NoBackup: noBackupFlag, AllowedOrigins: origins}, port, cmd.OutOrStdout())
 		},
 	}
 	serve.Flags().IntVar(&port, "port", defaultAPIPort, "Local HTTP port (0 selects an available port)")
-	addLLMFlags(serve, &modelConfig)
 	serve.Flags().StringVar(&statePath, "state-db", "", "Persistent library preferences database (default: XDG state directory)")
 	serve.Flags().StringArrayVar(&libraries, "library", nil, "Open an existing library; repeat for multiple paths (overrides semicolon-separated ENGINE_LIBRARY_PATHS)")
 	serve.Flags().StringSliceVar(&origins, "allow-origin", nil, "Exact browser origins permitted to access the API, such as http://localhost:3000")

@@ -63,12 +63,12 @@ func defineEffect[P any](name, effect string, required []string, run func(contex
 func defineChecked[P any](name, effect string, required []string, before func(context.Context, P, *boundOperation) error, run func(context.Context, P) (any, error)) operation {
 	params := make(map[string]string)
 	typ := reflect.TypeFor[P]()
-	for i := 0; i < typ.NumField(); i++ {
-		f := typ.Field(i)
-		if f.Tag.Get("json") == "-" {
+	for _, f := range reflect.VisibleFields(typ) {
+		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+		if name == "-" || name == "" {
 			continue
 		}
-		params[f.Tag.Get("json")] = f.Type.String()
+		params[name] = f.Type.String()
 	}
 	var parameterEffects map[string]string
 	if _, ok := params["auto_install"]; ok {

@@ -5,28 +5,34 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
-	"github.com/alexgorbatchev/engine-cli/internal/llm"
 	"github.com/alexgorbatchev/engine-cli/internal/suggest"
 	"github.com/spf13/cobra"
 )
 
-func addLLMFlags(c *cobra.Command, config *llm.Config) {
-	c.Flags().StringVar(&config.Provider, "llm-provider", config.Provider, "AI provider: openai, anthropic, openrouter, or openai-compat (ENGINE_LLM_PROVIDER)")
-	c.Flags().StringVar(&config.Model, "llm-model", config.Model, "Model to use for suggestions (ENGINE_LLM_MODEL; required for nonempty selections)")
-	c.Flags().StringVar(&config.BaseURL, "llm-base-url", config.BaseURL, "Custom AI service URL (ENGINE_LLM_BASE_URL)")
+func addAskFlags(c *cobra.Command, options *acquire.AskOptions) {
+	c.Flags().StringVar(&options.Harness, "harness", "", "Authenticated harness: claude or codex")
+	c.Flags().StringVar(&options.Model, "model", "", "Harness model (default: harness configuration)")
+	c.Flags().StringVar(&options.Effort, "effort", "", "Native harness reasoning effort")
+	c.Flags().StringVar(&options.Thinking, "thinking", "", "Native harness thinking: auto, on, or off")
+	c.Flags().StringVar(&options.HarnessConfigMode, "harness-config-mode", "", "Harness configuration: inherit (default) or clean")
+	c.Flags().StringVar(&options.HarnessConfigFile, "harness-config-file", "", "Native harness configuration file")
+	c.Flags().StringVar(&options.HarnessHomeDir, "harness-home-dir", "", "Alternate harness configuration and authentication directory")
+	c.Flags().StringVar(&options.Timeout, "timeout", "", "Timeout per batch, such as 5m (default: agent-ask-cli's 5m)")
+	c.Flags().BoolVar(&options.AutoInstall, "auto-install", false, "Install or update agent-ask-cli when needed")
 }
 
 func newSuggestionCommand() *cobra.Command {
-	config := llm.FromEnv()
+	var options acquire.AskOptions
 	var playlists []string
 	var asJSON bool
 	c := &cobra.Command{Use: "suggest [id|ref...]", Short: "Suggest title and artist fixes for review", Args: cobra.MaximumNArgs(details.MaxItems),
-		Long: "Review AI suggestions for title and artist cleanup. Choose track IDs/references or --playlists. Selected title, artist, album, and filename are sent to your configured AI service. Your library and audio files remain unchanged.",
+		Long: "Review AI suggestions for title and artist cleanup. Choose track IDs/references or --playlists and --harness claude|codex. Selected title, artist, album, and filename are sent through agent-ask-cli using the harness's existing authentication. Your library and audio files remain unchanged.",
 		RunE: func(c *cobra.Command, args []string) error {
 			selection := suggest.Selection{Tracks: args, Playlists: playlists}
-			r, err := suggest.Run(c.Context(), libDirFlag, selection, config)
+			r, err := suggest.Run(c.Context(), libDirFlag, selection, options, acquire.Client{})
 			if err != nil {
 				return err
 			}
@@ -37,7 +43,7 @@ func newSuggestionCommand() *cobra.Command {
 		}}
 	c.Flags().StringSliceVar(&playlists, "playlists", nil, "Suggest fixes for direct members of these playlist IDs/references (comma-separated or repeated)")
 	c.Flags().BoolVar(&asJSON, "json", false, "Print original values and suggestions as JSON")
-	addLLMFlags(c, &config)
+	addAskFlags(c, &options)
 	return c
 }
 

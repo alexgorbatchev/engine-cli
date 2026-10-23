@@ -65,12 +65,12 @@ Shared-file checks cover previously opened or discovered libraries, including hi
 `track.suggest` is a read-only job operation shared with the CLI:
 
 ```sh
-engine-cli track suggest 12 34 --json
-engine-cli track suggest --playlists 7,9 --json
+engine-cli track suggest 12 34 --harness codex --json
+engine-cli track suggest --playlists 7,9 --harness claude --json
 ```
 
-Submit `POST /v1/operations/track.suggest` with `{"tracks":["12","34"]}` or
-`{"playlists":["7","9"]}`. Library-scoped endpoints use the same operation and
+Submit `POST /v1/operations/track.suggest` with `{"tracks":["12","34"],"harness":"codex"}` or
+`{"playlists":["7","9"],"harness":"claude"}`. Library-scoped endpoints use the same operation and
 parameters. Each request accepts exactly one selection array with 1–500 positive
 numeric IDs or opaque `eng:<instance>:<kind>:<entity>` references, encoded as strings.
 Names, titles, filenames, and paths are not selectors.
@@ -80,28 +80,36 @@ Specify descendant playlist IDs explicitly when needed. Tracks are deduplicated 
 first-seen order: selector order, then each playlist's membership order. Every
 selected playlist member is processed, even when the total exceeds 500 tracks.
 Missing selectors or database failures reject the whole selection before any model
-request. Empty playlists return `{"items":[]}` without requiring model settings.
+request. Empty playlists return `{"items":[]}` without launching a harness.
 
-Set these environment variables before running the CLI or starting `api serve`:
+Install `agent-ask-cli` 1.0.0+ with `engine-cli tool upgrade agent-ask-cli`,
+or set `auto_install:true` in the request (`--auto-install` on the CLI).
+Claude Code or Codex must already be installed and authenticated on the server computer.
+Engine uses the existing harness login without separate provider API keys.
 
-| Variable | Meaning |
-| --- | --- |
-| `ENGINE_LLM_PROVIDER` | `openai` (default), `anthropic`, `openrouter`, or `openai-compat`. |
-| `ENGINE_LLM_MODEL` | Explicit model name; required for nonempty selections. There is no default model. |
-| `ENGINE_LLM_BASE_URL` | Optional custom HTTP(S) API base URL for OpenAI, Anthropic, or compatible endpoints. OpenRouter uses its standard service URL. URLs cannot contain credentials, query parameters, or fragments. |
-| `ENGINE_LLM_API_KEY` | Credential override for the chosen provider. Otherwise use `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENROUTER_API_KEY` as appropriate. Compatible endpoints use only the override and may omit credentials for a local unauthenticated service. |
+The cleanup request accepts the same native options as `agent-ask-cli`:
 
-`--llm-provider`, `--llm-model`, and `--llm-base-url` override their respective
-environment settings on both `track suggest` and `api serve`. Credentials are
-environment-only. HTTP request parameters cannot choose a provider, change its
-endpoint, or supply credentials. Library-scoped servers inherit the startup settings.
+| HTTP field | CLI flag | Meaning |
+| --- | --- | --- |
+| `harness` | `--harness` | Required `claude` or `codex`. |
+| `model` | `--model` | Optional native model; omitted uses harness defaults. |
+| `effort` | `--effort` | Optional native reasoning effort. Unsupported combinations fail explicitly. |
+| `thinking` | `--thinking` | `auto` (default), `on`, or `off`; support depends on harness/model. |
+| `harness_config_mode` | `--harness-config-mode` | `inherit` (default) or `clean` to suppress personal/project customization while retaining authentication. |
+| `harness_config_file` | `--harness-config-file` | Native Claude settings JSON or Codex configuration TOML file. |
+| `harness_home_dir` | `--harness-home-dir` | Alternate native configuration/state/authentication home. |
+| `timeout` | `--timeout` | Positive duration per batch, default `5m`. |
+| `auto_install` | `--auto-install` | Install or update the managed wrapper when needed; defaults to false. |
 
-For an OpenAI-compatible local service that supports structured tool calls:
+These are per-request options, including on library-scoped endpoints. Configuration
+paths refer to files on the server computer. Engine runs each fresh harness session
+in a disposable OS temporary directory and passes metadata through stdin. Native
+configuration, authentication, tool calls and internal retries are handled by
+agent-ask-cli and the selected harness. Engine supplies the cleanup prompt and
+output schema; callers select tracks and harness settings.
 
-```sh
-engine-cli track suggest 12 34 --json \
-  --llm-provider openai-compat --llm-model my-local-model \
-  --llm-base-url http://localhost:1234/v1
+```json
+{"tracks":["12","34"],"harness":"codex","effort":"low","harness_config_mode":"clean","timeout":"3m","auto_install":true}
 ```
 
 Only the selected title, artist, album, filename, and library-scoped track ID are
@@ -123,12 +131,12 @@ proposal includes both proposed fields and an explanation. Schema validation and
 application checks reject missing, duplicate, or unexpected IDs, incomplete model
 responses, unexplained changes, and clearing an existing nonempty title or artist.
 
-Requests use Fantasy's typed structured output and native provider implementations,
-in sequential batches of at most 25 tracks and 64 KiB of serialized metadata. A
-single oversized record fails selection without truncation. Each model request has
-a two-minute deadline and a maximum output budget of 8192 tokens. No automatic
-model retries occur. Cancellation stops the in-flight request. A failed or cancelled
-batch discards all earlier batches; the job never returns partial success. Progress
+Requests use agent-ask-cli structured output in sequential batches of at most
+25 tracks and 64 KiB of serialized metadata. A single oversized record fails
+selection without truncation. Each batch has a five-minute deadline by default,
+overridden by `timeout`. Cancellation interrupts the wrapper so it can stop the
+harness. A failed or cancelled batch discards all earlier batches; the job never
+returns partial success. Progress
 advances after validated batches, with 100 reserved for successful completion.
 
 Suggestions create no library changes, backups, or history and remain available while
@@ -191,16 +199,19 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `library_unavailable` | The library could not be opened. Check the selected library and drive. |
 | `permission_denied` | File access was denied. Check permissions on the server computer. |
 | `resource_not_found` | A required file is missing. Restore access or choose another file. |
-| `tool_unavailable` | A required music tool is not installed or cannot run. Install it with `tool.upgrade`. |
-| `tool_outdated` | An installed music tool is older than the release providing Engine's machine interface, reports an unrecognized version, or lacks that interface. Update it with `tool.upgrade`. |
-| `tool_install_failed` | Downloading or installing a music tool release failed, through `tool.upgrade` or `auto_install`. Check the connection and retry. |
+| `tool_unavailable` | A required managed tool is not installed or cannot run. Install it with `tool.upgrade`. |
+| `tool_outdated` | An installed managed tool is older than the release providing Engine's machine interface, reports an unrecognized version, or lacks that interface. Update it with `tool.upgrade`. |
+| `tool_install_failed` | Downloading or installing a managed tool release failed, through `tool.upgrade` or `auto_install`. Check the connection and retry. |
 | `tool_failed` | A dependent music tool reported a failure, including partial result failures. Check the tool and retry. |
 | `suggestion_selection_failed` | A selected entity is missing, unreadable, or has oversized metadata. Refresh the selection before retrying. No model result is applied. |
-| `llm_configuration_invalid` | Set a supported provider, explicit model, valid endpoint, and required credentials on the server computer. |
-| `llm_authentication_failed` | The LLM provider rejected credentials. Check the configured provider key. |
-| `llm_rate_limited` | The LLM provider limited requests. Wait before retrying. |
-| `llm_request_failed` | The provider or connection failed. Check settings and connectivity, then retry. |
-| `llm_response_invalid` | The model response failed schema or selection checks, or did not finish successfully. Retry or choose another model; no partial suggestions are returned. |
+| `harness_unavailable` | The selected Claude Code or Codex executable is unavailable; install and authenticate it on the server computer. |
+| `unsupported_option` | The harness/model does not support a requested option. Choose a supported setting. |
+| `configuration_failed` | Native harness configuration could not be prepared. Check the supplied configuration paths. |
+| `harness_failed` | The native harness call failed. Check its login, configuration, and connectivity. |
+| `invalid_input`, `invalid_schema`, `input_invalid` | agent-ask-cli rejected the supplied data or schemas. These are generated by Engine; report persistent failures. |
+| `output_invalid` | agent-ask-cli rejected the harness response, or Engine received an invalid wrapper result. Retry or choose another model. |
+| `output_failed` | agent-ask-cli could not write its result. Retry after checking the installation. |
+| `llm_response_invalid` | Suggestions failed identity or metadata checks. Retry or choose another model; no partial suggestions are returned. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
 | `operation_failed` | Unclassified failure. Inspect current state before retrying. |

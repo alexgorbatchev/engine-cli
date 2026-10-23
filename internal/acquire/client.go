@@ -1,4 +1,4 @@
-// Package acquire consumes the maintained machine interfaces of Engine's audio tools.
+// Package acquire consumes the maintained machine interfaces of Engine's managed tools.
 package acquire
 
 import (

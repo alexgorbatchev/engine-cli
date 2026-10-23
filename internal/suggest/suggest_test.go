@@ -4,16 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/llm"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
@@ -39,215 +40,141 @@ func suggestionLibrary(t *testing.T) (*sql.DB, string) {
 	return d, lib
 }
 
-type testMessage struct {
-	Role    string          `json:"role"`
-	Content json.RawMessage `json:"content"`
-}
-type testRequest struct {
-	System         json.RawMessage `json:"system"`
-	Model          string          `json:"model"`
-	Messages       []testMessage   `json:"messages"`
-	ResponseFormat json.RawMessage `json:"response_format"`
-	Tools          []struct {
-		Name     string `json:"name"`
-		Function struct {
-			Name string `json:"name"`
-		} `json:"function"`
-	} `json:"tools"`
-}
-
-func requestTracks(r testRequest) ([]inputTrack, error) {
-	if len(r.Messages) == 0 {
-		return nil, fmt.Errorf("no user message")
-	}
-	content := r.Messages[len(r.Messages)-1].Content
-	var text string
-	if err := json.Unmarshal(content, &text); err != nil {
-		var parts []struct {
-			Text string `json:"text"`
-		}
-		if err := json.Unmarshal(content, &parts); err != nil || len(parts) != 1 {
-			return nil, fmt.Errorf("invalid text content: %s", content)
-		}
-		text = parts[0].Text
-	}
-	var tracks []inputTrack
-	err := json.Unmarshal([]byte(text), &tracks)
-	return tracks, err
-}
-
-func modelServer(t *testing.T, provider string, respond func([]inputTrack) (string, string, int)) (*httptest.Server, <-chan testRequest) {
+// Fixture processes exercise the real stdin/argv and managed-version boundary.
+func askFixture(t *testing.T, responses ...string) string {
 	t.Helper()
-	requests := make(chan testRequest, 32)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req testRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Error(err)
-			http.Error(w, "invalid request", 500)
-			return
-		}
-		requests <- req
-		tracks, err := requestTracks(req)
-		if err != nil {
-			t.Error(err)
-			http.Error(w, "invalid prompt", 500)
-			return
-		}
-		content, finish, status := respond(tracks)
-		w.Header().Set("Content-Type", "application/json")
-		if status != http.StatusOK {
-			w.WriteHeader(status)
-			fmt.Fprint(w, `{"error":{"message":"private provider trace","type":"api_error"}}`)
-			return
-		}
-		message := map[string]any{"role": "assistant", "content": content}
-		var response any = map[string]any{"id": "completion", "model": "test-model", "choices": []any{map[string]any{"index": 0, "message": message, "finish_reason": finish}}}
-		if provider == "openai-compat" {
-			message = map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{"id": "call", "type": "function", "function": map[string]any{"name": "track_metadata_suggestions", "arguments": content}}}}
-			response = map[string]any{"id": "completion", "choices": []any{map[string]any{"message": message, "finish_reason": "tool_calls"}}}
-		}
-		if provider == "anthropic" {
-			var input any
-			if err := json.Unmarshal([]byte(content), &input); err != nil {
-				t.Error(err)
-				return
-			}
-			response = map[string]any{"id": "message", "type": "message", "model": "test-model", "role": "assistant", "content": []any{map[string]any{"type": "tool_use", "id": "call", "name": "track_metadata_suggestions", "input": input}}, "stop_reason": "tool_use", "usage": map[string]int{"input_tokens": 20, "output_tokens": 20}}
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			t.Error(err)
-		}
-	}))
-	t.Cleanup(server.Close)
-	return server, requests
-}
-
-func cleanedResponse(tracks []inputTrack) (string, string, int) {
-	response := modelResponse{Items: []modelItem{}}
-	for i := len(tracks) - 1; i >= 0; i-- {
-		tr := tracks[i]
-		title := stringValue(tr.Title)
-		reason := ""
-		if strings.HasPrefix(title, "Artist - ") {
-			title = strings.TrimPrefix(title, "Artist - ")
-			reason = "Removed duplicated artist"
-		}
-		response.Items = append(response.Items, modelItem{ID: tr.ID, Title: title, Artist: stringValue(tr.Artist), Reason: reason})
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX process fixture")
 	}
-	data, err := json.Marshal(response)
+	dir := t.TempDir()
+	for i, r := range responses {
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprint(i+1)), []byte(r), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	script := `#!/bin/sh
+if [ "$1" = --version ]; then echo 1.0.0; exit 0; fi
+cd "$ENGINE_ASK_FIXTURE"
+n=0
+if [ -f count ]; then read n < count; fi
+n=$((n+1)); echo "$n" > count
+printf '%s\n' "$@" > args
+cat > input
+cat "$n"
+`
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ENGINE_ASK_FIXTURE", dir)
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return dir
+}
+func envelope(items []modelItem) string {
+	b, _ := json.Marshal(map[string]any{"harness": "codex", "output_kind": "json", "output": modelResponse{Items: items}})
+	return string(b)
+}
+func TestSuggestionHarnessRoundTripIsReadOnly(t *testing.T) {
+	_, lib := suggestionLibrary(t)
+	path := filepath.Join(lib, "Database2", "m.db")
+	before, err := os.ReadFile(path)
 	if err != nil {
-		panic(err)
-	} // This test fixture contains only primitive fields.
-	return string(data), "stop", http.StatusOK
-}
-
-func TestSuggestionProviderRoundTripIsReadOnly(t *testing.T) {
-	for _, provider := range []string{"openai", "openai-compat", "anthropic"} {
-		t.Run(provider, func(t *testing.T) {
-			_, lib := suggestionLibrary(t)
-			path := filepath.Join(lib, "Database2", "m.db")
-			before, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			server, requests := modelServer(t, provider, cleanedResponse)
-			r, err := Run(t.Context(), lib, Selection{Tracks: []string{"2", "1", "2"}}, llm.Config{Provider: provider, Model: "test-model", BaseURL: server.URL, APIKey: "test-key"})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(r.Items) != 2 || r.Items[0].ID != 2 || r.Items[0].Current.Artist != nil || r.Items[0].Suggestion != nil || r.Items[1].ID != 1 || r.Items[1].Suggestion == nil || *r.Items[1].Suggestion.Title != "Song" {
-				t.Fatalf("report=%+v", r)
-			}
-			req := <-requests
-			encoded, _ := json.Marshal(req)
-			if strings.Contains(string(encoded), "/private/") || req.Model != "test-model" || !strings.Contains(string(encoded), "untrusted") {
-				t.Fatalf("unexpected provider request: %s", encoded)
-			}
-			if provider == "openai" && !strings.Contains(string(req.ResponseFormat), "json_schema") {
-				t.Fatal("native structured output missing")
-			}
-			if provider != "openai" && len(req.Tools) != 1 {
-				t.Fatal("native schema tool missing")
-			}
-			after, err := os.ReadFile(path)
-			if err != nil || string(before) != string(after) {
-				t.Fatal("database changed")
-			}
-			if _, err := os.Stat(filepath.Join(lib, ".engine-cli")); !os.IsNotExist(err) {
-				t.Fatalf("suggestions wrote library state: %v", err)
-			}
-		})
+		t.Fatal(err)
+	}
+	fixture := askFixture(t, envelope([]modelItem{{ID: 1, Title: "Song", Artist: "Artist", Reason: "Removed duplicate artist"}, {ID: 2, Title: "Other"}}))
+	r, err := Run(t.Context(), lib, Selection{Tracks: []string{"2", "1", "2"}}, acquire.AskOptions{Harness: "codex", Model: "test-model"}, acquire.Client{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Items) != 2 || r.Items[0].ID != 2 || r.Items[0].Current.Artist != nil || r.Items[0].Suggestion != nil || r.Items[1].Suggestion == nil || *r.Items[1].Suggestion.Title != "Song" {
+		t.Fatalf("%+v", r)
+	}
+	input, _ := os.ReadFile(filepath.Join(fixture, "input"))
+	args, _ := os.ReadFile(filepath.Join(fixture, "args"))
+	if strings.Contains(string(input), "/private/") || !strings.Contains(string(args), "test-model") || !strings.Contains(string(args), "untrusted") || !strings.Contains(string(args), "--output-schema") {
+		t.Fatalf("input=%s args=%s", input, args)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || string(before) != string(after) {
+		t.Fatal("database changed", err)
+	}
+	if _, err := os.Stat(filepath.Join(lib, ".engine-cli")); !os.IsNotExist(err) {
+		t.Fatal("wrote library state", err)
 	}
 }
-
 func TestSuggestionFailures(t *testing.T) {
-	for _, tc := range []struct {
-		name, content, finish, code string
-		status                      int
-	}{
-		{"schema missing field", `{"items":[{"id":1,"title":"Song","reason":"Fix"}]}`, "stop", "llm_response_invalid", 200},
-		{"schema missing unchanged reason", `{"items":[{"id":1,"title":"Artist - Song","artist":"Artist"}]}`, "stop", "llm_response_invalid", 200},
-		{"invalid field type", `{"items":[{"id":1,"title":7,"artist":"Artist","reason":"Fix"}]}`, "stop", "llm_response_invalid", 200},
-		{"wrong identity", `{"items":[{"id":999,"title":"Song","artist":"Artist","reason":"Fix"}]}`, "stop", "llm_response_invalid", 200},
-		{"incomplete", `{"items":[{"id":1,"title":"Song","artist":"Artist","reason":"Fix"}]}`, "length", "llm_response_invalid", 200},
-		{"unparseable", `not an object`, "stop", "llm_response_invalid", 200},
-		{"authentication", "", "", "llm_authentication_failed", 401},
-		{"rate limit", "", "", "llm_rate_limited", 429},
-		{"provider error", "", "", "llm_request_failed", 500},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, body := range []string{`{"items":[]}`, `{"items":[{"id":999,"title":"Song","artist":"Artist","reason":"fix"}]}`, `{"items":[{"id":1,"title":7,"artist":"Artist","reason":"fix"}]}`} {
+		t.Run(body, func(t *testing.T) {
 			_, lib := suggestionLibrary(t)
-			server, _ := modelServer(t, "openai", func([]inputTrack) (string, string, int) { return tc.content, tc.finish, tc.status })
-			r, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, llm.Config{Provider: "openai", Model: "test-model", BaseURL: server.URL, APIKey: "test-key"})
-			if r != nil || progress.ErrorCode(err) != tc.code || strings.Contains(err.Error(), "private provider trace") {
-				t.Fatalf("result=%+v err=%v code=%s", r, err, progress.ErrorCode(err))
+			askFixture(t, `{"harness":"codex","output_kind":"json","output":`+body+`}`)
+			r, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{})
+			if r != nil || progress.ErrorCode(err) != "llm_response_invalid" {
+				t.Fatalf("result=%+v err=%v", r, err)
 			}
 		})
 	}
 }
-
 func TestSuggestionBatchesAndPreflight(t *testing.T) {
 	d, lib := suggestionLibrary(t)
 	if _, err := d.Exec(`WITH RECURSIVE n(id) AS (SELECT 3 UNION ALL SELECT id+1 FROM n WHERE id<51) INSERT INTO Track(id,title,artist) SELECT id,'Artist - Song','Artist' FROM n;
  INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) SELECT 1,originTrackId,originDatabaseUuid FROM Track WHERE id>2`); err != nil {
 		t.Fatal(err)
 	}
-	server, requests := modelServer(t, "openai", cleanedResponse)
-	config := llm.Config{Provider: "openai", Model: "test-model", BaseURL: server.URL, APIKey: "test-key"}
-	r, err := Run(t.Context(), lib, Selection{Playlists: []string{"1", "1"}}, config)
-	if err != nil || len(r.Items) != 51 || len(requests) != 3 {
-		t.Fatalf("result=%+v err=%v calls=%d", r, err, len(requests))
+	var responses []string
+	for start := 1; start <= 51; start += 25 {
+		var items []modelItem
+		for id := start; id < start+25 && id <= 51; id++ {
+			item := modelItem{ID: int64(id), Title: "Song", Artist: "Artist", Reason: "Removed duplicate artist"}
+			if id == 2 {
+				item.Title = "Other"
+				item.Artist = ""
+				item.Reason = ""
+			}
+			items = append(items, item)
+		}
+		responses = append(responses, envelope(items))
+	}
+	fixture := askFixture(t, responses...)
+	options := acquire.AskOptions{Harness: "codex"}
+	r, err := Run(t.Context(), lib, Selection{Playlists: []string{"1", "1"}}, options, acquire.Client{})
+	if err != nil || len(r.Items) != 51 {
+		t.Fatalf("result=%+v err=%v", r, err)
 	}
 	for i, item := range r.Items {
 		if item.ID != int64(i+1) {
 			t.Fatal("lost batch order")
 		}
 	}
-	for len(requests) > 0 {
-		<-requests
-	}
 	for _, s := range []Selection{{}, {Tracks: []string{"1", "999"}}, {Playlists: []string{"999"}}} {
-		if _, err := Run(t.Context(), lib, s, config); err == nil {
+		if _, err := Run(t.Context(), lib, s, options, acquire.Client{}); err == nil {
 			t.Fatalf("accepted %+v", s)
 		}
 	}
-	empty, err := Run(t.Context(), lib, Selection{Playlists: []string{"2"}}, llm.Config{})
-	if err != nil || len(empty.Items) != 0 || len(requests) != 0 {
-		t.Fatalf("empty=%+v err=%v calls=%d", empty, err, len(requests))
+	empty, err := Run(t.Context(), lib, Selection{Playlists: []string{"2"}}, options, acquire.Client{})
+	if err != nil || len(empty.Items) != 0 {
+		t.Fatal(empty, err)
 	}
-	if _, err := Run(t.Context(), t.TempDir(), Selection{Tracks: []string{"1"}}, config); progress.ErrorCode(err) != "library_unavailable" {
+	calls, _ := os.ReadFile(filepath.Join(fixture, "count"))
+	if string(calls) != "3\n" {
+		t.Fatalf("calls %s", calls)
+	}
+	if _, err := Run(t.Context(), t.TempDir(), Selection{Tracks: []string{"1"}}, options, acquire.Client{}); progress.ErrorCode(err) != "library_unavailable" {
 		t.Fatal(err)
 	}
-	if _, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, llm.Config{}); progress.ErrorCode(err) != "llm_configuration_invalid" {
+	if _, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{}, acquire.Client{}); progress.ErrorCode(err) != "invalid_request" {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := Run(ctx, lib, Selection{Tracks: []string{"1"}}, config); progress.ErrorCode(err) != "cancelled" {
+	if _, err := Run(ctx, lib, Selection{Tracks: []string{"1"}}, options, acquire.Client{}); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
+	// A later batch fails: no partial report is returned.
+	askFixture(t, responses[0], envelope(nil))
+	r, err = Run(t.Context(), lib, Selection{Playlists: []string{"1"}}, options, acquire.Client{})
+	if r != nil || progress.ErrorCode(err) != "llm_response_invalid" {
+		t.Fatal(r, err)
+	}
 }
-
 func TestBatchInputLimits(t *testing.T) {
 	tracks := []inputTrack{{ID: 1, Fields: Fields{Title: new(strings.Repeat("a", maxBatchBytes/2))}}, {ID: 2, Fields: Fields{Title: new(strings.Repeat("b", maxBatchBytes/2))}}}
 	batches, err := makeBatches(tracks)
@@ -256,26 +183,51 @@ func TestBatchInputLimits(t *testing.T) {
 	}
 	tracks[0].Title = new(strings.Repeat("c", maxBatchBytes))
 	if _, err := makeBatches(tracks); err == nil {
-		t.Fatal("silently truncated oversized metadata")
+		t.Fatal("truncated metadata")
 	}
-}
-
-func TestSuggestionDiscardsEarlierBatches(t *testing.T) {
-	d, lib := suggestionLibrary(t)
-	if _, err := d.Exec(`WITH RECURSIVE n(id) AS (SELECT 3 UNION ALL SELECT id+1 FROM n WHERE id<26) INSERT INTO Track(id,title) SELECT id,'Song' FROM n;
- INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) SELECT 1,originTrackId,originDatabaseUuid FROM Track WHERE id>2`); err != nil {
+	_, lib := suggestionLibrary(t)
+	d, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	calls := 0
-	server, _ := modelServer(t, "openai", func(tracks []inputTrack) (string, string, int) {
-		calls++
-		if calls == 2 {
-			return `{"items":[]}`, "stop", 200
+	defer d.Close()
+	if _, err = d.Exec("UPDATE Track SET title=? WHERE id=1", *tracks[0].Title); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{}); progress.ErrorCode(err) != "suggestion_selection_failed" {
+		t.Fatal(err)
+	}
+}
+func TestSuggestionCancellation(t *testing.T) {
+	_, lib := suggestionLibrary(t)
+	dir := askFixture(t)
+	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.0.0; exit; fi\ntrap 'exit 130' INT\necho started > \"$ENGINE_ASK_FIXTURE/started\"\nwhile :; do :; done\n"
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := Run(ctx, lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{})
+		done <- err
+	}()
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "started")); err == nil {
+			break
 		}
-		return cleanedResponse(tracks)
-	})
-	r, err := Run(t.Context(), lib, Selection{Playlists: []string{"1"}}, llm.Config{Provider: "openai", Model: "test-model", BaseURL: server.URL, APIKey: "test-key"})
-	if r != nil || calls != 2 || progress.ErrorCode(err) != "llm_response_invalid" {
-		t.Fatalf("result=%+v calls=%d err=%v", r, calls, err)
+		select {
+		case err := <-done:
+			t.Fatal(err)
+		case <-deadline.C:
+			t.Fatal("fixture did not start")
+		case <-time.After(time.Millisecond):
+		}
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
 	}
 }

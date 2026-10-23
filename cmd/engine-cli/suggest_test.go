@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -17,17 +17,15 @@ import (
 
 func TestSuggestionCLI(t *testing.T) {
 	lib := createTestLibrary(t)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"finish_reason": "stop", "message": map[string]any{"role": "assistant", "content": `{"items":[{"id":1,"title":"Title","artist":"Sample Artist","reason":"Removed prefix"}]}`}}}}); err != nil {
-			t.Error(err)
-		}
-	}))
-	defer server.Close()
-	t.Setenv("ENGINE_LLM_PROVIDER", "openai")
-	t.Setenv("ENGINE_LLM_MODEL", "test-model")
-	t.Setenv("ENGINE_LLM_BASE_URL", server.URL)
-	t.Setenv("ENGINE_LLM_API_KEY", "test-key")
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX process fixture")
+	}
+	dir := t.TempDir()
+	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.0.0; exit; fi\ncat > /dev/null\nprintf '{\"harness\":\"codex\",\"output_kind\":\"json\",\"output\":{\"items\":[{\"id\":1,\"title\":\"Title\",\"artist\":\"Sample Artist\",\"reason\":\"Removed prefix\"}]}}'\n"
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	for _, mode := range []string{"0", "1"} {
 		t.Setenv("AGENT", mode)
 		for _, selection := range [][]string{{"1"}, {"--playlists", "2"}} {
@@ -36,7 +34,7 @@ func TestSuggestionCLI(t *testing.T) {
 				var out bytes.Buffer
 				cmd.SetOut(&out)
 				cmd.SetErr(&bytes.Buffer{})
-				args := append([]string{"-l", lib, "track", "suggest"}, selection...)
+				args := append([]string{"-l", lib, "track", "suggest", "--harness", "codex"}, selection...)
 				if asJSON {
 					args = append(args, "--json")
 				}
@@ -59,7 +57,7 @@ func TestSuggestionCLI(t *testing.T) {
 		cmd := newRootCommand()
 		cmd.SetOut(&bytes.Buffer{})
 		cmd.SetErr(&bytes.Buffer{})
-		cmd.SetArgs(append([]string{"-l", lib, "track", "suggest"}, args...))
+		cmd.SetArgs(append([]string{"-l", lib, "track", "suggest", "--harness", "codex"}, args...))
 		if err := cmd.Execute(); err == nil {
 			t.Fatalf("accepted %v", args)
 		}

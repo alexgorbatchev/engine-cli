@@ -76,9 +76,9 @@ func addAcquisitionCommands(root *cobra.Command) {
 	ai := &cobra.Command{Use: "ai", Short: "Inspect tracklist AI providers", Args: cobra.NoArgs}
 	ai.AddCommand(acquisitionCommand("ai.list", "list", "List available AI providers", "", nil), acquisitionCommand("ai.inspect", "inspect <provider>", "Inspect an AI provider", "provider", nil))
 	root.AddCommand(ai)
-	tool := &cobra.Command{Use: "tool", Short: "Manage acquisition tools and their dependencies", Args: cobra.NoArgs}
+	tool := &cobra.Command{Use: "tool", Short: "Manage tools and their dependencies", Args: cobra.NoArgs}
 	for _, action := range []string{"inspect", "upgrade"} {
-		tool.AddCommand(acquisitionCommand("tool."+action, action+" <tool>", "Inspect or upgrade an acquisition tool", "tool", nil))
+		tool.AddCommand(acquisitionCommand("tool."+action, action+" <tool>", "Inspect or upgrade a managed tool", "tool", nil))
 	}
 	deps := &cobra.Command{Use: "dependencies", Short: "Inspect, install, or update upstream dependencies", Args: cobra.NoArgs}
 	for _, action := range []string{"inspect", "install", "update"} {

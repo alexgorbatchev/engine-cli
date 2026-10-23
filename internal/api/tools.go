@@ -16,7 +16,7 @@ type providerParams struct {
 	Provider string `json:"provider"`
 }
 
-// toolClient runs and installs music tools as the server is configured to.
+// toolClient runs and installs managed tools as the server is configured to.
 func (s *Server) toolClient() acquire.Client {
 	return acquire.Client{Runner: s.config.ToolRunner, Installer: s.config.ToolInstaller}
 }
