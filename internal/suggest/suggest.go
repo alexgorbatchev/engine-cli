@@ -19,9 +19,9 @@ type promptBatch struct {
 	data   string
 }
 
-// Run reads a selection, closes its read-only database connection, and returns
-// proposals. A failure discards all batches; no partial result can look complete.
-func Run(ctx context.Context, library string, selection Selection, options acquire.AskOptions, client acquire.Client) (*Report, error) {
+// Run publishes validated batches and returns all completed proposals, including
+// on failure or cancellation. onBatch can consume each batch synchronously.
+func Run(ctx context.Context, library string, selection Selection, options acquire.AskOptions, client acquire.Client, onBatch func(Report) error) (*Report, error) {
 	if err := selection.Validate(); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func Run(ctx context.Context, library string, selection Selection, options acqui
 	if err != nil {
 		return nil, &progress.Error{Code: "suggestion_selection_failed", Cause: err}
 	}
-	result := &Report{Items: []Item{}}
+	result := &Report{Items: []Item{}, Total: len(tracks)}
 	if len(tracks) == 0 {
 		return result, nil
 	}
@@ -65,10 +65,21 @@ func Run(ctx context.Context, library string, selection Selection, options acqui
 	for _, batch := range batches {
 		items, err := generateBatch(ctx, client, options, batch, refs)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		result.Items = append(result.Items, items...)
-		progress.Item(ctx, "track.suggest", len(result.Items), len(tracks))
+		result.Processed = len(result.Items)
+		completed := Report{Items: items, Processed: result.Processed, Total: result.Total}
+		data, err := json.Marshal(completed)
+		if err != nil {
+			return result, &progress.Error{Code: "output_failed", Cause: err}
+		}
+		progress.Emit(ctx, progress.Event{Type: "result", Phase: "track.suggest", Percent: 95 * float64(result.Processed) / float64(result.Total), Result: data})
+		if onBatch != nil {
+			if err := onBatch(completed); err != nil {
+				return result, &progress.Error{Code: "output_failed", Cause: err}
+			}
+		}
 	}
 	return result, nil
 }

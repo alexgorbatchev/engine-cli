@@ -81,7 +81,7 @@ func TestSuggestionHarnessRoundTripIsReadOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixture := askFixture(t, envelope([]modelItem{{ID: 1, Title: "Song", Artist: "Artist", Reason: "Removed duplicate artist"}, {ID: 2, Title: "Other"}}))
-	r, err := Run(t.Context(), lib, Selection{Tracks: []string{"2", "1", "2"}}, acquire.AskOptions{Harness: "codex", Model: "test-model"}, acquire.Client{})
+	r, err := Run(t.Context(), lib, Selection{Tracks: []string{"2", "1", "2"}}, acquire.AskOptions{Harness: "codex", Model: "test-model"}, acquire.Client{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,8 +106,8 @@ func TestSuggestionFailures(t *testing.T) {
 		t.Run(body, func(t *testing.T) {
 			_, lib := suggestionLibrary(t)
 			askFixture(t, `{"harness":"codex","output_kind":"json","output":`+body+`}`)
-			r, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{})
-			if r != nil || progress.ErrorCode(err) != "llm_response_invalid" {
+			r, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{}, nil)
+			if r == nil || len(r.Items) != 0 || progress.ErrorCode(err) != "llm_response_invalid" {
 				t.Fatalf("result=%+v err=%v", r, err)
 			}
 		})
@@ -135,7 +135,26 @@ func TestSuggestionBatchesAndPreflight(t *testing.T) {
 	}
 	fixture := askFixture(t, responses...)
 	options := acquire.AskOptions{Harness: "codex"}
-	r, err := Run(t.Context(), lib, Selection{Playlists: []string{"1", "1"}}, options, acquire.Client{})
+	var streamed []Report
+	ctx := progress.WithReporter(t.Context(), func(e progress.Event) {
+		if e.Type != "result" {
+			return
+		}
+		var batch Report
+		if err := json.Unmarshal(e.Result, &batch); err != nil {
+			t.Fatal(err)
+		}
+		streamed = append(streamed, batch)
+	})
+	var consumed []Report
+	r, err := Run(ctx, lib, Selection{Playlists: []string{"1", "1"}}, options, acquire.Client{}, func(batch Report) error {
+		consumed = append(consumed, batch)
+		calls, err := os.ReadFile(filepath.Join(fixture, "count"))
+		if err != nil || string(calls) != fmt.Sprintln(len(consumed)) {
+			t.Fatalf("batch delivered after next call: %s %v", calls, err)
+		}
+		return nil
+	})
 	if err != nil || len(r.Items) != 51 {
 		t.Fatalf("result=%+v err=%v", r, err)
 	}
@@ -144,12 +163,21 @@ func TestSuggestionBatchesAndPreflight(t *testing.T) {
 			t.Fatal("lost batch order")
 		}
 	}
+	if len(streamed) != 3 || len(consumed) != 3 || r.Processed != 51 || r.Total != 51 {
+		t.Fatalf("events=%+v consumed=%+v result=%+v", streamed, consumed, r)
+	}
+	for i, batch := range streamed {
+		want := min(25*(i+1), 51)
+		if batch.Processed != want || batch.Total != 51 || len(batch.Items) != min(25, 51-i*25) || batch.Items[0].ID != int64(1+i*25) {
+			t.Fatalf("batch=%+v", batch)
+		}
+	}
 	for _, s := range []Selection{{}, {Tracks: []string{"1", "999"}}, {Playlists: []string{"999"}}} {
-		if _, err := Run(t.Context(), lib, s, options, acquire.Client{}); err == nil {
+		if _, err := Run(t.Context(), lib, s, options, acquire.Client{}, nil); err == nil {
 			t.Fatalf("accepted %+v", s)
 		}
 	}
-	empty, err := Run(t.Context(), lib, Selection{Playlists: []string{"2"}}, options, acquire.Client{})
+	empty, err := Run(t.Context(), lib, Selection{Playlists: []string{"2"}}, options, acquire.Client{}, nil)
 	if err != nil || len(empty.Items) != 0 {
 		t.Fatal(empty, err)
 	}
@@ -157,22 +185,47 @@ func TestSuggestionBatchesAndPreflight(t *testing.T) {
 	if string(calls) != "3\n" {
 		t.Fatalf("calls %s", calls)
 	}
-	if _, err := Run(t.Context(), t.TempDir(), Selection{Tracks: []string{"1"}}, options, acquire.Client{}); progress.ErrorCode(err) != "library_unavailable" {
+	if _, err := Run(t.Context(), t.TempDir(), Selection{Tracks: []string{"1"}}, options, acquire.Client{}, nil); progress.ErrorCode(err) != "library_unavailable" {
 		t.Fatal(err)
 	}
-	if _, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{}, acquire.Client{}); progress.ErrorCode(err) != "invalid_request" {
+	if _, err := Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{}, acquire.Client{}, nil); progress.ErrorCode(err) != "invalid_request" {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := Run(ctx, lib, Selection{Tracks: []string{"1"}}, options, acquire.Client{}); !errors.Is(err, context.Canceled) {
+	if _, err := Run(ctx, lib, Selection{Tracks: []string{"1"}}, options, acquire.Client{}, nil); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
-	// A later batch fails: no partial report is returned.
+	// A later batch fails: completed batches remain available.
 	askFixture(t, responses[0], envelope(nil))
-	r, err = Run(t.Context(), lib, Selection{Playlists: []string{"1"}}, options, acquire.Client{})
-	if r != nil || progress.ErrorCode(err) != "llm_response_invalid" {
+	r, err = Run(t.Context(), lib, Selection{Playlists: []string{"1"}}, options, acquire.Client{}, nil)
+	if r == nil || len(r.Items) != 25 || r.Processed != 25 || r.Total != 51 || progress.ErrorCode(err) != "llm_response_invalid" {
 		t.Fatal(r, err)
+	}
+	for _, cancelled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("partial cancelled=%v", cancelled), func(t *testing.T) {
+			dir := askFixture(t, responses...)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			r, err := Run(ctx, lib, Selection{Playlists: []string{"1"}}, options, acquire.Client{}, func(Report) error {
+				if cancelled {
+					cancel()
+					return nil
+				}
+				return errors.New("output unavailable")
+			})
+			code := "output_failed"
+			if cancelled {
+				code = "cancelled"
+			}
+			if r == nil || r.Processed != 25 || len(r.Items) != 25 || r.Total != 51 || progress.ErrorCode(err) != code {
+				t.Fatal(r, err)
+			}
+			calls, _ := os.ReadFile(filepath.Join(dir, "count"))
+			if string(calls) != "1\n" {
+				t.Fatal("continued after cancellation/output failure", string(calls))
+			}
+		})
 	}
 }
 func TestBatchInputLimits(t *testing.T) {
@@ -194,7 +247,7 @@ func TestBatchInputLimits(t *testing.T) {
 	if _, err = d.Exec("UPDATE Track SET title=? WHERE id=1", *tracks[0].Title); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{}); progress.ErrorCode(err) != "suggestion_selection_failed" {
+	if _, err = Run(t.Context(), lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{}, nil); progress.ErrorCode(err) != "suggestion_selection_failed" {
 		t.Fatal(err)
 	}
 }
@@ -209,7 +262,7 @@ func TestSuggestionCancellation(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := Run(ctx, lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{})
+		_, err := Run(ctx, lib, Selection{Tracks: []string{"1"}}, acquire.AskOptions{Harness: "codex"}, acquire.Client{}, nil)
 		done <- err
 	}()
 	deadline := time.NewTimer(5 * time.Second)

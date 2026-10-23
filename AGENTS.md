@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-23 10:04
+last_modified: 2026-10-23 14:27
 status: current
 ---
 
@@ -63,7 +63,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 
 ## Conventions
 - **LLM Integration:** Use the managed `agent-ask-cli` executable (minimum 1.0.0) with its native harness request interface and existing Claude Code or Codex authentication. Align cleanup CLI/API options with agent-ask-cli; do not introduce provider API keys or compatibility adapters.
-- **LLM Metadata Suggestions:** Accept explicit track or playlist identifiers through shared CLI/API behavior. Send selected metadata with a cleanup prompt to the LLM and return identifiable title/artist suggestions for user review. Generating suggestions is read-only; never apply suggestions automatically.
+- **LLM Metadata Suggestions:** Accept explicit track or playlist identifiers through shared CLI/API behavior. Send selected metadata with a cleanup prompt to the LLM and return identifiable title/artist suggestions for user review. Generating suggestions is read-only; never apply suggestions automatically. Emit each validated batch immediately through CLI output and API result events; retain completed suggestions in job status and returned reports when later work fails or is cancelled. Never discard completed batches.
 - **UI-Driven Contracts:** UI workflows drive HTTP API design and associated CLI output. Extend or reshape shared results when the UI needs richer data rather than constraining the UI to an existing response shape. Keep CLI and HTTP results aligned, preserve stable entity identity, and retain snapshot/undo guarantees for mutations.
 - **Collection Editing:** Track metadata updates change only explicitly supplied fields, preserve audio and performance data, and support snapshot/undo through CLI and API. Expose `ratingStars` from 0 to 5 and store Engine ratings in units of 20. Playlist renaming preserves identity, hierarchy, and memberships. Artwork previews read linked inline bytes or Engine’s hash-addressed cache without modifying the collection. Artwork edits stage with metadata, support upload/unset, preserve audio files, normalize to square 1400×1400 cache images and 256×256 thumbnails, and participate in the same snapshot/undo operation.
 - **Batch UI Reads:** When a UI needs details for multiple entities, accept multiple explicit identifiers in one CLI/API request and return identifiable results together; do not require one request per item. Define ordering, limits, and per-item failure behavior. Ask for clarification when the UI workflow or required response is unclear.

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/suggest"
 )
 
@@ -60,6 +61,39 @@ func TestSuggestionCLI(t *testing.T) {
 		cmd.SetArgs(append([]string{"-l", lib, "track", "suggest", "--harness", "codex"}, args...))
 		if err := cmd.Execute(); err == nil {
 			t.Fatalf("accepted %v", args)
+		}
+	}
+	for _, asJSON := range []bool{false, true} {
+		cmd := newRootCommand()
+		var out bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&bytes.Buffer{})
+		args := []string{"-l", lib, "track", "suggest", "--playlists", "1", "--harness", "codex"}
+		if asJSON {
+			args = append(args, "--json")
+		}
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if asJSON {
+			var report suggest.Report
+			if err := json.Unmarshal(out.Bytes(), &report); err != nil || len(report.Items) != 0 || report.Processed != 0 || report.Total != 0 {
+				t.Fatal(out.String(), err)
+			}
+		} else if !strings.Contains(out.String(), "No tracks") {
+			t.Fatal(out.String())
+		}
+		cmd = newRootCommand()
+		cmd.SetOut(suggestionFailWriter{})
+		cmd.SetErr(&bytes.Buffer{})
+		args = []string{"-l", lib, "track", "suggest", "1", "--harness", "codex"}
+		if asJSON {
+			args = append(args, "--json")
+		}
+		cmd.SetArgs(args)
+		if err := cmd.Execute(); progress.ErrorCode(err) != "output_failed" {
+			t.Fatal("ignored streaming output failure", err)
 		}
 	}
 	d, err := db.Open(filepath.Join(lib, "Database2", "m.db"), true)

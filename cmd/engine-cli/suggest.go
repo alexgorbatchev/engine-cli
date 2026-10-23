@@ -32,17 +32,23 @@ func newSuggestionCommand() *cobra.Command {
 		Long: "Review AI suggestions for title and artist cleanup. Choose track IDs/references or --playlists and --harness claude|codex. Selected title, artist, album, and filename are sent through agent-ask-cli using the harness's existing authentication. Your library and audio files remain unchanged.",
 		RunE: func(c *cobra.Command, args []string) error {
 			selection := suggest.Selection{Tracks: args, Playlists: playlists}
-			r, err := suggest.Run(c.Context(), libDirFlag, selection, options, acquire.Client{})
+			publish := func(batch suggest.Report) error {
+				if asJSON {
+					return json.NewEncoder(c.OutOrStdout()).Encode(batch)
+				}
+				return printSuggestions(c.OutOrStdout(), &batch)
+			}
+			r, err := suggest.Run(c.Context(), libDirFlag, selection, options, acquire.Client{}, publish)
 			if err != nil {
 				return err
 			}
-			if asJSON {
-				return json.NewEncoder(c.OutOrStdout()).Encode(r)
+			if len(r.Items) == 0 {
+				return publish(*r)
 			}
-			return printSuggestions(c.OutOrStdout(), r)
+			return nil
 		}}
 	c.Flags().StringSliceVar(&playlists, "playlists", nil, "Suggest fixes for direct members of these playlist IDs/references (comma-separated or repeated)")
-	c.Flags().BoolVar(&asJSON, "json", false, "Print original values and suggestions as JSON")
+	c.Flags().BoolVar(&asJSON, "json", false, "Stream one JSON record per completed batch, with processed/total counts")
 	addAskFlags(c, &options)
 	return c
 }

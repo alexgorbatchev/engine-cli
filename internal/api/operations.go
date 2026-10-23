@@ -30,6 +30,7 @@ type operation struct {
 	Parameters        map[string]string `json:"parameters"`
 	Required          []string          `json:"required"`
 	bind              func(json.RawMessage) (*boundOperation, error)
+	reduceResult      func(any, json.RawMessage) any
 }
 
 type boundOperation struct {

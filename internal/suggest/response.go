@@ -52,7 +52,9 @@ type Item struct {
 }
 
 type Report struct {
-	Items []Item `json:"items"`
+	Items     []Item `json:"items"`
+	Processed int    `json:"processed"`
+	Total     int    `json:"total"`
 }
 
 type inputTrack struct {

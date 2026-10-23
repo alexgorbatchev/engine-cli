@@ -24,11 +24,12 @@ type Job struct {
 }
 
 type job struct {
-	view     Job
-	events   []progress.Event
-	changed  chan struct{}
-	cancel   context.CancelFunc
-	terminal *progress.Event
+	view         Job
+	events       []progress.Event
+	changed      chan struct{}
+	cancel       context.CancelFunc
+	terminal     *progress.Event
+	reduceResult func(any, json.RawMessage) any
 }
 
 func terminal(state string) bool {
@@ -87,7 +88,7 @@ func (s *Server) start(op operation, run *boundOperation) (Job, error) {
 			cancel()
 		}
 	}()
-	j := &job{view: Job{ID: id, Operation: op.Name, State: "queued"}, changed: make(chan struct{}), cancel: cancel}
+	j := &job{view: Job{ID: id, Operation: op.Name, State: "queued"}, changed: make(chan struct{}), cancel: cancel, reduceResult: op.reduceResult}
 	ctx = progress.WithJobReporter(ctx, id, func(e progress.Event) { s.record(j, e) })
 	// Initialize the event stream before publishing the job to request handlers.
 	progress.Emit(ctx, progress.Event{Type: "queued", Phase: op.Name})
@@ -137,6 +138,9 @@ func (s *Server) record(j *job, e progress.Event) {
 		j.terminal = &e
 		return
 	}
+	if e.Type == "result" && j.reduceResult != nil {
+		j.view.Result = j.reduceResult(j.view.Result, e.Result)
+	}
 	j.append(e)
 }
 
@@ -159,7 +163,9 @@ func (s *Server) work(ctx context.Context, j *job, op operation, run *boundOpera
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	j.view.Result = result
+	if result != nil {
+		j.view.Result = result
+	}
 	j.view.HistoryID = historyID
 	j.view.State = "succeeded"
 	if err != nil {
