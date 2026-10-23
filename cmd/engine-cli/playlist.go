@@ -207,7 +207,7 @@ Arguments:
 }
 
 func newPlaylistMoveCommand() *cobra.Command {
-	var toFlag string
+	var toFlag, beforeFlag string
 
 	cmd := &cobra.Command{
 		Use:   "move <id>",
@@ -243,7 +243,7 @@ Arguments:
 			}
 			defer database.Close()
 
-			target, parent, err := playlist.MovePlaylist(cmd.Context(), database, args[0], toFlag)
+			target, parent, err := playlist.MovePlaylist(cmd.Context(), database, args[0], toFlag, beforeFlag)
 			if err != nil {
 				return err
 			}
@@ -267,6 +267,7 @@ Arguments:
 	}
 
 	cmd.Flags().StringVar(&toFlag, "to", "", "Destination parent playlist ID, or 0 for the library root")
+	cmd.Flags().StringVar(&beforeFlag, "before", "", "Insert before this destination sibling playlist ID; omitted appends at the end")
 	_ = cmd.MarkFlagRequired("to")
 
 	return cmd

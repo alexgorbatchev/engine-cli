@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
@@ -35,6 +36,44 @@ func TestInspectPlaylistWithoutFolderColumn(t *testing.T) {
 	if !ok || track["id"] != float64(1) || track["title"] != "Curated title" {
 		t.Fatalf("unexpected track: %+v", tracks[0])
 	}
+}
+
+func TestPlaylistReorderAndUndo(t *testing.T) {
+	s, library := testAPI(t)
+	runAPIJob(t, s, "playlist.create", `{"name":"Second"}`)
+	runAPIJob(t, s, "playlist.create", `{"name":"Third"}`)
+	job := runAPIJob(t, s, "playlist.move", `{"identifier":"3","to":"0","before":"1"}`)
+	database, err := db.Open(filepath.Join(library, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	check := func(want []int64) {
+		t.Helper()
+		lists, err := db.GetAllPlaylists(t.Context(), database)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids := make([]int64, len(lists))
+		for i, p := range lists {
+			ids[i] = p.ID
+		}
+		if !reflect.DeepEqual(ids, want) {
+			t.Fatalf("order=%v want=%v", ids, want)
+		}
+	}
+	check([]int64{3, 1, 2})
+	listing := runAPIJob(t, s, "playlist.list", `{}`)["result"].([]any)
+	if listing[0].(map[string]any)["id"] != float64(3) {
+		t.Fatalf("API discarded order: %v", listing)
+	}
+	runAPIJob(t, s, "library.undo", `{"id":"`+job["history_id"].(string)+`"}`)
+	check([]int64{1, 2, 3})
+	failed := awaitAPIJob(t, s, submitAPIJob(t, s, "playlist.move", `{"identifier":"2","to":"0","before":"999"}`))
+	if failed["error"].(map[string]any)["code"] != "playlist_move_invalid" {
+		t.Fatalf("invalid move failure=%v", failed)
+	}
+	check([]int64{1, 2, 3})
 }
 
 func TestCreatePlaylistWithoutFolderColumnAndUndo(t *testing.T) {

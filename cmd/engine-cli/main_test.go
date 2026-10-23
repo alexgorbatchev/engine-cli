@@ -722,6 +722,29 @@ func TestAgentMode_HelpScreens(t *testing.T) {
 	}
 }
 
+func TestPlaylistMoveBeforeSibling(t *testing.T) {
+	t.Setenv("AGENT", "1")
+	lib := createTestLibrary(t)
+	if _, err := executeCommand("-l", lib, "playlist", "create", "Later"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := executeCommand("-l", lib, "playlist", "move", "3", "--to", "0", "--before", "1"); err != nil {
+		t.Fatal(err)
+	}
+	d, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	lists, err := db.GetAllPlaylists(t.Context(), d)
+	if err != nil || len(lists) != 3 || lists[0].ID != 3 || lists[1].ID != 1 {
+		t.Fatalf("lists=%v err=%v", lists, err)
+	}
+	if _, err := executeCommand("-l", lib, "playlist", "move", "3", "--to", "0", "--before", "2"); err == nil {
+		t.Fatal("accepted a sibling from another folder")
+	}
+}
+
 func TestNewPlaylistCommands_E2E(t *testing.T) {
 	t.Setenv("AGENT", "0")
 	libDir := createTestLibrary(t)

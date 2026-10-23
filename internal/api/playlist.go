@@ -20,6 +20,7 @@ type removePlaylistParams struct {
 type movePlaylistParams struct {
 	Identifier string `json:"identifier"`
 	To         string `json:"to"`
+	Before     string `json:"before"`
 }
 type renamePlaylistParams struct {
 	Identifier string `json:"identifier"`
@@ -52,7 +53,7 @@ func (s *Server) playlistOperations() []operation {
 		}),
 		define("playlist.move", true, []string{"identifier"}, func(ctx context.Context, p movePlaylistParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				pl, parent, err := playlist.MovePlaylist(ctx, d, p.Identifier, p.To)
+				pl, parent, err := playlist.MovePlaylist(ctx, d, p.Identifier, p.To, p.Before)
 				return map[string]any{"playlist": pl, "parent": parent}, err
 			})
 		}),

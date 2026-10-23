@@ -285,7 +285,7 @@ func TestDB_ClosedErrors(t *testing.T) {
 	if err := DeletePlaylist(ctx, database, 1, false); err == nil {
 		t.Error("expected error on closed db DeletePlaylist")
 	}
-	if err := MovePlaylist(ctx, database, 1, 2); err == nil {
+	if err := MovePlaylist(ctx, database, 1, 2, 0); err == nil {
 		t.Error("expected error on closed db MovePlaylist")
 	}
 	if _, err := AddTrackToPlaylist(ctx, database, 1, 1); err == nil {
@@ -353,7 +353,7 @@ func TestPlaylistCRUDAndHierarchy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePlaylist 3 error: %v", err)
 	}
-	err = MovePlaylist(ctx, database, pID3, pID1)
+	err = MovePlaylist(ctx, database, pID3, pID1, 0)
 	if err != nil {
 		t.Fatalf("MovePlaylist error: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestPlaylistCRUDAndHierarchy(t *testing.T) {
 	pParent, _ := CreatePlaylist(ctx, database, "ParentFolder", 0, true)
 	pChild, _ := CreatePlaylist(ctx, database, "ChildFolder", pParent, true)
 	pGrandChild, _ := CreatePlaylist(ctx, database, "GrandChildFolder", pChild, true)
-	if err := MovePlaylist(ctx, database, pParent, pGrandChild); err == nil {
+	if err := MovePlaylist(ctx, database, pParent, pGrandChild, 0); err == nil {
 		t.Error("expected error moving parent inside its own descendant")
 	}
 
@@ -597,7 +597,7 @@ func TestPlaylistAndTrack_ValidationErrors(t *testing.T) {
 	if err := DeletePlaylist(ctx, nil, 1, false); err == nil {
 		t.Error("expected error for nil database in DeletePlaylist")
 	}
-	if err := MovePlaylist(ctx, nil, 1, 0); err == nil {
+	if err := MovePlaylist(ctx, nil, 1, 0, 0); err == nil {
 		t.Error("expected error for nil database in MovePlaylist")
 	}
 	if _, err := AddTrackToPlaylist(ctx, nil, 1, 1); err == nil {
@@ -632,14 +632,14 @@ func TestPlaylistAndTrack_ValidationErrors(t *testing.T) {
 	if err := DeletePlaylist(ctx, database, 9999, false); err == nil {
 		t.Error("expected error for non-existent playlist in DeletePlaylist")
 	}
-	if err := MovePlaylist(ctx, database, 1, 1); err == nil {
+	if err := MovePlaylist(ctx, database, 1, 1, 0); err == nil {
 		t.Error("expected error moving playlist to itself")
 	}
-	if err := MovePlaylist(ctx, database, 9999, 0); err == nil {
+	if err := MovePlaylist(ctx, database, 9999, 0, 0); err == nil {
 		t.Error("expected error for non-existent playlist in MovePlaylist")
 	}
 	pValid, _ := CreatePlaylist(ctx, database, "ValidPL", 0, false)
-	if err := MovePlaylist(ctx, database, pValid, 9999); err == nil {
+	if err := MovePlaylist(ctx, database, pValid, 9999, 0); err == nil {
 		t.Error("expected error for non-existent destination parent in MovePlaylist")
 	}
 	if _, err := FindTrack(ctx, database, ""); err == nil {

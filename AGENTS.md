@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-23 09:49
+last_modified: 2026-10-23 10:04
 status: current
 ---
 
@@ -37,7 +37,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Rename Playlist:** `bin/engine-cli playlist rename <pl|id> <name> [--json]`
 - **Edit Track Information:** `bin/engine-cli track update <tr|id|path> [--title <text>] [--artist <text>] [--album <text>] [--genre <text>] [--comment <text>] [--label <text>] [--composer <text>] [--remixer <text>] [--year <year>] [--rating <0-5>] [--artwork <path> | --clear-artwork] [--json]`
 - **Remove Playlist:** `bin/engine-cli playlist rm <id> [--force]`
-- **Move/Reparent Playlist:** `bin/engine-cli playlist move <id> --to <id>`
+- **Move/Reorder Playlist:** `bin/engine-cli playlist move <id> --to <id> [--before <sibling-id>]` inserts before a sibling or appends when omitted. Listings follow Engine's saved sibling links; moving updates both folders atomically and preserves memberships and undo.
 - **Add Track to Playlist:** `bin/engine-cli playlist track add <id> <id|path...>`
 - **Remove Track from Playlist:** `bin/engine-cli playlist track rm <id> <id|path...>`
 - **Move Track Between Playlists:** `bin/engine-cli playlist track move <src-id> <dst-id> <id|path...>`

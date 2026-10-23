@@ -6,7 +6,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Audits Engine DJ SQLite collection databases for missing audio files, file size mismatches, and broken playlist links.
 - Imports audio files into collection with automatic metadata tag probing, optional file relocation, and instant playlist assignment.
 - Upgrades tracks through Fetch Track CLI while preserving curated track information, artwork, and playlist membership; extended mixes may replace radio edits.
-- Manages nested playlist and folder hierarchies with full creation, deletion, moving, and track membership control.
+- Manages nested playlists and folders with creation, deletion, moving, saved sibling ordering, and track membership control. Use `playlist move <id> --to <parent-id> --before <sibling-id>` to choose a position, or omit `--before` to append.
 - **Suggests metadata fixes:** Reviews selected tracks or playlists with your chosen AI model and returns title/artist corrections for approval, preserving the collection and audio files.
 - Extracts and center-crops embedded album artwork to 1:1 square (1400x1400) for crisp jog wheel and media player displays.
 - Prunes unreferenced artwork database records and stale thumbnail cache files to reclaim storage space.

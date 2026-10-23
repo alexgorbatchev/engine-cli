@@ -385,7 +385,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.create` | `name`, `parent?`, `folder?` |
 | `playlist.rename` | `identifier`, `title` |
 | `playlist.rm` | `identifier`, `force?` |
-| `playlist.move` | `identifier`, `to?`; omitted destination moves to root |
+| `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling ID, omitted appends |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
 | `playlist.track.move` | `from`, `to`, `tracks` array |
 | `track.add` | `paths` array, `to_playlist?`, `move?` |

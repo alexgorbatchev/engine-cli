@@ -229,29 +229,28 @@ func UpdateTrackMetadata(ctx context.Context, database *sql.DB, t *Track) error 
 
 // GetAllPlaylists retrieves all playlists and folders from the database.
 func GetAllPlaylists(ctx context.Context, database *sql.DB) ([]Playlist, error) {
-	query := `
-		SELECT id, title, parentListId
-		FROM Playlist
-		ORDER BY parentListId ASC, id ASC;
-	`
-	rows, err := database.QueryContext(ctx, query)
+	rows, err := playlistRows(ctx, database)
 	if err != nil {
-		return nil, fmt.Errorf("querying playlists: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
-
-	var playlists []Playlist
-	for rows.Next() {
-		var p Playlist
-		if err := rows.Scan(&p.ID, &p.Title, &p.ParentListID); err != nil {
-			return nil, fmt.Errorf("scanning playlist: %w", err)
+	byID := make(map[int64]Playlist, len(rows))
+	var parents []int64
+	for _, p := range rows {
+		byID[p.ID] = p.Playlist
+		if len(parents) == 0 || parents[len(parents)-1] != p.ParentListID {
+			parents = append(parents, p.ParentListID)
 		}
-		playlists = append(playlists, p)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterating playlists: %w", err)
+	var playlists []Playlist
+	for _, parent := range parents {
+		order, err := siblingOrder(rows, parent)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range order {
+			playlists = append(playlists, byID[id])
+		}
 	}
-
 	return playlists, nil
 }
 
@@ -501,57 +500,6 @@ func DeletePlaylist(ctx context.Context, database *sql.DB, id int64, force bool)
 		if _, err := database.ExecContext(ctx, "DELETE FROM Playlist WHERE id = ?", delID); err != nil {
 			return fmt.Errorf("deleting playlist %d: %w", delID, err)
 		}
-	}
-
-	return nil
-}
-
-// MovePlaylist updates the parentListId of a playlist/folder.
-func MovePlaylist(ctx context.Context, database *sql.DB, id int64, newParentID int64) error {
-	if database == nil {
-		return fmt.Errorf("database cannot be nil")
-	}
-	if id == newParentID {
-		return fmt.Errorf("cannot move playlist to be its own parent")
-	}
-
-	var exists bool
-	err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", id).Scan(&exists)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("playlist ID %d not found", id)
-		}
-		return fmt.Errorf("checking playlist %d: %w", id, err)
-	}
-
-	if newParentID > 0 {
-		var parentExists bool
-		err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", newParentID).Scan(&parentExists)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return fmt.Errorf("destination parent playlist ID %d not found", newParentID)
-			}
-			return fmt.Errorf("checking destination parent %d: %w", newParentID, err)
-		}
-
-		// Prevent circular hierarchy
-		curr := newParentID
-		for curr > 0 {
-			if curr == id {
-				return fmt.Errorf("cannot move playlist %d inside its own child playlist %d", id, newParentID)
-			}
-			var nextParent int64
-			err := database.QueryRowContext(ctx, "SELECT parentListId FROM Playlist WHERE id = ?", curr).Scan(&nextParent)
-			if err != nil {
-				break
-			}
-			curr = nextParent
-		}
-	}
-
-	_, err = database.ExecContext(ctx, "UPDATE Playlist SET parentListId = ? WHERE id = ?", newParentID, id)
-	if err != nil {
-		return fmt.Errorf("updating playlist %d parent: %w", id, err)
 	}
 
 	return nil

@@ -108,7 +108,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"engine-cli playlist move": {
 		Summary:     "Relocate or reparent a playlist or folder in the hierarchy",
-		Description: "Updates parentListId for target playlist in Database2/m.db, preventing circular loops.",
+		Description: "Atomically updates parentListId and sibling nextListId links, preventing circular loops. --before inserts before a destination sibling; omitted appends.",
 		Args:        "<id>",
 		MutatesDB:   true,
 		AutoBackup:  true,

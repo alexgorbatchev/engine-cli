@@ -317,12 +317,12 @@ func TestPlaylistOperations(t *testing.T) {
 
 	// 2. MovePlaylist
 	pDestFolder, _ := CreatePlaylist(ctx, database, "Underground", "", true)
-	movedPL, targetParent, err := MovePlaylist(ctx, database, "2", "3")
+	movedPL, targetParent, err := MovePlaylist(ctx, database, "2", "3", "")
 	if err != nil || movedPL.ParentListID != pDestFolder.ID || targetParent.ID != pDestFolder.ID {
 		t.Fatalf("MovePlaylist error: %v, moved=%v, target=%v", err, movedPL, targetParent)
 	}
 	// Move to Collection (root 0)
-	movedRoot, targetRoot, err := MovePlaylist(ctx, database, "2", "0")
+	movedRoot, targetRoot, err := MovePlaylist(ctx, database, "2", "0", "")
 	if err != nil || movedRoot.ParentListID != 0 || targetRoot != nil {
 		t.Fatalf("MovePlaylist to root error: %v", err)
 	}
@@ -379,7 +379,7 @@ func TestPlaylistOperations_Errors(t *testing.T) {
 	if _, err := DeletePlaylist(ctx, nil, "T", false); err == nil {
 		t.Error("expected error for nil db in DeletePlaylist")
 	}
-	if _, _, err := MovePlaylist(ctx, nil, "T", ""); err == nil {
+	if _, _, err := MovePlaylist(ctx, nil, "T", "", ""); err == nil {
 		t.Error("expected error for nil db in MovePlaylist")
 	}
 	if _, _, err := AddTrackToPlaylist(ctx, nil, "T", "1"); err == nil {
@@ -402,11 +402,11 @@ func TestPlaylistOperations_Errors(t *testing.T) {
 	if _, err := DeletePlaylist(ctx, database, "999", false); err == nil {
 		t.Error("expected error deleting non-existent playlist")
 	}
-	if _, _, err := MovePlaylist(ctx, database, "999", ""); err == nil {
+	if _, _, err := MovePlaylist(ctx, database, "999", "", ""); err == nil {
 		t.Error("expected error moving non-existent playlist")
 	}
 	p1, _ := CreatePlaylist(ctx, database, "P1", "", false)
-	if _, _, err := MovePlaylist(ctx, database, "1", "999"); err == nil {
+	if _, _, err := MovePlaylist(ctx, database, "1", "999", ""); err == nil {
 		t.Error("expected error moving to non-existent parent")
 	}
 	if _, _, err := AddTrackToPlaylist(ctx, database, "999", "1"); err == nil {

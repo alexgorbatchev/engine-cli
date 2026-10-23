@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 // PlaylistNode represents a tree node in a playlist/folder hierarchy.
@@ -165,7 +166,7 @@ func DeletePlaylist(ctx context.Context, database *sql.DB, identifier string, fo
 }
 
 // MovePlaylist relocates a playlist to a new parent folder.
-func MovePlaylist(ctx context.Context, database *sql.DB, identifier string, toParentIdentifier string) (*db.Playlist, *db.Playlist, error) {
+func MovePlaylist(ctx context.Context, database *sql.DB, identifier string, toParentIdentifier string, beforeIdentifier string) (*db.Playlist, *db.Playlist, error) {
 	if database == nil {
 		return nil, nil, fmt.Errorf("database cannot be nil")
 	}
@@ -191,7 +192,18 @@ func MovePlaylist(ctx context.Context, database *sql.DB, identifier string, toPa
 		parentID = parentPL.ID
 	}
 
-	if err := db.MovePlaylist(ctx, database, target.ID, parentID); err != nil {
+	var beforeID int64
+	if strings.TrimSpace(beforeIdentifier) != "" {
+		before, err := db.FindPlaylist(ctx, database, beforeIdentifier)
+		if err != nil {
+			return nil, nil, err
+		}
+		if before == nil {
+			return nil, nil, &progress.Error{Code: "playlist_move_invalid", Cause: fmt.Errorf("insertion sibling no longer exists")}
+		}
+		beforeID = before.ID
+	}
+	if err := db.MovePlaylist(ctx, database, target.ID, parentID, beforeID); err != nil {
 		return nil, nil, err
 	}
 
