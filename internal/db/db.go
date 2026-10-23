@@ -14,6 +14,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+const databaseTimeout = 5 * time.Second
+
 // Open opens an Engine DJ SQLite database.
 func Open(path string, readonly ...bool) (*sql.DB, error) {
 	if path == "" {
@@ -29,7 +31,8 @@ func Open(path string, readonly ...bool) (*sql.DB, error) {
 		uriPath = "/" + uriPath
 	}
 	uri := url.URL{Scheme: "file", Path: uriPath}
-	query := url.Values{"mode": {"rwc"}}
+	// Apply to every physical connection opened by the database/sql pool.
+	query := url.Values{"mode": {"rwc"}, "_pragma": {fmt.Sprintf("busy_timeout(%d)", databaseTimeout.Milliseconds())}}
 	if len(readonly) > 0 && readonly[0] {
 		query.Set("mode", "ro")
 	}
@@ -41,7 +44,7 @@ func Open(path string, readonly ...bool) (*sql.DB, error) {
 	}
 
 	// Validate connectivity
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), databaseTimeout)
 	defer cancel()
 
 	if err := database.PingContext(ctx); err != nil {

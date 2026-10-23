@@ -196,6 +196,7 @@ func (s *Server) openLibraryPaths(requested []string) ([]openedLibrary, error) {
 				}
 				// Cross-library sync shares the same execution gate as every opened library.
 				child.gate = s.gate
+				child.collection = s.collection
 				lib.server = child
 			}
 			pending[path] = lib

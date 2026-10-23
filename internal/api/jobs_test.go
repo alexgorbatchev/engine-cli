@@ -72,7 +72,7 @@ func TestAPIJobCapacityAndEviction(t *testing.T) {
 	t.Run("active capacity", func(t *testing.T) {
 		s, _ := testAPI(t)
 		started := make(chan struct{})
-		s.operations["test.block"] = define("test.block", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+		s.operations["test.block"] = define("test.block", true, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			close(started)
 			<-ctx.Done()
 			return nil, ctx.Err()

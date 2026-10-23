@@ -143,15 +143,20 @@ func (s *Server) record(j *job, e progress.Event) {
 func (s *Server) work(ctx context.Context, j *job, op operation, run *boundOperation) {
 	defer s.workers.Done()
 	defer j.cancel()
-	select {
-	case s.gate <- struct{}{}:
-		defer func() { <-s.gate }()
-	case <-ctx.Done():
+	release, err := s.acquireOperation(ctx, op, run)
+	var result any
+	var historyID string
+	if err == nil {
+		defer release()
+		s.mu.Lock()
+		j.view.State = "running"
+		s.mu.Unlock()
+		result, historyID, err = s.execute(ctx, op, run)
+	} else {
+		// Even jobs cancelled while queued own a terminal progress event.
+		queueErr := err
+		err = progress.Run(ctx, op.Name, func(context.Context) error { return queueErr })
 	}
-	s.mu.Lock()
-	j.view.State = "running"
-	s.mu.Unlock()
-	result, historyID, err := s.execute(ctx, op, run)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	j.view.Result = result

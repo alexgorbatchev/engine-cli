@@ -167,7 +167,15 @@ curl -sS "http://127.0.0.1:8787/v1/jobs/$job_id"
 curl -sS -X POST "http://127.0.0.1:8787/v1/jobs/$job_id/cancel"
 ```
 
-Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`. Operations run one at a time. A disconnected client does not cancel its job. Cancellation is cooperative and can leave completed changes; use library history to inspect and undo changes. Shutdown requests cancellation and waits for workers.
+Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`. Read jobs run concurrently with each other and with non-collection writes, such as staging fetches and tool installs.
+
+All writes run one at a time across opened libraries, including `library.backup`, `migrate.export`, and requests with `auto_install:true`. Backup and export retain their catalog `read` effect because they leave the source collection unchanged and create no source-library undo history.
+
+Collection writes, restore, sync, and filesystem writes whose collection involvement is not yet resolved exclude read jobs. Bound parameters determine scheduling: a fetch with `import:true` excludes reads, while fetching only into Staging permits them. A pending collection writer blocks new reads until it finishes; jobs waiting for access remain `queued` and can be cancelled.
+
+Engine database connections wait up to five seconds for SQLite locks. Direct GET routes are outside the job scheduler; the busy timeout does not protect them from in-place backup restoration.
+
+A disconnected client does not cancel its job. Cancellation is cooperative and can leave completed changes; use library history to inspect and undo changes. Shutdown requests cancellation and waits for workers.
 
 The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. Collection tracks include `hasArtwork`: true when inline artwork bytes or a nonempty regular cache file exists, false when absent (including dangling artwork IDs), and null when availability cannot be determined. Collection lists, single/batch inspection, and playlist tracks share this field. Availability checks read artwork catalogue metadata in one batch and reuse filesystem observations for shared covers; they do not load image bytes. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
 

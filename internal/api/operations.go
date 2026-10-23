@@ -33,12 +33,13 @@ type operation struct {
 }
 
 type boundOperation struct {
-	before  func(context.Context) error
-	run     func(context.Context) (any, error)
-	preview bool
-	library string
-	effect  string
-	paths   []string
+	before        func(context.Context) error
+	run           func(context.Context) (any, error)
+	preview       bool
+	library       string
+	effect        string
+	paths         []string
+	installsTools bool
 }
 
 type parameterValidator interface{ validate() error }
@@ -134,6 +135,11 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 				preview = v.operationPreview()
 			}
 			bound := &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, effect: boundEffect, paths: paths}
+			if raw, ok := values["auto_install"]; ok {
+				if err := json.Unmarshal(raw, &bound.installsTools); err != nil {
+					return nil, err
+				}
+			}
 			if before != nil {
 				bound.before = func(ctx context.Context) error { return before(ctx, p, bound) }
 			}
@@ -218,7 +224,7 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 					return e
 				}
 			}
-			entry, e := history.Run(ctx, lib, op.Name, scope, nil,func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
+			entry, e := history.Run(ctx, lib, op.Name, scope, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
 			if entry != nil {
 				historyID = entry.ID
 			}

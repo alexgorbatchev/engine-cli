@@ -19,6 +19,7 @@ import (
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"github.com/alexgorbatchev/godeps"
+	"golang.org/x/sync/semaphore"
 )
 
 const maxJobs = 128
@@ -50,6 +51,7 @@ type Server struct {
 	jobs       map[string]*job
 	order      []string
 	gate       chan struct{}
+	collection *semaphore.Weighted
 	closed     bool
 	workers    sync.WaitGroup
 	libraries  map[string]openedLibrary
@@ -84,7 +86,7 @@ func New(config Config) (*Server, error) {
 			return nil, fmt.Errorf("allowed origin must be an exact http(s) origin")
 		}
 	}
-	s := &Server{config: config, mux: http.NewServeMux(), operations: make(map[string]operation), jobs: make(map[string]*job), gate: make(chan struct{}, 1)}
+	s := &Server{config: config, mux: http.NewServeMux(), operations: make(map[string]operation), jobs: make(map[string]*job), gate: make(chan struct{}, 1), collection: semaphore.NewWeighted(collectionCapacity)}
 	s.state = config.state
 	if s.state == nil {
 		s.state, err = state.Open(config.StatePath)
