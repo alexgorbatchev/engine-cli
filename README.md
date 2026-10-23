@@ -7,6 +7,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Imports audio files into collection with automatic metadata tag probing, optional file relocation, and instant playlist assignment.
 - Upgrades tracks through Fetch Track CLI while preserving curated track information, artwork, and playlist membership; extended mixes may replace radio edits.
 - Manages nested playlist and folder hierarchies with full creation, deletion, moving, and track membership control.
+- **Suggests metadata fixes:** Reviews selected tracks or playlists with your chosen AI model and returns title/artist corrections for approval, preserving the collection and audio files.
 - Extracts and center-crops embedded album artwork to 1:1 square (1400x1400) for crisp jog wheel and media player displays.
 - Prunes unreferenced artwork database records and stale thumbnail cache files to reclaim storage space.
 - Synchronizes on-disk audio metadata tags and file sizes with database track records.
@@ -26,7 +27,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Normalizes non-square album covers to 1:1 square dimensions without re-encoding your audio files.
 - Updates database track records from modified on-disk tags and discovers unindexed music files.
 - Automatically saves a safety backup snapshot before performing any database-modifying operation.
-- Close Engine DJ before modifying the library or undoing an operation. Commands check desktop status on macOS and Windows and refuse changes while Engine DJ is running or its status is unknown. Other platforms report unsupported detection and refuse mutations. Read-only commands and dry runs remain available. Use `system check --json` for status and `library undo <id> --dry-run` to check undo conflicts.
+- Close Engine DJ before modifying the library or undoing an operation. Commands check desktop status on macOS and Windows and refuse changes while Engine DJ is running or its status is unknown. Linux reports that Engine DJ is not running without inspecting processes. Read-only commands and dry runs remain available. Use `system check --json` for status and `library undo <id> --dry-run` to check undo conflicts.
 - Keeps the original audio file when upgrading a track. Close Engine DJ before running the upgrade, then analyze the replacement in Engine DJ before playing it.
 - When an upgraded track has saved cues, loops, or beat grids, requires `--keep-timing` or `--clear-timing`. An extended mix can shift those positions, so check retained timing before playing.
 - Track upgrades require at least 16 kHz of measured audio bandwidth and either a higher measured bandwidth than the original or a longer mix with equal bandwidth. This is a screening measure, not a guarantee of audible improvement.
@@ -36,6 +37,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 
 - Existing playlists are selected by numeric ID. Tracks are selected by numeric ID or their exact stored path; titles and file basenames never establish a match. Use playlist listings and the HTTP `track.list` operation to obtain IDs.
 - `track inspect <id...> --json` and `playlist inspect <id...> --json` return details for up to 500 IDs in one call, preserving request order and reporting missing IDs individually. The HTTP API offers the same results through `GET /v1/tracks?ids=12,34` and `GET /v1/playlists?ids=7,9`.
+- `track suggest 12 34 --json` or `track suggest --playlists 7,9 --json` sends selected titles, artists, albums, and filenames to your configured AI service. It returns original values with proposed fixes and explanations. Overlapping playlists share one result per track; playlist descendants require their own IDs. Processing uses batches of up to 25 tracks and never changes the library, creates backups, or writes undo history. Provider usage may incur charges. Review suggestions before applying individual edits with `track update`.
 - `library sync --from <path> --to <path>` requires source `--playlist-id <id>` (repeatable, including descendants) or `--root`. Ancestors preserve hierarchy without copying their other tracks. Root sync includes tracks outside playlists, smartlist definitions, and the prepare queue. Both paths must contain existing libraries with matching, verified Engine database schema 3.0.2 and distinct database UUIDs.
 - Sync matches track origins and explicit playlist mappings. Use `--map-playlist <source-id>:<destination-id>` to match existing playlists. Names never establish identity. Unmapped playlists are created unless a sibling title collision prevents it. Source changes propagate while destination-only edits remain. Conflicting edits are refused unless `--conflict source` or `--conflict destination` chooses a side.
 - Sync preserves destination-only entries by default. `--mirror` propagates removals within the selected scope while retaining tracks referenced by kept playlists. Removed audio is preserved for undo. `--media none` requires matching destination audio and copies no audio; artwork may still be transferred. New audio goes under `Music/engine-cli/` inside the destination, without re-encoding. Audio changes outside the destination library are refused.
@@ -82,6 +84,7 @@ Keep `~/.local/bin` on your PATH in future terminal sessions. Intel Macs use the
 
 - [`ffmpeg` & `ffprobe`](https://ffmpeg.org/download.html) are required for audio tag probing and artwork processing. Make both commands available on your PATH.
 - [Fetch Track](https://github.com/alexgorbatchev/fetch-track-cli) 1.10.1+, [Fetch Mix](https://github.com/alexgorbatchev/fetch-mix-cli) 2.1.1+, and [Tag Track](https://github.com/alexgorbatchev/tag-track-cli) 1.1.1+ acquire and tag audio. `engine-cli tool upgrade fetch-track` (likewise `fetch-mix`, `tag-track`) installs or updates the latest release in `~/.local/share/engine-cli/bin`, which `engine-cli` searches before your PATH. A missing or older tool stops the command with instructions to run that upgrade, unless the command passes `--auto-install`, which installs or updates the tool first.
+- AI suggestions require a model and credentials for `openai` (default), `anthropic`, or `openrouter`, or an `openai-compat` endpoint supporting structured tool calls. Set `ENGINE_LLM_MODEL` and `ENGINE_LLM_API_KEY`, or use the selected service's `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENROUTER_API_KEY`. Set `ENGINE_LLM_PROVIDER` to select a service. See [AI suggestion setup](docs/http-api.md#metadata-cleanup-suggestions) for local endpoints, flags, and API examples.
 
 # Quick Start
 
@@ -167,6 +170,16 @@ Human and agent text results contain `copied`, `existing`, `failed`, `unavailabl
 | Flag | Short | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `--json` | `-` | `false` | Ordered details with per-item errors |
+
+`engine-cli track suggest [id|ref...]`
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--playlists <id|ref,...>` | `-` | none | Select direct playlist members instead of track arguments; comma-separated or repeatable |
+| `--json` | `-` | `false` | Original title/artist values and reviewable suggestions |
+| `--llm-provider <name>` | `-` | `ENGINE_LLM_PROVIDER` or `openai` | `openai`, `anthropic`, `openrouter`, or `openai-compat`; also available on `api serve` |
+| `--llm-model <name>` | `-` | `ENGINE_LLM_MODEL` or none | Explicit model name; required for nonempty selections; also available on `api serve` |
+| `--llm-base-url <url>` | `-` | `ENGINE_LLM_BASE_URL` or provider default | Custom API URL; required for `openai-compat`; also available on `api serve` |
 
 `engine-cli library sync`
 

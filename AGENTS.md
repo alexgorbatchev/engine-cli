@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-21 22:00
+last_modified: 2026-10-23 09:01
 status: current
 ---
 
@@ -32,6 +32,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **List Playlists:** `bin/engine-cli playlist list`
 - **Inspect Playlists:** `bin/engine-cli playlist inspect <id...> [--json]`
 - **Inspect Tracks:** `bin/engine-cli track inspect <id...> [--json]`
+- **Suggest Metadata Cleanup:** `bin/engine-cli track suggest <id|ref...> [--json]` or `track suggest --playlists <id|ref,...>`; HTTP `track.suggest` accepts `tracks` or `playlists` string arrays. Configure `ENGINE_LLM_PROVIDER` (default `openai`), required `ENGINE_LLM_MODEL`, optional `ENGINE_LLM_BASE_URL`, and `ENGINE_LLM_API_KEY` or a provider-specific key. The same `--llm-provider`, `--llm-model`, and `--llm-base-url` flags work on `track suggest` and `api serve`. Playlist selection includes direct members only, with first-seen deduplication and complete batched processing. Suggestions never write the library.
 - **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <id>] [--folder]`
 - **Rename Playlist:** `bin/engine-cli playlist rename <pl|id> <name> [--json]`
 - **Edit Track Information:** `bin/engine-cli track update <tr|id|path> [--title <text>] [--artist <text>] [--album <text>] [--genre <text>] [--comment <text>] [--label <text>] [--composer <text>] [--remixer <text>] [--year <year>] [--rating <0-5>] [--artwork <path> | --clear-artwork] [--json]`
@@ -53,7 +54,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Undo an Operation:** `bin/engine-cli library undo [id] [--dry-run] [--force]`
 
 ## Setup & Environment
-- **Prerequisites:** Go 1.26+, `ffmpeg`, `ffprobe`, `just`. `fetch-track`, `fetch-mix`, and `tag-track` are managed dependencies.
+- **Prerequisites:** Go 1.27.2+, `ffmpeg`, `ffprobe`, `just`. `fetch-track`, `fetch-mix`, and `tag-track` are managed dependencies.
 - **Managed Tool Dependencies:** Install, update, and verify `fetch-track`, `fetch-mix`, and `tag-track` through `github.com/alexgorbatchev/godeps`; never call a tool's own updater. `internal/acquire/requirements.go` owns minimum versions and release repositories. Managed releases live in `$XDG_DATA_HOME/engine-cli/bin`, which startup puts ahead of `PATH`. Running a missing or outdated tool fails with `tool_unavailable` or `tool_outdated` unless the request sets `auto_install`, which installs or updates it through godeps first; install failures use `tool_install_failed`. Rely on godeps for version parsing; it never lets an unreadable version satisfy a requirement. When godeps lacks behavior or misbehaves, fix and release godeps rather than working around it here.
 - **Default Library Directory:** `$HOME/Music/Engine Library` (override with `-l <dir>` / `--lib-dir`).
 - **API Startup Libraries:** `ENGINE_LIBRARY_PATHS` supplies semicolon-separated existing library directories to `api serve`; ignore empty entries and trim surrounding whitespace. Explicit `--library` flags replace the environment list; `--lib-dir` still selects the unscoped default library.
@@ -61,6 +62,8 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Temporary Files:** Production code uses the OS temporary directory for disposable workspaces, never project `.tmp/`. Agent development artifacts may use project `.tmp/`. Atomic publication staging stays beside its destination to support same-filesystem rename.
 
 ## Conventions
+- **LLM Integration:** Use Charm's Fantasy (`charm.land/fantasy`) for model calls, typed structured output, and agent/tool workflows. Use its native provider and schema APIs rather than a custom compatibility layer.
+- **LLM Metadata Suggestions:** Accept explicit track or playlist identifiers through shared CLI/API behavior. Send selected metadata with a cleanup prompt to the LLM and return identifiable title/artist suggestions for user review. Generating suggestions is read-only; never apply suggestions automatically.
 - **UI-Driven Contracts:** UI workflows drive HTTP API design and associated CLI output. Extend or reshape shared results when the UI needs richer data rather than constraining the UI to an existing response shape. Keep CLI and HTTP results aligned, preserve stable entity identity, and retain snapshot/undo guarantees for mutations.
 - **Collection Editing:** Track metadata updates change only explicitly supplied fields, preserve audio and performance data, and support snapshot/undo through CLI and API. Expose `ratingStars` from 0 to 5 and store Engine ratings in units of 20. Playlist renaming preserves identity, hierarchy, and memberships. Artwork previews read linked inline bytes or Engine’s hash-addressed cache without modifying the collection. Artwork edits stage with metadata, support upload/unset, preserve audio files, normalize to square 1400×1400 cache images and 256×256 thumbnails, and participate in the same snapshot/undo operation.
 - **Batch UI Reads:** When a UI needs details for multiple entities, accept multiple explicit identifiers in one CLI/API request and return identifiable results together; do not require one request per item. Define ordering, limits, and per-item failure behavior. Ask for clarification when the UI workflow or required response is unclear.

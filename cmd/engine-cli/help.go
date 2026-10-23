@@ -6,6 +6,7 @@ import (
 )
 
 var techCatalog = cobrahelptree.TechCatalog{
+	"engine-cli track suggest":              {Summary: "Suggest title/artist cleanup for explicit track IDs or playlist memberships without writing the collection", Args: "[id|ref...]", Description: "Use track arguments or --playlists with up to 500 IDs/references. All direct playlist members are included and deduplicated. Model settings come from --llm-* flags or ENGINE_LLM_* environment variables. Returns original metadata and reviewable suggestions; no backup or history is created."},
 	"engine-cli library delete":             {Summary: "Delete library databases and artwork with a reviewed file plan and exact path confirmation", Args: "<path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli library move":               {Summary: "Move a complete library, preserving identity and undo history", Args: "<path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli library media":              {Summary: "Gather referenced audio into a library folder"},

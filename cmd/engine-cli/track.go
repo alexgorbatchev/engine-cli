@@ -31,6 +31,7 @@ func newTrackCommand() *cobra.Command {
 	}
 
 	trCmd.AddCommand(newDetailsCommand("track"))
+	trCmd.AddCommand(newSuggestionCommand())
 	trCmd.AddCommand(newTrackAddCommand())
 	trCmd.AddCommand(newTrackEditCommand())
 	trCmd.AddCommand(newTrackUpgradeCommand())

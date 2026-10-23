@@ -60,6 +60,81 @@ The job result contains `libraries` and `warnings` arrays. Each library has `nam
 
 Shared-file checks cover previously opened or discovered libraries, including hidden ones. Unavailable known libraries are reported; protection conservatively keeps or copies candidate files, while unsafe deletion/moving is blocked. Libraries unknown to this service cannot be checked. Deletion and relocation retire the old registry entry; successful undo reconciles its visibility.
 
+## Metadata cleanup suggestions
+
+`track.suggest` is a read-only job operation shared with the CLI:
+
+```sh
+engine-cli track suggest 12 34 --json
+engine-cli track suggest --playlists 7,9 --json
+```
+
+Submit `POST /v1/operations/track.suggest` with `{"tracks":["12","34"]}` or
+`{"playlists":["7","9"]}`. Library-scoped endpoints use the same operation and
+parameters. Each request accepts exactly one selection array with 1–500 positive
+numeric IDs or opaque `eng:<instance>:<kind>:<entity>` references, encoded as strings.
+Names, titles, filenames, and paths are not selectors.
+
+Playlist selection uses direct members, without recursively including descendants.
+Specify descendant playlist IDs explicitly when needed. Tracks are deduplicated in
+first-seen order: selector order, then each playlist's membership order. Every
+selected playlist member is processed, even when the total exceeds 500 tracks.
+Missing selectors or database failures reject the whole selection before any model
+request. Empty playlists return `{"items":[]}` without requiring model settings.
+
+Set these environment variables before running the CLI or starting `api serve`:
+
+| Variable | Meaning |
+| --- | --- |
+| `ENGINE_LLM_PROVIDER` | `openai` (default), `anthropic`, `openrouter`, or `openai-compat`. |
+| `ENGINE_LLM_MODEL` | Explicit model name; required for nonempty selections. There is no default model. |
+| `ENGINE_LLM_BASE_URL` | Optional custom HTTP(S) API base URL for OpenAI, Anthropic, or compatible endpoints. OpenRouter uses its standard service URL. URLs cannot contain credentials, query parameters, or fragments. |
+| `ENGINE_LLM_API_KEY` | Credential override for the chosen provider. Otherwise use `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENROUTER_API_KEY` as appropriate. Compatible endpoints use only the override and may omit credentials for a local unauthenticated service. |
+
+`--llm-provider`, `--llm-model`, and `--llm-base-url` override their respective
+environment settings on both `track suggest` and `api serve`. Credentials are
+environment-only. HTTP request parameters cannot choose a provider, change its
+endpoint, or supply credentials. Library-scoped servers inherit the startup settings.
+
+For an OpenAI-compatible local service that supports structured tool calls:
+
+```sh
+engine-cli track suggest 12 34 --json \
+  --llm-provider openai-compat --llm-model my-local-model \
+  --llm-base-url http://localhost:1234/v1
+```
+
+Only the selected title, artist, album, filename, and library-scoped track ID are
+sent to the model. Audio, artwork, full track paths, and opaque references are not
+sent. The cleanup prompt asks for conservative corrections to duplicated artist
+prefixes, clearly embedded artists, broken encoding, HTML entities, and whitespace,
+while preserving intentional spelling, accents, featured artists, and mix labels.
+Metadata strings are treated as data. Model judgments still require user review.
+
+Results include every selected track in deterministic order:
+
+```json
+{"items":[{"id":12,"current":{"title":"Artist - Song","artist":"Artist"},"suggestion":{"title":"Song","artist":"Artist","reason":"Removed duplicated artist prefix."}},{"id":34,"current":{"title":"Clean title","artist":null},"suggestion":null}]}
+```
+
+Registered libraries also return each track's stable `ref`. Original database nulls
+are retained in `current`; `suggestion:null` means no change was proposed. Each
+proposal includes both proposed fields and an explanation. Schema validation and
+application checks reject missing, duplicate, or unexpected IDs, incomplete model
+responses, unexplained changes, and clearing an existing nonempty title or artist.
+
+Requests use Fantasy's typed structured output and native provider implementations,
+in sequential batches of at most 25 tracks and 64 KiB of serialized metadata. A
+single oversized record fails selection without truncation. Each model request has
+a two-minute deadline and a maximum output budget of 8192 tokens. No automatic
+model retries occur. Cancellation stops the in-flight request. A failed or cancelled
+batch discards all earlier batches; the job never returns partial success. Progress
+advances after validated batches, with 100 reserved for successful completion.
+
+Suggestions create no library changes, backups, or history and remain available while
+Engine DJ is running. To apply a reviewed correction, use `track.update` with explicit
+fields; normal mutation guards, snapshots, and undo apply to that separate operation.
+
 ## Submit, observe, cancel
 
 | Request | Response |
@@ -112,6 +187,12 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `tool_outdated` | An installed music tool is older than the release providing Engine's machine interface, reports an unrecognized version, or lacks that interface. Update it with `tool.upgrade`. |
 | `tool_install_failed` | Downloading or installing a music tool release failed, through `tool.upgrade` or `auto_install`. Check the connection and retry. |
 | `tool_failed` | A dependent music tool reported a failure, including partial result failures. Check the tool and retry. |
+| `suggestion_selection_failed` | A selected entity is missing, unreadable, or has oversized metadata. Refresh the selection before retrying. No model result is applied. |
+| `llm_configuration_invalid` | Set a supported provider, explicit model, valid endpoint, and required credentials on the server computer. |
+| `llm_authentication_failed` | The LLM provider rejected credentials. Check the configured provider key. |
+| `llm_rate_limited` | The LLM provider limited requests. Wait before retrying. |
+| `llm_request_failed` | The provider or connection failed. Check settings and connectivity, then retry. |
+| `llm_response_invalid` | The model response failed schema or selection checks, or did not finish successfully. Retry or choose another model; no partial suggestions are returned. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
 | `operation_failed` | Unclassified failure. Inspect current state before retrying. |

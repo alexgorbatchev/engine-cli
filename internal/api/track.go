@@ -65,6 +65,7 @@ func (p upgradeParams) acquisitionOptions() acquire.TrackOptions {
 
 func (s *Server) trackOperations() []operation {
 	return []operation{
+		s.suggestionOperation(),
 		s.detailOperation("track"),
 		define("track.update", true, []string{"identifier"}, func(ctx context.Context, p metadataParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
