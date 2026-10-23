@@ -18,55 +18,78 @@ func createTestLibrary(t *testing.T) string {
 	dir := t.TempDir()
 
 	db2Dir := filepath.Join(dir, "Database2")
-	_ = os.MkdirAll(db2Dir, 0755)
+	if err := os.MkdirAll(db2Dir, 0755); err != nil {
+		t.Fatalf("create collection database directory: %v", err)
+	}
 
 	dbPath := filepath.Join(db2Dir, "m.db")
 	database, err := db.Open(dbPath)
 	if err != nil {
-		t.Fatalf("Open failed: %v", err)
+		t.Fatalf("open collection fixture database: %v", err)
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close collection fixture database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
-	_ = db.InitSchema(ctx, database)
+	if err := db.InitSchema(ctx, database); err != nil {
+		t.Fatalf("initialize collection fixture schema: %v", err)
+	}
 
 	// Create sample audio file
 	audioDir := filepath.Join(dir, "Music")
-	_ = os.MkdirAll(audioDir, 0755)
+	if err := os.MkdirAll(audioDir, 0755); err != nil {
+		t.Fatalf("create fixture audio directory: %v", err)
+	}
 	audioFile := filepath.Join(audioDir, "track1.m4a")
-	_ = os.WriteFile(audioFile, []byte("audio dummy 20 bytes"), 0644)
+	if err := os.WriteFile(audioFile, []byte("audio dummy 20 bytes"), 0644); err != nil {
+		t.Fatalf("write fixture audio file: %v", err)
+	}
 
 	// Create unindexed file
 	unindexedFile := filepath.Join(dir, "Music", "unindexed.mp3")
-	_ = os.WriteFile(unindexedFile, []byte("unindexed audio"), 0644)
+	if err := os.WriteFile(unindexedFile, []byte("unindexed audio"), 0644); err != nil {
+		t.Fatalf("write unindexed fixture audio file: %v", err)
+	}
 
-	// Insert Track
-	_, _ = database.ExecContext(ctx, `
+	for _, statement := range []struct{ name, sql string }{
+		{"track", `
 		INSERT INTO Track (id, title, artist, path, filename, fileBytes, length, bpm)
 		VALUES (1, 'Sample Title', 'Sample Artist', 'Music/track1.m4a', 'track1.m4a', 20, 300, 128);
-	`)
-
-	// Insert Nested Playlist (Folder 1 -> Child 2)
-	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (1, 'EDM Folder', 0);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO Playlist (id, title, parentListId) VALUES (2, 'House Child', 1);")
-	_, _ = database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (2, 1, 'fixture');")
+		`},
+		{"parent playlist", "INSERT INTO Playlist (id, title, parentListId) VALUES (1, 'EDM Folder', 0);"},
+		{"child playlist", "INSERT INTO Playlist (id, title, parentListId) VALUES (2, 'House Child', 1);"},
+		{"playlist membership", "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid) VALUES (2, 1, 'fixture');"},
+	} {
+		if _, err := database.ExecContext(ctx, statement.sql); err != nil {
+			t.Fatalf("insert fixture %s: %v", statement.name, err)
+		}
+	}
 
 	// Root database fixtures must be valid SQLite, just like Database2/m.db.
 	rootDB, err := db.Open(filepath.Join(dir, "m.db"))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("open root fixture database: %v", err)
 	}
+	defer func() {
+		if err := rootDB.Close(); err != nil {
+			t.Fatalf("close root fixture database: %v", err)
+		}
+	}()
 	if _, err := rootDB.Exec("CREATE TABLE fixture(value TEXT); INSERT INTO fixture VALUES('sample root m.db')"); err != nil {
-		t.Fatal(err)
-	}
-	if err := rootDB.Close(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("populate root fixture database: %v", err)
 	}
 
 	// Create Artwork dir
 	artDir := filepath.Join(dir, "Artwork")
-	_ = os.MkdirAll(artDir, 0755)
-	_ = os.WriteFile(filepath.Join(artDir, "test.jpg"), []byte("test art"), 0644)
+	if err := os.MkdirAll(artDir, 0755); err != nil {
+		t.Fatalf("create fixture artwork directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(artDir, "test.jpg"), []byte("test art"), 0644); err != nil {
+		t.Fatalf("write fixture artwork file: %v", err)
+	}
 
 	return dir
 }
@@ -80,6 +103,25 @@ func executeCommand(args ...string) (string, error) {
 
 	err := cmd.Execute()
 	return buf.String(), err
+}
+
+func createEmptyTestDatabase(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatalf("create empty fixture database directory: %v", err)
+	}
+	database, err := db.Open(path)
+	if err != nil {
+		t.Fatalf("open empty fixture database: %v", err)
+	}
+	defer func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close empty fixture database: %v", err)
+		}
+	}()
+	if err := db.InitSchema(t.Context(), database); err != nil {
+		t.Fatalf("initialize empty fixture schema: %v", err)
+	}
 }
 
 func TestRootCommand_HelpAndVersion(t *testing.T) {
@@ -130,7 +172,10 @@ func TestLibraryBackupAndRestoreCommand(t *testing.T) {
 	}
 
 	// 4. Restore with positional path
-	entries, _ := os.ReadDir(backupOutDir)
+	entries, err := os.ReadDir(backupOutDir)
+	if err != nil {
+		t.Fatalf("read fixture backup directory: %v", err)
+	}
 	if len(entries) == 0 {
 		t.Fatal("no backup directory created")
 	}
@@ -192,9 +237,20 @@ func TestLibraryVerifyCommand(t *testing.T) {
 
 	// 3. Verify with detected issues
 	dbPath := filepath.Join(libDir, "Database2", "m.db")
-	database, _ := db.Open(dbPath)
-	_, _ = database.ExecContext(context.Background(), "INSERT INTO Track (id, path, filename, fileBytes) VALUES (999, 'Music/missing.m4a', 'missing.m4a', 100);")
-	_ = database.Close()
+	func() {
+		database, err := db.Open(dbPath)
+		if err != nil {
+			t.Fatalf("open verification fixture database: %v", err)
+		}
+		defer func() {
+			if err := database.Close(); err != nil {
+				t.Fatalf("close verification fixture database: %v", err)
+			}
+		}()
+		if _, err := database.ExecContext(t.Context(), "INSERT INTO Track (id, path, filename, fileBytes) VALUES (999, 'Music/missing.m4a', 'missing.m4a', 100);"); err != nil {
+			t.Fatalf("insert missing-audio fixture track: %v", err)
+		}
+	}()
 
 	_, err = executeCommand("-l", libDir, "library", "verify")
 	if err != nil {
@@ -308,10 +364,7 @@ func TestPlaylistCommand(t *testing.T) {
 	// 6. Empty playlist list
 	emptyDir := t.TempDir()
 	emptyDBPath := filepath.Join(emptyDir, "Database2", "m.db")
-	_ = os.MkdirAll(filepath.Dir(emptyDBPath), 0755)
-	emptyDB, _ := db.Open(emptyDBPath)
-	_ = db.InitSchema(context.Background(), emptyDB)
-	_ = emptyDB.Close()
+	createEmptyTestDatabase(t, emptyDBPath)
 
 	emptyOut, err := executeCommand("-l", emptyDir, "playlist", "list")
 	if err != nil {
@@ -355,7 +408,13 @@ func TestAgentMode_AllCommands(t *testing.T) {
 	}
 
 	// 4. Restore in AGENT mode
-	entries, _ := os.ReadDir(backupOutDir)
+	entries, err := os.ReadDir(backupOutDir)
+	if err != nil {
+		t.Fatalf("read agent fixture backup directory: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("no agent fixture backup created")
+	}
 	snapshot := filepath.Join(backupOutDir, entries[0].Name())
 	rOut, err := executeCommand("-l", libDir, "library", "restore", snapshot)
 	if err != nil {
@@ -413,10 +472,7 @@ func TestAgentMode_AllCommands(t *testing.T) {
 	// 9. Playlist list empty in AGENT mode
 	emptyDir := t.TempDir()
 	emptyDBPath := filepath.Join(emptyDir, "Database2", "m.db")
-	_ = os.MkdirAll(filepath.Dir(emptyDBPath), 0755)
-	emptyDB, _ := db.Open(emptyDBPath)
-	_ = db.InitSchema(context.Background(), emptyDB)
-	_ = emptyDB.Close()
+	createEmptyTestDatabase(t, emptyDBPath)
 
 	peOut, err := executeCommand("-l", emptyDir, "playlist", "list")
 	if err != nil {
@@ -735,7 +791,11 @@ func TestPlaylistMoveBeforeSibling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer d.Close()
+	defer func() {
+		if err := d.Close(); err != nil {
+			t.Fatalf("close playlist-order fixture database: %v", err)
+		}
+	}()
 	lists, err := db.GetAllPlaylists(t.Context(), d)
 	if err != nil || len(lists) != 3 || lists[0].ID != 3 || lists[1].ID != 1 {
 		t.Fatalf("lists=%v err=%v", lists, err)
@@ -819,7 +879,9 @@ func TestNewTrackCommands_E2E(t *testing.T) {
 
 	// Create a new audio file
 	newAudio := filepath.Join(libDir, "incoming.mp3")
-	_ = os.WriteFile(newAudio, []byte("incoming track dummy bytes"), 0o644)
+	if err := os.WriteFile(newAudio, []byte("incoming track dummy bytes"), 0o644); err != nil {
+		t.Fatalf("write incoming fixture audio: %v", err)
+	}
 
 	// 1. Track add with --to-playlist and --move
 	outAdd, err := executeCommand("-l", libDir, "track", "add", "--to-playlist", "2", "--move", newAudio)
@@ -919,7 +981,9 @@ func TestAgentMode_NewCommands(t *testing.T) {
 
 	// 7. Track add in AGENT mode
 	newAudio := filepath.Join(libDir, "agent_song.mp3")
-	_ = os.WriteFile(newAudio, []byte("agent song data"), 0o644)
+	if err := os.WriteFile(newAudio, []byte("agent song data"), 0o644); err != nil {
+		t.Fatalf("write agent fixture audio: %v", err)
+	}
 	taOut, err := executeCommand("-l", libDir, "track", "add", newAudio)
 	if err != nil {
 		t.Fatalf("track add in agent mode failed: %v", err)
@@ -980,7 +1044,9 @@ func TestCommandHelpAndErrorBranches(t *testing.T) {
 
 	// Commands with --no-backup
 	newAudio := filepath.Join(libDir, "nobackup.mp3")
-	_ = os.WriteFile(newAudio, []byte("data"), 0o644)
+	if err := os.WriteFile(newAudio, []byte("data"), 0o644); err != nil {
+		t.Fatalf("write no-backup fixture audio: %v", err)
+	}
 	if _, err := executeCommand("-l", libDir, "--no-backup", "track", "add", newAudio); err != nil {
 		t.Fatalf("track add --no-backup error: %v", err)
 	}
