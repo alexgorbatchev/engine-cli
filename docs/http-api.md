@@ -40,7 +40,7 @@ The server prints its URL and listens on `127.0.0.1:8787`. Use `--port 0` to sel
 engine-cli api serve --allow-origin http://localhost:3000
 ```
 
-Other browser origins are rejected. The server has no authentication and is intended for local applications. Global `--no-backup` disables automatic safety snapshots; it does not disable undo history.
+Other browser origins are rejected. Successful preflight responses allow `GET`, `POST`, `PUT`, `PATCH`, and `OPTIONS`, with `Content-Type` and `Last-Event-ID` request headers. An allowed browser origin can update library names and visibility through `PATCH /v1/library-preferences`. The server has no authentication and is intended for local applications. Global `--no-backup` disables automatic safety snapshots; it does not disable undo history.
 
 The server can start when the configured library directory is absent so clients can discover libraries first. Submit `POST /v1/operations/library.discover` with `{}` to check Music and attached local drives on macOS/Windows, or `{"paths":["/Volumes/My Drive"]}` to check only specified roots. Each root is checked directly and at `Engine Library/` and `Music/Engine Library/`; discovery is nonrecursive and recognizes current `Database2/m.db` files. Legacy root-level databases are ignored. Windows uses the redirected Music folder and fixed/removable drive letters. Automatic scans exclude network drives.
 

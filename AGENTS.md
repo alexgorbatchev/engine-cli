@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-23 14:53
+last_modified: 2026-10-23 15:16
 status: current
 ---
 
@@ -80,7 +80,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Audio-Based Duplicate Recognition:** Account for independently imported copies of the same audio using acoustic fingerprint evidence, such as Chromaprint. Engine row IDs and origin identities alone do not establish musical uniqueness; duplicate detection must go beyond titles, filenames, and import lineage.
 - **Library Listings Identity:** Opened-library and known-library listings expose the opaque path `key`, Engine `engine_uuid`, and the sync `instance` identity with its `registration` state, read fresh on each request; clients build links on `instance`, never on paths or keys.
 - **Copied Library Registration:** Require explicit registration to assign a copied library its own instance identity. Preserve identity when a library is relocated; do not derive instance identity from mount paths or silently treat cloned sidecar IDs as distinct sync peers.
-- **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
+- **HTTP API:** Expose all library, playlist, and track operations over loopback HTTP. Browser origins remain exact and opt-in; library-preference updates use PATCH with a successful cross-origin preflight. Incorporate Fetch Track progress into overall Engine progress; every progress event includes a monotonic completion percentage from 0 to 100, with 100 reserved for successful completion.
 - **Operation Scheduling:** Share write serialization and collection access across all opened libraries. Read jobs may overlap each other and non-collection writes, including staging fetches and tool installs. Collection writes, restores, syncs, and unresolved filesystem writes exclude read jobs; pending collection writers must not starve behind new reads. Serialize all writes, including `library.backup`, `migrate.export`, and requests with `auto_install:true`. Backup and export retain their catalog `read` effect because they leave the source collection unchanged. Classify bound parameter effects before execution; keep cancellation and shutdown responsive while waiting. Engine database connections use a five-second busy timeout on every pooled connection.
 - **Shared Progress Schema:** Keep CLI and HTTP progress field names and types aligned with Fetch Track, including `job_id`, `sequence`, and string-valued `error`. Preserve upstream event details under `source`; retain structured `{code,message}` errors for HTTP job/status and request responses.
 - **Failure Codes:** Every reported failure must carry a stable code: `code` in structured HTTP errors and `error_code` alongside string-valued progress, acquisition, staging, migration, and history errors. Classify typed causes rather than parsing messages. Use `operation_failed` for unclassified failures and document new codes in `docs/http-api.md`. Diagnostic messages are not UI copy; browser consumers must map codes to user-friendly guidance and never render raw server errors.
