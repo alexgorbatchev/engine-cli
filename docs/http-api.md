@@ -206,7 +206,9 @@ All writes run one at a time across opened libraries, including `library.backup`
 
 Collection writes, restore, sync, and filesystem writes whose collection involvement is not yet resolved exclude read jobs. Bound parameters determine scheduling: a fetch with `import:true` excludes reads, while fetching only into Staging permits them. A pending collection writer blocks new reads until it finishes; jobs waiting for access remain `queued` and can be cancelled.
 
-Engine database connections wait up to five seconds for SQLite locks. Direct GET routes are outside the job scheduler; the busy timeout does not protect them from in-place backup restoration.
+Engine database connections wait up to five seconds for SQLite locks. Direct track, playlist, artwork, beat-grid, staging, and library-listing reads, library opening, and preference responses share the collection barrier with jobs, so they cannot overlap restoration or other collection writes. Audio requests release that protection after resolving and opening the file, before streaming to the client; playback does not hold up collection writes. Waiting reads observe request cancellation. Operation catalog, job status/events, and system checks remain available while collection access is blocked.
+
+Backup restoration enumerates every database and artwork folder before changing live files. Missing optional folders are allowed when the snapshot contains a database; unreadable folders and snapshots without databases fail with `backup_unavailable`, leaving the live files unchanged during validation. Later copy failures still fail the operation and retain the normal undo guarantees.
 
 A disconnected client does not cancel its job. Cancellation is cooperative and can leave completed changes; use library history to inspect and undo changes. Shutdown requests cancellation and waits for workers.
 
@@ -224,6 +226,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `library_unavailable` | The library could not be opened. Check the selected library and drive. |
 | `permission_denied` | File access was denied. Check permissions on the server computer. |
 | `resource_not_found` | A required file is missing. Restore access or choose another file. |
+| `backup_unavailable` | A backup folder could not be enumerated or the snapshot contains no databases. Check the backup drive and folder permissions before retrying. No live files were changed by the failed validation. |
 | `tool_unavailable` | A required managed tool is not installed or cannot run. Install it with `tool.upgrade`. |
 | `tool_outdated` | An installed managed tool is older than the release providing Engine's machine interface, reports an unrecognized version, or lacks that interface. Update it with `tool.upgrade`. |
 | `tool_install_failed` | Downloading or installing a managed tool release failed, through `tool.upgrade` or `auto_install`. Check the connection and retry. |

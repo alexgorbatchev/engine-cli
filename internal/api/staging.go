@@ -61,6 +61,11 @@ func (s *Server) stagedList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) stagedMedia(artwork bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		release, ok := s.beginCollectionRead(w, r.Context())
+		if !ok {
+			return
+		}
+		defer release()
 		if r.Header.Get("Sec-Fetch-Dest") == "audio" && r.Header.Get("Sec-Fetch-Site") != "same-origin" && r.Header.Get("Origin") == "" {
 			writeError(w, http.StatusForbidden, "origin_required", "Audio previews require an allowed browser origin.")
 			return
@@ -99,6 +104,7 @@ func (s *Server) stagedMedia(artwork bool) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Cache-Control", audioCacheControl)
+		release()
 		http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 	}
 }

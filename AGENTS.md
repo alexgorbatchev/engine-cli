@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-23 14:27
+last_modified: 2026-10-23 14:53
 status: current
 ---
 
@@ -99,6 +99,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 
 ## Gotchas
 - **SQLite WAL Backups:** Use the SQLite online backup API to capture committed database content, including WAL pages. Publish a snapshot only after all copies succeed; never copy live `.db` files directly or checkpoint the source to make a backup.
+- **Restore Validation and Reads:** Enumerate all snapshot folders before touching live files; reject unreadable folders and snapshots containing no databases with `backup_unavailable`. Direct collection and library-listing HTTP reads, opening libraries, and preference responses share the job collection barrier. Audio holds it only through opening the file; release it before streaming. Keep job observation and system checks responsive during restore.
 - **Zero-Reencoding Tagging:** When embedding artwork and tags via `ffmpeg`, always pass `-c:a copy` to prevent accidental audio transcoding.
 - **Temporary Folder Cleanup:** Remove production temporary workspaces on completion; never remove their shared OS temporary parent directory.
 

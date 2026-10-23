@@ -44,6 +44,11 @@ func (s *Server) trackMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {
+	release, ok := s.beginCollectionRead(w, r.Context())
+	if !ok {
+		return
+	}
+	defer release()
 	// Cross-origin media in no-cors mode omits Origin. Require CORS mode so the
 	// server's exact browser-origin allowlist also protects audio element loads.
 	if r.Header.Get("Sec-Fetch-Dest") == "audio" && r.Header.Get("Sec-Fetch-Site") != "same-origin" && r.Header.Get("Origin") == "" {
@@ -86,5 +91,6 @@ func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 	// Private clients may reuse audio-derived waveforms after checking the file validators.
 	w.Header().Set("Cache-Control", audioCacheControl)
+	release()
 	http.ServeContent(w, r, info.Name(), info.ModTime(), file)
 }

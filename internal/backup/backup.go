@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
@@ -190,92 +189,6 @@ func AutoBackupIfNeeded(ctx context.Context, engineLibDir string, noBackup bool)
 		progress.Stage(ctx, "backup.saved", 10)
 	}
 	return info, err
-}
-
-// RestoreBackup restores databases and artwork from a backup directory into the Engine Library directory.
-func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
-	progress.Stage(ctx, "restore", 10)
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if backupDir == "" {
-		return fmt.Errorf("empty backup directory")
-	}
-	if engineLibDir == "" {
-		return fmt.Errorf("empty engine library directory")
-	}
-
-	if _, err := os.Stat(backupDir); err != nil {
-		return fmt.Errorf("stat backup dir %s: %w", backupDir, err)
-	}
-	if _, err := os.Stat(engineLibDir); err != nil {
-		return fmt.Errorf("stat engine library %s: %w", engineLibDir, err)
-	}
-
-	db2Src := filepath.Join(backupDir, "Database2")
-	db2Dest := filepath.Join(engineLibDir, "Database2")
-	_ = os.MkdirAll(db2Dest, 0755)
-
-	// Restore Database2/*.db
-	if entries, err := os.ReadDir(db2Src); err == nil {
-		for _, e := range entries {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".db") {
-				src := filepath.Join(db2Src, e.Name())
-				dst := filepath.Join(db2Dest, e.Name())
-				if _, errCopy := copyFile(src, dst); errCopy != nil {
-					return fmt.Errorf("restoring %s: %w", src, errCopy)
-				}
-			}
-		}
-	}
-
-	// Restore Root/*.db
-	progress.Stage(ctx, "restore.root", 50)
-	rootSrc := filepath.Join(backupDir, "Root")
-	if entries, err := os.ReadDir(rootSrc); err == nil {
-		for _, e := range entries {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".db") {
-				src := filepath.Join(rootSrc, e.Name())
-				dst := filepath.Join(engineLibDir, e.Name())
-				if _, errCopy := copyFile(src, dst); errCopy != nil {
-					return fmt.Errorf("restoring %s: %w", src, errCopy)
-				}
-			}
-		}
-	}
-
-	// Restore Artwork/
-	progress.Stage(ctx, "restore.artwork", 75)
-	artSrc := filepath.Join(backupDir, "Artwork")
-	if stat, err := os.Stat(artSrc); err == nil && stat.IsDir() {
-		artDest := filepath.Join(engineLibDir, "Artwork")
-		_ = os.MkdirAll(artDest, 0755)
-		if entries, err := os.ReadDir(artSrc); err == nil {
-			for _, e := range entries {
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-				if !e.IsDir() {
-					src := filepath.Join(artSrc, e.Name())
-					dst := filepath.Join(artDest, e.Name())
-					if err := history.Preserve(ctx, dst); err != nil {
-						return err
-					}
-					if _, err := copyFile(src, dst); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}
-
-	return nil
 }
 
 // ListBackups scans a directory for created backup snapshots.
