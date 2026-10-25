@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-23 15:16
+last_modified: 2026-10-25 08:41
 status: current
 ---
 
@@ -9,6 +9,7 @@ status: current
 Go CLI utility for managing, verifying, backing up, synchronizing, and repairing Engine DJ collection databases (`m.db`), playlist hierarchies, and album artwork caches.
 
 ## Commands
+- **Architecture:** [diagram index](docs/internal/architecture/index.md); `just architecture` regenerates the diagrams with `ARCHIFY_CLI` pointing to Archify 3.2.0's `bin/archify.mjs`. `just architecture-serve` serves the index through devhost at `https://engine-cli-archify.localhost`; `ENGINE_DEV_HOST_SUFFIX` overrides the hostname suffix.
 - **Build Local Binary:** `just build` (compiles to `bin/engine-cli`)
 - **Run CLI with Arguments:** `just run [args...]`
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
@@ -62,6 +63,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Temporary Files:** Production code uses the OS temporary directory for disposable workspaces, never project `.tmp/`. Agent development artifacts may use project `.tmp/`. Atomic publication staging stays beside its destination to support same-filesystem rename.
 
 ## Conventions
+- **Architecture Documentation:** Keep diagram JSON specifications and generated HTML together in `docs/internal/architecture/`, linked from its `index.md`. Review relevant CLI/API, scheduling, mutation safeguards, and persistence changes against the diagrams. Pin source evidence to inspected committed revisions and regenerate affected diagrams with Archify's complete validation and browser gates. Keep the regeneration recipe current. Serve delivery artifacts through devhost and verify their exact URLs before reporting completion; `.archify/` and browser receipts are local scratch output. Never record private deployment hostnames in tracked files.
 - **LLM Integration:** Use the managed `agent-ask-cli` executable (minimum 1.0.0) with its native harness request interface and existing Claude Code or Codex authentication. Align cleanup CLI/API options with agent-ask-cli; do not introduce provider API keys or compatibility adapters.
 - **LLM Metadata Suggestions:** Accept explicit track or playlist identifiers through shared CLI/API behavior. Send selected metadata with a cleanup prompt to the LLM and return identifiable title/artist suggestions for user review. Generating suggestions is read-only; never apply suggestions automatically. Emit each validated batch immediately through CLI output and API result events; retain completed suggestions in job status and returned reports when later work fails or is cancelled. Never discard completed batches.
 - **UI-Driven Contracts:** UI workflows drive HTTP API design and associated CLI output. Extend or reshape shared results when the UI needs richer data rather than constraining the UI to an existing response shape. Keep CLI and HTTP results aligned, preserve stable entity identity, and retain snapshot/undo guarantees for mutations.

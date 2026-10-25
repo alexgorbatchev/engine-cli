@@ -1,0 +1,281 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Ordinary API collection write",
+    "locale": "en",
+    "output": "docs/internal/architecture/collection-write.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:alexgorbatchev/engine-cli.git",
+      "revision": "b85be4d87dc1045eca6133f6868e0b13f7bceb62",
+      "link_mode": "local-only"
+    }
+  },
+  "lanes": [
+    {
+      "id": "execution",
+      "label": "Operation execution"
+    },
+    {
+      "id": "errors",
+      "label": "Failure outcomes",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "bind",
+    "schedule",
+    "desktop",
+    "backup",
+    "journal",
+    "complete"
+  ],
+  "nodes": [
+    {
+      "id": "bind",
+      "lane": "execution",
+      "col": 0,
+      "type": "backend",
+      "label": "Bind request",
+      "sublabel": "validate + classify",
+      "sources": [
+        {
+          "path": "internal/api/operations.go",
+          "line": 83,
+          "end_line": 148
+        },
+        {
+          "path": "internal/api/run.go",
+          "line": 11,
+          "end_line": 25
+        }
+      ]
+    },
+    {
+      "id": "schedule",
+      "lane": "execution",
+      "col": 1,
+      "type": "backend",
+      "label": "Acquire access",
+      "sublabel": "write gate + exclusive",
+      "sources": [
+        {
+          "path": "internal/api/scheduling.go",
+          "line": 9,
+          "end_line": 41
+        }
+      ]
+    },
+    {
+      "id": "desktop",
+      "lane": "execution",
+      "col": 2,
+      "type": "security",
+      "label": "Check Desktop",
+      "sublabel": "fresh process status",
+      "sources": [
+        {
+          "path": "internal/api/operations.go",
+          "line": 194,
+          "end_line": 202
+        }
+      ]
+    },
+    {
+      "id": "backup",
+      "lane": "execution",
+      "col": 3,
+      "type": "database",
+      "label": "Safety backup",
+      "sublabel": "unless disabled",
+      "sources": [
+        {
+          "path": "internal/api/operations.go",
+          "line": 212,
+          "end_line": 218
+        },
+        {
+          "path": "internal/backup/backup.go",
+          "line": 160,
+          "end_line": 190
+        }
+      ]
+    },
+    {
+      "id": "journal",
+      "lane": "execution",
+      "col": 4,
+      "type": "backend",
+      "label": "Journal + run",
+      "sublabel": "capture before / after",
+      "sources": [
+        {
+          "path": "internal/api/operations.go",
+          "line": 219,
+          "end_line": 232
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 160,
+          "end_line": 191
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 194,
+          "end_line": 248
+        }
+      ]
+    },
+    {
+      "id": "complete",
+      "lane": "execution",
+      "col": 5,
+      "type": "frontend",
+      "label": "Return result",
+      "sublabel": "release access",
+      "sources": [
+        {
+          "path": "internal/api/jobs.go",
+          "line": 147,
+          "end_line": 178
+        },
+        {
+          "path": "internal/api/run.go",
+          "line": 20,
+          "end_line": 25
+        }
+      ]
+    },
+    {
+      "id": "blocked",
+      "lane": "errors",
+      "col": 2,
+      "type": "security",
+      "label": "Refuse write",
+      "sublabel": "running / unknown",
+      "sources": [
+        {
+          "path": "internal/api/operations.go",
+          "line": 194,
+          "end_line": 201
+        },
+        {
+          "path": "internal/systemcheck/check.go",
+          "line": 84,
+          "end_line": 97
+        }
+      ]
+    },
+    {
+      "id": "failed",
+      "lane": "errors",
+      "col": 4,
+      "type": "backend",
+      "label": "Report failure",
+      "sublabel": "retain recovery state",
+      "sources": [
+        {
+          "path": "internal/history/history.go",
+          "line": 221,
+          "end_line": 248
+        },
+        {
+          "path": "internal/api/jobs.go",
+          "line": 164,
+          "end_line": 178
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "bind-schedule",
+      "from": "bind",
+      "to": "schedule",
+      "label": "valid",
+      "variant": "emphasis"
+    },
+    {
+      "id": "schedule-desktop",
+      "from": "schedule",
+      "to": "desktop",
+      "label": "access",
+      "variant": "emphasis"
+    },
+    {
+      "id": "desktop-backup",
+      "from": "desktop",
+      "to": "backup",
+      "label": "allowed",
+      "variant": "emphasis"
+    },
+    {
+      "id": "backup-journal",
+      "from": "backup",
+      "to": "journal",
+      "label": "ready",
+      "variant": "emphasis"
+    },
+    {
+      "id": "journal-complete",
+      "from": "journal",
+      "to": "complete",
+      "label": "success",
+      "variant": "emphasis"
+    },
+    {
+      "id": "desktop-blocked",
+      "from": "desktop",
+      "to": "blocked",
+      "label": "unsafe",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "backup-failed",
+      "from": "backup",
+      "to": "failed",
+      "label": "backup error",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "journal-failed",
+      "from": "journal",
+      "to": "failed",
+      "label": "run / capture error",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Exact scope",
+      "items": [
+        "This is the non-preview, ordinary collection-effect branch of API execute, also used by API-backed CLI commands.",
+        "Read-only and dry-run requests skip these mutation steps. Staging and non-collection filesystem writes use file-only history; unresolved filesystem effects reserve exclusive access before classification.",
+        "Creation has no existing databases to back up. Sync and undo manage their own history paths. Those specialized flows are outside this drawing."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Recovery semantics",
+      "items": [
+        "Desktop running or an unknown check result stops execution before backups or history writes. Linux reports the supported negative process result without scanning.",
+        "The backup path uses SQLite online backup to include committed WAL pages and publishes only after all copies succeed.",
+        "History locks the library, removes only unreferenced storage, captures before state, runs the mutation, then captures actual after state even after cancellation or failure.",
+        "If after capture fails, the pending entry and originals remain for recovery. Failed mutations retain undo records; failures confined to declared acquisition workspaces discard their history entry."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Undo is a separate operation",
+      "items": [
+        "A completed history entry records changed entities and reversible file moves. Database-only changes do not back up unrelated audio or artwork.",
+        "Undo checks for conflicting later edits and refuses by default. An explicit force override permits conflict recovery; dry-run previews remain read-only."
+      ]
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 set dotenv-load := false
 
+export ENGINE_DEV_HOST_SUFFIX := env("ENGINE_DEV_HOST_SUFFIX", ".localhost")
+
 # Default recipe: list available recipes
 default:
     @just --list
@@ -51,3 +53,21 @@ clean:
 setup:
     go mod download
     git config core.hooksPath .githooks
+
+# Regenerate architecture diagrams with Archify 3.2.0
+architecture:
+    #!/bin/sh
+    set -eu
+    : "${ARCHIFY_CLI:?Set ARCHIFY_CLI to Archify 3.2.0 bin/archify.mjs}"
+    mkdir -p .tmp/architecture-review
+    review_dir=$(mktemp -d .tmp/architecture-review/run.XXXXXX)
+    for candidate in docs/internal/architecture/*.json; do
+        case "$candidate" in *.delivery*.json) continue ;; esac
+        kind=$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).diagram_type)' "$candidate")
+        name=$(basename "$candidate" .json)
+        node "$ARCHIFY_CLI" finalize "$kind" "$candidate" "${candidate%.json}.html" --repo-root . --quality showcase --out-dir "$review_dir/$name" --json
+    done
+
+# Serve the architecture index and diagrams over local HTTPS (Ctrl-C stops serving)
+architecture-serve:
+    devhost serve --dir docs/internal/architecture --domain "engine-cli-archify${ENGINE_DEV_HOST_SUFFIX}"

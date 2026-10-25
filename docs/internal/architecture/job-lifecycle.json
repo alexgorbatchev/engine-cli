@@ -1,0 +1,172 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "HTTP job lifecycle",
+    "locale": "en",
+    "output": "docs/internal/architecture/job-lifecycle.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:alexgorbatchev/engine-cli.git",
+      "revision": "b85be4d87dc1045eca6133f6868e0b13f7bceb62",
+      "link_mode": "local-only"
+    }
+  },
+  "mainPath": [
+    "queued",
+    "running",
+    "succeeded"
+  ],
+  "states": [
+    {
+      "id": "queued",
+      "type": "start",
+      "label": "Queued",
+      "sublabel": "wait for access",
+      "sources": [
+        {
+          "path": "internal/api/jobs.go",
+          "line": 78,
+          "end_line": 120
+        },
+        {
+          "path": "internal/api/jobs.go",
+          "line": 147,
+          "end_line": 162
+        },
+        {
+          "path": "internal/api/scheduling.go",
+          "line": 9,
+          "end_line": 41
+        }
+      ]
+    },
+    {
+      "id": "running",
+      "type": "active",
+      "label": "Running",
+      "sublabel": "execute operation",
+      "sources": [
+        {
+          "path": "internal/api/jobs.go",
+          "line": 147,
+          "end_line": 178
+        },
+        {
+          "path": "internal/api/operations.go",
+          "line": 175,
+          "end_line": 243
+        }
+      ]
+    },
+    {
+      "id": "succeeded",
+      "type": "success",
+      "label": "Succeeded",
+      "sublabel": "result + history ID",
+      "sources": [
+        {
+          "path": "internal/api/jobs.go",
+          "line": 164,
+          "end_line": 178
+        }
+      ]
+    },
+    {
+      "id": "failed",
+      "type": "failure",
+      "label": "Failed",
+      "sublabel": "structured error",
+      "sources": [
+        {
+          "path": "internal/api/jobs.go",
+          "line": 164,
+          "end_line": 178
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "neutral",
+      "label": "Cancelled",
+      "sublabel": "context cancelled",
+      "sources": [
+        {
+          "path": "internal/api/jobs.go",
+          "line": 150,
+          "end_line": 178
+        },
+        {
+          "path": "internal/api/jobs.go",
+          "line": 196,
+          "end_line": 209
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "queued-running",
+      "from": "queued",
+      "to": "running",
+      "label": "access acquired"
+    },
+    {
+      "id": "running-succeeded",
+      "from": "running",
+      "to": "succeeded",
+      "label": "no error",
+      "variant": "emphasis"
+    },
+    {
+      "id": "running-failed",
+      "from": "running",
+      "to": "failed",
+      "label": "operation error",
+      "variant": "security"
+    },
+    {
+      "id": "queued-cancelled",
+      "from": "queued",
+      "to": "cancelled",
+      "label": "cancel while waiting",
+      "variant": "dashed"
+    },
+    {
+      "id": "running-cancelled",
+      "from": "running",
+      "to": "cancelled",
+      "label": "error + cancellation",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Admission and scheduling",
+      "items": [
+        "Invalid requests are rejected before a job exists. Valid submissions return HTTP 202 with a queued job and Location header.",
+        "All opened libraries share the server's write gate and collection semaphore. Queued writers cannot be starved by newly arriving collection readers.",
+        "Read jobs may overlap each other and staging or tool writes. Backup, export, and auto_install requests also take the write gate."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Cancellation is cooperative",
+      "items": [
+        "POST /v1/jobs/{id}/cancel cancels the job context and returns HTTP 202 with its current state; it does not immediately set cancelled.",
+        "A running operation that returns no error still succeeds even if cancellation raced with completion. An error with a cancelled context produces cancelled.",
+        "The scheduler observes cancellation while waiting. Shutdown cancels jobs and waits for workers. Retrying creates a new job; terminal jobs never return to queued."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Observation and retained results",
+      "items": [
+        "Status and SSE remain available while collection access is blocked. Last-Event-ID resumes retained events; an expired cursor requires status refresh and a fresh stream.",
+        "Terminal status, result, history ID, and terminal event are published together under the server mutex. Validated suggestion batches update retained results before terminal completion.",
+        "The server retains at most 128 jobs and 1024 events per job. When capacity is reached, admission evicts an older terminal job or refuses the request; restarting the server loses job state."
+      ]
+    }
+  ]
+}

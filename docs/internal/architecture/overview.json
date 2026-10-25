@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Engine CLI: collection management",
+    "locale": "en",
+    "output": "docs/internal/architecture/overview.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:alexgorbatchev/engine-cli.git",
+      "revision": "b85be4d87dc1045eca6133f6868e0b13f7bceb62",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "Cobra CLI",
+      "sublabel": "library / playlist / track",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        180,
+        70
+      ],
+      "sources": [
+        {
+          "path": "cmd/engine-cli/root.go",
+          "line": 24,
+          "end_line": 59
+        },
+        {
+          "path": "cmd/engine-cli/acquisition.go",
+          "line": 177,
+          "end_line": 213
+        },
+        {
+          "path": "cmd/engine-cli/history.go",
+          "line": 14,
+          "end_line": 44
+        }
+      ]
+    },
+    {
+      "id": "http",
+      "type": "frontend",
+      "label": "Loopback HTTP",
+      "sublabel": "jobs / status / SSE",
+      "pos": [
+        40,
+        270
+      ],
+      "size": [
+        180,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/api/server.go",
+          "line": 113,
+          "end_line": 133
+        },
+        {
+          "path": "internal/api/server.go",
+          "line": 145,
+          "end_line": 177
+        },
+        {
+          "path": "internal/api/jobs.go",
+          "line": 48,
+          "end_line": 75
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "Operation runtime",
+      "sublabel": "bind / schedule / guard",
+      "pos": [
+        400,
+        270
+      ],
+      "size": [
+        190,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/api/run.go",
+          "line": 9,
+          "end_line": 25
+        },
+        {
+          "path": "internal/api/scheduling.go",
+          "line": 9,
+          "end_line": 41
+        },
+        {
+          "path": "internal/api/operations.go",
+          "line": 175,
+          "end_line": 243
+        }
+      ]
+    },
+    {
+      "id": "services",
+      "type": "backend",
+      "label": "Collection services",
+      "sublabel": "metadata / playlists / media",
+      "pos": [
+        810,
+        270
+      ],
+      "size": [
+        190,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/api/playlist.go",
+          "line": 39,
+          "end_line": 69
+        },
+        {
+          "path": "internal/api/track.go",
+          "line": 66,
+          "end_line": 133
+        },
+        {
+          "path": "internal/api/acquisition.go",
+          "line": 111,
+          "end_line": 160
+        }
+      ]
+    },
+    {
+      "id": "library",
+      "type": "database",
+      "label": "Engine library",
+      "sublabel": "SQLite / audio / artwork",
+      "pos": [
+        1130,
+        270
+      ],
+      "size": [
+        180,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/api/operations.go",
+          "line": 151,
+          "end_line": 172
+        },
+        {
+          "path": "internal/api/track.go",
+          "line": 89,
+          "end_line": 133
+        },
+        {
+          "path": "internal/db/db.go",
+          "line": 19,
+          "end_line": 55
+        }
+      ]
+    },
+    {
+      "id": "recovery",
+      "type": "database",
+      "label": "Portable recovery",
+      "sublabel": ".engine-cli/backups + history",
+      "pos": [
+        400,
+        510
+      ],
+      "size": [
+        210,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/backup/backup.go",
+          "line": 26,
+          "end_line": 40
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 53,
+          "end_line": 68
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 194,
+          "end_line": 248
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "external",
+      "label": "Managed tools",
+      "sublabel": "fetch / tag / agent-ask",
+      "pos": [
+        810,
+        510
+      ],
+      "size": [
+        190,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/acquire/requirements.go",
+          "line": 11,
+          "end_line": 53
+        },
+        {
+          "path": "internal/acquire/requirements.go",
+          "line": 75,
+          "end_line": 96
+        },
+        {
+          "path": "internal/acquire/client.go",
+          "line": 134,
+          "end_line": 195
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "cli-runtime",
+      "from": "cli",
+      "to": "runtime",
+      "label": "API-backed",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cli-services",
+      "from": "cli",
+      "to": "services",
+      "label": "CLI wrappers"
+    },
+    {
+      "id": "http-runtime",
+      "from": "http",
+      "to": "runtime",
+      "label": "jobs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "runtime-services",
+      "from": "runtime",
+      "to": "services",
+      "label": "execute",
+      "variant": "emphasis"
+    },
+    {
+      "id": "services-library",
+      "from": "services",
+      "to": "library",
+      "label": "read / write",
+      "variant": "emphasis"
+    },
+    {
+      "id": "runtime-recovery",
+      "from": "runtime",
+      "to": "recovery",
+      "label": "snapshot + journal"
+    },
+    {
+      "id": "services-tools",
+      "from": "services",
+      "to": "tools",
+      "label": "selected operations"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Two CLI paths",
+      "items": [
+        "API-backed commands call RunOperation synchronously; HTTP submissions create asynchronous jobs. Both acquire the operation scheduler.",
+        "Other CLI commands call domain packages directly. CLI mutation hooks provide their own Desktop checks, snapshots, and undo wrappers; they do not run as HTTP jobs."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Collection safety",
+      "items": [
+        "The API runtime classifies bound effects before execution. It serializes writes and excludes collection readers for collection or unresolved filesystem effects.",
+        "A fresh Desktop check precedes non-preview collection writes. Ordinary writes create a safety backup unless disabled, then record before/after history. Sync, creation, and undo own specialized paths."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Persistence and tools",
+      "items": [
+        "The library node groups Engine SQLite databases with operation-selected audio and artwork files. Database access uses a five-second busy timeout on each pooled connection.",
+        "Only affected files are preserved for undo. Failed acquisition workspaces remain retryable when they are the only changes.",
+        "godeps manages tool versions and optional installation. Fetch, tagging, and metadata suggestions invoke managed executables; this diagram does not imply every operation invokes a tool."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Overview scope",
+      "items": [
+        "Components group cooperating packages rather than enumerate every Go package. Identity, sync baselines, fingerprints, and staging accompany their owning library operations.",
+        "Library preferences use a separate SQLite state store. HTTP job state and retained SSE events are bounded in-memory data, not a durable job queue."
+      ]
+    }
+  ]
+}

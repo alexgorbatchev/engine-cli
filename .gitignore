@@ -18,3 +18,5 @@ coverage.html
 Thumbs.db
 /.codegraph
 /.workspaces/
+/.archify/
+docs/internal/architecture/**/*.delivery*.json
