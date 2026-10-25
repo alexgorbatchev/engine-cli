@@ -2,6 +2,7 @@ package transfer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -160,7 +161,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	p := &plan{source: s, destination: d, selected: selected, desired: map[string]*entity{}, remove: map[string]bool{}, copy: map[string]string{}, baseline: map[string]baseline{}, report: &Report{Applicable: true, Changes: []Change{}, Conflicts: []Change{}, Warnings: []string{}}}
 	for key := range selected {
 		if s.Entities[key] == nil {
-			p.conflict(Change{Entity: "track", ID: key, Reason: "selected playlist references a missing source track"})
+			p.conflict(Change{Entity: "track", ID: key}, "sync_source_track_missing", "selected playlist references a missing source track")
 		}
 	}
 	for k, b := range d.State.peer(s) {
@@ -243,8 +244,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 				conflict = true
 			}
 			if conflict && o.Conflict == "error" {
-				change.Reason = "source and destination differ without an uncontested baseline"
-				p.conflict(change)
+				p.conflict(change, "sync_diverged", "source and destination differ without an uncontested baseline")
 				continue
 			}
 			if (conflict && o.Conflict == "destination") || (!conflict && known && sf == b.Source && df != b.Destination) {
@@ -254,13 +254,11 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 		}
 		if src.Kind == "track" {
 			if src.Hash == "" {
-				change.Reason = "source audio is missing"
-				p.conflict(change)
+				p.conflict(change, "sync_source_audio_missing", "source audio is missing")
 				continue
 			}
 			if o.Media == "none" && (dst == nil || dst.Hash == "" || src.Hash != dst.Hash) {
-				change.Reason = "media=none requires matching destination audio"
-				p.conflict(change)
+				p.conflict(change, "sync_destination_audio_required", "media=none requires matching destination audio")
 				continue
 			}
 			if dst == nil || dst.Hash != src.Hash {
@@ -270,19 +268,16 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 					target = dst.File
 				}
 				if !within(d.Path, target) {
-					change.Reason = "destination audio lies outside the destination library"
-					p.conflict(change)
+					p.conflict(change, "sync_destination_outside_library", "destination audio lies outside the destination library")
 					continue
 				}
 				if err := safeDestination(d.Path, target); err != nil {
-					change.Reason = err.Error()
-					p.conflict(change)
+					p.conflict(change, destinationCode(err), err.Error())
 					continue
 				}
 				if dst == nil {
 					if _, err := os.Lstat(target); err == nil {
-						change.Reason = "destination media path already exists without a matching track"
-						p.conflict(change)
+						p.conflict(change, "sync_destination_path_taken", "destination media path already exists without a matching track")
 						continue
 					} else if !os.IsNotExist(err) {
 						return nil, err
@@ -310,7 +305,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	for _, e := range p.desired {
 		for _, key := range e.Members {
 			if s.Entities[key] == nil && d.Entities[key] == nil {
-				p.conflict(Change{Entity: e.Kind, ID: e.Key, SourceID: e.ID, Reason: "playlist contains an unresolved track reference: " + key})
+				p.conflict(Change{Entity: e.Kind, ID: e.Key, SourceID: e.ID}, "sync_playlist_track_unresolved", "playlist contains an unresolved track reference: "+key)
 			}
 		}
 	}
@@ -324,7 +319,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 		}
 		for dk, de := range d.Entities {
 			if dk != key && !p.remove[dk] && de.Kind == "playlist" && de.Parent == e.Parent && str(de.Values["title"]) == str(e.Values["title"]) {
-				p.conflict(Change{Entity: "playlist", ID: key, SourceID: e.ID, DestinationID: de.ID, Reason: "unmapped destination playlist has the same sibling title; explicit identity mapping is required"})
+				p.conflict(Change{Entity: "playlist", ID: key, SourceID: e.ID, DestinationID: de.ID}, "sync_playlist_title_conflict", "unmapped destination playlist has the same sibling title; explicit identity mapping is required")
 			}
 		}
 	}
@@ -351,8 +346,12 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
 	return p, nil
 }
-func (p *plan) conflict(c Change) {
+
+// conflict records why an entity cannot sync: a stable code for API clients and a reason for CLI readers.
+func (p *plan) conflict(c Change, code, reason string) {
 	c.Action = "conflict"
+	c.Code = code
+	c.Reason = reason
 	p.report.Conflicts = append(p.report.Conflicts, c)
 }
 func (p *plan) count(c Change) {
@@ -424,8 +423,7 @@ func (p *plan) planRemovals(o Options) {
 		change := Change{Entity: e.Kind, ID: k, Action: "remove", DestinationID: e.ID, Label: str(e.Values["title"])}
 		if e.Kind == "track" && e.Hash != "" {
 			if err := safeDestination(p.destination.Path, e.File); err != nil {
-				change.Reason = err.Error()
-				p.conflict(change)
+				p.conflict(change, destinationCode(err), err.Error())
 				continue
 			}
 			shared := false
@@ -443,15 +441,13 @@ func (p *plan) planRemovals(o Options) {
 				}
 			}
 			if shared {
-				change.Reason = "destination audio is also referenced by the source library"
-				p.conflict(change)
+				p.conflict(change, "sync_destination_audio_shared", "destination audio is also referenced by the source library")
 				continue
 			}
 		}
 		if b, ok := p.baseline[k]; ok && fingerprint(e) != b.Destination {
 			if o.Conflict == "error" {
-				change.Reason = "destination changed since the last sync"
-				p.conflict(change)
+				p.conflict(change, "sync_destination_changed", "destination changed since the last sync")
 				continue
 			}
 			if o.Conflict == "destination" {
@@ -468,23 +464,42 @@ func (p *plan) planRemovals(o Options) {
 	}
 	sort.Slice(p.report.Changes, func(i, j int) bool { return p.report.Changes[i].ID < p.report.Changes[j].ID })
 }
+
+// unsafeDestinationError explains why a media destination is refused, with a stable code for API clients.
+type unsafeDestinationError struct {
+	code string
+	err  error
+}
+
+func (e *unsafeDestinationError) Error() string { return e.err.Error() }
+func (e *unsafeDestinationError) Unwrap() error { return e.err }
+
+// destinationCode identifies a refused destination; any other failure means its path could not be inspected.
+func destinationCode(err error) string {
+	var unsafe *unsafeDestinationError
+	if errors.As(err, &unsafe) {
+		return unsafe.code
+	}
+	return "sync_destination_unreadable"
+}
+
 func safeDestination(base, path string) error {
 	if within(filepath.Join(base, ".engine-cli"), path) || within(filepath.Join(base, "Database2"), path) {
-		return fmt.Errorf("audio destination overlaps library management files")
+		return &unsafeDestinationError{"sync_destination_reserved", fmt.Errorf("audio destination overlaps library management files")}
 	}
 	for p := path; p != base; p = filepath.Dir(p) {
 		if !within(base, p) {
-			return fmt.Errorf("destination escapes library")
+			return &unsafeDestinationError{"sync_destination_escapes", fmt.Errorf("destination escapes library")}
 		}
 		info, err := os.Lstat(p)
 		if os.IsNotExist(err) {
 			continue
 		}
 		if err != nil {
-			return err
+			return &unsafeDestinationError{"sync_destination_unreadable", err}
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("destination traverses a symbolic link")
+			return &unsafeDestinationError{"sync_destination_symlink", fmt.Errorf("destination traverses a symbolic link")}
 		}
 	}
 	return nil

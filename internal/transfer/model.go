@@ -61,7 +61,9 @@ type Change struct {
 	SourceID      int64  `json:"source_id,omitempty"`
 	DestinationID int64  `json:"destination_id,omitempty"`
 	Label         string `json:"label,omitempty"`
-	Reason        string `json:"reason,omitempty"`
+	// Code is a stable identifier for Reason, so clients can explain a change without parsing its text.
+	Code   string `json:"code,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 type Report struct {
 	Applicable   bool         `json:"applicable"`

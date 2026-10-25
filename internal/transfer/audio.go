@@ -49,7 +49,7 @@ func (p *plan) matchAudio(ctx context.Context) error {
 					return err
 				}
 				if !ok {
-					p.conflict(Change{Entity: "track", ID: sk, SourceID: s.ID, DestinationID: d.ID, Reason: "linked audio changed or lacks current fingerprints; scan and resolve before syncing"})
+					p.conflict(Change{Entity: "track", ID: sk, SourceID: s.ID, DestinationID: d.ID}, "sync_audio_unverified", "linked audio changed or lacks current fingerprints; scan and resolve before syncing")
 				} else {
 					m.Reused = true
 					p.reused[sk] = true
@@ -81,12 +81,12 @@ func (p *plan) matchAudio(ctx context.Context) error {
 	for _, link := range links {
 		m := link.match
 		if sourceCount[link.source] != 1 || destCount[link.destination] != 1 || (p.selected[link.destination] && p.source.Entities[link.destination] != nil) {
-			p.conflict(Change{Entity: "track", ID: link.source, SourceID: m.SourceID, DestinationID: m.DestinationID, Reason: "multiple audio matches; resolve duplicate candidates before syncing"})
+			p.conflict(Change{Entity: "track", ID: link.source, SourceID: m.SourceID, DestinationID: m.DestinationID}, "sync_audio_ambiguous", "multiple audio matches; resolve duplicate candidates before syncing")
 		} else {
 			p.remapAudio(link.destination, link.source)
 			m.Reused = true
 			p.reused[link.source] = true
-			p.report.Changes = append(p.report.Changes, Change{Entity: "track", ID: link.source, Action: "reuse", SourceID: m.SourceID, DestinationID: m.DestinationID, Reason: "reuse destination audio, metadata, cues and grid"})
+			p.report.Changes = append(p.report.Changes, Change{Entity: "track", ID: link.source, Action: "reuse", SourceID: m.SourceID, DestinationID: m.DestinationID, Code: "sync_audio_reused", Reason: "reuse destination audio, metadata, cues and grid"})
 		}
 		p.report.AudioMatches = append(p.report.AudioMatches, m)
 	}

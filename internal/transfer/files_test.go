@@ -2,6 +2,7 @@ package transfer
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,11 +70,20 @@ func TestStreamAndFilesystemErrors(t *testing.T) {
 	if _, err = availableSpace(filepath.Join(dir, "missing")); err == nil {
 		t.Fatal("accepted missing volume")
 	}
-	if err = safeDestination(dir, filepath.Join(dir, "..", "outside")); err == nil {
-		t.Fatal("accepted external target")
+	if err = safeDestination(dir, filepath.Join(dir, "..", "outside")); destinationCode(err) != "sync_destination_escapes" {
+		t.Fatalf("accepted external target: %v", err)
 	}
-	if err = safeDestination(dir, filepath.Join(dir, "Database2", "m.db")); err == nil {
-		t.Fatal("accepted database as media")
+	if err = safeDestination(dir, filepath.Join(dir, "Database2", "m.db")); destinationCode(err) != "sync_destination_reserved" {
+		t.Fatalf("accepted database as media: %v", err)
+	}
+	if err = os.Symlink(t.TempDir(), filepath.Join(dir, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	if err = safeDestination(dir, filepath.Join(dir, "linked", "song.mp3")); destinationCode(err) != "sync_destination_symlink" {
+		t.Fatalf("accepted symbolic link: %v", err)
+	}
+	if code := destinationCode(errors.New("lstat failed")); code != "sync_destination_unreadable" {
+		t.Fatalf("uninspectable destination code: %s", code)
 	}
 	if err = writeState(file, state{}); err == nil {
 		t.Fatal("published state below a file")

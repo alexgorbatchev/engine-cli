@@ -42,6 +42,10 @@ func TestSyncConflictReverseAndStalePreview(t *testing.T) {
 	if err != nil || r.Applicable || len(r.Conflicts) == 0 {
 		t.Fatalf("conflict: %+v %v", r, err)
 	}
+	// Clients explain conflicts by code; the reason stays readable for the CLI.
+	if r.Conflicts[0].Code != "sync_diverged" || r.Conflicts[0].Reason == "" {
+		t.Fatalf("conflict code: %+v", r.Conflicts[0])
+	}
 	o.Conflict = "source"
 	r, err = Run(context.Background(), o)
 	if err != nil || !r.Applicable {

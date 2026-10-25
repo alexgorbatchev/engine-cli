@@ -35,7 +35,7 @@ func (p *plan) checkSpace() error {
 	p.report.Summary.BytesRequiredEstimate = required
 	p.report.Summary.BytesAvailable = available
 	if uint64(required) > available {
-		p.conflict(Change{Entity: "library", Action: "conflict", Reason: fmt.Sprintf("destination needs approximately %d free bytes; %d available", required, available)})
+		p.conflict(Change{Entity: "library"}, "sync_insufficient_space", fmt.Sprintf("destination needs approximately %d free bytes; %d available", required, available))
 	}
 	return nil
 }
