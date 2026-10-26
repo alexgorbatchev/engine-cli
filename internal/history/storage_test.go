@@ -101,7 +101,10 @@ func TestHistoryStorageFailures(t *testing.T) {
 		name string
 		run  func() error
 	}{
-		{"capture destination", func() error { _, err := capture(ctx, lib, ScopeCollection, file, filepath.Join(dir, "objects"), nil); return err }},
+		{"capture destination", func() error {
+			_, err := capture(ctx, lib, ScopeCollection, file, filepath.Join(dir, "objects"), nil)
+			return err
+		}},
 		{"capture invalid library", func() error {
 			_, err := capture(ctx, file, ScopeCollection, filepath.Join(dir, "bad"), filepath.Join(dir, "objects"), nil)
 			return err
