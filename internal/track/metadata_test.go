@@ -3,6 +3,8 @@ package track
 import (
 	"context"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
 )
 
 func TestEditMetadata(t *testing.T) {
@@ -22,7 +24,7 @@ func TestEditMetadata(t *testing.T) {
 	if tr, err = EditMetadata(context.Background(), d, MetadataEdit{Identifier: "1", Key: new(int64(0))}); err != nil || !tr.Key.Valid || tr.Key.Int64 != 0 {
 		t.Fatalf("%+v %v", tr, err)
 	}
-	tr, err = EditMetadata(context.Background(), d, MetadataEdit{Identifier: "1", Artist: new(""), Year: new(int64(0)), RatingStars: new(int64(0)), Key: new(int64(NoKey))})
+	tr, err = EditMetadata(context.Background(), d, MetadataEdit{Identifier: "1", Artist: new(""), Year: new(int64(0)), RatingStars: new(int64(0)), Key: new(int64(musicalkey.None))})
 	if err != nil || tr.Artist.String != "" || tr.Year.Int64 != 0 || tr.Rating.Int64 != 0 || tr.Key.Valid || tr.Album.String != "Album" {
 		t.Fatalf("%+v %v", tr, err)
 	}

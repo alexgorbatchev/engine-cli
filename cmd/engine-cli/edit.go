@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
 	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 	"github.com/spf13/cobra"
@@ -30,7 +31,8 @@ func newTrackEditCommand() *cobra.Command {
 	var edit track.MetadataEdit
 	var asJSON bool
 	text := map[string]*string{}
-	var year, stars, key int64
+	var year, stars int64
+	var key string
 	var artworkPath string
 	c := &cobra.Command{Use: "update <tr|id|path>", Short: "Edit track information and star rating", Args: cobra.ExactArgs(1)}
 	for _, name := range []string{"title", "artist", "album", "genre", "comment", "label", "composer", "remixer"} {
@@ -38,7 +40,7 @@ func newTrackEditCommand() *cobra.Command {
 	}
 	c.Flags().Int64Var(&year, "year", 0, "Release year (0 clears the year)")
 	c.Flags().Int64Var(&stars, "rating", 0, "Star rating from 0 (unrated) to 5")
-	c.Flags().Int64Var(&key, "key", 0, "Musical key from 0 (C major, 8B) to 23 (D minor, 7A); -1 clears the key")
+	c.Flags().StringVar(&key, "key", "", "Musical key in Camelot (8A), Open Key (1m), or by name (Am, F#m, Bb); none clears it")
 	c.Flags().BoolVar(&asJSON, "json", false, "Print the updated track as JSON")
 	c.Flags().StringVar(&artworkPath, "artwork", "", "Set cover artwork from a PNG, JPEG, or GIF image")
 	c.Flags().BoolVar(&edit.ClearArtwork, "clear-artwork", false, "Remove the track's artwork association")
@@ -62,7 +64,11 @@ func newTrackEditCommand() *cobra.Command {
 			edit.RatingStars = &stars
 		}
 		if c.Flags().Changed("key") {
-			edit.Key = &key
+			index, err := musicalkey.Parse(key)
+			if err != nil {
+				return err
+			}
+			edit.Key = &index
 		}
 		if err := edit.Validate(); err != nil {
 			return err

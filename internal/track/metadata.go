@@ -12,17 +12,14 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
+	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
 )
 
 const RatingUnitsPerStar = 20
 const MaxRatingStars = 5
 
-// Engine stores a musical key as an index from 0 (C major) to 23 (D minor); NoKey clears it.
-const MaxKey = 23
-const NoKey = -1
-
 // MetadataEdit changes only supplied collection fields, preserving audio and performance data.
-// Empty optional text clears a field; zero clears year or rating and NoKey clears the key. Ratings live in Engine's database.
+// Empty optional text clears a field; zero clears year or rating and musicalkey.None clears the key. Ratings live in Engine's database.
 type MetadataEdit struct {
 	Identifier   string  `json:"identifier"`
 	Title        *string `json:"title"`
@@ -65,7 +62,7 @@ func (e MetadataEdit) fields() ([]string, []any) {
 		values = append(values, *e.RatingStars*RatingUnitsPerStar)
 	}
 	// Only the collection column changes; the analysis key saved in PerformanceData.trackData is preserved.
-	if e.Key != nil && *e.Key == NoKey {
+	if e.Key != nil && *e.Key == musicalkey.None {
 		columns = append(columns, "key = NULL")
 	} else if e.Key != nil {
 		columns = append(columns, "key = ?")
@@ -87,7 +84,7 @@ func (e MetadataEdit) Validate() error {
 	if e.RatingStars != nil && (*e.RatingStars < 0 || *e.RatingStars > MaxRatingStars) {
 		return fmt.Errorf("rating must be between 0 and 5 stars")
 	}
-	if e.Key != nil && (*e.Key < NoKey || *e.Key > MaxKey) {
+	if e.Key != nil && (*e.Key < musicalkey.None || *e.Key > musicalkey.Max) {
 		return fmt.Errorf("key must be between 0 and 23, or -1 to clear it")
 	}
 	columns, _ := e.fields()
