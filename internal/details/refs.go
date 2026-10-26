@@ -50,13 +50,11 @@ func ReadRefs(ctx context.Context, d *sql.DB, kind string, refs []string) (*Repo
 		item := Item{Ref: ref, ID: byRef[ref]}
 		if item.ID == 0 {
 			item.Error = &ItemError{Code: "not_found", Message: "Reference is missing or belongs to a different library."}
-		} else {
-			item.Data, err = readItem(ctx, d, kind, item.ID)
-			if err != nil {
-				return nil, err
-			}
 		}
 		r.Items = append(r.Items, item)
+	}
+	if err := fillItems(ctx, d, kind, r.Items); err != nil {
+		return nil, err
 	}
 	attachRefs(r, kind, entities)
 	return r, nil

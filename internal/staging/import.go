@@ -26,6 +26,8 @@ type ImportOptions struct {
 type Imported struct {
 	ID    string    `json:"id"`
 	Track *db.Track `json:"track"`
+	// playlistIDs is read once for the whole import after every item finishes.
+	playlistIDs []int64
 }
 
 // MarshalJSON shares collection track values across CLI and HTTP results.
@@ -33,7 +35,7 @@ func (i Imported) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		ID    string         `json:"id"`
 		Track map[string]any `json:"track"`
-	}{ID: i.ID, Track: details.Track(i.Track)})
+	}{ID: i.ID, Track: details.Track(i.Track, i.playlistIDs)})
 }
 
 type Failure struct {
@@ -50,7 +52,7 @@ type ImportReport struct {
 
 // Import keeps the acquisition until file installation and playlist assignment
 // both succeed. Callers wrap collection changes in the normal guard/history flow.
-func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*ImportReport, error) {
+func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (report *ImportReport, err error) {
 	if d == nil {
 		return nil, fmt.Errorf("collection database is required")
 	}
@@ -63,7 +65,14 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 	if err != nil {
 		return nil, err
 	}
-	report := &ImportReport{Imported: []Imported{}, Failed: []Failure{}}
+	report = &ImportReport{Imported: []Imported{}, Failed: []Failure{}}
+	// Report completed imports with their playlists even when a later item fails
+	// or the import is cancelled.
+	defer func() {
+		if lookupErr := report.readPlaylistIDs(context.WithoutCancel(ctx), d); lookupErr != nil && err == nil {
+			err = lookupErr
+		}
+	}()
 	for _, item := range selected {
 		if item.Kind == "mix" {
 			continue
@@ -95,6 +104,23 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 		}
 	}
 	return report, nil
+}
+
+func (r *ImportReport) readPlaylistIDs(ctx context.Context, d *sql.DB) error {
+	tracks := make([]*db.Track, len(r.Imported))
+	for i, item := range r.Imported {
+		tracks[i] = item.Track
+	}
+	memberships, err := details.PlaylistIDs(ctx, d, tracks...)
+	if err != nil {
+		return err
+	}
+	for i, item := range r.Imported {
+		if item.Track != nil {
+			r.Imported[i].playlistIDs = memberships[item.Track.ID]
+		}
+	}
+	return nil
 }
 
 func (s *Store) importTrack(ctx context.Context, d *sql.DB, item Item, opts ImportOptions) (*track.AddTrackResult, error) {

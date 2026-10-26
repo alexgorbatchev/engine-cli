@@ -45,33 +45,89 @@ func Read(ctx context.Context, d *sql.DB, kind string, ids []int64) (*Report, er
 	if kind != "track" && kind != "playlist" {
 		return nil, fmt.Errorf("unknown entity kind %q", kind)
 	}
-	r := &Report{Items: make([]Item, 0, len(ids))}
-	for _, id := range ids {
-		if err := ctx.Err(); err != nil {
-			return nil, err
+	r := &Report{Items: make([]Item, len(ids))}
+	for i, id := range ids {
+		r.Items[i].ID = id
+	}
+	if err := fillItems(ctx, d, kind, r.Items); err != nil {
+		return nil, err
+	}
+	for i := range r.Items {
+		if r.Items[i].Data == nil {
+			r.Items[i].Error = &ItemError{Code: "not_found", Message: fmt.Sprintf("%s %d is not in this library", kind, r.Items[i].ID)}
 		}
-		data, err := readItem(ctx, d, kind, id)
-		if err != nil {
-			return nil, err
-		}
-		item := Item{ID: id, Data: data}
-		if data == nil {
-			item.Error = &ItemError{Code: "not_found", Message: fmt.Sprintf("%s %d is not in this library", kind, id)}
-		}
-		r.Items = append(r.Items, item)
 	}
 	return r, enrichRefs(ctx, d, kind, r)
 }
 
-func readItem(ctx context.Context, d *sql.DB, kind string, id int64) (map[string]any, error) {
+// entity holds one read until the report's shared membership lookup completes.
+type entity struct {
+	track    *db.Track
+	playlist *playlist.PlaylistDetails
+}
+
+func (e entity) tracks() []*db.Track {
+	if e.track != nil {
+		return []*db.Track{e.track}
+	}
+	if e.playlist == nil {
+		return nil
+	}
+	tracks := make([]*db.Track, len(e.playlist.Tracks))
+	for i := range e.playlist.Tracks {
+		tracks[i] = &e.playlist.Tracks[i]
+	}
+	return tracks
+}
+
+func (e entity) value(memberships map[int64][]int64) map[string]any {
+	if e.playlist != nil {
+		return playlistValue(e.playlist, memberships)
+	}
+	if e.track != nil {
+		return Track(e.track, memberships[e.track.ID])
+	}
+	return nil
+}
+
+// fillItems reads every identified item that has no error yet. All items share
+// one playlist-membership lookup; missing entities keep nil data.
+func fillItems(ctx context.Context, d *sql.DB, kind string, items []Item) error {
+	entities := make([]entity, len(items))
+	var tracks []*db.Track
+	for i, item := range items {
+		if item.ID == 0 || item.Error != nil {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		e, err := readEntity(ctx, d, kind, item.ID)
+		if err != nil {
+			return err
+		}
+		entities[i] = e
+		tracks = append(tracks, e.tracks()...)
+	}
+	memberships, err := PlaylistIDs(ctx, d, tracks...)
+	if err != nil {
+		return err
+	}
+	for i := range items {
+		items[i].Data = entities[i].value(memberships)
+	}
+	return nil
+}
+
+func readEntity(ctx context.Context, d *sql.DB, kind string, id int64) (entity, error) {
 	if kind == "track" {
 		t, err := db.GetTrackByID(ctx, d, id)
-		return Track(t), err
+		return entity{track: t}, err
 	}
 	p, err := db.FindPlaylist(ctx, d, strconv.FormatInt(id, 10))
 	if err != nil || p == nil {
-		return nil, err
+		return entity{}, err
 	}
 	result, err := playlist.InspectPlaylist(ctx, d, strconv.FormatInt(id, 10))
-	return Playlist(result), err
+	return entity{playlist: result}, err
 }

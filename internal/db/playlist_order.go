@@ -14,11 +14,12 @@ type playlistRow struct {
 	next sql.NullInt64
 }
 
-type playlistReader interface {
+// Querier reads from a database connection or an open transaction.
+type Querier interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
-func playlistRows(ctx context.Context, d playlistReader) ([]playlistRow, error) {
+func playlistRows(ctx context.Context, d Querier) ([]playlistRow, error) {
 	rows, err := d.QueryContext(ctx, `SELECT id,title,COALESCE(parentListId,0),nextListId FROM Playlist ORDER BY parentListId,id`)
 	if err != nil {
 		return nil, fmt.Errorf("querying playlists: %w", err)

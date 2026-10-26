@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -128,10 +129,13 @@ func TestImportAndUndo(t *testing.T) {
 	if err := s.Update(ctx, *child); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := database.Exec("INSERT INTO Playlist(id,title,parentListId) VALUES(7,'Imports',0)"); err != nil {
+		t.Fatal(err)
+	}
 	var report *ImportReport
 	entry, err := history.Run(ctx, lib, "staging.import", history.ScopeCollection, nil, func(ctx context.Context) error {
 		var err error
-		report, err = s.Import(ctx, database, ImportOptions{IDs: []string{mix.ID}, Runner: func(context.Context, string, ...string) ([]byte, error) {
+		report, err = s.Import(ctx, database, ImportOptions{IDs: []string{mix.ID}, ToPlaylist: "7", Runner: func(context.Context, string, ...string) ([]byte, error) {
 			return []byte(`{"format":{"tags":{"title":"Tagged"}}}`), nil
 		}})
 		return err
@@ -149,12 +153,13 @@ func TestImportAndUndo(t *testing.T) {
 	var decoded struct {
 		Imported []struct {
 			Track struct {
-				Title  string
-				Artist *string
+				Title       string
+				Artist      *string
+				PlaylistIDs []int64 `json:"playlistIds"`
 			}
 		}
 	}
-	if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Imported[0].Track.Title != "Tagged" || decoded.Imported[0].Track.Artist != nil {
+	if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Imported[0].Track.Title != "Tagged" || decoded.Imported[0].Track.Artist != nil || !reflect.DeepEqual(decoded.Imported[0].Track.PlaylistIDs, []int64{7}) {
 		t.Fatalf("import JSON must use track values and nulls: %s: %v", encoded, err)
 	}
 	if _, err := s.Inspect(ctx, child.ID); !os.IsNotExist(err) {
@@ -191,6 +196,45 @@ func TestImportFailureRetainsStaging(t *testing.T) {
 	}
 	if _, err := s.Inspect(ctx, item.ID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestImportReportsUnreadablePlaylistsAfterImporting(t *testing.T) {
+	ctx := context.Background()
+	lib := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(lib, "Database2"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	database, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	if err := db.InitSchema(ctx, database); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("DROP TABLE PlaylistEntity"); err != nil {
+		t.Fatal(err)
+	}
+	s := New(lib)
+	item, err := s.Create(ctx, Item{Kind: "track", Status: "ready"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := s.Directory(ctx, item.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item.AudioPath = item.ID + "/song.mp3"
+	if err := os.WriteFile(filepath.Join(dir, "song.mp3"), []byte("audio"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Update(ctx, *item); err != nil {
+		t.Fatal(err)
+	}
+	report, err := s.Import(ctx, database, ImportOptions{IDs: []string{item.ID}, Runner: func(context.Context, string, ...string) ([]byte, error) { return []byte(`{}`), nil }})
+	if err == nil || !strings.Contains(err.Error(), "playlist memberships") || len(report.Imported) != 1 {
+		t.Fatalf("unreadable memberships must fail after reporting the import: %+v %v", report, err)
 	}
 }
 

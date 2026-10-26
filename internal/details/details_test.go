@@ -54,3 +54,34 @@ func TestBatchDetails(t *testing.T) {
 		}
 	}
 }
+
+func TestTrackValuesRequireReadableMemberships(t *testing.T) {
+	d, err := db.Open(filepath.Join(t.TempDir(), "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	ctx := context.Background()
+	if err := db.InitSchema(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`INSERT INTO Track(id,title) VALUES(1,'Song'); INSERT INTO Playlist(id,title,parentListId) VALUES(1,'List',0);
+	INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) VALUES(1,1,'fixture')`); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := OneTrack(ctx, d, nil); got != nil || err != nil {
+		t.Fatalf("nil track=%v err=%v", got, err)
+	}
+	if got := Track(&db.Track{ID: 1}, nil)["playlistIds"]; got == nil || len(got.([]int64)) != 0 {
+		t.Fatalf("missing memberships must be an empty array, got %#v", got)
+	}
+	if _, err := d.Exec("DROP TABLE PlaylistEntity"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OneTrack(ctx, d, &db.Track{ID: 1}); err == nil {
+		t.Fatal("track accepted unreadable memberships")
+	}
+	if _, err := Read(ctx, d, "track", []int64{1}); err == nil {
+		t.Fatal("details accepted unreadable memberships")
+	}
+}

@@ -70,7 +70,10 @@ func (s *Server) trackOperations() []operation {
 		define("track.update", true, []string{"identifier"}, func(ctx context.Context, p metadataParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				t, err := track.EditMetadata(ctx, d, track.MetadataEdit(p), s.config.ArtworkRunner)
-				return details.Track(t), err
+				if err != nil {
+					return nil, err
+				}
+				return details.OneTrack(ctx, d, t)
 			})
 		}),
 		define("track.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
@@ -79,33 +82,38 @@ func (s *Server) trackOperations() []operation {
 				if err != nil {
 					return nil, err
 				}
-				result := make([]map[string]any, 0, len(tracks))
-				for _, track := range tracks {
-					result = append(result, details.Track(&track))
+				all := make([]*db.Track, len(tracks))
+				for i := range tracks {
+					all[i] = &tracks[i]
 				}
-				return result, nil
+				return details.Tracks(ctx, d, all...)
 			})
 		}),
 		define("track.add", true, []string{"paths"}, func(ctx context.Context, p addTrackParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				return batch(ctx, "track.add", p.Paths, func(ctx context.Context, path string) (any, error) {
+				added, err := batch(ctx, "track.add", p.Paths, func(ctx context.Context, path string) (addedTrack, error) {
 					r, err := track.AddTrack(ctx, d, s.config.LibraryDir, path, p.ToPlaylist, p.Move)
-					return addTrackResult(r), err
+					return addedTrack{r}, err
 				})
+				return trackResults(ctx, d, added, err)
 			})
 		}),
 		define("track.rm", true, []string{"tracks"}, func(ctx context.Context, p removeTrackParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				return batch(ctx, "track.rm", p.Tracks, func(ctx context.Context, id string) (any, error) {
+				removed, err := batch(ctx, "track.rm", p.Tracks, func(ctx context.Context, id string) (removedTrack, error) {
 					t, err := track.RemoveTrack(ctx, d, s.config.LibraryDir, id, p.DeleteFile)
-					return details.Track(t), err
+					return removedTrack{t}, err
 				})
+				return trackResults(ctx, d, removed, err)
 			})
 		}),
 		define("track.move", true, []string{"identifier", "destination"}, func(ctx context.Context, p moveTrackParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				t, err := track.MoveTrackFile(ctx, d, s.config.LibraryDir, p.Identifier, p.Destination)
-				return details.Track(t), err
+				if err != nil {
+					return nil, err
+				}
+				return details.OneTrack(ctx, d, t)
 			})
 		}),
 		define("track.relocate", true, []string{"from", "to"}, func(ctx context.Context, p relocateParams) (any, error) {
@@ -124,7 +132,10 @@ func (s *Server) trackOperations() []operation {
 			}
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				r, err := track.UpgradeTrack(ctx, d, s.config.LibraryDir, p.Identifier, track.UpgradeOptions{Query: p.Query, KeepTiming: p.KeepTiming, ClearTiming: p.ClearTiming, Acquisition: options, Runner: s.config.ToolRunner})
-				return upgradeResult(r), err
+				if err != nil {
+					return nil, err
+				}
+				return upgradeResult(ctx, d, r)
 			})
 		}),
 		define("track.artwork.normalize", true, nil, func(ctx context.Context, _ emptyParams) (any, error) {

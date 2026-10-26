@@ -83,7 +83,11 @@ func newTrackEditCommand() *cobra.Command {
 			return err
 		}
 		if asJSON {
-			return json.NewEncoder(c.OutOrStdout()).Encode(details.Track(t))
+			result, err := details.OneTrack(c.Context(), d, t)
+			if err != nil {
+				return err
+			}
+			return json.NewEncoder(c.OutOrStdout()).Encode(result)
 		}
 		if agent.IsAgentMode() {
 			_, err = fmt.Fprintf(c.OutOrStdout(), "status: ok\ntitle: %s\nrating_stars: %d\n", t.Title.String, t.Rating.Int64/track.RatingUnitsPerStar)

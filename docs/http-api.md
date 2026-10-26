@@ -212,7 +212,7 @@ Backup restoration enumerates every database and artwork folder before changing 
 
 A disconnected client does not cancel its job. Cancellation is cooperative and can leave completed changes; use library history to inspect and undo changes. Shutdown requests cancellation and waits for workers.
 
-The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. Collection tracks include `hasArtwork`: true when inline artwork bytes or a nonempty regular cache file exists, false when absent (including dangling artwork IDs), and null when availability cannot be determined. Collection lists, single/batch inspection, and playlist tracks share this field. Availability checks read artwork catalogue metadata in one batch and reuse filesystem observations for shared covers; they do not load image bytes. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
+The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. Collection tracks include `hasArtwork`: true when inline artwork bytes or a nonempty regular cache file exists, false when absent (including dangling artwork IDs), and null when availability cannot be determined. Collection lists, single/batch inspection, and playlist tracks share this field. Collection tracks also include `playlistIds`, described under [Library, playlist, and track operations](#library-playlist-and-track-operations). Availability checks read artwork catalogue metadata in one batch and reuse filesystem observations for shared covers; they do not load image bytes. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
 
 ## Failure codes
 
@@ -400,6 +400,14 @@ Use the ordinary job status, cancellation, and SSE endpoints. Progress phases in
 Duplicate scan (`track.duplicate.list`) and comparison (`track.duplicate.inspect`) tracks include a `playlists` array of current playlist names, including `[]` for tracks outside playlists. Memberships resolve through the track's origin database UUID and origin track ID, matching Engine's persistent identity rather than coincidentally equal local IDs. Duplicate-list and inspect CLI output also includes these memberships. Track IDs can be used with the metadata, audio, and beat-grid endpoints to audition each candidate before merging.
 
 `track.list` returns every collection track, including tracks outside playlists, in ascending ID order. Its result is an array using the same track fields as `playlist.inspect`. An empty collection returns `[]`.
+
+Every collection track object includes `playlistIds`: the numeric IDs of the playlists that directly contain the track, in ascending order without repeats, or `[]` when it belongs to none. Parent folders appear only when the track is also a direct member of them. Memberships resolve through the same origin identity as duplicate `playlists`, and IDs stay unambiguous where nested playlists share titles. The field appears in `track.list`, `track.inspect`, `playlist.inspect` member tracks, `GET /v1/tracks/{id}`, `GET /v1/tracks` and `GET /v1/playlists` batches (by `ids` or `refs`), and the track objects returned by `track.update` (including multipart uploads), `track.add`, `track.rm`, `track.move`, `track.upgrade`, `playlist.track.add`, `playlist.track.rm`, `playlist.track.move`, and `staging.import`. Mutation results report memberships after the change, so removed tracks report `[]`. Each request reads memberships for all its tracks in one query. The `--json` output of `track inspect`, `playlist inspect`, `track update`, `track upgrade`, and `staging import` carries the same field, for example:
+
+```json
+{"id":42,"title":"Night Drive","artist":"Example Artist","ratingStars":4,"albumArtId":17,"playlistIds":[3,12]}
+```
+
+The example omits the remaining track fields.
 
 Audio requests accept only positive numeric database IDs. Engine resolves the file path from that track's database record; clients cannot supply arbitrary filesystem paths. Missing tracks/files return `404`, unsupported audio file types return `415`, and unavailable libraries return `503`, using structured API errors. These endpoints read the library and stream the original file without changing or re-encoding it. Browser codec support determines which files can play. The normal loopback-host and allowed-origin checks apply to metadata and audio requests.
 

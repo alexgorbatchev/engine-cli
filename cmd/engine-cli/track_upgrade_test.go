@@ -46,7 +46,7 @@ func TestPrintTrackUpgrade(t *testing.T) {
 			var out bytes.Buffer
 			cmd := &cobra.Command{}
 			cmd.SetOut(&out)
-			structured := map[string]any{"track": details.Track(result.Track), "original_path": result.OriginalPath, "timing_cleared": result.TimingCleared}
+			structured := map[string]any{"track": details.Track(result.Track, nil), "original_path": result.OriginalPath, "timing_cleared": result.TimingCleared}
 			if err := printTrackUpgrade(cmd, structured); err != nil {
 				t.Fatal(err)
 			}

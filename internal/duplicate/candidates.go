@@ -25,7 +25,7 @@ func Candidates(ctx context.Context, d *sql.DB, target Track, mode string) ([]Tr
 		if group.Tracks[0].ID != 0 {
 			continue
 		}
-		memberships, err := readPlaylistMemberships(ctx, d)
+		memberships, err := readPlaylistMemberships(ctx, d, group.Tracks[1:])
 		if err != nil {
 			return nil, err
 		}

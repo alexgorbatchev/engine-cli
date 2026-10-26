@@ -62,7 +62,7 @@ func AudioGroups(ctx context.Context, d *sql.DB, lib string, o AudioOptions) (*A
 	if err := attachReferences(ctx, d, tracks); err != nil {
 		return nil, err
 	}
-	memberships, err := readPlaylistMemberships(ctx, d)
+	memberships, err := readPlaylistMemberships(ctx, d, tracks)
 	if err != nil {
 		return nil, err
 	}

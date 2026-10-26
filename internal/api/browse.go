@@ -40,7 +40,18 @@ func (s *Server) trackMetadata(w http.ResponseWriter, r *http.Request) {
 	if track == nil {
 		return
 	}
-	writeJSON(w, http.StatusOK, details.Track(track))
+	database, err := db.Open(filepath.Join(s.config.LibraryDir, "Database2", "m.db"), true)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
+		return
+	}
+	defer database.Close()
+	result, err := details.OneTrack(r.Context(), database, track)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read this track's playlists from the library.")
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {

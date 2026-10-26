@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 // Track contains comparison information. Matching metadata is not proof of identical audio.
@@ -86,7 +88,11 @@ func List(ctx context.Context, d *sql.DB, mode string) ([]Group, error) {
 	if len(groups) == 0 {
 		return groups, nil
 	}
-	memberships, err := readPlaylistMemberships(ctx, d)
+	var grouped []Track
+	for _, g := range groups {
+		grouped = append(grouped, g.Tracks...)
+	}
+	memberships, err := readPlaylistMemberships(ctx, d, grouped)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +183,7 @@ func Inspect(ctx context.Context, d *sql.DB, id int64) (*Track, error) {
 		return nil, err
 	}
 	t = selected[0]
-	memberships, err := readPlaylistMemberships(ctx, d)
+	memberships, err := readPlaylistMemberships(ctx, d, selected)
 	if err != nil {
 		return nil, err
 	}
@@ -187,22 +193,21 @@ func Inspect(ctx context.Context, d *sql.DB, id int64) (*Track, error) {
 	return &t, nil
 }
 
-func readPlaylistMemberships(ctx context.Context, d reader) (map[int64][]string, error) {
-	rows, err := d.QueryContext(ctx, `SELECT t.id, COALESCE(p.title,'') FROM Track t
-	JOIN PlaylistEntity pe ON pe.trackId=t.originTrackId AND pe.databaseUuid=t.originDatabaseUuid
-	JOIN Playlist p ON p.id=pe.listId ORDER BY t.id,p.id`)
+// readPlaylistMemberships names the playlists that directly contain each track.
+func readPlaylistMemberships(ctx context.Context, d reader, tracks []Track) (map[int64][]string, error) {
+	ids := make([]int64, len(tracks))
+	for i, t := range tracks {
+		ids[i] = t.ID
+	}
+	memberships, err := db.PlaylistMemberships(ctx, d, ids)
 	if err != nil {
 		return nil, fmt.Errorf("reading duplicate playlist memberships: %w", err)
 	}
-	defer rows.Close()
-	memberships := make(map[int64][]string)
-	for rows.Next() {
-		var id int64
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			return nil, err
+	names := make(map[int64][]string, len(memberships))
+	for id, playlists := range memberships {
+		for _, p := range playlists {
+			names[id] = append(names[id], p.Title)
 		}
-		memberships[id] = append(memberships[id], name)
 	}
-	return memberships, rows.Err()
+	return names, nil
 }
