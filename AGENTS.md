@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-26 13:47
+last_modified: 2026-10-26 14:19
 status: current
 ---
 
@@ -15,7 +15,8 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
 - **Setup:** `just setup` (`go mod download` and `.githooks` as `core.hooksPath`)
 - **Run Tests:** `just test` (`go test -v ./...` and `bash scripts/test-git-hooks.sh .githooks`)
-- **Run Static Analysis & Tests:** `just check` (`go vet ./...`, `go test -v ./...`, and the Git hook tests)
+- **Run Static Analysis & Tests:** `just check` (`just fmt-check`, `go vet ./...`, `go test -v ./...`, and the Git hook tests)
+- **Check Formatting:** `just fmt-check` fails on any tracked or new Go file that `gofmt` would change
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)
 - **Verify Library Integrity:** `bin/engine-cli library verify`

@@ -23,6 +23,9 @@ jobs:
       - name: Check module hygiene
         run: go mod tidy -diff
 
+      - name: Check formatting
+        run: sh scripts/check-gofmt.sh
+
       - name: Build
         run: go build ./...
 

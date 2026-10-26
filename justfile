@@ -39,8 +39,12 @@ vet: lint
 fmt:
     go fmt ./...
 
-# Run static analysis, test suite, and Git hook tests in sequence
-check:
+# Fail when a tracked or new Go file is not gofmt-formatted
+fmt-check:
+    sh scripts/check-gofmt.sh
+
+# Check formatting, then run static analysis, test suite, and Git hook tests in sequence
+check: fmt-check
     go vet ./...
     go test -v ./...
     bash scripts/test-git-hooks.sh .githooks
