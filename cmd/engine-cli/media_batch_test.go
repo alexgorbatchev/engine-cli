@@ -46,8 +46,9 @@ func TestMediaCLINativeTargetsAndBatches(t *testing.T) {
 		targets = append(targets, filepath.Base(args[len(args)-1]))
 		return []byte(`{"status":"success","results":[{"status":"success"}]}`), nil
 	}
-	if _, err := executeCommand("-l", lib, "track", "tags", "inspect", "1", "999", "1", "--json"); err == nil || len(targets) != 2 {
-		t.Fatalf("collection batch=%v error=%v", targets, err)
+	// A partial batch prints every result yet exits unsuccessfully.
+	if out, err := executeCommand("-l", lib, "track", "tags", "inspect", "1", "999", "1", "--json"); err == nil || len(targets) != 2 || !strings.Contains(out, `"status":"partial"`) {
+		t.Fatalf("collection batch=%v error=%v output=%s", targets, err, out)
 	}
 	if _, err := executeCommand("-l", lib, "track", "tags", "inspect", "1", "--json"); err != nil || len(targets) != 3 {
 		t.Fatalf("single collection target=%v error=%v", targets, err)

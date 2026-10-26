@@ -14,6 +14,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 )
@@ -45,14 +46,21 @@ func TestMediaSelectionValidationAndFailureResults(t *testing.T) {
 			t.Fatalf("accepted invalid selection %s", raw)
 		}
 	}
+	// Only a batch in which every file fails fails the operation, with its own code and each file's code.
 	result, _, err := s.RunOperation(context.Background(), "track.tags.inspect", json.RawMessage(`{"staging_ids":["missing","also-missing"]}`))
-	if err == nil || result.(map[string]any)["status"] != "error" || len(result.(map[string]any)["results"].([]map[string]any)) != 2 {
+	batch, ok := result.(*MediaBatchResult)
+	if !ok || progress.ErrorCode(err) != "batch_failed" || batch.Status != "failed" || batch.Failed != 2 || batch.Succeeded != 0 || len(batch.Results) != 2 {
 		t.Fatalf("all-failed result: %#v %v", result, err)
+	}
+	for _, entry := range batch.Results {
+		if code, _ := entry["error_code"].(string); code == "" {
+			t.Fatalf("uncoded file failure: %#v", entry)
+		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	result, err = s.tagSelection(ctx, mediaSelection{paths: []string{"a.mp3"}}, "inspect", acquire.TagOptions{})
-	if !errors.Is(err, context.Canceled) || len(result.(map[string]any)["results"].([]map[string]any)) != 0 {
+	if batch, ok := result.(*MediaBatchResult); !errors.Is(err, context.Canceled) || !ok || batch.Status != "cancelled" || len(batch.Results) != 0 {
 		t.Fatalf("cancelled batch: %#v %v", result, err)
 	}
 }
@@ -253,23 +261,31 @@ func TestTagBatchPreservesOrderAndPerItemFailures(t *testing.T) {
 	for _, op := range s.mediaOperations() {
 		s.operations[op.Name] = op
 	}
+	// One missing track leaves the batch partial: the operation succeeds and the failed file carries its code.
 	result, id, err := s.RunOperation(context.Background(), "track.tags.inspect", json.RawMessage(`{"identifiers":["1","999","1"]}`))
-	if err == nil || id != "" {
+	if err != nil || id != "" {
 		t.Fatalf("batch inspect: %s %v", id, err)
 	}
 	data, _ := json.Marshal(result)
 	var batch struct {
-		Results []struct {
+		Status    string `json:"status"`
+		Succeeded int    `json:"succeeded"`
+		Failed    int    `json:"failed"`
+		Results   []struct {
 			Identifier string          `json:"identifier"`
 			Error      string          `json:"error"`
+			ErrorCode  string          `json:"error_code"`
 			Result     json.RawMessage `json:"result"`
 		} `json:"results"`
 	}
 	if err := json.Unmarshal(data, &batch); err != nil {
 		t.Fatal(err)
 	}
-	if len(batch.Results) != 3 || batch.Results[0].Identifier != "1" || batch.Results[1].Identifier != "999" || batch.Results[1].Error == "" || batch.Results[2].Identifier != "1" || !strings.Contains(string(batch.Results[2].Result), filepath.Join(lib, "song.mp3")) {
+	if batch.Status != "partial" || batch.Succeeded != 2 || batch.Failed != 1 || len(batch.Results) != 3 || batch.Results[0].Identifier != "1" || batch.Results[0].ErrorCode != "" || batch.Results[1].Identifier != "999" || batch.Results[1].Error == "" || batch.Results[1].ErrorCode == "" || batch.Results[2].Identifier != "1" || !strings.Contains(string(batch.Results[2].Result), filepath.Join(lib, "song.mp3")) {
 		t.Fatalf("ordered results: %s", data)
+	}
+	if err := result.(*MediaBatchResult).Err(); progress.ErrorCode(err) != "batch_partial" {
+		t.Fatalf("partial batch hid its failures from the CLI: %v", err)
 	}
 }
 
@@ -308,11 +324,11 @@ func TestRawTagBatchPartialSuccessAndUndo(t *testing.T) {
 	defer s.Close()
 	raw, _ := json.Marshal(map[string]any{"paths": []string{good, bad}, "title": "Edited"})
 	result, id, err := s.RunOperation(context.Background(), "track.tags.update", raw)
-	if err == nil || id == "" {
+	if err != nil || id == "" {
 		t.Fatalf("partial operation: %s %v", id, err)
 	}
 	data, _ := json.Marshal(result)
-	if !strings.Contains(string(data), "source unavailable") {
+	if !strings.Contains(string(data), "source unavailable") || !strings.Contains(string(data), `"error_code":"operation_failed"`) || !strings.Contains(string(data), `"status":"partial"`) {
 		t.Fatalf("lost per-item error: %s", data)
 	}
 	for _, tc := range []struct{ path, want string }{{good, "tagged"}, {bad, "original"}} {

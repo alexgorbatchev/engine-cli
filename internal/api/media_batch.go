@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
@@ -86,31 +87,54 @@ func (p mediaSelection) isBatch() bool {
 	return len(p.identifiers) > 0 || len(p.stagingIDs) > 0 || len(p.paths) > 0
 }
 
-// Each entry retains its selector and any native result, including failed results.
-// An expected per-file failure does not hide successful siblings or their undo.
+// MediaBatchResult reports a multi-file media operation in request order. Each entry keeps its selector and any native
+// result; a failed entry adds its diagnostic error and stable error_code.
+type MediaBatchResult struct {
+	Status    string           `json:"status"`
+	Succeeded int              `json:"succeeded"`
+	Failed    int              `json:"failed"`
+	Results   []map[string]any `json:"results"`
+}
+
+// Err reports a partial batch as a failure, for callers such as the CLI whose exit status must reflect every file.
+func (r *MediaBatchResult) Err() error {
+	if r.Failed == 0 {
+		return nil
+	}
+	return &progress.Error{Code: "batch_partial", Cause: fmt.Errorf("%d of %d files failed; inspect per-file results", r.Failed, len(r.Results))}
+}
+
+// A batch whose files partly fail still succeeds, keeping its siblings' results and undo; only a batch in which every
+// file fails fails the operation.
 func (s *Server) tagSelection(ctx context.Context, p mediaSelection, action string, opts acquire.TagOptions) (any, error) {
 	if !p.isBatch() {
 		return s.tagItem(ctx, p.field(), p.items()[0], action, opts)
 	}
-	results := make([]map[string]any, 0, len(p.items()))
-	failed := 0
+	batch := &MediaBatchResult{Status: "success", Results: make([]map[string]any, 0, len(p.items()))}
 	for _, item := range p.items() {
 		if err := ctx.Err(); err != nil {
-			return map[string]any{"status": "error", "error": err.Error(), "results": results}, err
+			batch.Status = "cancelled"
+			return batch, err
 		}
 		result, err := s.tagItem(ctx, p.field(), item, action, opts)
 		entry := map[string]any{p.field(): item, "result": result}
 		if err != nil {
 			entry["error"] = err.Error()
-			failed++
+			entry["error_code"] = progress.ErrorCode(err)
+			batch.Failed++
+		} else {
+			batch.Succeeded++
 		}
-		results = append(results, entry)
+		batch.Results = append(batch.Results, entry)
 	}
-	if failed > 0 {
-		err := fmt.Errorf("%d of %d files failed; inspect per-file results", failed, len(results))
-		return map[string]any{"status": "error", "error": err.Error(), "results": results}, err
+	switch {
+	case batch.Failed == len(batch.Results):
+		batch.Status = "failed"
+		return batch, &progress.Error{Code: "batch_failed", Cause: fmt.Errorf("all %d files failed; inspect per-file results", batch.Failed)}
+	case batch.Failed > 0:
+		batch.Status = "partial"
 	}
-	return map[string]any{"status": "success", "results": results}, nil
+	return batch, nil
 }
 
 type mediaEffectKey struct{}

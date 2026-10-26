@@ -194,6 +194,10 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 		}
 		defer server.Close()
 		result, historyID, runErr := server.RunOperation(c.Context(), operation, parameters)
+		if batch, ok := result.(*api.MediaBatchResult); ok && runErr == nil {
+			// A partial batch succeeds as an API job, but the command still exits unsuccessfully.
+			runErr = batch.Err()
+		}
 		if historyID != "" {
 			historyOutput := c.ErrOrStderr()
 			if operation == "track.upgrade" && !asJSON {
