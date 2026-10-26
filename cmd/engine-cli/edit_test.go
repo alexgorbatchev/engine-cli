@@ -10,12 +10,14 @@ func TestEditCommands(t *testing.T) {
 	lib := createTestLibrary(t)
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	for _, tt := range []struct {
-		args []string
-		want string
+		args  []string
+		field string
+		want  any
 	}{
-		{[]string{"track", "update", "1", "--title", "New title", "--artist", "New artist", "--year", "2026", "--rating", "4", "--json"}, "New title"},
-		{[]string{"playlist", "rename", "1", "Renamed", "--json"}, "Renamed"},
-		{[]string{"track", "update", "1", "--clear-artwork", "--json"}, "New title"},
+		{[]string{"track", "update", "1", "--title", "New title", "--artist", "New artist", "--year", "2026", "--rating", "4", "--json"}, "title", "New title"},
+		{[]string{"playlist", "rename", "1", "Renamed", "--json"}, "title", "Renamed"},
+		{[]string{"track", "update", "1", "--clear-artwork", "--json"}, "title", "New title"},
+		{[]string{"track", "update", "1", "--key", "20", "--json"}, "key", float64(20)},
 	} {
 		var out bytes.Buffer
 		c := newRootCommand()
@@ -29,7 +31,7 @@ func TestEditCommands(t *testing.T) {
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatal(err)
 		}
-		if result["title"] != tt.want {
+		if result[tt.field] != tt.want {
 			t.Fatal(result)
 		}
 	}
@@ -47,7 +49,7 @@ func TestEditCommands(t *testing.T) {
 			}
 		}
 	}
-	for _, args := range [][]string{{"track", "update", "1"}, {"track", "update", "1", "--rating", "9"}, {"playlist", "rename", "999", "Missing"}, {"track", "update", "999", "--title", "Missing"}} {
+	for _, args := range [][]string{{"track", "update", "1"}, {"track", "update", "1", "--rating", "9"}, {"track", "update", "1", "--key", "24"}, {"playlist", "rename", "999", "Missing"}, {"track", "update", "999", "--title", "Missing"}} {
 		if _, err := executeCommand(append([]string{"-l", lib, "--no-backup"}, args...)...); err == nil {
 			t.Fatal(args)
 		}

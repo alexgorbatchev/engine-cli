@@ -12,6 +12,7 @@ import (
 func TestCollectionEditsAndUndo(t *testing.T) {
 	for _, tt := range []struct{ operation, body, query, want string }{
 		{"track.update", `{"identifier":"1","title":"Edited","artist":"New artist","rating_stars":4}`, "SELECT title || ':' || artist || ':' || COALESCE(rating,0) FROM Track WHERE id=1", "Edited:New artist:80"},
+		{"track.update", `{"identifier":"1","key":20}`, "SELECT COALESCE(key, -1) FROM Track WHERE id=1", "20"},
 		{"playlist.rename", `{"identifier":"1","title":"Renamed"}`, "SELECT title FROM Playlist WHERE id=1", "Renamed"},
 	} {
 		t.Run(tt.operation, func(t *testing.T) {
@@ -54,6 +55,8 @@ func TestEditValidation(t *testing.T) {
 		{"track.update", `{"identifier":"1","rating_stars":6}`},
 		{"track.update", `{"identifier":"1","rating_stars":-1}`},
 		{"track.update", `{"identifier":"1","year":-1}`},
+		{"track.update", `{"identifier":"1","key":24}`},
+		{"track.update", `{"identifier":"1","key":-2}`},
 		{"track.update", `{"identifier":"1","title":"  "}`},
 		{"playlist.rename", `{"identifier":"1","title":"  "}`},
 	} {
