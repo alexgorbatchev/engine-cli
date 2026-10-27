@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,8 +57,9 @@ func TestUpdateFileTags(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if r.Track.Title.String != "New" || r.Track.Album.String != "Album" || r.Track.Rating.Int64 != 80 || !r.Track.IsAnalyzed.Bool || r.Track.PathString() == "original.mp3" {
-				t.Fatalf("track=%+v", r.Track)
+			tagged, err := db.GetTrackByID(context.Background(), d, r.TrackID)
+			if err != nil || tagged.Title.String != "New" || tagged.Album.String != "Album" || tagged.Rating.Int64 != 80 || !tagged.IsAnalyzed.Bool || tagged.PathString() == "original.mp3" || r.Path != tagged.PathString() {
+				t.Fatalf("result=%+v track=%+v error=%v", r, tagged, err)
 			}
 			data, err := os.ReadFile(original)
 			if err != nil || string(data) != "original" {

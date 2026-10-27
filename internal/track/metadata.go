@@ -97,24 +97,24 @@ func (e MetadataEdit) Validate() error {
 	return nil
 }
 
-func EditMetadata(ctx context.Context, database *sql.DB, edit MetadataEdit, runner ...artwork.CommandRunner) (*db.Track, error) {
+func EditMetadata(ctx context.Context, database *sql.DB, edit MetadataEdit, runner ...artwork.CommandRunner) (int64, error) {
 	if err := edit.Validate(); err != nil {
-		return nil, err
+		return 0, err
 	}
 	t, err := db.FindTrack(ctx, database, edit.Identifier)
 	if err != nil {
-		return nil, fmt.Errorf("finding track to edit: %w", err)
+		return 0, fmt.Errorf("finding track to edit: %w", err)
 	}
 	if t == nil {
-		return nil, fmt.Errorf("track not found; refresh the collection and try again")
+		return 0, fmt.Errorf("track not found; refresh the collection and try again")
 	}
 	prepared, err := prepareArtwork(ctx, edit, runner...)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	tx, err := database.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer tx.Rollback()
 	columns, values := edit.fields()
@@ -124,11 +124,11 @@ func EditMetadata(ctx context.Context, database *sql.DB, edit MetadataEdit, runn
 	if prepared != nil {
 		lib, err := identity.LibraryPath(ctx, database)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		id, err := prepared.Store(ctx, tx, lib)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		columns = append(columns, "albumArtId = ?", "albumArt = ?", "albumArtSourceHash = ?")
 		values = append(values, id, fmt.Sprintf("image://planck/%d", id), prepared.Hash)
@@ -136,12 +136,12 @@ func EditMetadata(ctx context.Context, database *sql.DB, edit MetadataEdit, runn
 	columns = append(columns, "lastEditTime = ?")
 	values = append(values, time.Now().UTC().Format("2006-01-02T15:04:05.000Z"), t.ID)
 	if _, err := tx.ExecContext(ctx, "UPDATE Track SET "+strings.Join(columns, ", ")+" WHERE id = ?", values...); err != nil {
-		return nil, fmt.Errorf("saving track information: %w", err)
+		return 0, fmt.Errorf("saving track information: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return 0, err
 	}
-	return db.GetTrackByID(ctx, database, t.ID)
+	return t.ID, nil
 }
 
 func prepareArtwork(ctx context.Context, edit MetadataEdit, runner ...artwork.CommandRunner) (*artwork.Prepared, error) {

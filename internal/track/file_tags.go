@@ -24,7 +24,9 @@ type FileTagOptions struct {
 	Runner      enginesync.CommandRunner
 }
 type FileTagResult struct {
-	Track        *db.Track          `json:"track"`
+	TrackID int64 `json:"track_id"`
+	// Path is the installed audio file, reported once the collection points to it.
+	Path         string             `json:"path,omitempty"`
 	OriginalPath string             `json:"original_path"`
 	Result       *acquire.TagResult `json:"result"`
 }
@@ -62,7 +64,7 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 		}
 	}
 	result, err := (acquire.Client{Runner: runner}).Tags(ctx, action, original, work, opts.Options)
-	report := &FileTagResult{OriginalPath: original, Result: result}
+	report := &FileTagResult{TrackID: t.ID, OriginalPath: original, Result: result}
 	if err != nil {
 		return report, err
 	}
@@ -161,8 +163,8 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 		return report, err
 	}
 	committed = true
-	report.Track, err = db.GetTrackByID(ctx, d, t.ID)
-	return report, err
+	report.Path = stored
+	return report, nil
 }
 
 // VerifyAudioPreserved hashes compressed audio packets with stream copying,

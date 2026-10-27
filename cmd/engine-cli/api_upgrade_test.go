@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -116,9 +115,7 @@ func TestUpgradeProgressCLIAndHTTP(t *testing.T) {
 				}
 			}
 			t.Setenv("ENGINE_API_FETCH_CANDIDATE", candidate)
-			if _, err := database.Exec(`INSERT INTO Track(id,path,title,artist,album) VALUES(1,'original.flac','Curated title','Curated artist','Curated album');
-			INSERT INTO Playlist(id,title,parentListId) VALUES(4,'Keep',0);
-			INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) VALUES(4,1,'fixture')`); err != nil {
+			if _, err := database.Exec("INSERT INTO Track(id,path,title,artist,album) VALUES(1,'original.flac','Curated title','Curated artist','Curated album')"); err != nil {
 				t.Fatal(err)
 			}
 			var events []progress.Event
@@ -131,12 +128,8 @@ func TestUpgradeProgressCLIAndHTTP(t *testing.T) {
 				if err := cmd.Execute(); err != nil {
 					t.Fatal(err)
 				}
-				var result struct {
-					Track      map[string]any `json:"track"`
-					Original   string         `json:"original_path"`
-					Reanalysis bool           `json:"reanalysis_required"`
-				}
-				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Track["title"] != "Curated title" || !reflect.DeepEqual(result.Track["playlistIds"], []any{float64(4)}) || result.Original != original || !result.Reanalysis {
+				var result map[string]any
+				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result["track_id"] != float64(1) || result["path"] == "original.flac" || result["original_path"] != original || result["timing_cleared"] != false || result["reanalysis_required"] != true || len(result) != 5 {
 					t.Fatalf("JSON upgrade result %s: %v", stdout.String(), err)
 				}
 				scanner := bufio.NewScanner(&stderr)

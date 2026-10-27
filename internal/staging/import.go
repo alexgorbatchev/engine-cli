@@ -3,15 +3,12 @@ package staging
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/details"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
@@ -23,19 +20,11 @@ type ImportOptions struct {
 	ToPlaylist string
 	Runner     enginesync.CommandRunner
 }
-type Imported struct {
-	ID    string    `json:"id"`
-	Track *db.Track `json:"track"`
-	// playlistIDs is read once for the whole import after every item finishes.
-	playlistIDs []int64
-}
 
-// MarshalJSON shares collection track values across CLI and HTTP results.
-func (i Imported) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		ID    string         `json:"id"`
-		Track map[string]any `json:"track"`
-	}{ID: i.ID, Track: details.Track(i.Track, i.playlistIDs)})
+// Imported pairs a staged ID with the collection track created from it.
+type Imported struct {
+	ID      string `json:"id"`
+	TrackID int64  `json:"track_id"`
 }
 
 type Failure struct {
@@ -52,7 +41,7 @@ type ImportReport struct {
 
 // Import keeps the acquisition until file installation and playlist assignment
 // both succeed. Callers wrap collection changes in the normal guard/history flow.
-func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (report *ImportReport, err error) {
+func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*ImportReport, error) {
 	if d == nil {
 		return nil, fmt.Errorf("collection database is required")
 	}
@@ -65,14 +54,7 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (repo
 	if err != nil {
 		return nil, err
 	}
-	report = &ImportReport{Imported: []Imported{}, Failed: []Failure{}}
-	// Report completed imports with their playlists even when a later item fails
-	// or the import is cancelled.
-	defer func() {
-		if lookupErr := report.readPlaylistIDs(context.WithoutCancel(ctx), d); lookupErr != nil && err == nil {
-			err = lookupErr
-		}
-	}()
+	report := &ImportReport{Imported: []Imported{}, Failed: []Failure{}}
 	for _, item := range selected {
 		if item.Kind == "mix" {
 			continue
@@ -82,7 +64,7 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (repo
 		}
 		result, err := s.importTrack(ctx, d, item, opts)
 		if result != nil {
-			report.Imported = append(report.Imported, Imported{ID: item.ID, Track: result.Track})
+			report.Imported = append(report.Imported, Imported{ID: item.ID, TrackID: result.Track.ID})
 		}
 		if err != nil {
 			report.Failed = append(report.Failed, Failure{ID: item.ID, Error: err.Error(), ErrorCode: progress.ErrorCode(err)})
@@ -104,23 +86,6 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (repo
 		}
 	}
 	return report, nil
-}
-
-func (r *ImportReport) readPlaylistIDs(ctx context.Context, d *sql.DB) error {
-	tracks := make([]*db.Track, len(r.Imported))
-	for i, item := range r.Imported {
-		tracks[i] = item.Track
-	}
-	memberships, err := details.PlaylistIDs(ctx, d, tracks...)
-	if err != nil {
-		return err
-	}
-	for i, item := range r.Imported {
-		if item.Track != nil {
-			r.Imported[i].playlistIDs = memberships[item.Track.ID]
-		}
-	}
-	return nil
 }
 
 func (s *Store) importTrack(ctx context.Context, d *sql.DB, item Item, opts ImportOptions) (*track.AddTrackResult, error) {

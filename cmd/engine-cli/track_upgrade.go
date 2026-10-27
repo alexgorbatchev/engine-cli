@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
+	"github.com/alexgorbatchev/engine-cli/internal/api"
 	"github.com/spf13/cobra"
 )
 
@@ -15,14 +16,13 @@ func newTrackUpgradeCommand() *cobra.Command {
 	return command
 }
 
-func printTrackUpgrade(cmd *cobra.Command, result map[string]any) error {
-	t := result["track"].(map[string]any)
-	path := displayPath(t["path"].(string))
-	original := displayPath(result["original_path"].(string))
+func printTrackUpgrade(cmd *cobra.Command, result api.UpgradedTrack) error {
+	path := displayPath(result.Path)
+	original := displayPath(result.OriginalPath)
 	if agent.IsAgentMode() {
-		_, err := fmt.Fprintf(cmd.OutOrStdout(), "status: ok\ntrack_id: %d\npath: %s\noriginal_retained: %s\ntiming_cleared: %t\nreanalysis_required: true\n", t["id"], path, original, result["timing_cleared"])
+		_, err := fmt.Fprintf(cmd.OutOrStdout(), "status: ok\ntrack_id: %d\npath: %s\noriginal_retained: %s\ntiming_cleared: %t\nreanalysis_required: %t\n", result.TrackID, path, original, result.TimingCleared, result.ReanalysisRequired)
 		return err
 	}
-	_, err := fmt.Fprintf(cmd.OutOrStdout(), "[OK] Upgraded track %q [id:%d]\nReplacement: %s\nOriginal audio kept at: %s\nAnalyze the replacement in Engine DJ before playing it.\n", t["title"], t["id"], path, original)
+	_, err := fmt.Fprintf(cmd.OutOrStdout(), "[OK] Upgraded track [id:%d]\nReplacement: %s\nOriginal audio kept at: %s\nAnalyze the replacement in Engine DJ before playing it.\n", result.TrackID, path, original)
 	return err
 }

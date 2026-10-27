@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 func TestFileTagsReconcilesClearedDateAndRemainingMetadata(t *testing.T) {
@@ -48,8 +49,12 @@ func TestFileTagsReconcilesClearedDateAndRemainingMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Track.Year.Int64 != 0 || result.Track.Label.String != "Actual label" || result.Track.Composer.String != "Actual composer" || result.Track.Remixer.String != "Actual remixer" {
-		t.Fatalf("stale database metadata: %+v", result.Track)
+	tagged, err := db.GetTrackByID(context.Background(), d, result.TrackID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Path != tagged.PathString() || tagged.Year.Int64 != 0 || tagged.Label.String != "Actual label" || tagged.Composer.String != "Actual composer" || tagged.Remixer.String != "Actual remixer" {
+		t.Fatalf("stale database metadata: result=%+v track=%+v", result, tagged)
 	}
 }
 
@@ -150,8 +155,11 @@ func TestFileTagsFailuresRetainOriginalAndDatabase(t *testing.T) {
 			if scenario == "dry run" && calls != 1 {
 				t.Fatalf("dry run inspected or installed audio: %d calls", calls)
 			}
-			if scenario == "artwork success" && (!result.Track.AlbumArtID.Valid || result.Track.AlbumArtSourceHash.String == "") {
-				t.Fatalf("artwork not reconciled: %+v", result.Track)
+			if scenario == "artwork success" {
+				tagged, err := db.GetTrackByID(context.Background(), d, result.TrackID)
+				if err != nil || !tagged.AlbumArtID.Valid || tagged.AlbumArtSourceHash.String == "" {
+					t.Fatalf("artwork not reconciled: %+v %v", tagged, err)
+				}
 			}
 			if scenario != "missing audio" {
 				data, err := os.ReadFile(original)

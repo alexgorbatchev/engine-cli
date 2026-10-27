@@ -1,11 +1,8 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -140,87 +137,11 @@ func TestTrackReferencesReportPlaylistIDs(t *testing.T) {
 	assertPlaylistIDs(t, "track.inspect refs", tracksByID(t, detailTracks(t, inspected)), wantPlaylistIDs)
 }
 
-func TestTrackMutationsReportPlaylistIDs(t *testing.T) {
-	s, lib := testPlaylistIDsAPI(t)
-	if err := os.WriteFile(filepath.Join(lib, "imported.mp3"), []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	for _, tt := range []struct {
-		operation, body string
-		track           func(any) any
-		want            []int64
-	}{
-		{"track.update", `{"identifier":"5","title":"Renamed"}`, resultTrack, []int64{2}},
-		{"playlist.track.add", `{"playlist":"3","tracks":["6","5"]}`, firstNestedTrack, []int64{3}},
-		{"playlist.track.move", `{"from":"3","to":"2","tracks":["6"]}`, firstNestedTrack, []int64{2}},
-		{"playlist.track.rm", `{"playlist":"2","tracks":["6"]}`, firstNestedTrack, []int64{}},
-		{"track.move", `{"identifier":"5","destination":"` + filepath.Join(lib, "moved") + `/"}`, resultTrack, []int64{2, 3}},
-		{"track.rm", `{"tracks":["1"]}`, firstTrack, []int64{}},
-	} {
-		t.Run(tt.operation, func(t *testing.T) {
-			job := runAPIJob(t, s, tt.operation, tt.body)
-			if got := playlistIDs(t, tt.track(job["result"])); !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("playlistIds=%v, want %v; result=%v", got, tt.want, job["result"])
-			}
-		})
-	}
-	batch := runAPIJob(t, s, "playlist.track.add", `{"playlist":"1","tracks":["6","5"]}`)
-	results := batch["result"].([]any)
-	if got := playlistIDs(t, results[1].(map[string]any)["track"]); !reflect.DeepEqual(got, []int64{1, 2, 3}) {
-		t.Fatalf("second batch track playlistIds=%v", got)
-	}
-}
-
-func TestTrackAddReportsPlaylistIDs(t *testing.T) {
-	s, lib := testPlaylistIDsAPI(t)
-	path := filepath.Join(lib, "added.mp3")
-	if err := os.WriteFile(path, []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	body, err := json.Marshal(map[string]any{"paths": []string{path}, "to_playlist": "2"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	job := runAPIJob(t, s, "track.add", string(body))
-	added := job["result"].([]any)[0].(map[string]any)["track"]
-	if got := playlistIDs(t, added); !reflect.DeepEqual(got, []int64{2}) {
-		t.Fatalf("added playlistIds=%v result=%v", got, job["result"])
-	}
-}
-
-func resultTrack(result any) any { return result }
-
-func firstTrack(result any) any { return result.([]any)[0] }
-
-func firstNestedTrack(result any) any { return result.([]any)[0].(map[string]any)["track"] }
-
-func TestTrackResultsRequireReadableMemberships(t *testing.T) {
+func TestTrackReadsRequireReadableMemberships(t *testing.T) {
 	s, lib := testPlaylistIDsAPI(t)
 	execAPIFixture(t, lib, "DROP TABLE PlaylistEntity")
 	w := requestAPI(t, s, http.MethodGet, "/v1/tracks/1", "")
 	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "library_unavailable") {
 		t.Fatalf("GET track with unreadable memberships: status=%d body=%s", w.Code, w.Body)
-	}
-	d, err := db.Open(filepath.Join(lib, "Database2", "m.db"), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer d.Close()
-	removed := []removedTrack{{&db.Track{ID: 1}}}
-	runErr := errors.New("second item failed")
-	for _, tt := range []struct {
-		name    string
-		runErr  error
-		wantErr func(error) bool
-	}{
-		{"lookup failure", nil, func(err error) bool { return err != nil && strings.Contains(err.Error(), "playlist memberships") }},
-		{"batch failure wins", runErr, func(err error) bool { return errors.Is(err, runErr) }},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := trackResults(context.Background(), d, removed, tt.runErr)
-			if result != nil || !tt.wantErr(err) {
-				t.Fatalf("result=%v err=%v", result, err)
-			}
-		})
 	}
 }

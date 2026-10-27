@@ -2,16 +2,14 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/engine-cli/internal/api"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/details"
-	"github.com/alexgorbatchev/engine-cli/internal/track"
 	"github.com/spf13/cobra"
 )
 
@@ -35,10 +33,12 @@ func TestTrackUpgradeHelp(t *testing.T) {
 func TestPrintTrackUpgrade(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	result := &track.UpgradeResult{
-		Track:         &db.Track{ID: 42, Title: sql.NullString{String: "Curated title", Valid: true}, Path: sql.NullString{String: filepath.Join(home, "replacement.flac"), Valid: true}},
-		OriginalPath:  filepath.Join(home, "original.mp3"),
-		TimingCleared: true,
+	result := api.UpgradedTrack{
+		TrackID:            42,
+		Path:               filepath.Join(home, "replacement.flac"),
+		OriginalPath:       filepath.Join(home, "original.mp3"),
+		TimingCleared:      true,
+		ReanalysisRequired: true,
 	}
 	for _, mode := range []string{"0", "1"} {
 		t.Run(mode, func(t *testing.T) {
@@ -46,11 +46,10 @@ func TestPrintTrackUpgrade(t *testing.T) {
 			var out bytes.Buffer
 			cmd := &cobra.Command{}
 			cmd.SetOut(&out)
-			structured := map[string]any{"track": details.Track(result.Track, nil), "original_path": result.OriginalPath, "timing_cleared": result.TimingCleared}
-			if err := printTrackUpgrade(cmd, structured); err != nil {
+			if err := printTrackUpgrade(cmd, result); err != nil {
 				t.Fatal(err)
 			}
-			for _, want := range []string{"~/replacement.flac", "~/original.mp3"} {
+			for _, want := range []string{map[string]string{"0": "[id:42]", "1": "track_id: 42\n"}[mode], "~/replacement.flac", "~/original.mp3"} {
 				if !strings.Contains(out.String(), want) {
 					t.Fatalf("output missing %q: %s", want, out.String())
 				}
@@ -59,7 +58,7 @@ func TestPrintTrackUpgrade(t *testing.T) {
 				t.Fatal(out.String())
 			}
 			cmd.SetOut(upgradeFailWriter{})
-			if err := printTrackUpgrade(cmd, structured); err == nil {
+			if err := printTrackUpgrade(cmd, result); err == nil {
 				t.Fatal("expected output error")
 			}
 		})

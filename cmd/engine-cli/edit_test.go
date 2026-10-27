@@ -6,6 +6,24 @@ import (
 	"testing"
 )
 
+// runJSON runs a command against lib and decodes its JSON object output.
+func runJSON(t *testing.T, lib string, args ...string) map[string]any {
+	t.Helper()
+	var out bytes.Buffer
+	c := newRootCommand()
+	c.SetOut(&out)
+	c.SetErr(&bytes.Buffer{})
+	c.SetArgs(append([]string{"-l", lib, "--no-backup"}, args...))
+	if err := c.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
 func TestEditCommands(t *testing.T) {
 	lib := createTestLibrary(t)
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
@@ -21,17 +39,13 @@ func TestEditCommands(t *testing.T) {
 		{[]string{"track", "update", "1", "--key", "Am", "--json"}, "key", float64(1)},
 		{[]string{"track", "update", "1", "--key", "none", "--json"}, "key", nil},
 	} {
-		var out bytes.Buffer
-		c := newRootCommand()
-		c.SetOut(&out)
-		c.SetErr(&bytes.Buffer{})
-		c.SetArgs(append([]string{"-l", lib, "--no-backup"}, tt.args...))
-		if err := c.Execute(); err != nil {
-			t.Fatal(err)
-		}
-		var result map[string]any
-		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
-			t.Fatal(err)
+		result := runJSON(t, lib, tt.args...)
+		// Track edits report only the edited ID, so read the track back to check the change.
+		if tt.args[0] == "track" {
+			if result["track_id"] != float64(1) || len(result) != 1 {
+				t.Fatalf("edit result %v", result)
+			}
+			result = runJSON(t, lib, "track", "inspect", "1", "--json")["items"].([]any)[0].(map[string]any)["data"].(map[string]any)
 		}
 		if result[tt.field] != tt.want {
 			t.Fatal(result)

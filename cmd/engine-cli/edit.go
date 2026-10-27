@@ -9,7 +9,6 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/details"
 	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
 	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
@@ -41,7 +40,7 @@ func newTrackEditCommand() *cobra.Command {
 	c.Flags().Int64Var(&year, "year", 0, "Release year (0 clears the year)")
 	c.Flags().Int64Var(&stars, "rating", 0, "Star rating from 0 (unrated) to 5")
 	c.Flags().StringVar(&key, "key", "", "Musical key in Camelot (8A), Open Key (1m), or by name (Am, F#m, Bb); none clears it")
-	c.Flags().BoolVar(&asJSON, "json", false, "Print the updated track as JSON")
+	c.Flags().BoolVar(&asJSON, "json", false, "Print the edited track ID as JSON")
 	c.Flags().StringVar(&artworkPath, "artwork", "", "Set cover artwork from a PNG, JPEG, or GIF image")
 	c.Flags().BoolVar(&edit.ClearArtwork, "clear-artwork", false, "Remove the track's artwork association")
 	c.RunE = func(c *cobra.Command, args []string) error {
@@ -78,22 +77,18 @@ func newTrackEditCommand() *cobra.Command {
 			return err
 		}
 		defer d.Close()
-		t, err := track.EditMetadata(c.Context(), d, edit)
+		id, err := track.EditMetadata(c.Context(), d, edit)
 		if err != nil {
 			return err
 		}
 		if asJSON {
-			result, err := details.OneTrack(c.Context(), d, t)
-			if err != nil {
-				return err
-			}
-			return json.NewEncoder(c.OutOrStdout()).Encode(result)
+			return json.NewEncoder(c.OutOrStdout()).Encode(map[string]int64{"track_id": id})
 		}
 		if agent.IsAgentMode() {
-			_, err = fmt.Fprintf(c.OutOrStdout(), "status: ok\ntitle: %s\nrating_stars: %d\n", t.Title.String, t.Rating.Int64/track.RatingUnitsPerStar)
+			_, err = fmt.Fprintf(c.OutOrStdout(), "status: ok\ntrack_id: %d\n", id)
 			return err
 		}
-		_, err = fmt.Fprintf(c.OutOrStdout(), "Updated track %q.\n", t.Title.String)
+		_, err = fmt.Fprintf(c.OutOrStdout(), "Updated track [id:%d].\n", id)
 		return err
 	}
 	return c

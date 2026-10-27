@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -120,8 +121,8 @@ func TestMultipartMetadataEdit(t *testing.T) {
 	if completed["state"] != "succeeded" {
 		t.Fatalf("%+v", completed)
 	}
-	if ids, ok := completed["result"].(map[string]any)["playlistIds"].([]any); !ok || len(ids) != 0 {
-		t.Fatalf("upload result must report an empty playlistIds array: %+v", completed["result"])
+	if !reflect.DeepEqual(completed["result"], map[string]any{"track_id": float64(1)}) {
+		t.Fatalf("upload result must report the edited track ID: %+v", completed["result"])
 	}
 	metadata := requestAPI(t, s, http.MethodGet, "/v1/tracks/1", "")
 	if !bytes.Contains(metadata.Body.Bytes(), []byte(`"title":"Uploaded cover"`)) {

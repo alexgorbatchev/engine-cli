@@ -12,7 +12,6 @@ import (
 	"strconv"
 
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
-	"github.com/alexgorbatchev/engine-cli/internal/details"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
 
@@ -45,11 +44,11 @@ func (s *Server) editTrackUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	bound := &boundOperation{run: func(ctx context.Context) (any, error) {
 		return s.database(ctx, func(d *sql.DB) (any, error) {
-			tr, err := track.EditMetadata(ctx, d, p, s.config.ArtworkRunner)
+			id, err := track.EditMetadata(ctx, d, p, s.config.ArtworkRunner)
 			if err != nil {
 				return nil, err
 			}
-			return details.OneTrack(ctx, d, tr)
+			return changedTrack{TrackID: id}, nil
 		})
 	}}
 	job, err := s.start(s.operations["track.update"], bound)

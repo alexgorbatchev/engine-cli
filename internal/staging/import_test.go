@@ -59,7 +59,7 @@ func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {
 	if report.Imported[0].ID != item.ID || report.Failed[0].ID != item.ID || report.Failed[0].ErrorCode != "operation_failed" || !strings.Contains(report.Failed[0].Error, "imported but staged cleanup failed") {
 		t.Fatalf("cleanup result %+v", report)
 	}
-	trackID := report.Imported[0].Track.ID
+	trackID := report.Imported[0].TrackID
 	tracks, err := db.GetAllTracks(ctx, database)
 	if err != nil || len(tracks) != 1 || tracks[0].ID != trackID {
 		t.Fatalf("collection %+v %v", tracks, err)
@@ -79,7 +79,7 @@ func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	report, err = s.Import(ctx, database, opts)
-	if err != nil || len(report.Imported) != 1 || len(report.Failed) != 0 || report.Imported[0].Track.ID != trackID {
+	if err != nil || len(report.Imported) != 1 || len(report.Failed) != 0 || report.Imported[0].TrackID != trackID {
 		t.Fatalf("retry duplicated track or failed cleanup: %+v %v", report, err)
 	}
 	tracks, err = db.GetAllTracks(ctx, database)
@@ -151,25 +151,25 @@ func TestImportAndUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	var decoded struct {
-		Imported []struct {
-			Track struct {
-				Title       string
-				Artist      *string
-				PlaylistIDs []int64 `json:"playlistIds"`
-			}
-		}
+		Imported []map[string]any `json:"imported"`
 	}
-	if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Imported[0].Track.Title != "Tagged" || decoded.Imported[0].Track.Artist != nil || !reflect.DeepEqual(decoded.Imported[0].Track.PlaylistIDs, []int64{7}) {
-		t.Fatalf("import JSON must use track values and nulls: %s: %v", encoded, err)
+	trackID := report.Imported[0].TrackID
+	if err := json.Unmarshal(encoded, &decoded); err != nil || !reflect.DeepEqual(decoded.Imported, []map[string]any{{"id": child.ID, "track_id": float64(trackID)}}) {
+		t.Fatalf("import JSON must pair staged and track IDs: %s: %v", encoded, err)
+	}
+	imported, err := db.GetTrackByID(ctx, database, trackID)
+	if err != nil || imported.Title.String != "Tagged" || imported.Artist.Valid {
+		t.Fatalf("tags not imported: %+v %v", imported, err)
+	}
+	memberships, err := db.PlaylistMemberships(ctx, database, []int64{trackID})
+	if err != nil || len(memberships[trackID]) != 1 || memberships[trackID][0].ID != 7 {
+		t.Fatalf("import playlist not assigned: %+v %v", memberships, err)
 	}
 	if _, err := s.Inspect(ctx, child.ID); !os.IsNotExist(err) {
 		t.Fatalf("imported staged item remains: %v", err)
 	}
 	if _, err := s.Inspect(ctx, missing.ID); err != nil {
 		t.Fatal(err)
-	}
-	if report.Imported[0].Track.Title.String != "Tagged" {
-		t.Fatal("tags not imported")
 	}
 	if _, err := history.Undo(ctx, lib, entry.ID, history.UndoOptions{}); err != nil {
 		t.Fatal(err)
@@ -199,7 +199,8 @@ func TestImportFailureRetainsStaging(t *testing.T) {
 	}
 }
 
-func TestImportReportsUnreadablePlaylistsAfterImporting(t *testing.T) {
+// An import outside any playlist completes without reading playlist memberships.
+func TestImportDoesNotReadPlaylistMemberships(t *testing.T) {
 	ctx := context.Background()
 	lib := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(lib, "Database2"), 0700); err != nil {
@@ -233,8 +234,8 @@ func TestImportReportsUnreadablePlaylistsAfterImporting(t *testing.T) {
 		t.Fatal(err)
 	}
 	report, err := s.Import(ctx, database, ImportOptions{IDs: []string{item.ID}, Runner: func(context.Context, string, ...string) ([]byte, error) { return []byte(`{}`), nil }})
-	if err == nil || !strings.Contains(err.Error(), "playlist memberships") || len(report.Imported) != 1 {
-		t.Fatalf("unreadable memberships must fail after reporting the import: %+v %v", report, err)
+	if err != nil || len(report.Imported) != 1 || report.Imported[0].ID != item.ID || len(report.Failed) != 0 {
+		t.Fatalf("import must succeed without reading memberships: %+v %v", report, err)
 	}
 }
 

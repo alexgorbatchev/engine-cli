@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
@@ -72,10 +73,31 @@ func TestCLITrackJSONReportsPlaylistIDs(t *testing.T) {
 	for _, track := range playlists.Items[0].Data.Tracks {
 		check("playlist inspect", track)
 	}
+}
 
-	var updated map[string]any
-	if err := json.Unmarshal(run("track", "update", "3", "--title", "Renamed", "--json"), &updated); err != nil {
-		t.Fatal(err)
+// Edits report the changed track's ID rather than reading the track back.
+func TestCLITrackUpdateReportsTrackID(t *testing.T) {
+	lib := createTestLibrary(t)
+	const undo = `operation_id: [0-9a-f]{32}\n`
+	for _, tt := range []struct{ agent, flag, want string }{
+		{"0", "--json", `\{"track_id":1\}\n`},
+		{"1", "--json", `\{"track_id":1\}\n`},
+		{"1", "--rating=4", `status: ok\ntrack_id: 1\n` + undo},
+		{"0", "--rating=3", `Updated track \[id:1\]\.\n` + undo},
+	} {
+		t.Run(tt.agent+tt.flag, func(t *testing.T) {
+			t.Setenv("AGENT", tt.agent)
+			var out bytes.Buffer
+			c := newRootCommand()
+			c.SetOut(&out)
+			c.SetErr(&bytes.Buffer{})
+			c.SetArgs([]string{"-l", lib, "--no-backup", "track", "update", "1", "--title", "Renamed", tt.flag})
+			if err := c.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			if !regexp.MustCompile(`\A` + tt.want + `\z`).MatchString(out.String()) {
+				t.Fatalf("output=%q, want %q", out.String(), tt.want)
+			}
+		})
 	}
-	check("track update", updated)
 }

@@ -60,11 +60,13 @@ func (s *Server) playlistOperations() []operation {
 		s.membershipOperation("playlist.track.rm"),
 		define("playlist.track.move", true, []string{"from", "to", "tracks"}, func(ctx context.Context, p moveMembershipParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				moved, err := batch(ctx, "playlist.track.move", p.Tracks, func(ctx context.Context, id string) (membershipMove, error) {
+				return batch(ctx, "playlist.track.move", p.Tracks, func(ctx context.Context, id string) (membershipMove, error) {
 					from, to, tr, err := playlist.MoveTrackBetweenPlaylists(ctx, d, p.From, p.To, id)
-					return membershipMove{from: from, to: to, track: tr}, err
+					if err != nil {
+						return membershipMove{}, err
+					}
+					return membershipMove{FromPlaylistID: from.ID, ToPlaylistID: to.ID, TrackID: tr.ID}, nil
 				})
-				return trackResults(ctx, d, moved, err)
 			})
 		}),
 	}
@@ -73,15 +75,17 @@ func (s *Server) playlistOperations() []operation {
 func (s *Server) membershipOperation(name string) operation {
 	return define(name, true, []string{"playlist", "tracks"}, func(ctx context.Context, p membershipParams) (any, error) {
 		return s.database(ctx, func(d *sql.DB) (any, error) {
-			changed, err := batch(ctx, name, p.Tracks, func(ctx context.Context, id string) (membershipChange, error) {
+			return batch(ctx, name, p.Tracks, func(ctx context.Context, id string) (membershipChange, error) {
 				run := playlist.AddTrackToPlaylist
 				if name == "playlist.track.rm" {
 					run = playlist.RemoveTrackFromPlaylist
 				}
 				pl, tr, err := run(ctx, d, p.Playlist, id)
-				return membershipChange{playlist: pl, track: tr}, err
+				if err != nil {
+					return membershipChange{}, err
+				}
+				return membershipChange{PlaylistID: pl.ID, TrackID: tr.ID}, nil
 			})
-			return trackResults(ctx, d, changed, err)
 		})
 	})
 }

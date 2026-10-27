@@ -224,7 +224,7 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 				result = display
 			}
 			if operation == "track.upgrade" && !asJSON && runErr == nil {
-				return printTrackUpgrade(c, result.(map[string]any))
+				return printTrackUpgrade(c, result.(api.UpgradedTrack))
 			}
 			encoder := json.NewEncoder(c.OutOrStdout())
 			if !asJSON {
