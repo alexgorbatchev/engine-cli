@@ -4,38 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db/dbtest"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-func syncLibrary(t *testing.T, uuid string) string {
-	t.Helper()
-	path := t.TempDir()
-	if err := os.Mkdir(filepath.Join(path, "Database2"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	d, err := db.Open(filepath.Join(path, "Database2", "m.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer d.Close()
-	schema, err := os.ReadFile("../db/library_schema.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = d.Exec(string(schema)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = d.Exec("INSERT INTO Information(uuid,schemaVersionMajor,schemaVersionMinor,schemaVersionPatch) VALUES(?,3,0,2)", uuid); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
 func TestSyncAPIPreviewApplyAndDestinationUndo(t *testing.T) {
 	s, configured := testAPI(t)
-	source := syncLibrary(t, "source")
-	dest := syncLibrary(t, "dest")
+	source := dbtest.Library(t, "source")
+	dest := dbtest.Library(t, "dest")
 	d, err := db.Open(filepath.Join(source, "Database2", "m.db"))
 	if err != nil {
 		t.Fatal(err)

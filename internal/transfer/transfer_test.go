@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db/dbtest"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"os"
 	"path/filepath"
@@ -12,25 +13,12 @@ import (
 
 func library(t *testing.T, uuid string) (string, *sql.DB) {
 	t.Helper()
-	schema, err := os.ReadFile("../db/library_schema.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	p := t.TempDir()
-	if err := os.Mkdir(filepath.Join(p, "Database2"), 0700); err != nil {
-		t.Fatal(err)
-	}
+	p := dbtest.Library(t, uuid)
 	d, err := db.Open(filepath.Join(p, "Database2", "m.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { d.Close() })
-	if _, err = d.Exec(string(schema)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = d.Exec("INSERT INTO Information(uuid,schemaVersionMajor,schemaVersionMinor,schemaVersionPatch) VALUES(?,3,0,2)", uuid); err != nil {
-		t.Fatal(err)
-	}
 	return p, d
 }
 func execSQL(t *testing.T, d *sql.DB, q string, args ...any) {

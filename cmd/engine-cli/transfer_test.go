@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db/dbtest"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,23 +14,13 @@ import (
 
 func transferLibrary(t *testing.T, uuid string) string {
 	t.Helper()
-	path := t.TempDir()
-	if err := os.Mkdir(filepath.Join(path, "Database2"), 0700); err != nil {
-		t.Fatal(err)
-	}
+	path := dbtest.Library(t, uuid)
 	d, err := db.Open(filepath.Join(path, "Database2", "m.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer d.Close()
-	schema, err := os.ReadFile("../../internal/db/library_schema.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = d.Exec(string(schema)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = d.Exec("INSERT INTO Information(uuid,schemaVersionMajor,schemaVersionMinor,schemaVersionPatch) VALUES(?,3,0,2); INSERT INTO Playlist(title,parentListId,nextListId) VALUES('Set',0,0)", uuid); err != nil {
+	if _, err = d.Exec("INSERT INTO Playlist(title,parentListId,nextListId) VALUES('Set',0,0)"); err != nil {
 		t.Fatal(err)
 	}
 	return path
