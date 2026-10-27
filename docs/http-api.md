@@ -180,6 +180,7 @@ fields; normal mutation guards, snapshots, and undo apply to that separate opera
 | `GET /v1/tracks/{id}` | Track metadata with JSON values and nulls |
 | `GET /v1/tracks/{id}/audio` | Original local audio; supports `HEAD` and HTTP byte ranges for seeking |
 | `GET /v1/tracks/{id}/beatgrid` | Saved Engine beat-grid anchors, or `{"grid":null}` when analysis is absent |
+| `GET /v1/tracks/{id}/performance` | Read-only saved hot cues and loops with native slots, names, colors, and positions in seconds |
 
 Every operation, including reads, runs as a job. Submit a JSON object with `Content-Type: application/json`; use `{}` when there are no parameters. Unknown fields and missing required parameters are rejected before the job starts. Requests are limited to 1 MiB.
 
@@ -279,6 +280,18 @@ The applied result's `operation_id` and job's `history_id` identify undo history
 The beat-grid response contains `grid.sampleRate` and `grid.anchors`. Each anchor has `sample` (sample position, which can be negative for preroll), `beat` (zero-based beat index), and `beatsUntilNext` (the outgoing segment's beat count). Interpolate the interval between adjacent anchors using `beatsUntilNext`, then divide sample positions by `sampleRate` for seconds. Every fourth beat is a bar boundary. The last anchor ends the preceding segment.
 
 The API reads the current saved grid from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM or modify analysis. Missing analysis returns `{"grid":null}`. Invalid compressed payloads return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. The Qt framing and mixed-endian anchor format follow the existing [Engine DJ app codec](https://github.com/alexgorbatchev/engine-dj-app/tree/main/src/beat_grid) and its [compression framing](https://github.com/alexgorbatchev/engine-dj-app/blob/main/src/compression.rs).
+
+## Saved cues and loops
+
+`GET /v1/tracks/{id}/performance` is also available under `/v1/libraries/{key}` and accepts the same track identifiers as track details. It shares the collection read barrier and remains available while Desktop is running. It reads `PerformanceData.beatData`, `quickCues`, and `loops` through Engine CLI; it does not write analysis or create an undo record.
+
+The response has `cues` and `loops` arrays, ordered by native slot (1–8). Unset slots are omitted; an empty name does not mean an unset slot. Colors are `#RRGGBB`. Cue `position` and loop `start`/`end` are seconds derived from the saved sample rate, preserving fractional precision:
+
+```json
+{"cues":[{"slot":8,"name":"Outro","color":"#FF0080","position":1.25}],"loops":[{"slot":3,"name":"Break","color":"#0080FF","start":2.5,"end":6.75}]}
+```
+
+Missing analysis returns `{"cues":[],"loops":[]}`. Malformed data or a missing sample rate for existing markers returns `422 invalid_saved_performance`; a failed analysis read returns `503 saved_performance_unavailable`. Neither case returns partial markers or guessed timing. Decoding uses `djtools` v0.1.1, including its bounded Qt decompression and native mixed-endian slot codec. This read does not activate cues or loops, expose the temporary main cue, or edit saved markers.
 
 ## Shared progress fields
 

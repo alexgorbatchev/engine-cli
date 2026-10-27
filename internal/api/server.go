@@ -131,6 +131,7 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("GET /v1/tracks/{id}/audio", s.trackAudio)
 	s.mux.HandleFunc("GET /v1/tracks/{id}/artwork", s.collectionRead(s.trackArtwork))
 	s.mux.HandleFunc("GET /v1/tracks/{id}/beatgrid", s.collectionRead(s.trackBeatGrid))
+	s.mux.HandleFunc("GET /v1/tracks/{id}/performance", s.collectionRead(s.trackSavedPerformance))
 	paths := slices.Clone(config.LibraryPaths)
 	if path, err := libraryPath(config.LibraryDir); err == nil {
 		paths = append([]string{path}, paths...)

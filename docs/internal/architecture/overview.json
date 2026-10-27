@@ -312,6 +312,16 @@
         "Components group cooperating packages rather than enumerate every Go package. Identity, sync baselines, fingerprints, and staging accompany their owning library operations.",
         "Library preferences use a separate SQLite state store. HTTP job state and retained SSE events are bounded in-memory data, not a durable job queue."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Saved markers — working-tree addition",
+      "items": [
+        "GET /v1/tracks/{id}/performance also resolves within opened-library routes. requestTrack validates identity, and collectionRead shares the collection barrier.",
+        "The handler opens m.db read-only and reads PerformanceData beatData, quickCues, and loops. djtools v0.1.1 decodes slots, names, colors, and positions in seconds without database access of its own.",
+        "Absent markers return empty arrays. Invalid data returns invalid_saved_performance; failed reads return saved_performance_unavailable. This endpoint performs no mutation, snapshot, or undo write.",
+        "These additions are outside the pinned committed source evidence. Their implementation is internal/api/performance.go and its behavioral test."
+      ]
     }
   ]
 }

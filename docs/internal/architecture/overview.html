@@ -5642,6 +5642,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Library preferences use a separate SQLite state store. HTTP job state and retained SSE events are bounded in-memory data, not a durable job queue.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Saved markers — working-tree addition</h3>
+        </div>
+        <ul>
+          <li>GET /v1/tracks/{id}/performance also resolves within opened-library routes. requestTrack validates identity, and collectionRead shares the collection barrier.</li>
+          <li>The handler opens m.db read-only and reads PerformanceData beatData, quickCues, and loops. djtools v0.1.1 decodes slots, names, colors, and positions in seconds without database access of its own.</li>
+          <li>Absent markers return empty arrays. Invalid data returns invalid_saved_performance; failed reads return saved_performance_unavailable. This endpoint performs no mutation, snapshot, or undo write.</li>
+          <li>These additions are outside the pinned committed source evidence. Their implementation is internal/api/performance.go and its behavioral test.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

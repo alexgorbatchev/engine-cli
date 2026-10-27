@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-25 08:41
+last_modified: 2026-10-27 06:56
 status: current
 ---
 
@@ -17,6 +17,8 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 All three specifications cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`. Their source links and claims describe that revision. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
 ## Viewing
+
+The overview's saved-marker card describes the working-tree performance-read endpoint separately from the pinned evidence: Engine CLI owns database access and the collection barrier, while `djtools` decodes supplied blobs without opening a database.
 
 1. Install [devhost](https://alexgorbatchev.github.io/devhost/) with its native `serve` command. Follow its HTTPS setup instructions if certificate trust has not been configured; that step can require an interactive terminal.
 2. From this repository, run `just architecture-serve`. Open the URL devhost prints; the default is `https://engine-cli-archify.localhost`.
