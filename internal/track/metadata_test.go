@@ -13,7 +13,7 @@ func TestEditMetadata(t *testing.T) {
 	if _, err := d.Exec("INSERT INTO Track(id,title,path,bpmAnalyzed,rating) VALUES(1,'Original','song.mp3',123.4,100)"); err != nil {
 		t.Fatal(err)
 	}
-	e := MetadataEdit{Identifier: "1", Title: new("New"), Artist: new("Artist"), Album: new("Album"), Genre: new("House"), Comment: new("Comment"), Label: new("Label"), Composer: new("Composer"), Remixer: new("Remixer"), Year: new(int64(2026)), RatingStars: new(int64(3)), Key: new(int64(20))}
+	e := MetadataEdit{Identifier: "1", MetadataFields: MetadataFields{Title: new("New"), Artist: new("Artist"), Album: new("Album"), Genre: new("House"), Comment: new("Comment"), Label: new("Label"), Composer: new("Composer"), Remixer: new("Remixer"), Year: new(int64(2026)), RatingStars: new(int64(3)), Key: new(int64(20))}}
 	// edited applies an edit and reads the track it reports as changed.
 	edited := func(edit MetadataEdit) *db.Track {
 		t.Helper()
@@ -32,14 +32,14 @@ func TestEditMetadata(t *testing.T) {
 		t.Fatalf("%+v", tr)
 	}
 	// Key 0 is C major, not a cleared key.
-	if tr = edited(MetadataEdit{Identifier: "1", Key: new(int64(0))}); !tr.Key.Valid || tr.Key.Int64 != 0 {
+	if tr = edited(MetadataEdit{Identifier: "1", MetadataFields: MetadataFields{Key: new(int64(0))}}); !tr.Key.Valid || tr.Key.Int64 != 0 {
 		t.Fatalf("%+v", tr)
 	}
-	tr = edited(MetadataEdit{Identifier: "1", Artist: new(""), Year: new(int64(0)), RatingStars: new(int64(0)), Key: new(int64(musicalkey.None))})
+	tr = edited(MetadataEdit{Identifier: "1", MetadataFields: MetadataFields{Artist: new(""), Year: new(int64(0)), RatingStars: new(int64(0)), Key: new(int64(musicalkey.None))}})
 	if tr.Artist.String != "" || tr.Year.Int64 != 0 || tr.Rating.Int64 != 0 || tr.Key.Valid || tr.Album.String != "Album" {
 		t.Fatalf("%+v", tr)
 	}
-	for _, edit := range []MetadataEdit{{}, {Identifier: "1"}, {Identifier: "1", Year: new(int64(10000))}, {Identifier: "1", RatingStars: new(int64(-1))}, {Identifier: "1", Key: new(int64(24))}, {Identifier: "1", Key: new(int64(-2))}, {Identifier: "1", Title: new(" ")}, {Identifier: "999", Title: new("Missing")}} {
+	for _, edit := range []MetadataEdit{{}, {Identifier: "1"}, {Identifier: "1", MetadataFields: MetadataFields{Year: new(int64(10000))}}, {Identifier: "1", MetadataFields: MetadataFields{RatingStars: new(int64(-1))}}, {Identifier: "1", MetadataFields: MetadataFields{Key: new(int64(24))}}, {Identifier: "1", MetadataFields: MetadataFields{Key: new(int64(-2))}}, {Identifier: "1", MetadataFields: MetadataFields{Title: new(" ")}}, {Identifier: "999", MetadataFields: MetadataFields{Title: new("Missing")}}} {
 		if _, err := EditMetadata(context.Background(), d, edit); err == nil {
 			t.Fatalf("accepted %+v", edit)
 		}

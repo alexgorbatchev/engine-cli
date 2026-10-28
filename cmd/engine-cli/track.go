@@ -33,7 +33,10 @@ func newTrackCommand() *cobra.Command {
 	trCmd.AddCommand(newDetailsCommand("track"))
 	trCmd.AddCommand(newSuggestionCommand())
 	trCmd.AddCommand(newTrackAddCommand())
-	trCmd.AddCommand(newTrackEditCommand())
+	trCmd.AddCommand(newTrackEditCommand(false))
+	batch := &cobra.Command{Use: "batch", Short: "Edit selected tracks together", Args: cobra.NoArgs}
+	batch.AddCommand(newTrackEditCommand(true))
+	trCmd.AddCommand(batch)
 	trCmd.AddCommand(newTrackUpgradeCommand())
 	trCmd.AddCommand(newTrackRmCommand())
 	trCmd.AddCommand(newTrackMoveCommand())

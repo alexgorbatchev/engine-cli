@@ -5633,6 +5633,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Undo checks for conflicting later edits and refuses by default. An explicit force override permits conflict recovery; dry-run previews remain read-only.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Bulk metadata — working-tree addition</h3>
+        </div>
+        <ul>
+          <li>track.batch.update accepts 1–500 selectors and common scalar metadata. The ordinary collection-write path supplies Desktop protection, one safety snapshot, and one history record.</li>
+          <li>EditMetadataBatch resolves every selector before writing, deduplicates aliases in first-seen order, and saves all fields in one transaction. Missing selectors or failed writes leave the collection unchanged. The result contains track_ids without rereading committed entities.</li>
+          <li>The CLI exposes the same edit as track batch update. One undo restores the entire edit. This addition is outside the pinned committed source evidence.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-27 06:56
+last_modified: 2026-10-28 06:12
 status: current
 ---
 
@@ -17,6 +17,8 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 All three specifications cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`. Their source links and claims describe that revision. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
 ## Viewing
+
+The collection-write page's bulk-metadata card describes the working-tree `track.batch.update` addition separately from pinned evidence: all selected tracks share one transaction, snapshot, and undo record under the existing collection-write safeguards.
 
 The overview's saved-marker card describes the working-tree performance-read endpoint separately from the pinned evidence: Engine CLI owns database access and the collection barrier, while `djtools` decodes supplied blobs without opening a database.
 

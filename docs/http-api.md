@@ -390,6 +390,10 @@ To upgrade from a reviewed source, first call `track.candidates`, then supply it
 
 The matching CLI command is `engine-cli track update <tr|id|path>` with `--title`, `--artist`, `--album`, `--genre`, `--comment`, `--label`, `--composer`, `--remixer`, `--year`, `--rating`, `--key`, `--artwork <path>`, and `--clear-artwork` flags. `--key` takes a key in Camelot (`8A`), Open Key (`1m`), or by name (`Am`, `F#m`, `Bb`, `A minor`); `none` clears it. `--json` prints `{"track_id":<id>}`. Only supplied flags change fields.
 
+`track.batch.update` accepts `identifiers` (1–500 track IDs, stable references, or exact stored paths) plus the same scalar metadata fields. It applies the supplied values to every selected track in one transaction, with one safety snapshot and one undo record. All selectors resolve before writing; aliases are deduplicated in first-seen order. A missing track fails with `not_found`; any failed write rolls the entire transaction back. Desktop protection and cancellation apply through the ordinary collection-write pipeline. The result is `{"track_ids":[5,6]}`; no post-commit entity read is needed. Omitted or null fields stay unchanged, empty text clears optional text, and numeric clearing uses the values above. Batch artwork edits are not supported.
+
+Use `engine-cli track batch update <tr|id|path...>` with the scalar flags above for the same behavior. For example, `engine-cli track batch update 5 6 --artist "Various artists" --album "" --json` sets both artists and clears both albums. `--json` prints the affected `track_ids`; one undo restores the complete edit.
+
 `playlist.rename` accepts `identifier` and a nonempty `title`, preserving playlist identity, parent, and memberships. The matching command is `engine-cli playlist rename <pl|id> <name> [--json]`. Renaming uses the same snapshot, desktop protection, and undo handling as other collection mutations.
 
 `PUT /v1/tracks/{id}` accepts a multipart upload with one `artwork` file (PNG, JPEG, or GIF, at most 8 MiB and 40 megapixels) and an optional `metadata` JSON object using the `track.update` fields. The response is an ordinary accepted job with the same desktop guard, snapshot, progress, and undo behavior. Metadata and the artwork link are committed together. The image is center-cropped to a square, stored as a 1400×1400 JPEG cache image and a 256×256 thumbnail, and SHA-1 tracked. Audio files remain untouched. Invalid uploads return `400`; oversized requests return `413`. JSON `track.update` can clear the artwork link with `clear_artwork:true`, or use a server-local image with `artwork_path`. These artwork actions are mutually exclusive.
@@ -427,6 +431,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | Operation | Result |
 | --- | --- |
 | `track.update`, `PUT /v1/tracks/{id}` | `{"track_id":5}` |
+| `track.batch.update` | `{"track_ids":[5,6]}` |
 | `track.add` | `[{"track_id":7,"path":"Music/song.mp3","playlist_id":2,"moved":true}]`; `path` is the stored path and `playlist_id` is omitted without `to_playlist` |
 | `track.rm` | `[{"track_id":5}]` |
 | `track.move` | `{"track_id":5,"path":"moved/song.mp3"}` with the stored path |
@@ -466,6 +471,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `track.add` | `paths` array, `to_playlist?`, `move?` |
 | `track.list` | `{}` |
 | `track.update` | `identifier`, plus at least one metadata field; see collection editing above |
+| `track.batch.update` | `identifiers` (1–500), plus at least one scalar metadata field; see collection editing above |
 | `track.rm` | `tracks` array, `delete_file?` |
 | `track.move` | `identifier`, `destination` |
 | `track.relocate` | `from`, `to` |

@@ -21,24 +21,29 @@ const MaxRatingStars = 5
 // MetadataEdit changes only supplied collection fields, preserving audio and performance data.
 // Empty optional text clears a field; zero clears year or rating and musicalkey.None clears the key. Ratings live in Engine's database.
 type MetadataEdit struct {
-	Identifier   string  `json:"identifier"`
-	Title        *string `json:"title"`
-	Artist       *string `json:"artist"`
-	Album        *string `json:"album"`
-	Genre        *string `json:"genre"`
-	Comment      *string `json:"comment"`
-	Label        *string `json:"label"`
-	Composer     *string `json:"composer"`
-	Remixer      *string `json:"remixer"`
-	Year         *int64  `json:"year"`
-	RatingStars  *int64  `json:"rating_stars"`
-	Key          *int64  `json:"key"`
+	Identifier string `json:"identifier"`
+	MetadataFields
 	ArtworkPath  *string `json:"artwork_path"`
 	ClearArtwork bool    `json:"clear_artwork"`
 	ArtworkData  []byte  `json:"-"`
 }
 
-func (e MetadataEdit) fields() ([]string, []any) {
+// MetadataFields contains collection values shared by single and batch edits.
+type MetadataFields struct {
+	Title       *string `json:"title"`
+	Artist      *string `json:"artist"`
+	Album       *string `json:"album"`
+	Genre       *string `json:"genre"`
+	Comment     *string `json:"comment"`
+	Label       *string `json:"label"`
+	Composer    *string `json:"composer"`
+	Remixer     *string `json:"remixer"`
+	Year        *int64  `json:"year"`
+	RatingStars *int64  `json:"rating_stars"`
+	Key         *int64  `json:"key"`
+}
+
+func (e MetadataFields) fields() ([]string, []any) {
 	var columns []string
 	var values []any
 	for _, field := range []struct {
@@ -75,6 +80,20 @@ func (e MetadataEdit) Validate() error {
 	if strings.TrimSpace(e.Identifier) == "" {
 		return fmt.Errorf("choose a track to edit")
 	}
+	if err := e.MetadataFields.validate(); err != nil {
+		return err
+	}
+	columns, _ := e.fields()
+	if len(columns) == 0 && e.ArtworkPath == nil && e.ArtworkData == nil && !e.ClearArtwork {
+		return fmt.Errorf("choose at least one field to update")
+	}
+	if e.ClearArtwork && (e.ArtworkPath != nil || e.ArtworkData != nil) || e.ArtworkPath != nil && e.ArtworkData != nil {
+		return fmt.Errorf("choose either an artwork image or clear artwork")
+	}
+	return nil
+}
+
+func (e MetadataFields) validate() error {
 	if e.Title != nil && strings.TrimSpace(*e.Title) == "" {
 		return fmt.Errorf("track title must not be empty")
 	}
@@ -86,13 +105,6 @@ func (e MetadataEdit) Validate() error {
 	}
 	if e.Key != nil && (*e.Key < musicalkey.None || *e.Key > musicalkey.Max) {
 		return fmt.Errorf("key must be between 0 and 23, or -1 to clear it")
-	}
-	columns, _ := e.fields()
-	if len(columns) == 0 && e.ArtworkPath == nil && e.ArtworkData == nil && !e.ClearArtwork {
-		return fmt.Errorf("choose at least one field to update")
-	}
-	if e.ClearArtwork && (e.ArtworkPath != nil || e.ArtworkData != nil) || e.ArtworkPath != nil && e.ArtworkData != nil {
-		return fmt.Errorf("choose either an artwork image or clear artwork")
 	}
 	return nil
 }
@@ -133,15 +145,36 @@ func EditMetadata(ctx context.Context, database *sql.DB, edit MetadataEdit, runn
 		columns = append(columns, "albumArtId = ?", "albumArt = ?", "albumArtSourceHash = ?")
 		values = append(values, id, fmt.Sprintf("image://planck/%d", id), prepared.Hash)
 	}
-	columns = append(columns, "lastEditTime = ?")
-	values = append(values, time.Now().UTC().Format("2006-01-02T15:04:05.000Z"), t.ID)
-	if _, err := tx.ExecContext(ctx, "UPDATE Track SET "+strings.Join(columns, ", ")+" WHERE id = ?", values...); err != nil {
-		return 0, fmt.Errorf("saving track information: %w", err)
+	if err := saveMetadata(ctx, tx, metadataUpdate{ID: t.ID, Columns: columns, Values: values}); err != nil {
+		return 0, err
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
 	return t.ID, nil
+}
+
+type metadataUpdate struct {
+	ID      int64
+	Columns []string
+	Values  []any
+}
+
+func saveMetadata(ctx context.Context, tx *sql.Tx, update metadataUpdate) error {
+	columns := append(update.Columns, "lastEditTime = ?")
+	values := append(update.Values, time.Now().UTC().Format("2006-01-02T15:04:05.000Z"), update.ID)
+	result, err := tx.ExecContext(ctx, "UPDATE Track SET "+strings.Join(columns, ", ")+" WHERE id = ?", values...)
+	if err != nil {
+		return fmt.Errorf("saving track information: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("track %d: %w", update.ID, sql.ErrNoRows)
+	}
+	return nil
 }
 
 func prepareArtwork(ctx context.Context, edit MetadataEdit, runner ...artwork.CommandRunner) (*artwork.Prepared, error) {

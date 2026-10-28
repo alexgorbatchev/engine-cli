@@ -26,7 +26,7 @@ func editDatabase(c *cobra.Command) (*sql.DB, error) {
 	return d, nil
 }
 
-func newTrackEditCommand() *cobra.Command {
+func newTrackEditCommand(batch bool) *cobra.Command {
 	var edit track.MetadataEdit
 	var asJSON bool
 	text := map[string]*string{}
@@ -34,15 +34,22 @@ func newTrackEditCommand() *cobra.Command {
 	var key string
 	var artworkPath string
 	c := &cobra.Command{Use: "update <tr|id|path>", Short: "Edit track information and star rating", Args: cobra.ExactArgs(1)}
+	if batch {
+		c.Use = "update <tr|id|path...>"
+		c.Short = "Edit selected tracks together with one undo record"
+		c.Args = cobra.RangeArgs(1, track.MaxMetadataBatch)
+	}
 	for _, name := range []string{"title", "artist", "album", "genre", "comment", "label", "composer", "remixer"} {
 		text[name] = c.Flags().String(name, "", "Update the track's "+name)
 	}
 	c.Flags().Int64Var(&year, "year", 0, "Release year (0 clears the year)")
 	c.Flags().Int64Var(&stars, "rating", 0, "Star rating from 0 (unrated) to 5")
 	c.Flags().StringVar(&key, "key", "", "Musical key in Camelot (8A), Open Key (1m), or by name (Am, F#m, Bb); none clears it")
-	c.Flags().BoolVar(&asJSON, "json", false, "Print the edited track ID as JSON")
-	c.Flags().StringVar(&artworkPath, "artwork", "", "Set cover artwork from a PNG, JPEG, or GIF image")
-	c.Flags().BoolVar(&edit.ClearArtwork, "clear-artwork", false, "Remove the track's artwork association")
+	c.Flags().BoolVar(&asJSON, "json", false, "Print the edited track IDs as JSON")
+	if !batch {
+		c.Flags().StringVar(&artworkPath, "artwork", "", "Set cover artwork from a PNG, JPEG, or GIF image")
+		c.Flags().BoolVar(&edit.ClearArtwork, "clear-artwork", false, "Remove the track's artwork association")
+	}
 	c.RunE = func(c *cobra.Command, args []string) error {
 		edit.Identifier = args[0]
 		if c.Flags().Changed("artwork") {
@@ -77,6 +84,13 @@ func newTrackEditCommand() *cobra.Command {
 			return err
 		}
 		defer d.Close()
+		if batch {
+			ids, err := track.EditMetadataBatch(c.Context(), d, track.BatchMetadataEdit{Identifiers: args, MetadataFields: edit.MetadataFields})
+			if err != nil {
+				return err
+			}
+			return printBatchMetadataResult(c, ids, asJSON)
+		}
 		id, err := track.EditMetadata(c.Context(), d, edit)
 		if err != nil {
 			return err
@@ -92,6 +106,18 @@ func newTrackEditCommand() *cobra.Command {
 		return err
 	}
 	return c
+}
+
+func printBatchMetadataResult(c *cobra.Command, ids []int64, asJSON bool) error {
+	if asJSON {
+		return json.NewEncoder(c.OutOrStdout()).Encode(map[string][]int64{"track_ids": ids})
+	}
+	if agent.IsAgentMode() {
+		_, err := fmt.Fprintf(c.OutOrStdout(), "status: ok\ntrack_ids: %v\n", ids)
+		return err
+	}
+	_, err := fmt.Fprintf(c.OutOrStdout(), "Updated %d tracks. Undo reverses the complete edit.\n", len(ids))
+	return err
 }
 
 func newPlaylistRenameCommand() *cobra.Command {

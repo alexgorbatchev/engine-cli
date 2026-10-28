@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-26 14:19
+last_modified: 2026-10-28 06:19
 status: current
 ---
 
@@ -38,6 +38,7 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <id>] [--folder]`
 - **Rename Playlist:** `bin/engine-cli playlist rename <pl|id> <name> [--json]`
 - **Edit Track Information:** `bin/engine-cli track update <tr|id|path> [--title <text>] [--artist <text>] [--album <text>] [--genre <text>] [--comment <text>] [--label <text>] [--composer <text>] [--remixer <text>] [--year <year>] [--rating <0-5>] [--key <8A|1m|Am|none>] [--artwork <path> | --clear-artwork] [--json]`
+- **Bulk Track Information:** `bin/engine-cli track batch update <tr|id|path...>` accepts the same scalar metadata flags for 1–500 selectors. Resolve and deduplicate selectors before writing; apply all changes in one transaction, safety snapshot, and undo record. Preserve audio and performance data. Return affected `track_ids`, without post-commit entity reads. Batch artwork edits are unsupported.
 - **Remove Playlist:** `bin/engine-cli playlist rm <id> [--force]`
 - **Move/Reorder Playlist:** `bin/engine-cli playlist move <id> --to <id> [--before <sibling-id>]` inserts before a sibling or appends when omitted. Listings follow Engine's saved sibling links; moving updates both folders atomically and preserves memberships and undo.
 - **Add Track to Playlist:** `bin/engine-cli playlist track add <id> <id|path...>`

@@ -52,6 +52,14 @@ type metadataParams track.MetadataEdit
 
 func (p metadataParams) validate() error { return track.MetadataEdit(p).Validate() }
 
+type batchMetadataParams track.BatchMetadataEdit
+
+func (p batchMetadataParams) validate() error { return track.BatchMetadataEdit(p).Validate() }
+
+type changedTracks struct {
+	TrackIDs []int64 `json:"track_ids"`
+}
+
 func (p upgradeParams) validate() error {
 	if p.KeepTiming && p.ClearTiming {
 		return fmt.Errorf("choose keep_timing or clear_timing, not both")
@@ -67,6 +75,15 @@ func (s *Server) trackOperations() []operation {
 	return []operation{
 		s.suggestionOperation(),
 		s.detailOperation("track"),
+		define("track.batch.update", true, []string{"identifiers"}, func(ctx context.Context, p batchMetadataParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				ids, err := track.EditMetadataBatch(ctx, d, track.BatchMetadataEdit(p))
+				if err != nil {
+					return nil, err
+				}
+				return changedTracks{TrackIDs: ids}, nil
+			})
+		}),
 		define("track.update", true, []string{"identifier"}, func(ctx context.Context, p metadataParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				id, err := track.EditMetadata(ctx, d, track.MetadataEdit(p), s.config.ArtworkRunner)
