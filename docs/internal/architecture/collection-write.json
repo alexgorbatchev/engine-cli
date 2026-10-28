@@ -279,11 +279,11 @@
     },
     {
       "dot": "emerald",
-      "title": "Bulk metadata — working-tree addition",
+      "title": "Bulk metadata — after the pinned revision",
       "items": [
         "track.batch.update accepts 1–500 selectors and common scalar metadata. The ordinary collection-write path supplies Desktop protection, one safety snapshot, and one history record.",
         "EditMetadataBatch resolves every selector before writing, deduplicates aliases in first-seen order, and saves all fields in one transaction. Missing selectors or failed writes leave the collection unchanged. The result contains track_ids without rereading committed entities.",
-        "The CLI exposes the same edit as track batch update. One undo restores the entire edit. This addition is outside the pinned committed source evidence."
+        "The CLI exposes the same edit as track batch update. One undo restores the entire edit. This behavior was committed in 07441d1 after the source revision pinned above."
       ]
     }
   ]
