@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-28 06:19
+last_modified: 2026-10-29 07:20
 status: current
 ---
 
@@ -13,9 +13,9 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 - **Build Local Binary:** `just build` (compiles to `bin/engine-cli`)
 - **Run CLI with Arguments:** `just run [args...]`
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
-- **Setup:** `just setup` (`go mod download` and `.githooks` as `core.hooksPath`)
-- **Run Tests:** `just test` (`go test -v ./...` and `bash scripts/test-git-hooks.sh .githooks`)
-- **Run Static Analysis & Tests:** `just check` (`just fmt-check`, `go vet ./...`, `go test -v ./...`, and the Git hook tests)
+- **Setup:** `just setup` (`go mod download`)
+- **Run Tests:** `just test` (`go test -v ./...`)
+- **Run Static Analysis & Tests:** `just check` (`just fmt-check`, `go vet ./...`, `go test -v ./...`)
 - **Check Formatting:** `just fmt-check` fails on any tracked or new Go file that `gofmt` would change
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)
@@ -111,9 +111,9 @@ Go CLI utility for managing, verifying, backing up, synchronizing, and repairing
 ## Git Workflow
 - Start every unit of work from the latest revision: `git fetch`, then fast-forward local `main` to `origin/main` in the main checkout (`git merge --ff-only origin/main`). If it cannot fast-forward, `main` holds commits from a failed push; run `git pull --rebase` and `git push` before anything else. Never begin work on a stale `main`.
 - Make every change in a linked worktree under `.workspaces/<name>` on a new branch created from that up-to-date `main` (`git worktree add -b <branch> .workspaces/<name> main`). Never edit the main checkout directly; other sessions share it.
-- Validate and commit in the worktree, then bring `main` level with `origin/main` again and fast-forward it from the main checkout (`git merge --ff-only <branch>`; rebase the branch onto `main` first when `main` has moved). Afterwards remove the worktree and delete the branch (`git worktree remove .workspaces/<name>`, `git branch -d <branch>`). Finish by confirming `main` is level with `origin/main` (`git fetch`, then `git status -sb` shows no ahead or behind count); the hook only attempts the push. Yield the turn to the user only after the change is merged into `main`, synced with `origin/main`, and its worktree removed.
-- `just setup` installs `.githooks` as `core.hooksPath`. Its post-commit and post-merge hooks push a branch to its same-named upstream after every commit or merge, so `main` reaches `origin/main` immediately; branches without one, including worktree branches, stay local. Hooks act only on this repository, wherever it is checked out; never invoke enclosing repositories or their recipes. `bash scripts/test-git-hooks.sh .githooks` tests them.
-- A merge into `main` publishes it on GitHub, though not as a release. Never amend, rebase, or force-push commits already on `origin/main`; fix mistakes with a follow-up change. Inspect staged changes for private hostnames before committing. When a push is rejected because `origin/main` moved, run `git pull --rebase` on `main`, then `git push`.
+- Validate and commit in the worktree, then fast-forward the target branch from the main checkout (`git merge --ff-only <branch>`). Rebase the work branch first if the target moved. Remove the merged worktree and branch afterward. Commits and merges remain local; publish only through an explicit push or workspace synchronization.
+- Never install automatic post-commit or post-merge push hooks. Keep commits local; global dotfiles Git hooks enforce secret scanning independently of repository hooks.
+- Never amend, rebase, or force-push commits already published upstream; fix mistakes with a follow-up change. Inspect staged changes for private hostnames before committing. A commit or merge does not authorize an automatic push.
 
 ## Boundaries
 - **Always:** Automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).

@@ -14,10 +14,9 @@ run *args:
 run-ai *args:
     AGENT=1 go run ./cmd/engine-cli {{ args }}
 
-# Run test suite and Git hook tests
+# Run test suite
 test:
     go test -v ./...
-    bash scripts/test-git-hooks.sh .githooks
 
 # Build binary into bin/
 build:
@@ -43,20 +42,18 @@ fmt:
 fmt-check:
     sh scripts/check-gofmt.sh
 
-# Check formatting, then run static analysis, test suite, and Git hook tests in sequence
+# Check formatting, then run static analysis, test suite, in sequence
 check: fmt-check
     go vet ./...
     go test -v ./...
-    bash scripts/test-git-hooks.sh .githooks
 
 # Clean up build binaries and temporary files
 clean:
     rm -rf bin coverage.out .tmp dist
 
-# Download project dependencies and install the publishing Git hooks
+# Download project dependencies
 setup:
     go mod download
-    git config core.hooksPath .githooks
 
 # Regenerate architecture diagrams with Archify 3.2.0
 architecture:
