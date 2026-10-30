@@ -107,6 +107,43 @@ func TestSmartlistPlaylistMutations(t *testing.T) {
 	}
 }
 
+func TestPlaylistMutationsBeforeSmartlistSchema(t *testing.T) {
+	for _, name := range []string{"rename", "move", "delete"} {
+		t.Run(name, func(t *testing.T) {
+			d := smartlistLibrary(t)
+			if _, err := d.Exec(`DROP TABLE Smartlist; UPDATE Information SET schemaVersionMajor=2,schemaVersionMinor=20,schemaVersionPatch=0`); err != nil {
+				t.Fatal(err)
+			}
+			switch name {
+			case "rename":
+				if _, err := RenamePlaylist(t.Context(), d, "2", "Renamed"); err != nil {
+					t.Fatal(err)
+				}
+				var title string
+				if err := d.QueryRow(`SELECT title FROM Playlist WHERE id=2`).Scan(&title); err != nil || title != "Renamed" {
+					t.Fatalf("title=%q error=%v", title, err)
+				}
+			case "move":
+				if _, _, err := MovePlaylist(t.Context(), d, "2", "4", ""); err != nil {
+					t.Fatal(err)
+				}
+				var parent int64
+				if err := d.QueryRow(`SELECT parentListId FROM Playlist WHERE id=2`).Scan(&parent); err != nil || parent != 4 {
+					t.Fatalf("parent=%d error=%v", parent, err)
+				}
+			case "delete":
+				if _, err := DeletePlaylist(t.Context(), d, "2", true); err != nil {
+					t.Fatal(err)
+				}
+				var count int
+				if err := d.QueryRow(`SELECT COUNT(*) FROM Playlist WHERE id IN (2,3)`).Scan(&count); err != nil || count != 0 {
+					t.Fatalf("remaining descendants=%d error=%v", count, err)
+				}
+			}
+		})
+	}
+}
+
 func TestSmartlistNativeTitlePaths(t *testing.T) {
 	for _, title := range []string{"Housewarming", "50%_House", "House;Live", "家"} {
 		t.Run(title, func(t *testing.T) {
@@ -211,7 +248,8 @@ func TestSmartlistRenameStorageFailure(t *testing.T) {
 	for _, tc := range []struct {
 		name, setup, recover string
 	}{
-		{"missing Smartlist table", `ALTER TABLE Smartlist RENAME TO saved_smartlists`, `ALTER TABLE saved_smartlists RENAME TO Smartlist`},
+		{"unreadable Smartlist column", `ALTER TABLE Smartlist RENAME COLUMN parentPlaylistPath TO unavailable_parent`, `ALTER TABLE Smartlist RENAME COLUMN unavailable_parent TO parentPlaylistPath`},
+		{"wrong Smartlist object type", `ALTER TABLE Smartlist RENAME TO saved_smartlists; CREATE VIEW Smartlist AS SELECT * FROM saved_smartlists`, `DROP VIEW Smartlist; ALTER TABLE saved_smartlists RENAME TO Smartlist`},
 		{"rejected playlist write", `CREATE TRIGGER reject_playlist_update BEFORE UPDATE ON Playlist BEGIN SELECT RAISE(ABORT,'fixture rejection'); END`, `DROP TRIGGER reject_playlist_update`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

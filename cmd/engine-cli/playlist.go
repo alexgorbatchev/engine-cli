@@ -217,7 +217,7 @@ Arguments:
 		},
 	}
 
-	cmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Recursively delete folder and all nested child playlists")
+	cmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Recursively delete folder, nested child playlists, and saved Smartlists")
 
 	return cmd
 }

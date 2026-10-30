@@ -44,7 +44,26 @@ func playlistPaths(rows []playlistRow) (map[int64]string, error) {
 	return paths, nil
 }
 
+func hasSmartlistTable(ctx context.Context, tx *sql.Tx) (bool, error) {
+	var objectType string
+	err := tx.QueryRowContext(ctx, `SELECT type FROM sqlite_schema WHERE name='Smartlist'`).Scan(&objectType)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if objectType != "table" {
+		return false, fmt.Errorf("Smartlist schema object is %q, not a table", objectType)
+	}
+	return true, nil
+}
+
 func rewriteSmartlistPaths(ctx context.Context, tx *sql.Tx, before, after map[int64]string) error {
+	exists, err := hasSmartlistTable(ctx, tx)
+	if err != nil || !exists {
+		return err
+	}
 	changes := make(map[string]string)
 	for id, old := range before {
 		path, exists := after[id]
@@ -128,6 +147,10 @@ func smartlistChainHead(ctx context.Context, tx *sql.Tx, parent, nextPath string
 }
 
 func unlinkSmartlistPredecessor(ctx context.Context, tx *sql.Tx, source playlistRow, paths map[int64]string) error {
+	exists, err := hasSmartlistTable(ctx, tx)
+	if err != nil || !exists {
+		return err
+	}
 	nextPath := paths[source.next.Int64]
 	head, err := smartlistChainHead(ctx, tx, paths[source.ParentListID], nextPath)
 	if err != nil {

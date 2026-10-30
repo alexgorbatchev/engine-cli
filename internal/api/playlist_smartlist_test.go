@@ -65,3 +65,79 @@ func TestPlaylistSmartlistAPIAndUndo(t *testing.T) {
 		})
 	}
 }
+
+func TestPlaylistBeforeSmartlistSchemaAndUndo(t *testing.T) {
+	for _, tc := range []struct{ operation, body string }{
+		{"playlist.rename", `{"identifier":"1","title":"Renamed"}`},
+		{"playlist.move", `{"identifier":"1","to":"3"}`},
+		{"playlist.rm", `{"identifier":"1","force":true}`},
+	} {
+		t.Run(tc.operation, func(t *testing.T) {
+			s, library := testAPI(t)
+			d, err := db.Open(filepath.Join(library, "Database2", "m.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer d.Close()
+			if _, err := d.Exec(`DROP TABLE Smartlist;
+			ALTER TABLE Information ADD COLUMN schemaVersionMajor INTEGER;
+			ALTER TABLE Information ADD COLUMN schemaVersionMinor INTEGER;
+			ALTER TABLE Information ADD COLUMN schemaVersionPatch INTEGER;
+			UPDATE Information SET schemaVersionMajor=2,schemaVersionMinor=20,schemaVersionPatch=0;
+			UPDATE Playlist SET nextListId=3 WHERE id=1;
+			INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(2,'Child',1,0),(3,'Destination',0,0)`); err != nil {
+				t.Fatal(err)
+			}
+			before, err := db.GetAllPlaylists(t.Context(), d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := runAPIJob(t, s, tc.operation, tc.body)
+			after, err := db.GetAllPlaylists(t.Context(), d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if reflect.DeepEqual(before, after) {
+				t.Fatal("ordinary playlist mutation did not change the library")
+			}
+			runAPIJob(t, s, "library.undo", `{"id":"`+job["history_id"].(string)+`"}`)
+			restored, err := db.GetAllPlaylists(t.Context(), d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(before, restored) {
+				t.Fatalf("Undo did not restore ordinary playlists: got=%v want=%v", restored, before)
+			}
+			var savedTable bool
+			if err := d.QueryRow(`SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='Smartlist')`).Scan(&savedTable); err != nil {
+				t.Fatal(err)
+			}
+			if savedTable {
+				t.Fatal("playlist operation or Undo enrolled a Smartlist table")
+			}
+		})
+	}
+}
+
+func TestSmartlistOnlyRemovalFailureCode(t *testing.T) {
+	s, library := testAPI(t)
+	d, err := db.Open(filepath.Join(library, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if _, err := d.Exec(`INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('saved','Saved','Favorites;','','','opaque')`); err != nil {
+		t.Fatal(err)
+	}
+	job := awaitAPIJob(t, s, submitAPIJob(t, s, "playlist.rm", `{"identifier":"1"}`))
+	if job["state"] != "failed" || job["error"].(map[string]any)["code"] != "playlist_not_empty" || job["progress"].(map[string]any)["error_code"] != "playlist_not_empty" {
+		t.Fatalf("nonempty refusal lacks stable failure code: %v", job)
+	}
+	var count int
+	if err := d.QueryRow(`SELECT COUNT(*) FROM Smartlist WHERE listUuid='saved'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatal("refused removal changed saved Smartlists")
+	}
+}

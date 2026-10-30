@@ -159,8 +159,14 @@ func MovePlaylist(ctx context.Context, database *sql.DB, id, newParentID, before
 	}
 	// Inserting before an ordinary sibling follows the Smartlist chain that
 	// already preceded it, as with Engine's native playlist insertion.
-	if _, err := tx.ExecContext(ctx, `UPDATE Smartlist SET nextPlaylistPath=? WHERE parentPlaylistPath=? AND nextPlaylistPath=? AND nextListUuid=''`, paths[newParentID]+source.Title+";", paths[newParentID], paths[beforeID]); err != nil {
+	hasSaved, err := hasSmartlistTable(ctx, tx)
+	if err != nil {
 		return err
+	}
+	if hasSaved {
+		if _, err := tx.ExecContext(ctx, `UPDATE Smartlist SET nextPlaylistPath=? WHERE parentPlaylistPath=? AND nextPlaylistPath=? AND nextListUuid=''`, paths[newParentID]+source.Title+";", paths[newParentID], paths[beforeID]); err != nil {
+			return err
+		}
 	}
 	for i := range rows {
 		if rows[i].ID == id {

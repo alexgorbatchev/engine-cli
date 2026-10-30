@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"net/url"
 	"path/filepath"
 	"strconv"
@@ -473,15 +474,23 @@ func DeletePlaylist(ctx context.Context, database *sql.DB, id int64, force bool)
 		}
 	}
 	var smartlistCount int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM Smartlist WHERE parentPlaylistPath=?`, path).Scan(&smartlistCount); err != nil {
-		return fmt.Errorf("checking Smartlist children: %w", err)
+	hasSaved, err := hasSmartlistTable(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if hasSaved {
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM Smartlist WHERE parentPlaylistPath=?`, path).Scan(&smartlistCount); err != nil {
+			return fmt.Errorf("checking Smartlist children: %w", err)
+		}
 	}
 	childCount += smartlistCount
 	if childCount > 0 && !force {
-		return fmt.Errorf("playlist ID %d has %d child playlist(s); use --force to delete recursively", id, childCount)
+		return &progress.Error{Code: "playlist_not_empty", Cause: fmt.Errorf("playlist ID %d contains child playlists or saved Smartlists; use --force to delete them recursively", id)}
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM Smartlist WHERE INSTR(parentPlaylistPath,?)=1`, path); err != nil {
-		return err
+	if hasSaved {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM Smartlist WHERE INSTR(parentPlaylistPath,?)=1`, path); err != nil {
+			return err
+		}
 	}
 	if err := unlinkSmartlistPredecessor(ctx, tx, source, paths); err != nil {
 		return err
