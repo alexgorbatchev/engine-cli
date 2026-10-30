@@ -179,6 +179,24 @@ func TestNonregularMediaCannotInitializeCues(t *testing.T) {
 	}
 }
 
+func TestUnobservableMediaCannotProduceReusableRevision(t *testing.T) {
+	d, root := fixture(t)
+	before := inspect(t, d, root)
+	if _, err := d.Exec("UPDATE Track SET path=? WHERE id=1", "invalid\x00.wav"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Inspect(t.Context(), d, root, "1"); code(err) != "cue_media_unavailable" {
+		t.Fatalf("unobservable media produced an inspected revision: %v", err)
+	}
+	if _, err := Prepare(t.Context(), d, root, Edit{Identifier: "1", Slot: 1, Revision: before.Revision, Position: 1, Color: "#FFFFFF"}); code(err) != "cue_media_unavailable" {
+		t.Fatalf("unobservable media accepted a saved cue edit: %v", err)
+	}
+	var beat, cues []byte
+	if err := d.QueryRow("SELECT beatData,quickCues FROM PerformanceData WHERE trackId=1").Scan(&beat, &cues); err != nil || len(beat) != 0 || len(cues) != 0 {
+		t.Fatalf("unobservable edit changed native performance: beat=%x cues=%x err=%v", beat, cues, err)
+	}
+}
+
 func TestCapturedMediaDetectsChangesBeforePublication(t *testing.T) {
 	for _, change := range []string{"removed", "replacement", "modified"} {
 		t.Run(change, func(t *testing.T) {
@@ -188,7 +206,11 @@ func TestCapturedMediaDetectsChangesBeforePublication(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			captured := &mediaSource{path: path, info: info}
+			identity, err := mediaIdentity(path, info)
+			if err != nil {
+				t.Fatalf("capturing native media identity: %v", err)
+			}
+			captured := &mediaSource{path: path, info: info, identity: identity}
 			if err := captured.check(); err != nil {
 				t.Fatalf("unchanged media rejected: %v", err)
 			}
