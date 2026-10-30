@@ -306,7 +306,7 @@ The applied result's `operation_id` and job's `history_id` identify undo history
 
 The beat-grid response contains `grid.sampleRate`, `grid.bpm`, and `grid.anchors`. Each anchor has `sample` (sample position, which can be negative for preroll), `beat` (zero-based beat index), and `beatsUntilNext` (the outgoing segment's beat count, `0` on the final anchor). Interpolate the interval between adjacent anchors using `beatsUntilNext`, then divide sample positions by `sampleRate` for seconds. Beats whose index is a multiple of four start bars. The last anchor ends the preceding segment. `bpm` is the whole-grid tempo Engine reports: the beats spanned divided by the grid's duration.
 
-The API reads the adjusted grid Engine plays and edits from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM. Missing analysis, and grids with fewer than two anchors, return `{"grid":null}`. Invalid compressed payloads or inconsistent anchors return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. Encoding and decoding use `djtools` v0.1.2's native `BeatData` codec, which writes the full header, both grids, and the trailing source and reference-sample fields.
+The API reads the adjusted grid Engine plays and edits from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM. Missing analysis, and grids with fewer than two anchors, return `{"grid":null}`. Invalid compressed payloads or inconsistent anchors return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. Encoding and decoding use `djtools` v0.1.3's native `BeatData` codec, which writes the full header, both grids, and the trailing source and reference-sample fields.
 
 ## Track analysis
 
