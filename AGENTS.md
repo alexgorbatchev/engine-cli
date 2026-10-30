@@ -1,12 +1,18 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-30 09:05
+last_modified: 2026-10-30 12:40
 status: current
 ---
 
 # engine-cli
 
 Go CLI utility for managing, verifying, backing up, synchronizing, and repairing Engine DJ collection databases (`m.db`), playlist hierarchies, and album artwork caches.
+
+## Product direction
+
+Enable a better user experience than Engine DJ Desktop, not a parity port. Treat Desktop's workflows, limits, and interface as evidence, never as requirements; when they fall short, design the better experience.
+
+The test for everything this CLI writes: close the app, open the library in Engine DJ Desktop, and it must work. Verify written data against the recovered schema and Desktop-written fixtures. Data that fails this test is a bug: fix the cause and repair affected libraries, rather than flagging it or working around it.
 
 ## Commands
 - **Architecture:** [diagram index](docs/internal/architecture/index.md); `just architecture` regenerates the diagrams with `ARCHIFY_CLI` pointing to Archify 3.2.1-dev.4's `bin/archify.mjs`. `just architecture-serve` serves the index through devhost at `https://engine-cli-archify.localhost`; `ENGINE_DEV_HOST_SUFFIX` overrides the hostname suffix.
