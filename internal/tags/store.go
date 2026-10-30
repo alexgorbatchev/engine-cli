@@ -194,14 +194,18 @@ func List(ctx context.Context, library string) (*Taxonomy, error) {
 	if err != nil {
 		return nil, err
 	}
-	storedRevision := revision(s)
 	if len(s.Assignments) == 0 {
-		return &Taxonomy{Revision: storedRevision, Categories: s.Categories}, nil
+		return taxonomy(s, nil), nil
 	}
 	present, err := readOrigins(ctx, filepath.Join(library, "Database2", "m.db"))
 	if err != nil {
 		return nil, err
 	}
+	return taxonomy(s, present), nil
+}
+
+func taxonomy(s State, present map[TrackOrigin]bool) *Taxonomy {
+	storedRevision := revision(s)
 	_, unavailable := missingAssignments(s, present)
 	counts := map[string]map[TrackOrigin]bool{}
 	for _, a := range s.Assignments {
@@ -219,5 +223,5 @@ func List(ctx context.Context, library string) (*Taxonomy, error) {
 			v.TrackCount = len(counts[v.ID])
 		}
 	}
-	return &Taxonomy{Revision: storedRevision, Categories: s.Categories, UnavailableTracks: unavailable}, nil
+	return &Taxonomy{Revision: storedRevision, Categories: s.Categories, UnavailableTracks: unavailable}
 }

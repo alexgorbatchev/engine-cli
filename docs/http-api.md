@@ -463,11 +463,22 @@ submission/result envelope. Category and value IDs are opaque UUID strings.
 | `tag.value.create` | `category`, `name`, `revision` | `{id,revision,changed}` |
 | `tag.value.update` | `id`, `name`, `revision` | `{id,revision,changed}` |
 | `tag.category.delete`, `tag.value.delete` | `id`, `revision`, `dry_run`, optional `plan_token` | `{id,revision,plan_token,affected_tracks,removed_assignments,removed_values,applied}` |
+| `track.custom-tags.list` | None | `{revision,unavailable_tracks,categories:[{id,name,values:[{id,name,track_count}]}],tracks:[{track_id,values:[value_id...]}]}` |
 | `track.custom-tags.inspect` | `track` | `{track_id,revision,values:[value_id...]}` |
 | `track.custom-tags.update` | `track`, `revision`, `values` | `{track_id,revision,values:[value_id...]}` |
 | `track.custom-tags.batch-inspect` | `tracks` | `{revision,track_ids,categories:[{id,name,values:[{id,name,selected_tracks}]}]}` |
 | `track.custom-tags.batch-update` | `tracks`, `revision`, `add`, `remove`, `dry_run`, optional `plan_token` | `{revision,track_ids,add,remove,plan_token,changed_tracks,added_assignments,removed_assignments,applied}` |
 | `tag.reconcile` | `revision`, `dry_run`, optional `plan_token` | `{revision,plan_token,unavailable_tracks,removed_assignments,applied}` |
+
+`track.custom-tags.list` reads one library-wide taxonomy and assignment snapshot under
+the collection read barrier. Both parts share the same companion revision. The
+`tracks` array resolves native origin identities to current library-local track
+IDs, ordered by ascending track ID; each value ID array is sorted. Tracks without
+assignments and origins absent from this library are omitted from `tracks`; the
+latter remain counted in `unavailable_tracks`. The complete current collection is
+returned without truncation, so response size follows its assigned-track and
+value counts. The read neither creates companion storage nor prunes assignments,
+and does not create a snapshot or undo record.
 
 `track` uses the existing single-track selector syntax. `values` is the complete
 replacement array of value UUID strings; an explicit empty array clears the

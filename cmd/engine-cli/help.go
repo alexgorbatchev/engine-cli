@@ -18,6 +18,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli tag value update":                {Summary: "Rename a custom named value at the reviewed revision", Args: "<id>", MutatesDB: true, AutoBackup: true},
 	"engine-cli tag value delete":                {Summary: "Preview or apply exact reviewed value deletion and assignment impact", Args: "<id>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track custom-tags":               {Summary: "Inspect or replace one track's library-local custom values"},
+	"engine-cli track custom-tags list":          {Summary: "List taxonomy and current track assignments from one library revision"},
 	"engine-cli track custom-tags inspect":       {Summary: "Inspect assigned custom value IDs and current revision", Args: "<track>"},
 	"engine-cli track custom-tags update":        {Summary: "Replace all custom values on one track; explicit --values= clears them", Args: "<track>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track custom-tags batch-inspect": {Summary: "Inspect mixed assignments on one to 500 selected tracks"},

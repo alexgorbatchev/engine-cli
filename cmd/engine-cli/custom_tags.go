@@ -33,6 +33,7 @@ func newCustomTagsCommand() *cobra.Command {
 
 func newTrackCustomTagsCommand() *cobra.Command {
 	root := &cobra.Command{Use: "custom-tags", Short: "Inspect and change library-local custom values for selected tracks", Args: cobra.NoArgs}
+	root.AddCommand(acquisitionCommand("track.custom-tags.list", "list", "List library taxonomy and current track assignments in one revision", "", nil))
 	root.AddCommand(acquisitionCommand("track.custom-tags.inspect", "inspect <track>", "Inspect custom values and current taxonomy revision", "track", nil))
 	root.AddCommand(acquisitionCommand("track.custom-tags.update", "update <track>", "Replace all custom values on one track; --values= clears them", "track", []acquisitionFlag{{"values", "strings", "Complete value ID list; repeat or use commas, explicit empty clears all"}, {"revision", "string", "Current custom-tag revision from inspection or category list"}}))
 	root.AddCommand(acquisitionCommand("track.custom-tags.batch-inspect", "batch-inspect", "Inspect mixed custom-tag assignments on selected tracks", "", []acquisitionFlag{{"tracks", "strings", "Selected track IDs or selectors, in selection order (1–500)"}}))
@@ -43,6 +44,16 @@ func newTrackCustomTagsCommand() *cobra.Command {
 func printCustomTags(command *cobra.Command, result any) (bool, error) {
 	output := command.OutOrStdout()
 	switch value := result.(type) {
+	case *tags.CollectionTags:
+		if _, err := fmt.Fprintf(output, "Custom tags: %d categories\nAssigned tracks: %d\nUnavailable tracks: %d\nRevision: %s\n", len(value.Categories), len(value.Tracks), value.UnavailableTracks, value.Revision); err != nil {
+			return true, err
+		}
+		for _, track := range value.Tracks {
+			if _, err := fmt.Fprintf(output, "Track %d: %s\n", track.TrackID, strings.Join(track.Values, ", ")); err != nil {
+				return true, err
+			}
+		}
+		return true, nil
 	case *tags.Taxonomy:
 		if _, err := fmt.Fprintf(output, "Custom tags: %d categories\nUnavailable tracks: %d\nRevision: %s\n", len(value.Categories), value.UnavailableTracks, value.Revision); err != nil {
 			return true, err
