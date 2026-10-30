@@ -37,3 +37,24 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+
+  windows-hot-cues:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install native audio test dependencies
+        run: choco install ffmpeg --no-progress -y
+
+      - name: Build native CLI
+        run: go build ./cmd/engine-cli
+
+      - name: Vet native cue and decoder packages
+        run: go vet ./internal/performance ./internal/audiodecode
+
+      - name: Test native file identity and saved cue lifecycle
+        run: go test -v -count=1 ./internal/performance ./internal/audiodecode
