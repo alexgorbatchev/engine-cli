@@ -8,15 +8,11 @@
     "quality_profile": "showcase",
     "repository": {
       "url": "git@github.com:alexgorbatchev/engine-cli.git",
-      "revision": "b85be4d87dc1045eca6133f6868e0b13f7bceb62",
+      "revision": "c012308d842940a41e2aad703d31f08c14e02d03",
       "link_mode": "local-only"
     }
   },
-  "mainPath": [
-    "queued",
-    "running",
-    "succeeded"
-  ],
+  "mainPath": ["queued", "running", "succeeded"],
   "states": [
     {
       "id": "queued",
@@ -55,7 +51,7 @@
         {
           "path": "internal/api/operations.go",
           "line": 175,
-          "end_line": 243
+          "end_line": 246
         }
       ]
     },
@@ -76,12 +72,17 @@
       "id": "failed",
       "type": "failure",
       "label": "Failed",
-      "sublabel": "structured error",
+      "sublabel": "error; result if available",
       "sources": [
         {
           "path": "internal/api/jobs.go",
           "line": 164,
           "end_line": 178
+        },
+        {
+          "path": "internal/sync/sync.go",
+          "line": 77,
+          "end_line": 215
         }
       ]
     },
@@ -89,7 +90,7 @@
       "id": "cancelled",
       "type": "neutral",
       "label": "Cancelled",
-      "sublabel": "context cancelled",
+      "sublabel": "cancel; result if available",
       "sources": [
         {
           "path": "internal/api/jobs.go",
@@ -100,6 +101,11 @@
           "path": "internal/api/jobs.go",
           "line": 196,
           "end_line": 209
+        },
+        {
+          "path": "internal/sync/sync.go",
+          "line": 77,
+          "end_line": 215
         }
       ]
     }
@@ -164,8 +170,17 @@
       "title": "Observation and retained results",
       "items": [
         "Status and SSE remain available while collection access is blocked. Last-Event-ID resumes retained events; an expired cursor requires status refresh and a fresh stream.",
-        "Terminal status, result, history ID, and terminal event are published together under the server mutex. Validated suggestion batches update retained results before terminal completion.",
+        "Terminal status, result, history ID, and terminal event are published together under the server mutex. Validated suggestion batches update retained results before terminal completion. Failed or cancelled operations can retain partial results and an undo record.",
         "The server retains at most 128 jobs and 1024 events per job. When capacity is reached, admission evicts an older terminal job or refuses the request; restarting the server loses job state."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Metadata refresh partial outcomes",
+      "items": [
+        "library.refresh stops on unexpected file inspection, database write, or folder scan errors. Stable library_refresh_stat_failed, library_refresh_write_failed, and library_refresh_scan_failed codes identify recovery guidance.",
+        "Cancellation and errors retain the report after track enumeration. updatedCount counts only saved updates; missing and unindexed counts can be incomplete. Initial failures can have no result.",
+        "Saved updates remain covered by the existing safety snapshot and history. Review partial counts and the undo record before retrying; no automatic retry or rollback is performed. Cobra prints incomplete counts and returns an error."
       ]
     }
   ]
