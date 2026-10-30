@@ -223,6 +223,9 @@ The job's `result` depends on the operation. Track fields use JSON values and `n
 audio. Missing files are counted; unreadable or malformed embedded tags leave
 their metadata unchanged while file-size updates can still proceed. Unexpected
 file inspection, database write, and directory enumeration errors stop the job.
+Stored absolute audio paths are refreshed at their original location, including
+external drives; relative paths resolve from the library directory. Refresh
+preserves stored paths and scans only the library directory for unindexed audio.
 
 A failed or cancelled refresh can retain a partial `result` with `totalDbTracks`,
 `updatedCount`, `missingCount`, `unindexedCount`, and any `unindexedPaths` found so

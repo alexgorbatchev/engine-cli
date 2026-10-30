@@ -11,9 +11,18 @@ import (
 )
 
 func TestRefreshCommandReportsPartialFailureAndUndo(t *testing.T) {
-	for _, mode := range []string{"0", "1"} {
-		t.Run("agent_"+mode, func(t *testing.T) {
-			t.Setenv("AGENT", mode)
+	for _, tc := range []struct {
+		name     string
+		mode     string
+		external bool
+	}{
+		{"human relative", "0", false},
+		{"agent relative", "1", false},
+		{"human external", "0", true},
+		{"agent external", "1", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("AGENT", tc.mode)
 			lib := createTestLibrary(t)
 			// Unreadable tags are expected per-file outcomes. Exclude host tools.
 			t.Setenv("PATH", t.TempDir())
@@ -28,12 +37,21 @@ func TestRefreshCommandReportsPartialFailureAndUndo(t *testing.T) {
 			if _, err := d.Exec("UPDATE Track SET fileBytes=0 WHERE id=1; INSERT INTO Track(id,path,fileBytes) VALUES(2,'second.mp3',0); CREATE TRIGGER reject_second BEFORE UPDATE ON Track WHEN NEW.id=2 BEGIN SELECT RAISE(ABORT,'synthetic write failure'); END"); err != nil {
 				t.Fatal(err)
 			}
+			if tc.external {
+				path := filepath.Join(t.TempDir(), "external.mp3")
+				if err := os.WriteFile(path, []byte("external audio"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := d.ExecContext(t.Context(), "UPDATE Track SET path=? WHERE id=1", path); err != nil {
+					t.Fatal(err)
+				}
+			}
 			out, err := executeCommand("-l", lib, "library", "refresh")
 			if progress.ErrorCode(err) != "library_refresh_write_failed" {
 				t.Fatalf("refresh error=%v output=%s", err, out)
 			}
 			want := "Updated Records:      1"
-			if mode == "1" {
+			if tc.mode == "1" {
 				want = "updated_records: 1"
 				if !strings.Contains(out, "status: incomplete") || !strings.Contains(out, "error_code: library_refresh_write_failed") {
 					t.Fatalf("missing failed status: %s", out)

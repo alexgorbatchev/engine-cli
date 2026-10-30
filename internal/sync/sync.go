@@ -57,6 +57,10 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 	if musicBaseDir == "" {
 		return nil, fmt.Errorf("empty music base directory")
 	}
+	musicBaseDir, err := filepath.Abs(musicBaseDir)
+	if err != nil {
+		return nil, refreshFailure(ctx, "library_refresh_stat_failed", err)
+	}
 
 	runner := defaultRunner
 	if len(runnerOpt) > 0 && runnerOpt[0] != nil {
@@ -85,7 +89,10 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 			continue
 		}
 
-		fullPath := filepath.Join(musicBaseDir, pathStr)
+		fullPath := pathStr
+		if !filepath.IsAbs(fullPath) {
+			fullPath = filepath.Join(musicBaseDir, fullPath)
+		}
 		info, statErr := os.Stat(fullPath)
 		if statErr != nil {
 			if errors.Is(statErr, fs.ErrNotExist) {
@@ -95,11 +102,8 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 			return report, refreshFailure(ctx, "library_refresh_stat_failed", statErr)
 		}
 
-		relPath, err := filepath.Rel(musicBaseDir, fullPath)
-		if err != nil {
-			return report, refreshFailure(ctx, "library_refresh_stat_failed", err)
-		}
-		if relPath != "" {
+		// Files on another volume cannot appear in the library directory scan.
+		if relPath, err := filepath.Rel(musicBaseDir, fullPath); err == nil {
 			indexedPaths[filepath.Clean(relPath)] = true
 		}
 

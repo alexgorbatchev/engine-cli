@@ -14,6 +14,12 @@ import (
 )
 
 func TestRefreshFailureRetainsPartialResultAndUndo(t *testing.T) {
+	t.Run("relative write failure", func(t *testing.T) { refreshPartialUndo(t, false) })
+	t.Run("external stat failure", func(t *testing.T) { refreshPartialUndo(t, true) })
+}
+
+func refreshPartialUndo(t *testing.T, external bool) {
+	t.Helper()
 	s, lib := testAPI(t)
 	s.config.NoBackup = false
 	s.config.CheckSystem = desktopClosed
@@ -25,12 +31,38 @@ func TestRefreshFailureRetainsPartialResultAndUndo(t *testing.T) {
 		}
 	}
 	execAPIFixture(t, lib, "UPDATE Track SET fileBytes=0 WHERE id=1; INSERT INTO Track(id,path,fileBytes) VALUES(2,'second.mp3',0); CREATE TRIGGER reject_second BEFORE UPDATE ON Track WHEN NEW.id=2 BEGIN SELECT RAISE(ABORT,'synthetic write failure'); END")
+	code := "library_refresh_write_failed"
+	if external {
+		dir := t.TempDir()
+		first := filepath.Join(dir, "first.mp3")
+		if err := os.WriteFile(first, []byte("external audio"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		second := filepath.Join(dir, "loop.mp3")
+		if err := os.Symlink(filepath.Base(second), second); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		d, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = d.Close() })
+		if _, err := d.ExecContext(t.Context(), "DROP TRIGGER reject_second"); err != nil {
+			t.Fatal(err)
+		}
+		for i, path := range []string{first, second} {
+			if _, err := d.ExecContext(t.Context(), "UPDATE Track SET path=? WHERE id=?", path, i+1); err != nil {
+				t.Fatal(err)
+			}
+		}
+		code = "library_refresh_stat_failed"
+	}
 	job := awaitAPIJob(t, s, submitAPIJob(t, s, "library.refresh", `{}`))
-	if job["state"] != "failed" || job["error"].(map[string]any)["code"] != "library_refresh_write_failed" || job["progress"].(map[string]any)["error_code"] != "library_refresh_write_failed" {
+	if job["state"] != "failed" || job["error"].(map[string]any)["code"] != code || job["progress"].(map[string]any)["error_code"] != code {
 		t.Fatalf("refresh failure missing: %v", job)
 	}
 	result, ok := job["result"].(map[string]any)
-	if !ok || result["updatedCount"] != float64(1) || result["totalDbTracks"] != float64(2) {
+	if !ok || result["updatedCount"] != float64(1) || result["totalDbTracks"] != float64(2) || result["missingCount"] != float64(0) {
 		t.Fatalf("partial result missing: %v", job)
 	}
 	id, ok := job["history_id"].(string)
