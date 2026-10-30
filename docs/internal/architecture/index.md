@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-28 10:19
+last_modified: 2026-10-29 20:03
 status: current
 ---
 
@@ -12,7 +12,7 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 | --- | --- |
 | [System overview](overview.html) | CLI and HTTP entry points, operation execution, collection services, library storage, recovery, and managed tools |
 | [HTTP job lifecycle](job-lifecycle.html) | Queued and running jobs, success, failure, cooperative cancellation, scheduling, and retained results |
-| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path: access control, Desktop checks, safety backups, before/after history, and failure recovery |
+| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path: access control, Desktop checks, safety backups, before/after history, failure recovery, and exact-plan M3U import |
 
 All three specifications cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`. Their source links and claims describe that revision. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
@@ -21,6 +21,8 @@ The collection-write HTML was regenerated with the CDP-enabled [Archify fork](ht
 ## Viewing
 
 The collection-write page's bulk-metadata card describes the `track.batch.update` addition committed in `07441d1`, after the pinned source revision: all selected tracks share one transaction, snapshot, and undo record under the existing collection-write safeguards.
+
+The collection-write page's M3U-import card cites committed engine-cli `cbac846503e303552ed223020d47a37f3c3783a9`: read-only review and pre-artifact validation precede the ordinary protected write path, while playlist creation and ordered memberships commit atomically and share one undo record. It covers new playlists from existing collection tracks, not acquisition, append, or replacement. The original diagram source pin and bulk-metadata evidence remain unchanged. Uncommitted working-tree changes are outside this review.
 
 The overview's saved-marker card describes the working-tree performance-read endpoint separately from the pinned evidence: Engine CLI owns database access and the collection barrier, while `djtools` decodes supplied blobs without opening a database.
 

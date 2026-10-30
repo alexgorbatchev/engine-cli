@@ -5876,6 +5876,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>The CLI exposes the same edit as track batch update. One undo restores the entire edit. This behavior was committed in 07441d1 after the source revision pinned above.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>M3U import — committed extension</h3>
+        </div>
+        <ul>
+          <li>playlist.import and playlist import create a new playlist from existing collection tracks only. A read-only preview resolves server-local M3U/M3U8 paths, preserves first-seen track order, reports duplicate and unresolved entries, and requires an explicit reviewed skip policy. No acquisition, append, or replacement occurs.</li>
+          <li>Apply checks the exact review before Desktop checks, safety backups, or history creation. The token binds source bytes, normalized options, library UUID and canonical root, resolved track identities, and origins. Stale or blocked reviews fail without mutation artifacts.</li>
+          <li>Apply rebuilds and checks the plan inside one transaction, then creates the playlist and every ordered membership together. Cancellation or an insertion failure rolls back the entire playlist. The ordinary collection-write path supplies Desktop protection, the configured safety backup, and one history entry; one undo reverses the import.</li>
+          <li>Evidence: cbac846503e303552ed223020d47a37f3c3783a9, internal/api/playlist_import.go:12–38; internal/api/operations.go:175–234; internal/playlist/import.go:73–108,164–282. This extension is separate from the historical revision pinned above. Uncommitted working-tree changes are outside this review.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
