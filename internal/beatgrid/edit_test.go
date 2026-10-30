@@ -251,3 +251,27 @@ func TestFromAnalysisCountsBeatsBetweenAnchors(t *testing.T) {
 		}
 	}
 }
+
+func TestHalvingAOneBeatFinalSegmentEndsTheGridAtItsMarker(t *testing.T) {
+	source := steady()
+	// A marker one beat before the end of the grid, on an even beat.
+	source.Adjusted = []engine.BeatAnchor{
+		{Sample: rate - 4*22050, Beat: -4, BeatsUntilNext: 22},
+		{Sample: rate + 18*22050, Beat: 18, BeatsUntilNext: 1},
+		{Sample: rate + 19*22050, Beat: 19},
+	}
+	source.SampleLimit = 0
+	g := apply(t, source, nil, Edit{Kind: EditScale, Factor: 0.5})
+	if len(g.Anchors) != 2 || math.Abs(g.BPM-60) > 1e-9 {
+		t.Fatalf("halved=%+v", g.Anchors)
+	}
+}
+
+func TestEditsNeverEndBeforeTheGridDidWithoutASavedLimit(t *testing.T) {
+	source := steady()
+	source.SampleLimit = 0
+	g := apply(t, source, nil, Edit{Kind: EditShift, Seconds: 0.01})
+	if end := g.Anchors[len(g.Anchors)-1].Sample; end < source.Adjusted[1].Sample {
+		t.Fatalf("grid ends at %v before %v", end, source.Adjusted[1].Sample)
+	}
+}

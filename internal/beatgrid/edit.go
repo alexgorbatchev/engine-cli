@@ -69,7 +69,9 @@ func Apply(source Source, draft []engine.BeatAnchor, e Edit) (Grid, error) {
 	if err := Validate(source.SampleRate, base); err != nil {
 		return Grid{}, err
 	}
-	g := grid{rate: source.SampleRate, limit: source.SampleLimit, anchors: slices.Clone(base)}
+	// A missing or short saved limit would cut the grid down to a beat; never end before the grid already did.
+	limit := math.Max(source.SampleLimit, base[len(base)-1].Sample)
+	g := grid{rate: source.SampleRate, limit: limit, anchors: slices.Clone(base)}
 	var err error
 	switch e.Kind {
 	case EditReset:
@@ -207,8 +209,11 @@ func (g *grid) scale(factor float64) error {
 			}
 		}
 		// An odd final segment ends one old beat earlier, keeping its tempo; extendTail places the final anchor again.
+		// A final segment of one beat has nothing left, so its marker becomes the end of the grid.
 		n := len(g.anchors)
-		if (g.anchors[n-1].Beat-g.anchors[n-2].Beat)%2 != 0 {
+		if count := g.anchors[n-1].Beat - g.anchors[n-2].Beat; count == 1 {
+			g.anchors = g.anchors[:n-1]
+		} else if count%2 != 0 {
 			g.anchors[n-1].Sample -= g.period(n - 2)
 			g.anchors[n-1].Beat--
 		}

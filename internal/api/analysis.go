@@ -81,14 +81,15 @@ func (s *Server) analyzeImports(ctx context.Context, d *sql.DB, ids []int64, bpm
 		return nil, nil
 	}
 	report, err := track.AnalyzeImported(progress.Range(ctx, 50, 100), d, s.config.LibraryDir, ids, bpmRange, s.writeGuard)
-	if err != nil {
+	if report == nil {
 		return nil, err
 	}
+	// Tracks analyzed before a failure keep their outcomes alongside the error.
 	byID := make(map[int64]track.AnalyzedTrack, len(report.Tracks))
 	for _, t := range report.Tracks {
 		byID[t.TrackID] = t
 	}
-	return byID, nil
+	return byID, err
 }
 
 type gridEditRequest struct {
@@ -125,6 +126,13 @@ func (s *Server) trackGridEdit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "beatgrid_missing", "Analyze this track's beat grid before editing it.")
 		return
 	}
+	if locked, err := beatgrid.Locked(r.Context(), database, t.ID); err != nil {
+		writeGridError(w, err)
+		return
+	} else if locked {
+		writeGridError(w, beatgrid.ErrLocked())
+		return
+	}
 	grid, err := beatgrid.Apply(beatgrid.SourceOf(*data), request.Anchors, request.Edit)
 	if err != nil {
 		writeGridError(w, err)
@@ -140,8 +148,11 @@ func writeGridError(w http.ResponseWriter, err error) {
 		return
 	}
 	status := http.StatusUnprocessableEntity
-	if coded.Code == "beatgrid_edit_invalid" {
+	switch coded.Code {
+	case "beatgrid_edit_invalid":
 		status = http.StatusBadRequest
+	case "beatgrid_locked":
+		status = http.StatusConflict
 	}
 	writeError(w, status, coded.Code, progress.PublicError(coded.Cause))
 }

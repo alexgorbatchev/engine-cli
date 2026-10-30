@@ -27,7 +27,7 @@ func installFakeDecoder(t *testing.T) {
 	t.Helper()
 	bin := t.TempDir()
 	scripts := map[string]string{
-		"ffmpeg":  "#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\nif [ -f \"$2.pcm\" ]; then cat \"$2.pcm\"; elif [ -n \"$FAKE_PCM\" ]; then cat \"$FAKE_PCM\"; else exit 1; fi\n",
+		"ffmpeg":  "#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\nif [ -f \"${2#file:}.pcm\" ]; then cat \"${2#file:}.pcm\"; elif [ -n \"$FAKE_PCM\" ]; then cat \"$FAKE_PCM\"; else exit 1; fi\n",
 		"ffprobe": "#!/bin/sh\necho '{\"streams\":[{\"sample_rate\":\"44100\"}],\"format\":{\"duration\":\"40\"}}'\n",
 	}
 	for name, script := range scripts {
@@ -269,5 +269,54 @@ func TestImportsAnalyzeAddedTracks(t *testing.T) {
 	entry := imported["result"].(map[string]any)["imported"].([]any)[0].(map[string]any)
 	if bpm := entry["analysis"].(map[string]any)["bpm"].(map[string]any)["bpm"].(float64); math.Abs(bpm-62.5) > 0.05 {
 		t.Fatalf("imported=%+v", entry)
+	}
+}
+
+func TestLockedGridsRefuseEditsAndSaves(t *testing.T) {
+	s, _, d := nativeAPI(t)
+	runAPIJob(t, s, "track.analyze", `{"identifiers":["1"],"grid":true}`)
+	saved := requestAPI(t, s, http.MethodGet, "/v1/tracks/1/beatgrid", "")
+	var body struct {
+		Grid struct {
+			Anchors json.RawMessage `json:"anchors"`
+		} `json:"grid"`
+	}
+	if err := json.Unmarshal(saved.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec("UPDATE Track SET isBeatGridLocked=1 WHERE id=1"); err != nil {
+		t.Fatal(err)
+	}
+	if w := requestAPI(t, s, http.MethodPost, "/v1/tracks/1/beatgrid/edits", `{"edit":"scale","factor":2}`); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), "beatgrid_locked") {
+		t.Fatalf("edit=%d %s", w.Code, w.Body)
+	}
+	job := awaitAPIJob(t, s, submitAPIJob(t, s, "track.grid.update", fmt.Sprintf(`{"identifier":"1","anchors":%s}`, body.Grid.Anchors)))
+	if job["error"].(map[string]any)["code"] != "beatgrid_locked" {
+		t.Fatalf("job=%+v", job)
+	}
+}
+
+func TestImportsKeepTheirEntriesWhenDesktopStopsAnalysis(t *testing.T) {
+	s, _, _ := nativeAPI(t)
+	source := filepath.Join(t.TempDir(), "late.mp3")
+	if err := os.WriteFile(source, []byte("audio"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	beatPCM(t, source+".pcm")
+	var checks atomic.Int32
+	s.config.CheckSystem = func(ctx context.Context, names []string) (*systemcheck.Report, error) {
+		// The import's own check passes; Desktop starts before analysis writes.
+		if checks.Add(1) > 1 {
+			return &systemcheck.Report{Checks: map[string]systemcheck.Result{systemcheck.EngineDesktop: {Status: "ok", Running: new(true)}}}, nil
+		}
+		return desktopClosed(ctx, names)
+	}
+	job := awaitAPIJob(t, s, submitAPIJob(t, s, "track.add", fmt.Sprintf(`{"paths":[%q],"analyze":true}`, source)))
+	if job["error"].(map[string]any)["code"] != "engine_desktop_running" {
+		t.Fatalf("job=%+v", job)
+	}
+	added := job["result"].([]any)[0].(map[string]any)
+	if added["track_id"] == nil || added["analysis"] != nil {
+		t.Fatalf("added=%+v", added)
 	}
 }

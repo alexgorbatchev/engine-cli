@@ -165,3 +165,28 @@ func rawBlob(t *testing.T, data engine.BeatData) []byte {
 	}
 	return out.Bytes()
 }
+
+func TestUpdateRefusesLockedGridsAndGridsEndingEarly(t *testing.T) {
+	d := nativeLibrary(t)
+	ctx := context.Background()
+	analyzed, _ := engine.NewBeatData(rate, 11*rate, steady().Adjusted)
+	if err := inTx(t, d, func(tx *sql.Tx) error { return Save(ctx, tx, 1, analyzed) }); err != nil {
+		t.Fatal(err)
+	}
+	short := []engine.BeatAnchor{{Sample: 0, Beat: 0, BeatsUntilNext: 8}, {Sample: 8 * 22050, Beat: 8}}
+	if err := inTx(t, d, func(tx *sql.Tx) error { return Update(ctx, tx, 1, short) }); code(err) != "beatgrid_invalid" {
+		t.Fatalf("short grid: %v", err)
+	}
+	if _, err := d.Exec("UPDATE Track SET isBeatGridLocked=1 WHERE id=1"); err != nil {
+		t.Fatal(err)
+	}
+	if locked, err := Locked(ctx, d, 1); err != nil || !locked {
+		t.Fatalf("locked=%v err=%v", locked, err)
+	}
+	if err := inTx(t, d, func(tx *sql.Tx) error { return Update(ctx, tx, 1, steady().Adjusted) }); code(err) != "beatgrid_locked" {
+		t.Fatalf("locked grid: %v", err)
+	}
+	if _, err := Locked(ctx, d, 99); err == nil {
+		t.Fatal("missing track reported a lock state")
+	}
+}

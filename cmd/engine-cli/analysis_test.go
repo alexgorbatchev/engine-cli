@@ -19,7 +19,7 @@ func analysisCLILibrary(t *testing.T) (string, string) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	bin := t.TempDir()
-	if err := os.WriteFile(filepath.Join(bin, "ffmpeg"), []byte("#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\n[ -f \"$2.pcm\" ] || exit 1\ncat \"$2.pcm\"\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(bin, "ffmpeg"), []byte("#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\n[ -f \"${2#file:}.pcm\" ] || exit 1\ncat \"${2#file:}.pcm\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(bin, "ffprobe"), []byte("#!/bin/sh\necho '{\"streams\":[{\"sample_rate\":\"44100\"}]}'\n"), 0o755); err != nil {

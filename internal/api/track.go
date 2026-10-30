@@ -151,15 +151,14 @@ func (s *Server) trackOperations() []operation {
 				for i, a := range added {
 					ids[i] = a.TrackID
 				}
-				analyzed, err := s.analyzeImports(ctx, d, ids, p.BPMRange)
-				if err != nil {
-					return nil, err
-				}
+				analyzed, analysisErr := s.analyzeImports(ctx, d, ids, p.BPMRange)
 				for i := range added {
-					outcome := analyzed[added[i].TrackID]
-					added[i].Analysis = &outcome
+					if outcome, ok := analyzed[added[i].TrackID]; ok {
+						added[i].Analysis = &outcome
+					}
 				}
-				return added, nil
+				// Imports stay committed when analysis stops early, so report them with the error.
+				return added, analysisErr
 			})
 		}),
 		define("track.rm", true, []string{"tracks"}, func(ctx context.Context, p removeTrackParams) (any, error) {

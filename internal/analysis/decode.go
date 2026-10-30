@@ -21,7 +21,7 @@ const (
 
 // decode streams the first audio stream as mono 32-bit float samples at SampleRate.
 func decode(ctx context.Context, path string, feed func([]float32) error) error {
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-v", "error", "-nostdin", "-i", path, "-map", "0:a:0", "-ac", "1", "-ar", fmt.Sprint(SampleRate), "-c:a", "pcm_f32le", "-f", "f32le", "pipe:1")
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-v", "error", "-nostdin", "-i", "file:"+path, "-map", "0:a:0", "-ac", "1", "-ar", fmt.Sprint(SampleRate), "-c:a", "pcm_f32le", "-f", "f32le", "pipe:1")
 	var stderr limitedOutput
 	cmd.Stderr = &stderr
 	stdout, err := cmd.StdoutPipe()

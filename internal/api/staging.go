@@ -55,15 +55,14 @@ func (s *Server) stagingOperations() []operation {
 				for i, imported := range report.Imported {
 					ids[i] = imported.TrackID
 				}
-				analyzed, err := s.analyzeImports(ctx, d, ids, p.BPMRange)
-				if err != nil {
-					return nil, err
-				}
+				analyzed, analysisErr := s.analyzeImports(ctx, d, ids, p.BPMRange)
 				for i := range report.Imported {
-					outcome := analyzed[report.Imported[i].TrackID]
-					report.Imported[i].Analysis = &outcome
+					if outcome, ok := analyzed[report.Imported[i].TrackID]; ok {
+						report.Imported[i].Analysis = &outcome
+					}
 				}
-				return report, nil
+				// Imports stay committed when analysis stops early, so report them with the error.
+				return report, analysisErr
 			})
 		}),
 	}

@@ -205,11 +205,13 @@ func analyzeIDs(ctx context.Context, d *sql.DB, libDir string, ids []int64, s An
 		done++
 		progress.Item(ctx, "analyze", done, len(ids))
 	}
+	// Tracks written before a failure or cancellation stay written under the operation's undo record; report them.
+	report.Tracks = slices.DeleteFunc(report.Tracks, func(t AnalyzedTrack) bool { return t.TrackID == 0 })
 	if failure != nil {
-		return nil, failure
+		return report, failure
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return report, err
 	}
 	return report, nil
 }
@@ -375,6 +377,12 @@ func (p *analysisPlan) applyTempo(ctx context.Context, result analysis.Result, s
 		return
 	}
 	p.grid = &data
+	// A written grid defines the track's tempo, as Engine's analyzer does, so its BPM is stored with it, replacing
+	// a BPM that missing-only analysis would otherwise keep.
+	p.bpm = &bpm
+	if p.outcome.BPM != nil && p.outcome.BPM.Status == AnalysisKept {
+		p.outcome.BPM.Status, p.outcome.BPM.BPM = AnalysisWritten, bpm
+	}
 	p.outcome.Grid.Status, p.outcome.Grid.BPM, p.outcome.Grid.TempoMarkers = AnalysisWritten, bpm, len(anchors)-2
 }
 

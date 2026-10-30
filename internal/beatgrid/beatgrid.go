@@ -126,6 +126,22 @@ func SaveBPM(ctx context.Context, tx *sql.Tx, trackID int64, bpm float64) error 
 	return nil
 }
 
+// Locked reports whether Engine DJ has locked a track's beat grid against changes.
+func Locked(ctx context.Context, q interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}, trackID int64) (bool, error) {
+	var locked sql.NullBool
+	if err := q.QueryRowContext(ctx, "SELECT isBeatGridLocked FROM Track WHERE id=?", trackID).Scan(&locked); err != nil {
+		return false, fmt.Errorf("reading the beat-grid lock: %w", err)
+	}
+	return locked.Bool, nil
+}
+
+// ErrLocked refuses edits to a beat grid locked in Engine DJ.
+func ErrLocked() error {
+	return gridError("beatgrid_locked", "unlock the beat grid in Engine DJ before editing it")
+}
+
 // Update replaces the adjusted grid of a track's saved beat data, keeping the default grid Engine resets to and the
 // saved header and metadata, and sets the track's BPM to the edited grid's whole-grid tempo, as Engine reports it.
 func Update(ctx context.Context, tx *sql.Tx, trackID int64, anchors []engine.BeatAnchor) error {
@@ -136,8 +152,17 @@ func Update(ctx context.Context, tx *sql.Tx, trackID int64, anchors []engine.Bea
 	if data == nil {
 		return gridError("beatgrid_missing", "analyze the track's beat grid before editing it")
 	}
+	if locked, err := Locked(ctx, tx, trackID); err != nil {
+		return err
+	} else if locked {
+		return ErrLocked()
+	}
 	if err := Validate(data.SampleRate, anchors); err != nil {
 		return err
+	}
+	// Saved grids cover the whole track, as every computed edit does.
+	if end := anchors[len(anchors)-1].Sample; end < data.SampleLimit {
+		return gridError("beatgrid_invalid", "the grid must extend to the end of the track")
 	}
 	data.Adjusted = anchors
 	if engine.ValidateBeatAnchors(data.Default) != nil {

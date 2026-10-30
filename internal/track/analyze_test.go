@@ -23,7 +23,7 @@ func fakeDecoder(t *testing.T) {
 	t.Helper()
 	bin := t.TempDir()
 	scripts := map[string]string{
-		"ffmpeg":  "#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\n[ -f \"$2.pcm\" ] || { echo missing >&2; exit 1; }\ncat \"$2.pcm\"\n",
+		"ffmpeg":  "#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\n[ -f \"${2#file:}.pcm\" ] || { echo missing >&2; exit 1; }\ncat \"${2#file:}.pcm\"\n",
 		"ffprobe": "#!/bin/sh\necho '{\"streams\":[{\"sample_rate\":\"44100\"}]}'\n",
 	}
 	for name, script := range scripts {
@@ -230,8 +230,9 @@ func TestAnalyzeRespectsLocksAndSavedSampleRates(t *testing.T) {
 	if grid.SampleRate != 48000 || math.Abs(engine.BeatGridBPM(grid.SampleRate, grid.Adjusted)-60) > 0.05 {
 		t.Fatalf("grid=%+v", grid)
 	}
-	if bpm, precise, _ := trackAnalysis(t, d, 1); bpm.Int64 != 90 || precise.Float64 != 90.5 {
-		t.Fatalf("grid-only analysis changed BPM: %v %v", bpm, precise)
+	// Writing a grid stores its tempo as the track's BPM, so the two never disagree.
+	if bpm, precise, _ := trackAnalysis(t, d, 1); bpm.Int64 != 60 || math.Abs(precise.Float64-engine.BeatGridBPM(grid.SampleRate, grid.Adjusted)) > 1e-9 {
+		t.Fatalf("grid-only analysis left BPM %v %v", bpm, precise)
 	}
 	var stored []byte
 	if err := d.QueryRow("SELECT trackData FROM PerformanceData WHERE trackId=1").Scan(&stored); err != nil {
@@ -316,5 +317,44 @@ func TestAnalysisErrorsUseStableCodes(t *testing.T) {
 		if got := analysisError(err); got.Code != code || got.Message == "" {
 			t.Fatalf("%v: %+v", err, got)
 		}
+	}
+}
+
+func TestMissingOnlyGridAnalysisReplacesADisagreeingTagTempo(t *testing.T) {
+	d, root := analysisLibrary(t)
+	report, err := Analyze(context.Background(), d, root, AnalysisRequest{Identifiers: []string{"1"}, AnalysisSelection: AnalysisSelection{BPM: true, Grid: true, MissingOnly: true}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The saved 90.5 BPM came from a tag; the new grid is 120 BPM, so the stored BPM follows the grid.
+	if o := report.Tracks[0].BPM; o.Status != AnalysisWritten || math.Abs(o.BPM-120) > 0.05 {
+		t.Fatalf("bpm outcome=%+v", o)
+	}
+	if bpm, _, _ := trackAnalysis(t, d, 1); bpm.Int64 != 120 {
+		t.Fatalf("bpm=%v", bpm)
+	}
+}
+
+func TestRefusedWritesStillReportTracksAlreadyWritten(t *testing.T) {
+	d, root := analysisLibrary(t)
+	writeAudio(t, filepath.Join(root, "Music", "other.mp3"), music(70))
+	if _, err := d.Exec("INSERT INTO Track(id, path, filename, length) VALUES(4, 'Music/other.mp3', 'other.mp3', 70)"); err != nil {
+		t.Fatal(err)
+	}
+	refused := &progress.Error{Code: "engine_desktop_running", Cause: errors.New("running")}
+	writes := 0
+	report, err := Analyze(context.Background(), d, root, AnalysisRequest{Identifiers: []string{"1", "4"}, AnalysisSelection: AnalysisSelection{Key: true}}, func(context.Context) error {
+		if writes++; writes > 1 {
+			return refused
+		}
+		return nil
+	})
+	// Whichever track finished first was written before Desktop started; only it is reported.
+	if !errors.Is(err, refused) || report == nil || len(report.Tracks) != 1 || report.Tracks[0].Key.Status != AnalysisWritten {
+		t.Fatalf("report=%+v err=%v", report, err)
+	}
+	var key sql.NullInt64
+	if err := d.QueryRow("SELECT key FROM Track WHERE id=?", report.Tracks[0].TrackID).Scan(&key); err != nil || key.Int64 != 1 {
+		t.Fatalf("written key=%v err=%v", key, err)
 	}
 }
