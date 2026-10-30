@@ -11,6 +11,7 @@ import (
 	"math"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
@@ -23,6 +24,7 @@ const (
 // Stream decodes the first audio stream as mono float32 samples at the requested rate.
 func Stream(ctx context.Context, path string, rate float64, feed func([]float32) error) error {
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-v", "error", "-nostdin", "-i", "file:"+path, "-map", "0:a:0", "-ac", "1", "-ar", fmt.Sprint(rate), "-c:a", "pcm_f32le", "-f", "f32le", "pipe:1")
+	cmd.WaitDelay = 5 * time.Second
 	var stderr limitedOutput
 	cmd.Stderr = &stderr
 	stdout, err := cmd.StdoutPipe()
@@ -34,6 +36,9 @@ func Stream(ctx context.Context, path string, rate float64, feed func([]float32)
 	}
 	readErr := readSamples(ctx, stdout, feed)
 	if readErr != nil {
+		// Launchers can leave a decoder child holding the pipes after cancellation.
+		// Closing its output releases a producer blocked on an unread PCM block.
+		_ = stdout.Close()
 		_ = cmd.Process.Kill() // Stop the producer before waiting after a read failure.
 	}
 	waitErr := cmd.Wait()

@@ -14,8 +14,9 @@ import (
 )
 
 type mediaSource struct {
-	path string
-	info os.FileInfo
+	path     string
+	info     os.FileInfo
+	identity string
 }
 
 func (m *mediaSource) check() error {
@@ -23,7 +24,11 @@ func (m *mediaSource) check() error {
 	if err != nil {
 		return failure("cue_media_changed", err)
 	}
-	if !info.Mode().IsRegular() || !os.SameFile(m.info, info) || info.Size() != m.info.Size() || !info.ModTime().Equal(m.info.ModTime()) {
+	identity, identityErr := mediaIdentity(m.path, info)
+	if identityErr != nil {
+		return failure("cue_media_changed", identityErr)
+	}
+	if !info.Mode().IsRegular() || identity != m.identity || info.Size() != m.info.Size() || !info.ModTime().Equal(m.info.ModTime()) {
 		return failure("cue_media_changed", errors.New("track audio changed while preparing its cue; reload and retry"))
 	}
 	return nil
@@ -50,41 +55,45 @@ func mediaPath(library, path string) string {
 	return path
 }
 
-// Inspection records unavailable media explicitly; reading and clearing saved cues never require online audio.
-func inspectMedia(library, path string) string {
+// Inspection records missing media explicitly; unobservable identities cannot establish a revision.
+func inspectMedia(library, path string) (string, error) {
 	path, err := filepath.EvalSymlinks(mediaPath(library, path))
 	if errors.Is(err, os.ErrNotExist) {
-		return "absent"
+		return "absent", nil
 	}
 	if err != nil {
-		return "unavailable"
+		return "", failure("cue_media_unavailable", err)
 	}
 	info, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return "absent"
+		return "absent", nil
 	}
 	if err != nil {
-		return "unavailable"
+		return "", failure("cue_media_unavailable", err)
 	}
 	if !info.Mode().IsRegular() {
-		return "not-regular"
+		return "not-regular", nil
 	}
 	id, err := mediaIdentity(path, info)
 	if err != nil {
-		return "unavailable"
+		return "", failure("cue_media_unavailable", err)
 	}
-	return fmt.Sprintf("%q:%s:%d:%d", path, id, info.Size(), info.ModTime().UnixNano())
+	return fmt.Sprintf("%q:%s:%d:%d", path, id, info.Size(), info.ModTime().UnixNano()), nil
 }
 
 func sampleExtent(ctx context.Context, library string, s snapshot) (float64, float64, *mediaSource, error) {
 	if rate, limit, ok := nativeExtent(s.Track); ok {
 		return rate, limit, nil, nil
 	}
-	if inspectMedia(library, s.Path) != s.Media {
+	observed, err := inspectMedia(library, s.Path)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	if observed != s.Media {
 		return 0, 0, nil, stale()
 	}
 	path := mediaPath(library, s.Path)
-	path, err := filepath.EvalSymlinks(path)
+	path, err = filepath.EvalSymlinks(path)
 	if err != nil {
 		return 0, 0, nil, failure("cue_media_unavailable", err)
 	}
@@ -95,7 +104,11 @@ func sampleExtent(ctx context.Context, library string, s snapshot) (float64, flo
 	if !info.Mode().IsRegular() {
 		return 0, 0, nil, failure("cue_media_unavailable", errors.New("track audio is not a regular file"))
 	}
-	m := &mediaSource{path: path, info: info}
+	identity, err := mediaIdentity(path, info)
+	if err != nil {
+		return 0, 0, nil, failure("cue_media_unavailable", err)
+	}
+	m := &mediaSource{path: path, info: info, identity: identity}
 	rate, limit, err := probeExtent(ctx, path)
 	if err != nil {
 		return 0, 0, nil, err
@@ -103,7 +116,11 @@ func sampleExtent(ctx context.Context, library string, s snapshot) (float64, flo
 	if err := m.check(); err != nil {
 		return 0, 0, nil, err
 	}
-	if inspectMedia(library, s.Path) != s.Media {
+	observed, err = inspectMedia(library, s.Path)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	if observed != s.Media {
 		return 0, 0, nil, stale()
 	}
 	return rate, limit, m, nil

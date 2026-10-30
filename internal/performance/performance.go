@@ -84,7 +84,10 @@ func load(ctx context.Context, q reader, library string, id int64) (snapshot, er
 	}
 	if len(s.Beat) == 0 {
 		if _, _, ok := nativeExtent(s.Track); !ok {
-			s.Media = inspectMedia(library, s.Path)
+			s.Media, err = inspectMedia(library, s.Path)
+			if err != nil {
+				return s, err
+			}
 		}
 	}
 	return s, nil
