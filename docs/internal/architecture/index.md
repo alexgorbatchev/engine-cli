@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 13:24
+last_modified: 2026-10-30 13:56
 status: current
 ---
 
@@ -47,6 +47,8 @@ The overview’s custom-tag filtering card cites committed Engine CLI [716327b](
 Devhost serves this Markdown index and the generated HTML directly. No Bun server or Archify installation is needed to view the committed diagrams. Set `ENGINE_DEV_HOST_SUFFIX` in the invoking environment to use another hostname suffix; that hostname must resolve to the development machine. Workstation-specific hostnames belong in local environment configuration, never tracked files. Each concurrent viewing session needs a distinct hostname.
 
 The generated HTML also opens as standalone files. The diagram source links are local-only because the pinned repository identity uses SSH.
+
+The overview's saved-Smartlist card cites separately reviewed Engine CLI [87475af](https://github.com/alexgorbatchev/engine-cli/commit/87475aff4b8dcaebc791d6925f3233daced826f8). [Rename](https://github.com/alexgorbatchev/engine-cli/blob/87475aff4b8dcaebc791d6925f3233daced826f8/internal/db/smartlist_paths.go#L143-L177) and [move](https://github.com/alexgorbatchev/engine-cli/blob/87475aff4b8dcaebc791d6925f3233daced826f8/internal/db/playlist_order.go#L146-L198) update descendant paths within the ordinary playlist transaction; move and [removal](https://github.com/alexgorbatchev/engine-cli/blob/87475aff4b8dcaebc791d6925f3233daced826f8/internal/db/db.go#L443-L517) repair saved Smartlist sibling chains. Recursive removal includes saved Smartlists and requires force for a nonempty folder. Existing CLI/API protection, snapshots and history retain recovery ownership; actual API and Cobra undo tests restore saved paths, order and opaque rules. This addition does not edit or evaluate Smartlist rules, introduce an actor, or advance historical diagram evidence pins. Uncommitted working-tree changes are outside this review.
 
 ## Maintaining
 

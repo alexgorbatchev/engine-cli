@@ -375,6 +375,16 @@
         "The complete response orders tracks by native row ID and value IDs deterministically, omits unassigned tracks and absent origins, and retains unavailable-origin counts. Browsing never creates companion storage, prunes assignments, or creates backup/history artifacts. No additional collection writer or HTTP lifecycle is introduced.",
         "Reviewed committed evidence 716327b379a737aafd13f3808f8faa75424be4be: internal/api/tag_assignments.go:10–20; internal/tags/collection.go:10–63; internal/tags/store.go:29–49; docs/http-api.md:466–481. Existing batch-write and historical evidence pins remain unchanged."
       ]
+    },
+    {
+      "dot": "amber",
+      "title": "Saved Smartlist paths — committed playlist maintenance",
+      "items": [
+        "Playlist rename and move rewrite saved Smartlist parent and next-playlist paths for the complete affected subtree in the same m.db transaction as ordinary playlist changes. Moves reconnect the old Smartlist sibling chain and insert the playlist after the Smartlists preceding its destination.",
+        "Removal deletes saved Smartlists beneath the removed subtree and reconnects preceding Smartlists to the following sibling chain. A folder containing ordinary playlists or saved Smartlists requires force. Native semicolon-separated paths retain literal title bytes; rules and Smartlist edit timestamps remain unchanged.",
+        "CLI and HTTP operations retain their existing Desktop protection, snapshot and history ownership. Native API and Cobra tests exercise actual undo and restore ordinary playlists together with saved Smartlist paths, order and opaque rules. This is path and sibling-order maintenance, not Smartlist rule editing or evaluation.",
+        "Reviewed committed evidence 87475aff4b8dcaebc791d6925f3233daced826f8: internal/db/smartlist_paths.go:47–177; internal/db/playlist_order.go:146–198; internal/db/db.go:443–517; internal/playlist/rename.go:12–29. This separately reviewed addition preserves the historical diagram graph and source pins."
+      ]
     }
   ]
 }
