@@ -21,7 +21,7 @@ func RenamePlaylist(ctx context.Context, database *sql.DB, identifier, title str
 	if p == nil {
 		return nil, fmt.Errorf("playlist not found; refresh the collection and try again")
 	}
-	if _, err := database.ExecContext(ctx, "UPDATE Playlist SET title = ? WHERE id = ?", title, p.ID); err != nil {
+	if err := db.RenamePlaylist(ctx, database, p.ID, title); err != nil {
 		return nil, fmt.Errorf("renaming playlist: %w", err)
 	}
 	p.Title = title

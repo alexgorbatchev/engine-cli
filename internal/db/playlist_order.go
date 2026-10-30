@@ -143,6 +143,37 @@ func MovePlaylist(ctx context.Context, database *sql.DB, id, newParentID, before
 		index = slices.Index(orders[newParentID], beforeID)
 	}
 	orders[newParentID] = slices.Insert(orders[newParentID], index, id)
+	original, err := siblingOrder(rows, source.ParentListID)
+	if err != nil {
+		return err
+	}
+	if source.ParentListID == newParentID && slices.Equal(original, orders[newParentID]) {
+		return tx.Commit()
+	}
+	paths, err := playlistPaths(rows)
+	if err != nil {
+		return err
+	}
+	if err := unlinkSmartlistPredecessor(ctx, tx, source, paths); err != nil {
+		return err
+	}
+	// Inserting before an ordinary sibling follows the Smartlist chain that
+	// already preceded it, as with Engine's native playlist insertion.
+	if _, err := tx.ExecContext(ctx, `UPDATE Smartlist SET nextPlaylistPath=? WHERE parentPlaylistPath=? AND nextPlaylistPath=? AND nextListUuid=''`, paths[newParentID]+source.Title+";", paths[newParentID], paths[beforeID]); err != nil {
+		return err
+	}
+	for i := range rows {
+		if rows[i].ID == id {
+			rows[i].ParentListID = newParentID
+		}
+	}
+	after, err := playlistPaths(rows)
+	if err != nil {
+		return err
+	}
+	if err := rewriteSmartlistPaths(ctx, tx, paths, after); err != nil {
+		return err
+	}
 	// NULL releases each unique (parentListId,nextListId) slot before relinking.
 	for _, parent := range parents {
 		if _, err := tx.ExecContext(ctx, "UPDATE Playlist SET nextListId=NULL WHERE parentListId=?", parent); err != nil {

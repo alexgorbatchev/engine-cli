@@ -121,6 +121,11 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 		nextEntityId INTEGER,
 		membershipReference INTEGER
 	);
+	CREATE TABLE IF NOT EXISTS Smartlist (
+		listUuid TEXT NOT NULL PRIMARY KEY, title TEXT, parentPlaylistPath TEXT,
+		nextPlaylistPath TEXT, nextListUuid TEXT, rules TEXT, lastEditTime DATETIME,
+		UNIQUE(title,parentPlaylistPath), UNIQUE(parentPlaylistPath,nextPlaylistPath,nextListUuid)
+	);
 	`
 	_, err := database.ExecContext(ctx, schema)
 	if err != nil {
@@ -440,69 +445,75 @@ func DeletePlaylist(ctx context.Context, database *sql.DB, id int64, force bool)
 		return fmt.Errorf("database cannot be nil")
 	}
 
-	var exists bool
-	err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", id).Scan(&exists)
+	tx, err := database.BeginTx(ctx, nil)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("playlist ID %d not found", id)
+		return err
+	}
+	defer tx.Rollback()
+	rows, err := playlistRows(ctx, tx)
+	if err != nil {
+		return err
+	}
+	paths, err := playlistPaths(rows)
+	if err != nil {
+		return err
+	}
+	path, exists := paths[id]
+	if !exists || id == 0 {
+		return fmt.Errorf("playlist ID %d not found", id)
+	}
+	var source playlistRow
+	childCount := 0
+	for _, p := range rows {
+		if p.ID == id {
+			source = p
 		}
-		return fmt.Errorf("checking playlist %d: %w", id, err)
+		if p.ParentListID == id {
+			childCount++
+		}
 	}
-
-	var childCount int
-	err = database.QueryRowContext(ctx, "SELECT COUNT(*) FROM Playlist WHERE parentListId = ?", id).Scan(&childCount)
-	if err != nil {
-		return fmt.Errorf("checking child playlists for %d: %w", id, err)
+	var smartlistCount int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM Smartlist WHERE parentPlaylistPath=?`, path).Scan(&smartlistCount); err != nil {
+		return fmt.Errorf("checking Smartlist children: %w", err)
 	}
-
+	childCount += smartlistCount
 	if childCount > 0 && !force {
 		return fmt.Errorf("playlist ID %d has %d child playlist(s); use --force to delete recursively", id, childCount)
 	}
-
-	// Helper to recursively collect all descendant IDs
-	var collectDescendants func(parent int64) ([]int64, error)
-	collectDescendants = func(parent int64) ([]int64, error) {
-		rows, err := database.QueryContext(ctx, "SELECT id FROM Playlist WHERE parentListId = ?", parent)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		var ids []int64
-		for rows.Next() {
-			var childID int64
-			if err := rows.Scan(&childID); err != nil {
-				return nil, err
-			}
-			ids = append(ids, childID)
-			subIDs, err := collectDescendants(childID)
-			if err != nil {
-				return nil, err
-			}
-			ids = append(ids, subIDs...)
-		}
-		return ids, rows.Err()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM Smartlist WHERE INSTR(parentPlaylistPath,?)=1`, path); err != nil {
+		return err
 	}
-
-	allToDelete := []int64{id}
-	if childCount > 0 {
-		descendants, err := collectDescendants(id)
-		if err != nil {
-			return fmt.Errorf("collecting descendant playlists: %w", err)
-		}
-		allToDelete = append(allToDelete, descendants...)
+	if err := unlinkSmartlistPredecessor(ctx, tx, source, paths); err != nil {
+		return err
 	}
-
+	// Delete descendants first so minimal synthetic schemas and Engine's
+	// recursive deletion trigger have the same final membership boundary.
+	var allToDelete []int64
+	children := make(map[int64][]int64)
+	for _, p := range rows {
+		children[p.ParentListID] = append(children[p.ParentListID], p.ID)
+	}
+	var collect func(int64)
+	collect = func(parent int64) {
+		for _, child := range children[parent] {
+			collect(child)
+		}
+		allToDelete = append(allToDelete, parent)
+	}
+	collect(id)
 	for _, delID := range allToDelete {
-		if _, err := database.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE listId = ?", delID); err != nil {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE listId = ?", delID); err != nil {
 			return fmt.Errorf("deleting playlist entities for %d: %w", delID, err)
 		}
-		if _, err := database.ExecContext(ctx, "DELETE FROM Playlist WHERE id = ?", delID); err != nil {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM Playlist WHERE id = ?", delID); err != nil {
 			return fmt.Errorf("deleting playlist %d: %w", delID, err)
 		}
 	}
 
-	return nil
+	if _, err := tx.ExecContext(ctx, `UPDATE Playlist SET nextListId=? WHERE parentListId=? AND nextListId=?`, source.next, source.ParentListID, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // AddTrackToPlaylist adds a track to a playlist, maintaining the linked list in PlaylistEntity.
