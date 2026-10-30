@@ -20,6 +20,7 @@ func TestLibraryRelocationAcrossFilesystemsAndUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("TMPDIR", "/dev/shm")
+	t.Setenv("GOTMPDIR", "/dev/shm")
 	t.Run("separate filesystem", func(t *testing.T) {
 		parent := t.TempDir()
 		destination := filepath.Join(parent, "Library")

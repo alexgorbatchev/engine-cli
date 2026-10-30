@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -107,7 +108,7 @@ func TestRestoreOldAndExplicitAbsentSnapshotsRemovesFutureCompanion(t *testing.T
 }
 
 func TestCompanionPresenceDamageRejectedBeforeEngineWrite(t *testing.T) {
-	for _, damage := range []string{"missing manifest", "missing database", "missing presence field", "wrong schema"} {
+	for _, damage := range []string{"missing manifest", "missing database", "missing presence field", "wrong schema", "false absence", "corrupt database", "directory replaced by file", "directory symlink"} {
 		t.Run(damage, func(t *testing.T) {
 			ctx := context.Background()
 			lib := createDummyEngineLibrary(t)
@@ -127,6 +128,20 @@ func TestCompanionPresenceDamageRejectedBeforeEngineWrite(t *testing.T) {
 				err = os.Remove(path)
 			case "missing presence field":
 				err = os.WriteFile(manifest, []byte(`{"version":1}`), 0600)
+			case "false absence":
+				err = os.WriteFile(manifest, []byte(`{"version":1,"tags":false}`), 0600)
+			case "corrupt database":
+				err = os.WriteFile(path, []byte("damaged snapshot"), 0600)
+			case "directory replaced by file", "directory symlink":
+				dir := filepath.Dir(manifest)
+				if err := os.Rename(dir, dir+"-saved"); err != nil {
+					t.Fatal(err)
+				}
+				if damage == "directory symlink" {
+					err = os.Symlink(dir+"-saved", dir)
+				} else {
+					err = os.WriteFile(dir, []byte("not a directory"), 0600)
+				}
 			case "wrong schema":
 				var dErr error
 				d, dErr := db.Open(path)
@@ -144,12 +159,33 @@ func TestCompanionPresenceDamageRejectedBeforeEngineWrite(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(lib, "Artwork", "sample_art.jpg"), []byte("live newer artwork"), 0600); err != nil {
 				t.Fatal(err)
 			}
+			enginePath := filepath.Join(lib, "Database2", "m.db")
+			engine, err := db.Open(enginePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := engine.Exec("UPDATE fixture SET value='live newer database'"); err != nil {
+				t.Fatal(err)
+			}
+			if err := engine.Close(); err != nil {
+				t.Fatal(err)
+			}
+			before := map[string][]byte{}
+			for _, path := range []string{enginePath, companion.TagsPath(lib), filepath.Join(lib, "Artwork", "sample_art.jpg")} {
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				before[path] = data
+			}
 			if err := RestoreBackup(ctx, info.Path, lib); err == nil {
 				t.Fatal("accepted damaged companion snapshot")
 			}
-			data, err := os.ReadFile(filepath.Join(lib, "Artwork", "sample_art.jpg"))
-			if err != nil || string(data) != "live newer artwork" {
-				t.Fatalf("restore touched live content before rejecting: %s %v", data, err)
+			for path, want := range before {
+				data, err := os.ReadFile(path)
+				if err != nil || !bytes.Equal(data, want) {
+					t.Fatalf("restore touched live %s before rejecting: %v", filepath.Base(path), err)
+				}
 			}
 		})
 	}
