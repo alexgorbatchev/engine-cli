@@ -42,6 +42,7 @@ func newTrackCommand() *cobra.Command {
 	trCmd.AddCommand(newTrackUpgradeCommand())
 	trCmd.AddCommand(newTrackAnalyzeCommand())
 	trCmd.AddCommand(newTrackGridCommand())
+	trCmd.AddCommand(newTrackCueCommand())
 	trCmd.AddCommand(newTrackRmCommand())
 	trCmd.AddCommand(newTrackMoveCommand())
 	trCmd.AddCommand(newTrackRelocateCommand())

@@ -1,34 +1,17 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
 	"path/filepath"
+	"strconv"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/nateranda/djtools/engine"
+	"github.com/alexgorbatchev/engine-cli/internal/performance"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
-
-type savedCue struct {
-	Slot     int     `json:"slot"`
-	Name     string  `json:"name"`
-	Color    string  `json:"color"`
-	Position float64 `json:"position"`
-}
-
-type savedLoop struct {
-	Slot  int     `json:"slot"`
-	Name  string  `json:"name"`
-	Color string  `json:"color"`
-	Start float64 `json:"start"`
-	End   float64 `json:"end"`
-}
-
-type savedPerformance struct {
-	Cues  []savedCue  `json:"cues"`
-	Loops []savedLoop `json:"loops"`
-}
 
 func (s *Server) trackSavedPerformance(w http.ResponseWriter, r *http.Request) {
 	track := s.requestTrack(w, r)
@@ -41,30 +24,63 @@ func (s *Server) trackSavedPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer database.Close()
-	var exists bool
-	if err := database.QueryRowContext(r.Context(), "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='PerformanceData')").Scan(&exists); err != nil {
-		writeError(w, http.StatusServiceUnavailable, "saved_performance_unavailable", "Could not read saved cues and loops.")
+	result, err := performance.Inspect(r.Context(), database, s.config.LibraryDir, strconv.FormatInt(track.ID, 10))
+	if err != nil {
+		status, code := http.StatusServiceUnavailable, "saved_performance_unavailable"
+		var coded *progress.Error
+		if errors.As(err, &coded) && coded.Code == "invalid_saved_performance" {
+			status, code = http.StatusUnprocessableEntity, coded.Code
+		}
+		writeError(w, status, code, "Could not read saved cues and loops.")
 		return
 	}
-	result := savedPerformance{Cues: []savedCue{}, Loops: []savedLoop{}}
-	if exists {
-		var beat, cues, loops []byte
-		err := database.QueryRowContext(r.Context(), "SELECT beatData, quickCues, loops FROM PerformanceData WHERE trackId=?", track.ID).Scan(&beat, &cues, &loops)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusServiceUnavailable, "saved_performance_unavailable", "Could not read saved cues and loops.")
-			return
-		}
-		decoded, err := engine.DecodeSavedPerformance(beat, cues, loops)
-		if err != nil {
-			writeError(w, http.StatusUnprocessableEntity, "invalid_saved_performance", "Could not decode saved cues and loops.")
-			return
-		}
-		for _, cue := range decoded.HotCues {
-			result.Cues = append(result.Cues, savedCue{Slot: cue.Position, Name: cue.Name, Color: cue.Color, Position: cue.Offset})
-		}
-		for _, loop := range decoded.Loops {
-			result.Loops = append(result.Loops, savedLoop{Slot: loop.Position, Name: loop.Name, Color: loop.Color, Start: loop.Start, End: loop.End})
-		}
-	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+type cueInspectParams struct {
+	Identifier string `json:"identifier"`
+}
+type cueClearParams struct {
+	Identifier string `json:"identifier"`
+	Slot       int    `json:"slot"`
+	Revision   string `json:"revision"`
+}
+type cueSetParams struct {
+	cueClearParams
+	Position float64 `json:"position"`
+	Name     string  `json:"name"`
+	Color    string  `json:"color"`
+}
+
+func (p cueClearParams) edit() performance.Edit {
+	return performance.Edit{Identifier: p.Identifier, Slot: p.Slot, Revision: p.Revision, Clear: true}
+}
+func (p cueSetParams) edit() performance.Edit {
+	return performance.Edit{Identifier: p.Identifier, Slot: p.Slot, Revision: p.Revision, Position: p.Position, Name: p.Name, Color: p.Color}
+}
+
+func cueWriteOperation[P interface{ edit() performance.Edit }](s *Server, name string, required []string) operation {
+	return defineChecked(name, "collection", required, func(ctx context.Context, p P, bound *boundOperation) error {
+		_, err := s.database(ctx, func(d *sql.DB) (any, error) {
+			prepared, err := performance.Prepare(ctx, d, s.config.LibraryDir, p.edit())
+			if err != nil {
+				return nil, err
+			}
+			bound.run = func(ctx context.Context) (any, error) {
+				return s.database(ctx, func(d *sql.DB) (any, error) { return prepared.Apply(ctx, d) })
+			}
+			return nil, nil
+		})
+		return err
+	}, func(context.Context, P) (any, error) { return nil, errors.New("cue write was not prepared") })
+}
+
+func (s *Server) cueOperations() []operation {
+	return []operation{
+		define("track.cue.inspect", false, []string{"identifier"}, func(ctx context.Context, p cueInspectParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) { return performance.Inspect(ctx, d, s.config.LibraryDir, p.Identifier) })
+		}),
+		cueWriteOperation[cueSetParams](s, "track.cue.set", []string{"identifier", "slot", "position", "color", "revision"}),
+		cueWriteOperation[cueClearParams](s, "track.cue.clear", []string{"identifier", "slot", "revision"}),
+	}
 }
