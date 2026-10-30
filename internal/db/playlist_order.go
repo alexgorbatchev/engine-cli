@@ -19,6 +19,13 @@ type Querier interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
+// Executor supports the same statements on a connection and inside an atomic write.
+type Executor interface {
+	Querier
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
 func playlistRows(ctx context.Context, d Querier) ([]playlistRow, error) {
 	rows, err := d.QueryContext(ctx, `SELECT id,title,COALESCE(parentListId,0),nextListId FROM Playlist ORDER BY parentListId,id`)
 	if err != nil {

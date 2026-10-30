@@ -51,6 +51,9 @@ func TestJobScheduling(t *testing.T) {
 		parallel      bool
 	}{
 		{"parallel reads", read, read, true},
+		{"import preview is a concurrent read", read, schedulingRequest{"playlist.import", `{"path":"set.m3u8","name":"Set","dry_run":true}`}, true},
+		{"import apply waits for collection reads", read, schedulingRequest{"playlist.import", `{"path":"set.m3u8","name":"Set","plan_token":"reviewed"}`}, false},
+		{"collection reads wait for import apply", schedulingRequest{"playlist.import", `{"path":"set.m3u8","name":"Set","plan_token":"reviewed"}`}, read, false},
 		{"read during staging fetch", fetch, read, true},
 		{"read during mix fetch", schedulingRequest{"mix.fetch", `{"query":"mix"}`}, read, true},
 		{"read during tool install", write, read, true},

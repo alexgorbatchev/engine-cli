@@ -36,6 +36,14 @@ func newPlaylistCommand() *cobra.Command {
 	plCmd.AddCommand(newPlaylistRmCommand())
 	plCmd.AddCommand(newPlaylistMoveCommand())
 	plCmd.AddCommand(newPlaylistTrackCommand())
+	plCmd.AddCommand(acquisitionCommand("playlist.import", "import <path>", "Review and import an M3U playlist using existing collection tracks", "path", []acquisitionFlag{
+		{"name", "string", "Name for the new playlist; existing playlists are never replaced"},
+		{"parent", "string", "Destination parent playlist ID or opaque reference; omitted uses the collection root"},
+		{"encoding", "string", "File encoding: utf-8 (default), windows-1252, or iso-8859-1; M3U8 requires utf-8"},
+		{"skip-missing", "bool", "Explicitly omit reviewed missing, unregistered, or ambiguous entries"},
+		{"dry-run", "bool", "Review ordered entries without changing the collection"},
+		{"plan-token", "string", "Apply the exact reviewed plan; required without --dry-run"},
+	}))
 
 	return plCmd
 }

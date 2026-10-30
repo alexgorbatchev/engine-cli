@@ -397,7 +397,7 @@ func FindPlaylist(ctx context.Context, database *sql.DB, idOrTitle string) (*Pla
 }
 
 // CreatePlaylist creates a new playlist or folder in the Playlist table.
-func CreatePlaylist(ctx context.Context, database *sql.DB, title string, parentListID int64, isFolder bool) (int64, error) {
+func CreatePlaylist(ctx context.Context, database Executor, title string, parentListID int64, isFolder bool) (int64, error) {
 	if database == nil {
 		return 0, fmt.Errorf("database cannot be nil")
 	}
@@ -506,7 +506,7 @@ func DeletePlaylist(ctx context.Context, database *sql.DB, id int64, force bool)
 }
 
 // AddTrackToPlaylist adds a track to a playlist, maintaining the linked list in PlaylistEntity.
-func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, trackID int64) (int64, error) {
+func AddTrackToPlaylist(ctx context.Context, database Executor, listID int64, trackID int64) (int64, error) {
 	if database == nil {
 		return 0, fmt.Errorf("database cannot be nil")
 	}
@@ -541,7 +541,10 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 
 	// Find the current tail entity (where nextEntityId = 0 or last entity by id)
 	var tailID int64
-	_ = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND (nextEntityId = 0 OR nextEntityId IS NULL) ORDER BY id DESC LIMIT 1", listID).Scan(&tailID)
+	err = database.QueryRowContext(ctx, "SELECT id FROM PlaylistEntity WHERE listId = ? AND (nextEntityId = 0 OR nextEntityId IS NULL) ORDER BY id DESC LIMIT 1", listID).Scan(&tailID)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, fmt.Errorf("finding playlist tail: %w", err)
+	}
 
 	res, err := database.ExecContext(ctx, "INSERT INTO PlaylistEntity (listId, trackId, databaseUuid, nextEntityId, membershipReference) VALUES (?, ?, ?, 0, 0)", listID, originID, originUUID)
 	if err != nil {
@@ -554,7 +557,9 @@ func AddTrackToPlaylist(ctx context.Context, database *sql.DB, listID int64, tra
 	}
 
 	if tailID > 0 && tailID != newID {
-		_, _ = database.ExecContext(ctx, "UPDATE PlaylistEntity SET nextEntityId = ? WHERE id = ?", newID, tailID)
+		if _, err := database.ExecContext(ctx, "UPDATE PlaylistEntity SET nextEntityId = ? WHERE id = ?", newID, tailID); err != nil {
+			return 0, fmt.Errorf("linking playlist tail: %w", err)
+		}
 	}
 
 	return newID, nil

@@ -228,6 +228,13 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `permission_denied` | File access was denied. Check permissions on the server computer. |
 | `resource_not_found` | A required file is missing. Restore access or choose another file. |
 | `backup_unavailable` | A backup folder could not be enumerated or the snapshot contains no databases. Check the backup drive and folder permissions before retrying. No live files were changed by the failed validation. |
+| `playlist_import_unavailable` | The server-local playlist file cannot be opened. Check its path and permissions. |
+| `playlist_import_format` | The source is not a supported local M3U/M3U8 playlist or exceeds its limits. HLS playlists and remote media URLs are unsupported. |
+| `playlist_import_encoding` | The selected encoding cannot decode this playlist. M3U8 requires UTF-8; choose an explicit supported encoding for M3U. |
+| `playlist_import_empty` | The file contains no media entries. Choose a populated playlist. |
+| `playlist_import_target` | The new name or parent is invalid, or that parent already contains a playlist with this name. |
+| `playlist_import_stale` | The reviewed plan no longer matches the source, selected options, or collection. Review again before applying. |
+| `playlist_import_unresolved` | No tracks match, or unresolved entries remain without explicit skip permission. Resolve them or review with `skip_missing:true`. |
 | `tool_unavailable` | A required managed tool is not installed or cannot run. Install it with `tool.upgrade`. |
 | `tool_outdated` | An installed managed tool is older than the release providing Engine's machine interface, reports an unrecognized version, or lacks that interface. Update it with `tool.upgrade`. |
 | `tool_install_failed` | Downloading or installing a managed tool release failed, through `tool.upgrade` or `auto_install`. Check the connection and retry. |
@@ -439,6 +446,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | `track.tags.update`, `track.artwork.embed` | Each file report carries `track_id`, `original_path`, and the tool `result`; `path` names the installed file once the collection points to it |
 | `playlist.track.add`, `playlist.track.rm` | `[{"playlist_id":3,"track_id":5}]` |
 | `playlist.track.move` | `[{"from_playlist_id":3,"to_playlist_id":2,"track_id":5}]` |
+| `playlist.import` (apply) | `{"playlist_id":3,"track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
 | `staging.import` | `{"imported":[{"id":"…","track_id":7}],"failed":[]}` |
 
 Audio requests accept only positive numeric database IDs. Engine resolves the file path from that track's database record; clients cannot supply arbitrary filesystem paths. Missing tracks/files return `404`, unsupported audio file types return `415`, and unavailable libraries return `503`, using structured API errors. These endpoints read the library and stream the original file without changing or re-encoding it. Browser codec support determines which files can play. The normal loopback-host and allowed-origin checks apply to metadata and audio requests.
@@ -463,6 +471,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.inspect`, `track.inspect` | Either `ids` (array of 1–500 positive numeric IDs) or `refs` (array of stable references) |
 | `system.check` | `checks?` (array; omitted or empty runs all supported checks) |
 | `playlist.create` | `name`, `parent?`, `folder?` |
+| `playlist.import` | `path`, `name`, `parent?`, `encoding?`, `skip_missing?`, `dry_run?`, `plan_token?`; see the reviewed import contract below |
 | `playlist.rename` | `identifier`, `title` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling ID, omitted appends |
@@ -484,3 +493,24 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 Upgrade timing options are mutually exclusive. When saved cues, loops, or beat grids exist, choose whether to keep or clear them. Upgrades retain the original audio and curated metadata; the replacement needs analysis in Engine DJ.
 
 HTTP validation errors use `{ "error": { "code": "...", "message": "..." } }`. Failures after acceptance appear in job status and terminal events; a successful submission alone does not mean the operation succeeded.
+
+### Reviewed M3U/M3U8 import
+
+`playlist.import` creates a new playlist from tracks already registered in the selected library. It never acquires audio, changes track metadata, or appends to or replaces an existing playlist. Submit through that library's operation endpoint. `path` refers to a file on the server computer; `name` is the new playlist name, and optional `parent` accepts a numeric playlist ID or an opaque playlist reference. An existing sibling with the same name blocks creation.
+
+1. Submit `dry_run:true` with `path`, `name`, and the intended options. The preview is a collection read and remains available while Engine DJ Desktop is running. It creates no snapshot or undo record.
+2. Review `entries`, in source order. Each contains its one-based `line`, resolved absolute `path`, `status`, and a `track_id` when matched. Status is `matched`, `duplicate`, `missing` (unavailable or non-regular media), `unregistered` (no collection path match), or `ambiguous` (multiple matches). `track_ids` preserves the first occurrence of each matched track; repeated entries are omitted. `duplicate_count` and `unresolved_count` describe the omissions. Unresolved entries block application unless explicitly reviewed with `skip_missing:true`; zero matched tracks always blocks application.
+3. Apply the same options with `dry_run:false` and the returned `plan_token`, only when `can_apply:true`. The token binds the source bytes, options, library identity/location, and resolved track identities. Changed evidence requires a new preview. Validation runs before Desktop checks, snapshots, and history, then repeats within the apply transaction. Normal fresh Desktop protection, one safety snapshot, and one undo record cover the new playlist and its ordered memberships. Undo removes the imported playlist without deleting audio or reverting unrelated later track edits.
+
+The preview also returns `path`, `name`, numeric `parent_id` (zero for root), effective `encoding`, `skip_missing`, and `plan_token`. Apply returns only the new `playlist_id`, ordered `track_ids`, `imported_count`, `duplicate_count`, and `skipped_count`. Consumers re-read playlists after success; a failed refresh must not resubmit the import.
+
+UTF-8 is the default; UTF-8 BOM and CRLF are supported. `.m3u8` requires UTF-8. `.m3u` additionally accepts explicit `encoding:"windows-1252"` or `"iso-8859-1"`; decoding is never guessed. Blank lines and comments, including `#EXTINF`, do not create entries. Local absolute paths, paths relative to the playlist file, and absolute local `file:` URIs (empty host or `localhost`, case-insensitive scheme) are supported. Prefix a relative POSIX filename containing a colon with `./` to distinguish it from a URI scheme. Matching uses cleaned exact stored paths, not filenames, titles, symlink aliases, or remote URLs. Windows drive paths and separators require a Windows server. HLS `#EXT-X-` directives, remote or opaque URI schemes, URI queries/fragments, control characters, files over 10 MiB, lines of 64 KiB or more, and more than 10,000 media entries are rejected.
+
+The CLI shares this contract:
+
+```sh
+engine-cli playlist import /Music/set.m3u8 --name "Reviewed set" --dry-run
+engine-cli playlist import /Music/set.m3u8 --name "Reviewed set" --plan-token <reviewed-token>
+```
+
+If unresolved entries are intentionally omitted, include `--skip-missing` in both the reviewed and applied commands. `--encoding` and `--parent` likewise remain unchanged. Human output lists the review and counts; `--json` emits the same structured plan or apply result as HTTP.

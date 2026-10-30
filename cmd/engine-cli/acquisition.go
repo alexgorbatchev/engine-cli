@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/api"
 	"github.com/alexgorbatchev/engine-cli/internal/libraryops"
+	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/alexgorbatchev/engine-cli/internal/state"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/spf13/cobra"
@@ -208,6 +209,22 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 			}
 		}
 		if result != nil {
+			if plan, ok := result.(*playlist.ImportPlan); ok {
+				display := *plan
+				display.Path = displayPath(display.Path)
+				display.Entries = append([]playlist.ImportEntry{}, plan.Entries...)
+				for i := range display.Entries {
+					display.Entries[i].Path = displayPath(display.Entries[i].Path)
+				}
+				if !asJSON {
+					return printPlaylistImportPlan(c, &display)
+				}
+				result = &display
+			}
+			if imported, ok := result.(*playlist.ImportResult); ok && !asJSON {
+				_, err := fmt.Fprintf(c.OutOrStdout(), "Created playlist %d: %d tracks, %d repeated entries omitted, %d unresolved entries skipped.\n", imported.PlaylistID, imported.ImportedCount, imported.DuplicateCount, imported.SkippedCount)
+				return err
+			}
 			if created, ok := result.(*api.CreatedLibrary); ok {
 				display := *created
 				display.Path = displayPath(display.Path)

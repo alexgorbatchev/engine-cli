@@ -98,6 +98,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 		AutoBackup:  true,
 	},
 	"engine-cli playlist rename":    {Summary: "Rename a playlist without changing its identity or memberships", Args: "<pl|id> <name>", MutatesDB: true, AutoBackup: true},
+	"engine-cli playlist import":    {Summary: "Review and atomically import an M3U/M3U8 file into a new playlist", Args: "<path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track update":       {Summary: "Update supplied metadata fields and star rating while preserving audio and timing", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track batch update": {Summary: "Update selected tracks atomically with one snapshot and undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli playlist rm": {
