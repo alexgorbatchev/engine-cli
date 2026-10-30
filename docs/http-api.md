@@ -340,7 +340,7 @@ The applied result's `operation_id` and job's `history_id` identify undo history
 
 The beat-grid response contains `grid.sampleRate`, `grid.bpm`, and `grid.anchors`. Each anchor has `sample` (sample position, which can be negative for preroll), `beat` (zero-based beat index), and `beatsUntilNext` (the outgoing segment's beat count, `0` on the final anchor). Interpolate the interval between adjacent anchors using `beatsUntilNext`, then divide sample positions by `sampleRate` for seconds. Beats whose index is a multiple of four start bars. The last anchor ends the preceding segment. `bpm` is the whole-grid tempo Engine reports: the beats spanned divided by the grid's duration.
 
-The API reads the adjusted grid Engine plays and edits from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM. Missing analysis, and grids with fewer than two anchors, return `{"grid":null}`. Invalid compressed payloads or inconsistent anchors return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. Encoding and decoding use `djtools` v0.1.3's native `BeatData` codec, which writes the full header, both grids, and the trailing source and reference-sample fields.
+The API reads the adjusted grid Engine plays and edits from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM. Missing analysis, and grids with fewer than two anchors, return `{"grid":null}`. Invalid compressed payloads or inconsistent anchors return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. Encoding and decoding use `djtools` v0.2.0's native `BeatData` codec, which writes the full header, both grids, and the trailing source and reference-sample fields.
 
 ## Track analysis
 
@@ -393,7 +393,7 @@ The response has `cues` and `loops` arrays, ordered by native slot (1–8). Unse
 {"cues":[{"slot":8,"name":"Outro","color":"#FF0080","position":1.25}],"loops":[{"slot":3,"name":"Break","color":"#0080FF","start":2.5,"end":6.75}]}
 ```
 
-Missing analysis returns `{"cues":[],"loops":[]}`. Malformed data or a missing sample rate for existing markers returns `422 invalid_saved_performance`; a failed analysis read returns `503 saved_performance_unavailable`. Neither case returns partial markers or guessed timing. Decoding uses `djtools` v0.1.1, including its bounded Qt decompression and native mixed-endian slot codec. This read does not activate cues or loops, expose the temporary main cue, or edit saved markers.
+Missing analysis returns `{"cues":[],"loops":[]}`. Malformed data or a missing sample rate for existing markers returns `422 invalid_saved_performance`; a failed analysis read returns `503 saved_performance_unavailable`. Neither case returns partial markers or guessed timing. Decoding uses `djtools` v0.2.0, including its bounded Qt decompression and native mixed-endian slot codec. This read does not activate cues or loops, expose the temporary main cue, or edit saved markers.
 
 ## Shared progress fields
 

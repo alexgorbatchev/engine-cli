@@ -12,7 +12,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
-	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
+	"github.com/nateranda/djtools/musicalkey"
 )
 
 const RatingUnitsPerStar = 20

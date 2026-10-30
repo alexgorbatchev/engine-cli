@@ -37,6 +37,9 @@ func TestEditCommands(t *testing.T) {
 		{[]string{"track", "update", "1", "--clear-artwork", "--json"}, "title", "New title"},
 		{[]string{"track", "update", "1", "--key", "6B", "--json"}, "key", float64(20)},
 		{[]string{"track", "update", "1", "--key", "Am", "--json"}, "key", float64(1)},
+		{[]string{"track", "update", "1", "--key", "B♭ minor", "--json"}, "key", float64(15)},
+		{[]string{"track", "update", "1", "--key", "F♯ Major", "--json"}, "key", float64(12)},
+		{[]string{"track", "update", "1", "--key", "12M", "--json"}, "key", float64(23)},
 		{[]string{"track", "update", "1", "--key", "none", "--json"}, "key", nil},
 	} {
 		result := runJSON(t, lib, tt.args...)

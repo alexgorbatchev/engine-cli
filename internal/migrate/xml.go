@@ -37,7 +37,8 @@ func exportXML(path string, library lib.Library, included map[int]bool) error {
 	// The exporter otherwise shortens long paths independently of copied audio.
 	for i := range doc.Collection.Tracks {
 		track := &doc.Collection.Tracks[i]
-		track.Location = locations[track.TrackId]
+		// FromLibrary assigns every exported track its source SongID.
+		track.Location = locations[*track.TrackId]
 	}
 	data, err := xml.MarshalIndent(doc, "", "  ")
 	if err != nil {

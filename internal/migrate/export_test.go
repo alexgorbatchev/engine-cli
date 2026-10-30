@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -230,6 +231,51 @@ func TestXMLKeepsExactLongURIsAndFiltersRemovedAudio(t *testing.T) {
 	uri, err := url.Parse(doc.Collection.Tracks[0].Location)
 	if err != nil || uri.Path != audio {
 		t.Fatalf("shortened URI=%v err=%v", uri, err)
+	}
+}
+
+func TestXMLPreservesZeroAndSparseTrackIDsAndKeys(t *testing.T) {
+	dir := t.TempDir()
+	var songs []lib.Song
+	for _, song := range []lib.Song{{SongID: 41, Key: 15}, {SongID: 0, Key: -1}, {SongID: 7, Key: 0}} {
+		song.Path = filepath.Join(dir, strings.Repeat("long folder ", 9), string(rune('a'+len(songs)))+" & mix.mp3")
+		if err := os.MkdirAll(filepath.Dir(song.Path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(song.Path, []byte("audio"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		songs = append(songs, song)
+	}
+	path := filepath.Join(dir, "rekordbox.xml")
+	library := lib.Library{Songs: songs, Playlists: []lib.Playlist{{Name: "Ordered", Songs: []int{7, 0, 41}}}}
+	if err := exportXML(path, library, map[int]bool{0: true, 7: true, 41: true}); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := rbxml.OpenDocument(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Collection.Tracks) != len(songs) {
+		t.Fatalf("tracks=%+v", doc.Collection.Tracks)
+	}
+	for i, track := range doc.Collection.Tracks {
+		uri, err := url.Parse(track.Location)
+		if err != nil || uri.Path != songs[i].Path || track.TrackId == nil || *track.TrackId != songs[i].SongID {
+			t.Fatalf("track=%+v uri=%v err=%v", track, uri, err)
+		}
+	}
+	roundTrip, err := doc.ToLibrary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, song := range roundTrip.Songs {
+		if song.SongID != songs[i].SongID || song.Key != songs[i].Key || song.Path != songs[i].Path {
+			t.Fatalf("round trip song=%+v want=%+v", song, songs[i])
+		}
+	}
+	if !reflect.DeepEqual(roundTrip.Playlists[0].Songs, []int{7, 0, 41}) {
+		t.Fatalf("playlist order=%v", roundTrip.Playlists[0].Songs)
 	}
 }
 

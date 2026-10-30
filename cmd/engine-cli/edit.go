@@ -9,9 +9,9 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
 	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
+	"github.com/nateranda/djtools/musicalkey"
 	"github.com/spf13/cobra"
 )
 

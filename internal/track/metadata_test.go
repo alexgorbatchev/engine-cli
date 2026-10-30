@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
+	"github.com/nateranda/djtools/musicalkey"
 )
 
 func TestEditMetadata(t *testing.T) {

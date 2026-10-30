@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
 	"github.com/cabbagekobe/mixedkey"
+	"github.com/nateranda/djtools/musicalkey"
 )
 
 func TestEveryDetectedKeyMapsToTheEngineIndexOfItsCamelotName(t *testing.T) {

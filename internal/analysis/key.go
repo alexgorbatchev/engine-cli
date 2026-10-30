@@ -4,8 +4,8 @@ import (
 	"errors"
 	"math"
 
-	"github.com/alexgorbatchev/engine-cli/internal/musicalkey"
 	"github.com/cabbagekobe/mixedkey"
+	"github.com/nateranda/djtools/musicalkey"
 )
 
 type keyWindow struct {
