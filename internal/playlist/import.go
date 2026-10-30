@@ -20,9 +20,6 @@ const (
 	importMissing      = "missing"
 	importUnregistered = "unregistered"
 	importAmbiguous    = "ambiguous"
-	importUTF8         = "utf-8"
-	importWindows1252  = "windows-1252"
-	importLatin1       = "iso-8859-1"
 )
 
 // ImportOptions imports existing collection tracks into a new playlist only.
@@ -100,7 +97,7 @@ func importPlan(ctx context.Context, d db.Executor, root string, opts ImportOpti
 	}
 	encoding := opts.Encoding
 	if encoding == "" {
-		encoding = importUTF8
+		encoding = m3uUTF8
 	}
 	plan := &ImportPlan{Path: source.path, Name: name, ParentID: parentID, Encoding: encoding, SkipMissing: opts.SkipMissing, Entries: source.entries, TrackIDs: []int64{}}
 	matchImportEntries(plan, byPath)
@@ -111,18 +108,18 @@ func importPlan(ctx context.Context, d db.Executor, root string, opts ImportOpti
 func importDestination(ctx context.Context, d db.Executor, opts ImportOptions) (string, int64, error) {
 	name := strings.TrimSpace(opts.Name)
 	if name == "" {
-		return "", 0, importError("playlist_import_target", "choose a name for the new playlist")
+		return "", 0, playlistFileError("playlist_import_target", "choose a name for the new playlist")
 	}
 	var parentID int64
 	if opts.Parent != "" && opts.Parent != "0" {
 		var err error
 		parentID, err = strconv.ParseInt(opts.Parent, 10, 64)
 		if err != nil || parentID <= 0 {
-			return "", 0, importError("playlist_import_target", "invalid parent playlist")
+			return "", 0, playlistFileError("playlist_import_target", "invalid parent playlist")
 		}
 		var present int
 		if err := d.QueryRowContext(ctx, "SELECT id FROM Playlist WHERE id=?", parentID).Scan(&present); err != nil {
-			return "", 0, importError("playlist_import_target", "parent playlist no longer exists")
+			return "", 0, playlistFileError("playlist_import_target", "parent playlist no longer exists")
 		}
 	}
 	var collision int
@@ -130,7 +127,7 @@ func importDestination(ctx context.Context, d db.Executor, opts ImportOptions) (
 		return "", 0, err
 	}
 	if collision != 0 {
-		return "", 0, importError("playlist_import_target", "a playlist with this name already exists in the destination")
+		return "", 0, playlistFileError("playlist_import_target", "a playlist with this name already exists in the destination")
 	}
 	return name, parentID, nil
 }
@@ -237,10 +234,10 @@ func CheckImport(ctx context.Context, d *sql.DB, root string, opts ImportOptions
 
 func checkImportPlan(plan *ImportPlan, token string) error {
 	if token == "" || token != plan.PlanToken {
-		return importError("playlist_import_stale", "review the current playlist before importing")
+		return playlistFileError("playlist_import_stale", "review the current playlist before importing")
 	}
 	if !plan.CanApply {
-		return importError("playlist_import_unresolved", "resolve missing tracks or explicitly review skipping them")
+		return playlistFileError("playlist_import_unresolved", "resolve missing tracks or explicitly review skipping them")
 	}
 	return nil
 }
@@ -289,7 +286,7 @@ func resolveImportParent(ctx context.Context, d *sql.DB, opts ImportOptions) (Im
 			return opts, err
 		}
 		if parent == nil {
-			return opts, importError("playlist_import_target", "parent playlist no longer exists")
+			return opts, playlistFileError("playlist_import_target", "parent playlist no longer exists")
 		}
 		opts.Parent = strconv.FormatInt(parent.ID, 10)
 	}

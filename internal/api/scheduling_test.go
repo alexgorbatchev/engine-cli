@@ -22,7 +22,11 @@ func startSchedulingJob(t *testing.T, s *Server, name, body string, release <-ch
 		t.Fatal(err)
 	}
 	started := make(chan struct{})
-	bound.preview = true
+	// Export is already source-read-only; retain its real preview bit because it
+	// determines whether output-file publication enters the shared write queue.
+	if name != "playlist.export" {
+		bound.preview = true
+	}
 	bound.before = nil
 	bound.run = func(ctx context.Context) (any, error) {
 		close(started)
@@ -51,6 +55,9 @@ func TestJobScheduling(t *testing.T) {
 		parallel      bool
 	}{
 		{"parallel reads", read, read, true},
+		{"playlist export preview is a concurrent read", write, schedulingRequest{"playlist.export", `{"identifier":"1","path":"set.m3u8","dry_run":true}`}, true},
+		{"playlist export in write queue", write, schedulingRequest{"playlist.export", `{"identifier":"1","path":"set.m3u8","plan_token":"reviewed"}`}, false},
+		{"read during playlist export", schedulingRequest{"playlist.export", `{"identifier":"1","path":"set.m3u8","plan_token":"reviewed"}`}, read, true},
 		{"import preview is a concurrent read", read, schedulingRequest{"playlist.import", `{"path":"set.m3u8","name":"Set","dry_run":true}`}, true},
 		{"import apply waits for collection reads", read, schedulingRequest{"playlist.import", `{"path":"set.m3u8","name":"Set","plan_token":"reviewed"}`}, false},
 		{"collection reads wait for import apply", schedulingRequest{"playlist.import", `{"path":"set.m3u8","name":"Set","plan_token":"reviewed"}`}, read, false},

@@ -13,7 +13,7 @@ func (s *Server) acquireOperation(ctx context.Context, op operation, bound *boun
 	}
 	// Backup/export write output files but deliberately have read effects in
 	// the catalog: neither modifies the source collection or creates history.
-	writes := effect != "read" || bound.installsTools || op.Name == "library.backup" || op.Name == "migrate.export"
+	writes := effect != "read" || bound.installsTools || op.Name == "library.backup" || op.Name == "migrate.export" || (op.Name == "playlist.export" && !bound.preview)
 	if writes {
 		select {
 		case s.gate <- struct{}{}:

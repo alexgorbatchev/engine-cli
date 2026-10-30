@@ -235,6 +235,14 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `playlist_import_target` | The new name or parent is invalid, or that parent already contains a playlist with this name. |
 | `playlist_import_stale` | The reviewed plan no longer matches the source, selected options, or collection. Review again before applying. |
 | `playlist_import_unresolved` | No tracks match, or unresolved entries remain without explicit skip permission. Resolve them or review with `skip_missing:true`. |
+| `playlist_export_target` | Choose an existing playlist and a new absolute destination in an existing server folder. |
+| `playlist_export_exists` | The destination already exists, including a directory or symbolic link. Choose a new filename; nothing is overwritten. |
+| `playlist_export_format` | The destination is not M3U/M3U8 or a media path cannot be represented unambiguously. |
+| `playlist_export_encoding` | The selected encoding cannot represent the metadata or media paths. M3U8 requires UTF-8. |
+| `playlist_export_order` | Saved membership links are malformed or an origin resolves ambiguously. Repair the playlist in Engine before exporting. |
+| `playlist_export_unavailable` | Unavailable memberships remain without explicit reviewed skip permission. |
+| `playlist_export_stale` | The reviewed options, destination, membership order, metadata, or media availability changed. Review again. |
+| `playlist_export_write` | Creating, writing, syncing, or closing the new file failed. Inspect the destination before retrying; cleanup is best-effort. |
 | `tool_unavailable` | A required managed tool is not installed or cannot run. Install it with `tool.upgrade`. |
 | `tool_outdated` | An installed managed tool is older than the release providing Engine's machine interface, reports an unrecognized version, or lacks that interface. Update it with `tool.upgrade`. |
 | `tool_install_failed` | Downloading or installing a managed tool release failed, through `tool.upgrade` or `auto_install`. Check the connection and retry. |
@@ -447,6 +455,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | `playlist.track.add`, `playlist.track.rm` | `[{"playlist_id":3,"track_id":5}]` |
 | `playlist.track.move` | `[{"from_playlist_id":3,"to_playlist_id":2,"track_id":5}]` |
 | `playlist.import` (apply) | `{"playlist_id":3,"track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
+| `playlist.export` (apply) | `{"playlist_id":3,"path":"/Music/set.m3u8","encoding":"utf-8","path_mode":"absolute","exported_count":2,"skipped_count":0}` |
 | `staging.import` | `{"imported":[{"id":"…","track_id":7}],"failed":[]}` |
 
 Audio requests accept only positive numeric database IDs. Engine resolves the file path from that track's database record; clients cannot supply arbitrary filesystem paths. Missing tracks/files return `404`, unsupported audio file types return `415`, and unavailable libraries return `503`, using structured API errors. These endpoints read the library and stream the original file without changing or re-encoding it. Browser codec support determines which files can play. The normal loopback-host and allowed-origin checks apply to metadata and audio requests.
@@ -472,6 +481,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `system.check` | `checks?` (array; omitted or empty runs all supported checks) |
 | `playlist.create` | `name`, `parent?`, `folder?` |
 | `playlist.import` | `path`, `name`, `parent?`, `encoding?`, `skip_missing?`, `dry_run?`, `plan_token?`; see the reviewed import contract below |
+| `playlist.export` | `identifier`, `path`, `encoding?`, `path_mode?`, `skip_unavailable?`, `dry_run?`, `plan_token?`; see the reviewed export contract below |
 | `playlist.rename` | `identifier`, `title` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling ID, omitted appends |
@@ -514,3 +524,24 @@ engine-cli playlist import /Music/set.m3u8 --name "Reviewed set" --plan-token <r
 ```
 
 If unresolved entries are intentionally omitted, include `--skip-missing` in both the reviewed and applied commands. `--encoding` and `--parent` likewise remain unchanged. Human output lists the review and counts; `--json` emits the same structured plan or apply result as HTTP.
+
+### Reviewed M3U/M3U8 export
+
+`playlist.export` creates a new server-local playlist file from the selected playlist’s direct memberships. It follows Engine’s saved membership links, including distinct origin identities that resolve to the same media path. It does not recurse through child playlists, change the source collection, copy audio, or provide a playlist-order editor. Malformed, branching, dangling, cyclic, or ambiguous membership links fail rather than producing a partial or reordered export.
+
+1. Submit `identifier` (numeric ID or opaque playlist reference), a destination `path` in an existing server folder (relative destinations resolve against the server working directory), and `dry_run:true`. Review the returned ordered `entries`, each with `entity_id`, optional resolved `track_id`, output `path`, display `title`, integer-second `duration`, and `status` of `ready` or `unavailable`. No destination is created. Missing, nonregular, streaming, unavailable, or unresolved-origin media is unavailable; application is blocked unless reviewed with `skip_unavailable:true`. The preview explicitly counts every omission; an empty playlist or explicitly all-skipped export produces a header-only file.
+2. Apply identical options with `dry_run:false` and the returned `plan_token`, only when `can_apply:true`. The token binds the source library identity/location, destination/options, complete ordered origin memberships, metadata, media availability, and serialized bytes. Changed evidence requires a new review. Existing files, directories, and symbolic links—including dangling links—are refused. There is no overwrite option.
+3. Read the completed result’s `playlist_id`, `path`, effective `encoding`, `path_mode`, `exported_count`, and `skipped_count`. No collection refresh or automatic resubmission is required. A failed or unreadable response requires inspection of the destination before another attempt.
+
+The preview also returns `playlist_title`, `skip_unavailable`, `unavailable_count`, `can_apply`, and `plan_token`. Output uses extended M3U headers and metadata. UTF-8 is the default and the only encoding accepted for `.m3u8`; `.m3u` additionally accepts explicit `windows-1252` or `iso-8859-1`. Encoding is strict, without replacement characters. Metadata line breaks are flattened; invalid or ambiguous path lines are rejected. The default `path_mode:"absolute"` writes absolute server media paths; `"relative"` writes paths relative to the destination folder with forward slashes and an explicit `./` prefix when needed to distinguish comments or URI schemes. Relative paths cannot cross Windows volumes. POSIX filenames containing literal backslashes, control characters, invalid UTF-8, or surrounding whitespace are rejected. Moving a relative export without its media layout breaks its references.
+
+Export retains catalog effect `read` because it never modifies Engine data. Preview uses the collection read barrier; application also enters the shared write scheduler for its output file. Both remain available while Desktop is running and create no snapshot, history record, or undo entry. Native exclusive creation through an open destination directory supports filesystems such as FAT/exFAT without hard-link publication. The new file can be visible while being written; a successful response follows writing, syncing, and closing. Failures and cancellation attempt to remove only the created file when its identity still matches. Cleanup is best-effort and cannot guarantee rollback if the destination is concurrently changed.
+
+The CLI shares the same review and application:
+
+```sh
+engine-cli playlist export 3 --path /Music/set.m3u8 --dry-run
+engine-cli playlist export 3 --path /Music/set.m3u8 --plan-token <reviewed-token>
+```
+
+Keep `--encoding`, `--path-mode`, and `--skip-unavailable` identical between review and apply. Human output lists ordered review entries and counts; `--json` emits the structured HTTP plan or result.
