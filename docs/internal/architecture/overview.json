@@ -385,6 +385,15 @@
         "CLI and HTTP operations retain their existing Desktop protection, snapshot and history ownership. Native API and Cobra tests exercise actual undo and restore ordinary playlists together with saved Smartlist paths, order and opaque rules. This is path and sibling-order maintenance, not Smartlist rule editing or evaluation.",
         "Reviewed committed evidence 87475aff4b8dcaebc791d6925f3233daced826f8: internal/db/smartlist_paths.go:47–177; internal/db/playlist_order.go:146–198; internal/db/db.go:443–517; internal/playlist/rename.go:12–29. This separately reviewed addition preserves the historical diagram graph and source pins."
       ]
+    },
+    {
+      "dot": "amber",
+      "title": "Optional Smartlist schema — committed transactional handling",
+      "items": [
+        "Playlist rename, move and removal inspect the named Smartlist schema object inside the ordinary transaction. Genuine absence preserves ordinary playlist behavior without creating or migrating the optional table. An existing wrong-type object, malformed columns or failed writes abort and roll back instead of ignoring saved data.",
+        "A folder containing ordinary child playlists or saved Smartlists requires explicit recursive removal. The playlist_not_empty code reaches CLI errors, HTTP job failures and progress. Existing Desktop protection, snapshots, history and Undo retain ownership; no actor, migration or rule evaluator is added.",
+        "Reviewed committed evidence b07c6e03b078dc0b94b991392c4187c50c79dc61: internal/db/smartlist_paths.go:47–65; internal/db/playlist_order.go:162–170; internal/db/db.go:476–495. Native HTTP Undo, malformed-object rollback and CLI refusal controls are in internal/api/playlist_smartlist_test.go, internal/playlist/smartlist_test.go and cmd/engine-cli/playlist_smartlist_test.go. Original 87475af and historical diagram evidence pins remain unchanged."
+      ]
     }
   ]
 }

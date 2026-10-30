@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 13:56
+last_modified: 2026-10-30 15:07
 status: current
 ---
 
@@ -49,6 +49,8 @@ Devhost serves this Markdown index and the generated HTML directly. No Bun serve
 The generated HTML also opens as standalone files. The diagram source links are local-only because the pinned repository identity uses SSH.
 
 The overview's saved-Smartlist card cites separately reviewed Engine CLI [87475af](https://github.com/alexgorbatchev/engine-cli/commit/87475aff4b8dcaebc791d6925f3233daced826f8). [Rename](https://github.com/alexgorbatchev/engine-cli/blob/87475aff4b8dcaebc791d6925f3233daced826f8/internal/db/smartlist_paths.go#L143-L177) and [move](https://github.com/alexgorbatchev/engine-cli/blob/87475aff4b8dcaebc791d6925f3233daced826f8/internal/db/playlist_order.go#L146-L198) update descendant paths within the ordinary playlist transaction; move and [removal](https://github.com/alexgorbatchev/engine-cli/blob/87475aff4b8dcaebc791d6925f3233daced826f8/internal/db/db.go#L443-L517) repair saved Smartlist sibling chains. Recursive removal includes saved Smartlists and requires force for a nonempty folder. Existing CLI/API protection, snapshots and history retain recovery ownership; actual API and Cobra undo tests restore saved paths, order and opaque rules. This addition does not edit or evaluate Smartlist rules, introduce an actor, or advance historical diagram evidence pins. Uncommitted working-tree changes are outside this review.
+
+The overview’s optional-schema card cites separately reviewed Engine CLI [b07c6e0](https://github.com/alexgorbatchev/engine-cli/commit/b07c6e03b078dc0b94b991392c4187c50c79dc61). [Transactional schema inspection](https://github.com/alexgorbatchev/engine-cli/blob/b07c6e03b078dc0b94b991392c4187c50c79dc61/internal/db/smartlist_paths.go#L47-L65) distinguishes genuine Smartlist absence from malformed objects. Ordinary playlist rename, move, removal and Undo remain available without enrolling or migrating the optional table; existing malformed objects, unreadable columns and failed writes abort the mutation. [Nonempty-folder refusal](https://github.com/alexgorbatchev/engine-cli/blob/b07c6e03b078dc0b94b991392c4187c50c79dc61/internal/db/db.go#L476-L495) retains ordinary children and saved Smartlists unless recursive removal is explicit, with the stable `playlist_not_empty` code in CLI, HTTP jobs and progress. Existing protection and recovery ownership, the original 87475af addition and historical evidence pins remain unchanged. Uncommitted working-tree changes are outside this review.
 
 ## Maintaining
 
