@@ -327,7 +327,7 @@
       "dot": "amber",
       "title": "Analysis and beat grids — after the pinned revision",
       "items": [
-        "internal/analysis decodes audio once through FFmpeg and combines windowed tactus tempo and mixedkey key candidates with beat-phase, downbeat and tempo-change fitting. internal/beatgrid converts results into Engine anchors, computes reviewed edits, and stores grids through djtools v0.1.2's native beatData codec.",
+        "internal/analysis decodes audio once through FFmpeg and combines windowed tactus tempo and mixedkey key candidates with beat-phase, downbeat and tempo-change fitting. internal/beatgrid converts results into Engine anchors, computes reviewed edits, and stores grids through djtools v0.1.3's native beatData codec.",
         "The HTTP API and CLI share track.analyze, track.grid.update and the read-only grid edit endpoint; commands are track analyze, track grid update and track add --analyze. Engine CLI remains the only component that opens Engine databases. Committed in 050ada5 and b333e89."
       ]
     }

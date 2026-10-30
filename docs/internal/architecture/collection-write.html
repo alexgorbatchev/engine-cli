@@ -5912,7 +5912,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <ul>
           <li>track.analyze uses the ordinary collection-write path for its one safety snapshot and history record, then analyzes up to four tracks concurrently and writes each in its own transaction. Before every write it rechecks Engine DJ Desktop, so a long batch stops before its next write when Desktop starts; tracks already written stay covered by the same undo record.</li>
           <li>Analysis keeps a saved grid&#39;s sample rate, writes analyzed grids to both stored vectors, respects isBeatGridLocked, and never sets isAnalyzed. Per-track no_beat, no_key and audio failures are result outcomes, not job failures. track.add and staging.import with analyze:true run the same analysis after their imports.</li>
-          <li>track.grid.update validates a reviewed draft and replaces only the adjusted grid with the matching BPM; POST tracks/{id}/beatgrid/edits computes drafts read-only and never enters this path. Committed in 050ada5 and b333e89 after the source revision pinned above.</li>
+          <li>track.grid.update refuses grids locked in Engine DJ, requires the draft to reach the saved sample-length limit, and replaces only the adjusted grid with the matching BPM; POST tracks/{id}/beatgrid/edits computes drafts read-only and never enters this path. Failed or stopped runs still report the tracks and imports they wrote. Committed in 050ada5, b333e89 and 2434750 after the source revision pinned above.</li>
         </ul>
       </div>
     </div>
