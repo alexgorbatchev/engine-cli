@@ -320,3 +320,93 @@ func TestImportsKeepTheirEntriesWhenDesktopStopsAnalysis(t *testing.T) {
 		t.Fatalf("added=%+v", added)
 	}
 }
+
+// importSources writes a beat track and a silent track outside the library.
+func importSources(t *testing.T) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	beat, silent := filepath.Join(dir, "beat.mp3"), filepath.Join(dir, "silent.mp3")
+	for _, path := range []string{beat, silent} {
+		if err := os.WriteFile(path, []byte("audio"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	beatPCM(t, beat+".pcm")
+	if err := os.WriteFile(silent+".pcm", make([]byte, 4*30*analysis.SampleRate), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return beat, silent
+}
+
+func TestImportAnalysisFillsTheSecondHalfOfProgressAndReportsFailuresPerEntry(t *testing.T) {
+	s, _, _ := nativeAPI(t)
+	beat, silent := importSources(t)
+	job := runAPIJob(t, s, "track.add", fmt.Sprintf(`{"paths":[%q,%q],"analyze":true}`, beat, silent))
+	entries := job["result"].([]any)
+	if entries[1].(map[string]any)["analysis"].(map[string]any)["grid"].(map[string]any)["error"].(map[string]any)["code"] != "no_beat" {
+		t.Fatalf("silent entry=%+v", entries[1])
+	}
+	w := requestAPI(t, s, http.MethodGet, "/v1/jobs/"+job["id"].(string)+"/events", "")
+	last := -1.0
+	var imports, analyses []float64
+	for _, line := range strings.Split(w.Body.String(), "\n") {
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		var event struct {
+			Type    string  `json:"type"`
+			Phase   string  `json:"phase"`
+			Percent float64 `json:"percent"`
+		}
+		if err := json.Unmarshal([]byte(strings.TrimSpace(strings.TrimPrefix(line, "data:"))), &event); err != nil {
+			t.Fatal(err)
+		}
+		if event.Percent < last {
+			t.Fatalf("progress went backwards: %v after %v", event.Percent, last)
+		}
+		last = event.Percent
+		if event.Type == "complete" {
+			continue
+		}
+		switch event.Phase {
+		case "track.add":
+			imports = append(imports, event.Percent)
+		case "analyze":
+			analyses = append(analyses, event.Percent)
+		}
+	}
+	if len(imports) == 0 || len(analyses) != 2 || imports[len(imports)-1] > 50 || analyses[0] < 50 || last != 100 {
+		t.Fatalf("imports=%v analyses=%v last=%v", imports, analyses, last)
+	}
+}
+
+func TestCancellingAnImportDuringAnalysisKeepsItsImports(t *testing.T) {
+	s, _, _ := nativeAPI(t)
+	beat, other := importSources(t)
+	beatPCM(t, other+".pcm")
+	var id atomic.Value
+	var checks atomic.Int32
+	s.config.CheckSystem = func(ctx context.Context, names []string) (*systemcheck.Report, error) {
+		// The import's own check and the first analysis write pass; cancellation arrives before the second write.
+		if checks.Add(1) == 3 {
+			requestAPI(t, s, http.MethodPost, "/v1/jobs/"+id.Load().(string)+"/cancel", "")
+		}
+		return desktopClosed(ctx, names)
+	}
+	jobID := submitAPIJob(t, s, "track.add", fmt.Sprintf(`{"paths":[%q,%q],"analyze":true}`, beat, other))
+	id.Store(jobID)
+	job := awaitAPIJob(t, s, jobID)
+	if job["state"] != "cancelled" {
+		t.Fatalf("job=%+v", job)
+	}
+	entries := job["result"].([]any)
+	analyzed := 0
+	for _, entry := range entries {
+		if entry.(map[string]any)["analysis"] != nil {
+			analyzed++
+		}
+	}
+	if len(entries) != 2 || analyzed != 1 {
+		t.Fatalf("entries=%+v", entries)
+	}
+}
