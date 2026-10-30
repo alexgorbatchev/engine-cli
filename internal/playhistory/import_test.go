@@ -131,15 +131,26 @@ func TestImportRefusesStaleUnresolvedAndCancelledApplications(t *testing.T) {
 	}
 }
 
+func TestImportFollowsPlayOrderNotRecordOrder(t *testing.T) {
+	root, library := fixture(t, `INSERT INTO Historylist(id,title,startTime,timezone,isDeleted) VALUES(1,'Late',1700000000,'UTC',0);
+		INSERT INTO HistorylistEntity(id,listId,trackId,startTime) VALUES(1,1,10,100),(2,1,11,50),(3,1,11,300);`)
+	plan, err := PreviewImport(context.Background(), root, library, ImportOptions{Session: 1, DryRun: true})
+	// Track 2 was played first, at 50, although track 1 was recorded first.
+	if err != nil || !reflect.DeepEqual(plan.TrackIDs, []int64{2, 1}) || plan.DuplicateCount != 1 {
+		t.Fatalf("plan = %+v, %v", plan, err)
+	}
+}
+
 func TestImportNamesDefaultLikeEngineAndRejectInvalidTargets(t *testing.T) {
 	root, opts, preview := importFixture(t)
 	library := openLibrary(t, root)
-	for _, title := range []string{"Friday", "Friday 2"} {
+	for _, title := range []string{"Friday", "Friday 4", "Friday set", "Friday x", "Friday 1"} {
 		if _, err := db.CreatePlaylist(context.Background(), library, title, 0, false); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if plan := preview(); plan.Name != "Friday 3" {
+	// One past the highest numbered sibling, as Engine names imported history; other titles never count.
+	if plan := preview(); plan.Name != "Friday 5" {
 		t.Fatalf("default name = %q", plan.Name)
 	}
 	parent, err := db.CreatePlaylist(context.Background(), library, "Sets", 0, false)
@@ -194,5 +205,17 @@ func TestImportResolvesOpaqueParentReferences(t *testing.T) {
 	plan, err := PreviewImport(context.Background(), root, library, *opts)
 	if err != nil || plan.ParentID != parent {
 		t.Fatalf("plan = %+v, %v", plan, err)
+	}
+}
+
+func TestUntitledUndatedSessionsNeedAName(t *testing.T) {
+	root, library := fixture(t, `INSERT INTO Historylist(id,title,startTime,timezone,isDeleted) VALUES(1,NULL,0,'',0);
+		INSERT INTO HistorylistEntity(listId,trackId,startTime) VALUES(1,10,0);`)
+	if _, err := PreviewImport(context.Background(), root, library, ImportOptions{Session: 1, DryRun: true}); code(err) != "session_import_target" {
+		t.Fatalf("unnamed err = %v", err)
+	}
+	plan, err := PreviewImport(context.Background(), root, library, ImportOptions{Session: 1, Name: "Old set", DryRun: true})
+	if err != nil || plan.Name != "Old set" || plan.SessionTitle != "" {
+		t.Fatalf("named plan = %+v, %v", plan, err)
 	}
 }

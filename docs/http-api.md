@@ -707,28 +707,28 @@ Keep `--encoding`, `--path-mode`, and `--skip-unavailable` identical between rev
 
 Engine DJ records played sets in `Database2/hm.db`, beside the library's `m.db`. Engine CLI reads that database read-only and never creates, changes, or repairs it. Its `Track` table holds copies of played tracks; each play resolves to a library track by exact stored path first and then by origin database UUID and origin track ID, as Engine's own Import as Playlist does. Plays that resolve to no library track remain listed as `missing`.
 
-`GET /v1/sessions` and `session.list` return `{"available":true,"sessions":[...]}`, newest first by start time and then ID, like Engine's history list. Sessions Engine marks deleted are omitted. Without a history database the result is `{"available":false,"sessions":[]}`. Each session has:
+`GET /v1/sessions` and `session.list` return `{"available":true,"sessions":[...]}`, newest first by start time and then ID, like Engine's history list. Sessions Engine marks deleted, and sessions without a start time, are omitted. Without a history database the result is `{"available":false,"sessions":[]}`. Each session has:
 
 | Field | Meaning |
 | --- | --- |
 | `id` | Session ID for inspection and import |
-| `title` | Saved title, or Engine's label for an untitled session: `dd/MM/yyyy HH:mm (City)` in the recorded zone, where City is the zone ID's last segment; an empty or unknown zone uses the server's local time without a city |
+| `title` | Saved title, or Engine's label for an untitled session: `dd/MM/yyyy HH:mm (City)` in the recorded zone, where City is the zone ID's last segment; an empty or unknown zone uses the server's local time without a city. Engine files sessions whose start time is zero under "Older" with their raw title, so an untitled one has an empty title |
 | `is_titled` | Whether `title` was saved rather than generated |
-| `start_time` | Unix seconds, or `null` when Engine recorded no start |
+| `start_time` | Unix seconds, or `null` when the recorded start is zero |
 | `timezone` | IANA zone ID Engine recorded, or empty |
 | `drive` | Name of the drive the session was played from, or empty for this computer |
 | `track_count` | Number of recorded plays, including repeats |
 
 `GET /v1/sessions/{id}` and `session.inspect` add `entries` in Engine's play order (start time, then ID). Each entry has a one-based `position`, the played copy's `title`, `artist`, and `length`, `played_at` in Unix seconds, `status` (`available` or `missing`), and `track_id` for available plays. `played_at` is `null` for sessions without a timezone, which Engine shows without times. Both routes are also available under `/v1/libraries/{key}`, share the collection read barrier, and remain available while Desktop is running. Missing history returns `404 play_history_unavailable`, a missing or deleted session `404 session_not_found`, a malformed ID `400 invalid_session`, and an unreadable history database `503 play_history_unreadable`.
 
-Play counts count history entries, because Engine keeps no play-count column; its history views count entries the same way. `lastPlayed` ignores plays without a reliable time.
+Play counts count history entries, because Engine keeps no play-count column; its history views count entries the same way. `lastPlayed` ignores plays without a reliable time. Plays are optional on track records: when the history database exists but cannot be read, track records report `null` like a library without history, and the session routes report `play_history_unreadable`. The session routes report a missing library as `404 library_not_found`.
 
 ### Reviewed playlist from a played session
 
 `session.import` creates a new playlist holding a session's tracks in play order. It never changes the history, track metadata, or an existing playlist.
 
-1. Submit `session` and `dry_run:true`. The preview is a collection read, remains available while Desktop is running, and creates no snapshot or undo record. Without `name`, the playlist takes the session's `title`, numbered `Title 2`, `Title 3`, and so on when a sibling already uses it, as Engine names imported history. An explicit `name` is used exactly; a sibling with that name blocks creation. `parent` accepts a numeric playlist ID or an opaque playlist reference; omitted uses the collection root.
-2. Review `entries`. Playlists hold each track once, so a repeated play keeps the track's first position and is marked `duplicate`. Plays of tracks no longer in the library are `missing` and block application unless reviewed with `skip_missing:true`; a session with no library track always blocks. The preview returns `session`, `session_title`, `name`, `parent_id` (zero for root), `skip_missing`, `entries`, ordered `track_ids`, `duplicate_count`, `missing_count`, `can_apply`, and `plan_token`.
+1. Submit `session` and `dry_run:true`. The preview is a collection read, remains available while Desktop is running, and creates no snapshot or undo record. Without `name`, the playlist takes the session's `title`; when a sibling already uses it, the name is numbered one past the highest numbered sibling (`Title 2`, `Title 3`, …), as Engine names imported history. An untitled session without a start time has no title, so it requires `name`. An explicit `name` is used exactly; a sibling with that name blocks creation. `parent` accepts a numeric playlist ID or an opaque playlist reference; omitted uses the collection root.
+2. Review `entries`, in play order (start time, then ID), the order Engine's history track list numbers them. Engine's own import reads entries without an explicit order. Playlists hold each track once, so a repeated play keeps the track's first position and is marked `duplicate`. Plays of tracks no longer in the library are `missing` and block application unless reviewed with `skip_missing:true`; a session with no library track always blocks. Engine instead keeps such plays as references to their origin database; Engine CLI creates memberships only for tracks in the library. The preview returns `session`, `session_title`, `name`, `parent_id` (zero for root), `skip_missing`, `entries`, ordered `track_ids`, `duplicate_count`, `missing_count`, `can_apply`, and `plan_token`.
 3. Apply the same options with `dry_run:false` and the returned `plan_token`, only when `can_apply:true`. The token binds the session's plays, options, destination, and library identity. Validation runs before Desktop checks, snapshots, and history, then repeats inside the apply transaction. Fresh Desktop protection, one safety snapshot, and one undo record cover the new playlist and its memberships; undo removes the playlist.
 
 The CLI shares these reads and the reviewed import:

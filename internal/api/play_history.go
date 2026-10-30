@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -35,9 +36,9 @@ func (p importSessionParams) operationEffect() string {
 	return "collection"
 }
 
-// playHistory reads the plays every track record reports; nil when the library has no history.
+// playHistory reads the plays every track record reports; nil when the library has no readable history.
 func (s *Server) playHistory(ctx context.Context, library db.Querier) (details.History, error) {
-	return playhistory.Counts(ctx, s.config.LibraryDir, library)
+	return playhistory.TrackCounts(ctx, s.config.LibraryDir, library)
 }
 
 func (s *Server) sessionOperations() []operation {
@@ -78,7 +79,31 @@ func operationResult[T any](value *T, err error) (any, error) {
 	return value, nil
 }
 
+// openLibrary opens m.db read-only for a history route, reporting a missing library as Engine's other reads do.
+func (s *Server) openLibrary(w http.ResponseWriter) *sql.DB {
+	path := filepath.Join(s.config.LibraryDir, "Database2", "m.db")
+	if _, err := os.Stat(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			writeError(w, http.StatusNotFound, "library_not_found", "The library database is missing. Check the configured library folder.")
+			return nil
+		}
+		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
+		return nil
+	}
+	library, err := db.Open(path, true)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
+		return nil
+	}
+	return library
+}
+
 func (s *Server) playedSessions(w http.ResponseWriter, r *http.Request) {
+	library := s.openLibrary(w)
+	if library == nil {
+		return
+	}
+	library.Close()
 	result, err := playhistory.List(r.Context(), s.config.LibraryDir)
 	if err != nil {
 		writeHistoryError(w, err)
@@ -93,9 +118,8 @@ func (s *Server) playedSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_session", "Use a positive numeric session ID.")
 		return
 	}
-	library, err := db.Open(filepath.Join(s.config.LibraryDir, "Database2", "m.db"), true)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
+	library := s.openLibrary(w)
+	if library == nil {
 		return
 	}
 	defer library.Close()
@@ -115,7 +139,9 @@ func writeHistoryError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, coded.Code, "This played session is no longer in the history.")
 	case coded != nil && coded.Code == "play_history_unavailable":
 		writeError(w, http.StatusNotFound, coded.Code, "This library has no play history yet.")
+	case coded != nil && coded.Code == "play_history_unreadable":
+		writeError(w, http.StatusServiceUnavailable, coded.Code, "Could not read the library's play history.")
 	default:
-		writeError(w, http.StatusServiceUnavailable, "play_history_unreadable", "Could not read the library's play history.")
+		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read the library.")
 	}
 }

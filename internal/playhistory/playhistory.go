@@ -31,7 +31,8 @@ const (
 // Session is one played set as Engine lists it.
 type Session struct {
 	ID int64 `json:"id"`
-	// Title is the saved title, or the date label Engine shows for an untitled session.
+	// Title is the saved title, or the date label Engine shows for an untitled session. An untitled session without a
+	// start time has an empty title, as in Engine.
 	Title    string `json:"title"`
 	IsTitled bool   `json:"is_titled"`
 	// StartTime is in Unix seconds; null when Engine recorded no start.
@@ -156,9 +157,11 @@ func unreadable(err error) error {
 // readSessions follows Engine's history list: visible sessions newest first.
 // A positive id reads only that session.
 func readSessions(ctx context.Context, history db.Querier, id int64) ([]Session, error) {
-	rows, err := history.QueryContext(ctx, `SELECT l.id, l.title, COALESCE(l.startTime, 0), l.timezone, COALESCE(l.originDriveName, ''),
+	// Engine's list skips sessions without a start time.
+	rows, err := history.QueryContext(ctx, `SELECT l.id, l.title, l.startTime, l.timezone, COALESCE(l.originDriveName, ''),
 		(SELECT COUNT(*) FROM HistorylistEntity e WHERE e.listId = l.id)
-		FROM Historylist l WHERE l.isDeleted = 0 AND (? = 0 OR l.id = ?) ORDER BY l.startTime DESC, l.id DESC`, id, id)
+		FROM Historylist l WHERE l.isDeleted = 0 AND l.startTime IS NOT NULL AND (? = 0 OR l.id = ?)
+		ORDER BY l.startTime DESC, l.id DESC`, id, id)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +180,8 @@ func readSessions(ctx context.Context, history db.Querier, id int64) ([]Session,
 		}
 		s.IsTitled = title.Valid && title.String != ""
 		s.Title = title.String
-		if !s.IsTitled {
+		// Engine files undated sessions under "Older" with their raw title, which can be empty.
+		if !s.IsTitled && start > 0 {
 			s.Title = dateTitle(start, s.Timezone)
 		}
 		sessions = append(sessions, s)

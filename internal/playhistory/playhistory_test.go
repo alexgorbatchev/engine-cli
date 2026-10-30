@@ -59,7 +59,9 @@ func TestListFollowsEngineHistoryOrderTitlesAndVisibility(t *testing.T) {
 		(2,NULL,1700003600,'America/Los_Angeles','USB',0),
 		(3,'Removed',1700007200,'Europe/Berlin','',1),
 		(4,'',1700003600,'',NULL,0),
-		(5,'Undated',0,'UTC','',0);
+		(5,'Undated',0,'UTC','',0),
+		(6,NULL,0,'UTC','',0),
+		(8,'Never started',NULL,'UTC','',0);
 		INSERT INTO HistorylistEntity(listId,trackId,startTime) VALUES(1,10,1700000100),(1,11,1700000400),(2,10,1700003700);`)
 	got, err := List(context.Background(), root)
 	if err != nil {
@@ -71,6 +73,7 @@ func TestListFollowsEngineHistoryOrderTitlesAndVisibility(t *testing.T) {
 		{ID: 4, Title: local, StartTime: start(1700003600), TrackCount: 0},
 		{ID: 2, Title: "14/11/2023 15:13 (Los_Angeles)", StartTime: start(1700003600), Timezone: "America/Los_Angeles", Drive: "USB", TrackCount: 1},
 		{ID: 1, Title: "Warm-up", IsTitled: true, StartTime: start(1700000000), Timezone: "Europe/Berlin", TrackCount: 2},
+		{ID: 6, Timezone: "UTC"},
 		{ID: 5, Title: "Undated", IsTitled: true, Timezone: "UTC"},
 	}
 	if !got.Available || !reflect.DeepEqual(got.Sessions, want) {
@@ -157,6 +160,30 @@ func TestInspectWithoutHistoryIsUnavailable(t *testing.T) {
 	defer library.Close()
 	if _, err := Inspect(context.Background(), root, library, 1); code(err) != "play_history_unavailable" {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestTrackCountsLeaveUnreadableHistoryUnknown(t *testing.T) {
+	root, library := fixture(t, `INSERT INTO Historylist(id,startTime,timezone,isDeleted) VALUES(1,1,'UTC',0);
+		INSERT INTO HistorylistEntity(listId,trackId,startTime) VALUES(1,10,100);`)
+	if got, err := TrackCounts(context.Background(), root, library); err != nil || got[1].Count != 1 {
+		t.Fatalf("readable history = %+v, %v", got, err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "Database2", File), []byte("damaged"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := TrackCounts(context.Background(), root, library); got != nil || err != nil {
+		t.Fatalf("damaged history = %+v, %v", got, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	fresh, freshLibrary := fixture(t, "")
+	if _, err := TrackCounts(ctx, fresh, freshLibrary); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled counts err = %v", err)
+	}
+	freshLibrary.Close()
+	if _, err := TrackCounts(context.Background(), fresh, freshLibrary); err == nil || code(err) != "" {
+		t.Fatalf("library read failure was hidden: %v", err)
 	}
 }
 

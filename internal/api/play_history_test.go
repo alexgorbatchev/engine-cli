@@ -92,11 +92,28 @@ func TestPlayedSessionRoutesReadHistoryWithCodedFailures(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "Database2", playhistory.File), []byte("damaged"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/v1/sessions", "/v1/sessions/1", "/v1/tracks/1"} {
+	for _, path := range []string{"/v1/sessions", "/v1/sessions/1"} {
 		w := requestAPI(t, s, http.MethodGet, path, "")
 		body := w.Body.String()
 		if w.Code != http.StatusServiceUnavailable || errorCode(t, w.Body.Bytes()) != "play_history_unreadable" || strings.Contains(body, "damaged") {
 			t.Fatalf("%s damaged: %d %s", path, w.Code, body)
+		}
+	}
+	// Plays are optional on track records, so unreadable history leaves the collection readable.
+	direct := requestAPI(t, s, http.MethodGet, "/v1/tracks/1", "")
+	if track := decodeBody(t, direct.Body.Bytes()); direct.Code != http.StatusOK || track["playCount"] != nil {
+		t.Fatalf("track with damaged history: %d %s", direct.Code, direct.Body)
+	}
+	if listed := runAPIJob(t, s, "track.list", "{}")["result"].([]any); len(listed) != 1 {
+		t.Fatalf("track list with damaged history: %+v", listed)
+	}
+	if err := os.Remove(filepath.Join(root, "Database2", "m.db")); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/v1/sessions", "/v1/sessions/1"} {
+		w := requestAPI(t, s, http.MethodGet, path, "")
+		if w.Code != http.StatusNotFound || errorCode(t, w.Body.Bytes()) != "library_not_found" {
+			t.Fatalf("%s without library: %d %s", path, w.Code, w.Body)
 		}
 	}
 }

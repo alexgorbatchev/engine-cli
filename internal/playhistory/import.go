@@ -202,30 +202,45 @@ func importParent(ctx context.Context, library db.Executor, parent string) (int6
 	return id, nil
 }
 
-// importName keeps an explicit name exact, refusing one that is taken. The
-// default session title is numbered "Title 2", "Title 3"… as Engine does.
+// importName keeps an explicit name exact, refusing one that is taken. A
+// taken session title is numbered one past its highest sibling suffix,
+// "Title 2", "Title 3"…, as Engine's history import does.
 func importName(ctx context.Context, library db.Executor, name, sessionTitle string, parentID int64) (string, error) {
 	explicit := strings.TrimSpace(name)
 	base := explicit
 	if base == "" {
 		base = strings.TrimSpace(sessionTitle)
 	}
-	for n := 1; ; n++ {
-		candidate := base
-		if n > 1 {
-			candidate = fmt.Sprintf("%s %d", base, n)
-		}
-		var taken int
-		if err := library.QueryRowContext(ctx, "SELECT COUNT(*) FROM Playlist WHERE parentListId = ? AND title = ?", parentID, candidate).Scan(&taken); err != nil {
+	if base == "" {
+		return "", historyError("session_import_target", "choose a name for a playlist from an untitled, undated session")
+	}
+	rows, err := library.QueryContext(ctx, "SELECT title FROM Playlist WHERE parentListId = ? AND (title = ? OR substr(title, 1, ?) = ?)", parentID, base, len(base)+1, base+" ")
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	taken, suffix := false, 1
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
 			return "", err
 		}
-		if taken == 0 {
-			return candidate, nil
-		}
-		if explicit != "" {
-			return "", historyError("session_import_target", "a playlist with this name already exists in the destination")
+		if title == base {
+			taken = true
+		} else if n, err := strconv.Atoi(title[len(base)+1:]); err == nil && n >= 2 {
+			suffix = max(suffix, n)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	if !taken {
+		return base, nil
+	}
+	if explicit != "" {
+		return "", historyError("session_import_target", "a playlist with this name already exists in the destination")
+	}
+	return fmt.Sprintf("%s %d", base, suffix+1), nil
 }
 
 // resolveParent turns an opaque parent reference into its numeric ID before the review reads.

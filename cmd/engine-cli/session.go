@@ -65,7 +65,7 @@ Review first with --dry-run, then apply the reviewed plan with --plan-token. Rep
 Plays whose track is no longer in the library block the import until --skip-missing is reviewed. Without --name the
 playlist takes the session's title, numbered like Engine DJ's import when taken. Close Engine DJ first; one undo
 removes the playlist.`,
-		Example: `  engine-cli session import 12 --dry-run
+		Example: `  engine-cli session import 12 --name "Friday warm-up" --dry-run
   engine-cli session import 12 --name "Friday warm-up" --plan-token <token>`,
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{"engine-api-operation": "true"},
@@ -163,7 +163,11 @@ func printSessionImportPlan(w io.Writer, p *playhistory.ImportPlan) error {
 	if err := t.Flush(); err != nil {
 		return err
 	}
-	if !p.CanApply {
+	switch {
+	case len(p.TrackIDs) == 0:
+		_, err := fmt.Fprintln(w, "Not applicable: none of this session's tracks are in the library.")
+		return err
+	case !p.CanApply:
 		_, err := fmt.Fprintln(w, "Not applicable as reviewed: add --skip-missing or restore the missing tracks.")
 		return err
 	}

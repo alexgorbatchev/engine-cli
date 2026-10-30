@@ -88,7 +88,7 @@ func TestTrackValuesRequireReadableMemberships(t *testing.T) {
 
 func TestTrackPlaysDistinguishMissingHistoryFromUnplayedTracks(t *testing.T) {
 	for _, tc := range []struct {
-		history          History
+		history           History
 		count, lastPlayed any
 	}{
 		{nil, nil, nil},

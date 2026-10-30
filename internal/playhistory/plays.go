@@ -2,8 +2,10 @@ package playhistory
 
 import (
 	"context"
+	"errors"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 // Plays summarizes one library track's recorded history.
@@ -31,6 +33,21 @@ func Counts(ctx context.Context, libraryDir string, library db.Querier) (map[int
 		return nil, unreadable(err)
 	}
 	return counts, nil
+}
+
+// TrackCounts is Counts for track records, where plays are optional: a history
+// database that cannot be read reports unknown plays instead of failing the
+// collection read. The session reads report that failure. Only cancellation
+// and library read failures propagate.
+func TrackCounts(ctx context.Context, libraryDir string, library db.Querier) (map[int64]Plays, error) {
+	counts, err := Counts(ctx, libraryDir, library)
+	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return counts, err
+	}
+	if progress.ErrorCode(err) == "play_history_unreadable" {
+		return nil, nil
+	}
+	return nil, err
 }
 
 func countPlays(ctx context.Context, history db.Querier, tracks libraryTracks) (map[int64]Plays, error) {

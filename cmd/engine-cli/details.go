@@ -37,7 +37,7 @@ func newDetailsCommand(kind string) *cobra.Command {
 			return err
 		}
 		defer d.Close()
-		history, err := playhistory.Counts(c.Context(), libDirFlag, d)
+		history, err := playhistory.TrackCounts(c.Context(), libDirFlag, d)
 		if err != nil {
 			return err
 		}
