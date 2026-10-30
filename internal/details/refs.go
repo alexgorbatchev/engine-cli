@@ -21,7 +21,7 @@ func ValidateRefs(refs []string) error {
 	return nil
 }
 
-func ReadRefs(ctx context.Context, d *sql.DB, kind string, refs []string) (*Report, error) {
+func ReadRefs(ctx context.Context, d *sql.DB, history History, kind string, refs []string) (*Report, error) {
 	if kind != "track" && kind != "playlist" {
 		return nil, fmt.Errorf("unknown entity kind %q", kind)
 	}
@@ -53,7 +53,7 @@ func ReadRefs(ctx context.Context, d *sql.DB, kind string, refs []string) (*Repo
 		}
 		r.Items = append(r.Items, item)
 	}
-	if err := fillItems(ctx, d, kind, r.Items); err != nil {
+	if err := fillItems(ctx, d, history, kind, r.Items); err != nil {
 		return nil, err
 	}
 	attachRefs(r, kind, entities)

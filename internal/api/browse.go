@@ -46,7 +46,12 @@ func (s *Server) trackMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer database.Close()
-	result, err := details.OneTrack(r.Context(), database, track)
+	history, err := s.playHistory(r.Context(), database)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "play_history_unreadable", "Could not read this track's play history.")
+		return
+	}
+	result, err := details.OneTrack(r.Context(), database, history, track)
 	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read this track's playlists from the library.")
 		return

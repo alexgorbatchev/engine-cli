@@ -101,6 +101,7 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.trackOperations()...)
 	ops = append(ops, s.analysisOperations()...)
 	ops = append(ops, s.tagOperations()...)
+	ops = append(ops, s.sessionOperations()...)
 	ops = append(ops, s.historyOperations()...)
 	ops = append(ops, s.duplicateOperations()...)
 	ops = append(ops, s.systemOperations()...)
@@ -135,6 +136,8 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("GET /v1/tracks/{id}/beatgrid", s.collectionRead(s.trackBeatGrid))
 	s.mux.HandleFunc("POST /v1/tracks/{id}/beatgrid/edits", s.collectionRead(s.trackGridEdit))
 	s.mux.HandleFunc("GET /v1/tracks/{id}/performance", s.collectionRead(s.trackSavedPerformance))
+	s.mux.HandleFunc("GET /v1/sessions", s.collectionRead(s.playedSessions))
+	s.mux.HandleFunc("GET /v1/sessions/{id}", s.collectionRead(s.playedSession))
 	paths := slices.Clone(config.LibraryPaths)
 	if path, err := libraryPath(config.LibraryDir); err == nil {
 		paths = append([]string{path}, paths...)

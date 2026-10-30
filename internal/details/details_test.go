@@ -21,7 +21,7 @@ func TestBatchDetails(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, kind := range []string{"track", "playlist"} {
-		r, err := Read(ctx, d, kind, []int64{2, 999, 1, 2})
+		r, err := Read(ctx, d, nil, kind, []int64{2, 999, 1, 2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -34,22 +34,22 @@ func TestBatchDetails(t *testing.T) {
 			t.Fatalf("accepted %v", ids)
 		}
 	}
-	if _, err := Read(ctx, d, "invalid", []int64{1}); err == nil {
+	if _, err := Read(ctx, d, nil, "invalid", []int64{1}); err == nil {
 		t.Fatal("accepted invalid kind")
 	}
-	if _, err := Read(ctx, d, "track", nil); err == nil {
+	if _, err := Read(ctx, d, nil, "track", nil); err == nil {
 		t.Fatal("accepted empty ids")
 	}
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, err := Read(cancelled, d, "track", []int64{1}); err == nil {
+	if _, err := Read(cancelled, d, nil, "track", []int64{1}); err == nil {
 		t.Fatal("ignored cancellation")
 	}
 	if err := d.Close(); err != nil {
 		t.Fatal(err)
 	}
 	for _, kind := range []string{"track", "playlist"} {
-		if _, err := Read(ctx, d, kind, []int64{1}); err == nil {
+		if _, err := Read(ctx, d, nil, kind, []int64{1}); err == nil {
 			t.Fatal("ignored db failure")
 		}
 	}
@@ -69,19 +69,36 @@ func TestTrackValuesRequireReadableMemberships(t *testing.T) {
 	INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) VALUES(1,1,'fixture')`); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := OneTrack(ctx, d, nil); got != nil || err != nil {
+	if got, err := OneTrack(ctx, d, nil, nil); got != nil || err != nil {
 		t.Fatalf("nil track=%v err=%v", got, err)
 	}
-	if got := Track(&db.Track{ID: 1}, nil)["playlistIds"]; got == nil || len(got.([]int64)) != 0 {
+	if got := Track(&db.Track{ID: 1}, nil, nil)["playlistIds"]; got == nil || len(got.([]int64)) != 0 {
 		t.Fatalf("missing memberships must be an empty array, got %#v", got)
 	}
 	if _, err := d.Exec("DROP TABLE PlaylistEntity"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := OneTrack(ctx, d, &db.Track{ID: 1}); err == nil {
+	if _, err := OneTrack(ctx, d, nil, &db.Track{ID: 1}); err == nil {
 		t.Fatal("track accepted unreadable memberships")
 	}
-	if _, err := Read(ctx, d, "track", []int64{1}); err == nil {
+	if _, err := Read(ctx, d, nil, "track", []int64{1}); err == nil {
 		t.Fatal("details accepted unreadable memberships")
+	}
+}
+
+func TestTrackPlaysDistinguishMissingHistoryFromUnplayedTracks(t *testing.T) {
+	for _, tc := range []struct {
+		history          History
+		count, lastPlayed any
+	}{
+		{nil, nil, nil},
+		{History{}, 0, nil},
+		{History{1: {Count: 3}}, 3, nil},
+		{History{1: {Count: 3, LastPlayed: 1700000000}}, 3, int64(1700000000)},
+	} {
+		got := Track(&db.Track{ID: 1}, nil, tc.history)
+		if got["playCount"] != tc.count || got["lastPlayed"] != tc.lastPlayed {
+			t.Fatalf("history %v: playCount=%v lastPlayed=%v", tc.history, got["playCount"], got["lastPlayed"])
+		}
 	}
 }

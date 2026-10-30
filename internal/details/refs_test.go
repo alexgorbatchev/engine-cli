@@ -31,11 +31,11 @@ func TestReferenceDetails(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entities {
-		r, err := ReadRefs(ctx, d, e.Kind, []string{e.Ref, "eng:missing:" + e.Kind + ":missing", e.Ref})
+		r, err := ReadRefs(ctx, d, nil, e.Kind, []string{e.Ref, "eng:missing:" + e.Kind + ":missing", e.Ref})
 		if err != nil || len(r.Items) != 3 || r.Items[0].ID != 1 || r.Items[0].Ref != e.Ref || r.Items[1].Error == nil || r.Items[2].Ref != e.Ref {
 			t.Fatalf("reference details: %+v %v", r, err)
 		}
-		numeric, err := Read(ctx, d, e.Kind, []int64{1})
+		numeric, err := Read(ctx, d, nil, e.Kind, []int64{1})
 		if err != nil || numeric.Items[0].Ref != e.Ref {
 			t.Fatalf("numeric enrichment: %+v %v", numeric, err)
 		}
@@ -46,13 +46,13 @@ func TestReferenceDetails(t *testing.T) {
 		}
 	}
 	for _, kind := range []string{"bad", "track"} {
-		if _, err := ReadRefs(ctx, d, kind, []string{"bad"}); err == nil {
+		if _, err := ReadRefs(ctx, d, nil, kind, []string{"bad"}); err == nil {
 			t.Fatal("invalid request accepted")
 		}
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, err := ReadRefs(ctx, d, "track", []string{entities[0].Ref}); err == nil {
+	if _, err := ReadRefs(ctx, d, nil, "track", []string{entities[0].Ref}); err == nil {
 		t.Fatal("ignored cancellation")
 	}
 }

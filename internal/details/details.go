@@ -38,7 +38,7 @@ func Validate(ids []int64) error {
 	return nil
 }
 
-func Read(ctx context.Context, d *sql.DB, kind string, ids []int64) (*Report, error) {
+func Read(ctx context.Context, d *sql.DB, history History, kind string, ids []int64) (*Report, error) {
 	if err := Validate(ids); err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func Read(ctx context.Context, d *sql.DB, kind string, ids []int64) (*Report, er
 	for i, id := range ids {
 		r.Items[i].ID = id
 	}
-	if err := fillItems(ctx, d, kind, r.Items); err != nil {
+	if err := fillItems(ctx, d, history, kind, r.Items); err != nil {
 		return nil, err
 	}
 	for i := range r.Items {
@@ -80,19 +80,19 @@ func (e entity) tracks() []*db.Track {
 	return tracks
 }
 
-func (e entity) value(memberships map[int64][]int64) map[string]any {
+func (e entity) value(memberships map[int64][]int64, history History) map[string]any {
 	if e.playlist != nil {
-		return playlistValue(e.playlist, memberships)
+		return playlistValue(e.playlist, memberships, history)
 	}
 	if e.track != nil {
-		return Track(e.track, memberships[e.track.ID])
+		return Track(e.track, memberships[e.track.ID], history)
 	}
 	return nil
 }
 
 // fillItems reads every identified item that has no error yet. All items share
 // one playlist-membership lookup; missing entities keep nil data.
-func fillItems(ctx context.Context, d *sql.DB, kind string, items []Item) error {
+func fillItems(ctx context.Context, d *sql.DB, history History, kind string, items []Item) error {
 	entities := make([]entity, len(items))
 	var tracks []*db.Track
 	for i, item := range items {
@@ -114,7 +114,7 @@ func fillItems(ctx context.Context, d *sql.DB, kind string, items []Item) error 
 		return err
 	}
 	for i := range items {
-		items[i].Data = entities[i].value(memberships)
+		items[i].Data = entities[i].value(memberships, history)
 	}
 	return nil
 }

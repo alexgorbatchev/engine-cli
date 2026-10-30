@@ -226,6 +226,9 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 		if handled, err := printPlaylistExport(c, result, asJSON); handled {
 			return err
 		}
+		if handled, err := printSession(c.OutOrStdout(), result, asJSON); handled {
+			return err
+		}
 		if plan, ok := result.(*playlist.ImportPlan); ok {
 			display := *plan
 			display.Path = displayPath(display.Path)

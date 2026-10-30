@@ -181,6 +181,8 @@ fields; normal mutation guards, snapshots, and undo apply to that separate opera
 | `GET /v1/tracks/{id}/audio` | Original local audio; supports `HEAD` and HTTP byte ranges for seeking |
 | `GET /v1/tracks/{id}/beatgrid` | Saved Engine beat-grid anchors, or `{"grid":null}` when analysis is absent |
 | `GET /v1/tracks/{id}/performance` | Read-only saved hot cues and loops with native slots, names, colors, and positions in seconds |
+| `GET /v1/sessions` | Played sessions from Engine's play history, newest first; see [Play history](#play-history) |
+| `GET /v1/sessions/{id}` | One played session with its plays in recorded order |
 
 Every operation, including reads, runs as a job. Submit a JSON object with `Content-Type: application/json`; use `{}` when there are no parameters. Unknown fields and missing required parameters are rejected before the job starts. Requests are limited to 1 MiB.
 
@@ -235,6 +237,13 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `playlist_import_target` | The new name or parent is invalid, or that parent already contains a playlist with this name. |
 | `playlist_import_stale` | The reviewed plan no longer matches the source, selected options, or collection. Review again before applying. |
 | `playlist_import_unresolved` | No tracks match, or unresolved entries remain without explicit skip permission. Resolve them or review with `skip_missing:true`. |
+| `play_history_unavailable` | The library has no play history database yet. Engine DJ creates it when tracks are played; listing sessions reports `available:false` instead. |
+| `play_history_unreadable` | The play history database exists but cannot be read. Check the library drive and permissions; the history is never repaired or changed. |
+| `invalid_session` | The session ID is not a positive number. |
+| `session_not_found` | The played session is no longer in the history. Refresh the session list. |
+| `session_import_target` | The new name or parent is invalid, or that parent already contains a playlist with the explicitly chosen name. |
+| `session_import_stale` | The reviewed plan no longer matches the session, selected options, or collection. Review again before applying. |
+| `session_import_unresolved` | No played track is in the library, or plays of missing tracks remain without explicit skip permission. Review with `skip_missing:true`. |
 | `playlist_export_target` | Choose an existing playlist and a new absolute destination in an existing server folder. |
 | `playlist_export_exists` | The destination already exists, including a directory or symbolic link. Choose a new filename; nothing is overwritten. |
 | `playlist_export_format` | The destination is not M3U/M3U8 or a media path cannot be represented unambiguously. |
@@ -580,6 +589,8 @@ Every collection track object includes `playlistIds`: the numeric IDs of the pla
 
 The example omits the remaining track fields.
 
+Every collection track object also includes `playCount` and `lastPlayed` from Engine's play history (see [Play history](#play-history)): the number of recorded plays across the listed sessions, and the latest timed play in Unix seconds. Both are `null` when the library has no play history; a track never played reports `playCount:0` and `lastPlayed:null`. They appear wherever `playlistIds` does.
+
 Mutation results report what the operation changed, not the changed tracks. Engine never reads a track back after committing a change, so a committed change cannot be reported as failed because a follow-up read failed. Read tracks and their `playlistIds` through the read operations above after the job succeeds. Batch operations return one entry per completed item, in request order, including the entries completed before a failure.
 
 | Operation | Result |
@@ -594,6 +605,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | `track.tags.update`, `track.artwork.embed` | Each file report carries `track_id`, `original_path`, and the tool `result`; `path` names the installed file once the collection points to it |
 | `playlist.track.add`, `playlist.track.rm` | `[{"playlist_id":3,"track_id":5}]` |
 | `playlist.track.move` | `[{"from_playlist_id":3,"to_playlist_id":2,"track_id":5}]` |
+| `session.import` (apply) | `{"playlist_id":3,"name":"Friday","track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
 | `playlist.import` (apply) | `{"playlist_id":3,"track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
 | `playlist.export` (apply) | `{"playlist_id":3,"path":"/Music/set.m3u8","encoding":"utf-8","path_mode":"absolute","exported_count":2,"skipped_count":0}` |
 | `staging.import` | `{"imported":[{"id":"…","track_id":7}],"failed":[]}`; each imported entry carries `analysis` with `analyze:true` |
@@ -622,6 +634,9 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.create` | `name`, `parent?`, `folder?` |
 | `playlist.import` | `path`, `name`, `parent?`, `encoding?`, `skip_missing?`, `dry_run?`, `plan_token?`; see the reviewed import contract below |
 | `playlist.export` | `identifier`, `path`, `encoding?`, `path_mode?`, `skip_unavailable?`, `dry_run?`, `plan_token?`; see the reviewed export contract below |
+| `session.list` | `{}`; see play history below |
+| `session.inspect` | `session` (positive numeric session ID) |
+| `session.import` | `session`, `name?`, `parent?`, `skip_missing?`, `dry_run?`, `plan_token?`; see play history below |
 | `playlist.rename` | `identifier`, `title` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling ID, omitted appends |
@@ -687,3 +702,42 @@ engine-cli playlist export 3 --path /Music/set.m3u8 --plan-token <reviewed-token
 ```
 
 Keep `--encoding`, `--path-mode`, and `--skip-unavailable` identical between review and apply. Human output lists ordered review entries and counts; `--json` emits the structured HTTP plan or result.
+
+## Play history
+
+Engine DJ records played sets in `Database2/hm.db`, beside the library's `m.db`. Engine CLI reads that database read-only and never creates, changes, or repairs it. Its `Track` table holds copies of played tracks; each play resolves to a library track by exact stored path first and then by origin database UUID and origin track ID, as Engine's own Import as Playlist does. Plays that resolve to no library track remain listed as `missing`.
+
+`GET /v1/sessions` and `session.list` return `{"available":true,"sessions":[...]}`, newest first by start time and then ID, like Engine's history list. Sessions Engine marks deleted are omitted. Without a history database the result is `{"available":false,"sessions":[]}`. Each session has:
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Session ID for inspection and import |
+| `title` | Saved title, or Engine's label for an untitled session: `dd/MM/yyyy HH:mm (City)` in the recorded zone, where City is the zone ID's last segment; an empty or unknown zone uses the server's local time without a city |
+| `is_titled` | Whether `title` was saved rather than generated |
+| `start_time` | Unix seconds, or `null` when Engine recorded no start |
+| `timezone` | IANA zone ID Engine recorded, or empty |
+| `drive` | Name of the drive the session was played from, or empty for this computer |
+| `track_count` | Number of recorded plays, including repeats |
+
+`GET /v1/sessions/{id}` and `session.inspect` add `entries` in Engine's play order (start time, then ID). Each entry has a one-based `position`, the played copy's `title`, `artist`, and `length`, `played_at` in Unix seconds, `status` (`available` or `missing`), and `track_id` for available plays. `played_at` is `null` for sessions without a timezone, which Engine shows without times. Both routes are also available under `/v1/libraries/{key}`, share the collection read barrier, and remain available while Desktop is running. Missing history returns `404 play_history_unavailable`, a missing or deleted session `404 session_not_found`, a malformed ID `400 invalid_session`, and an unreadable history database `503 play_history_unreadable`.
+
+Play counts count history entries, because Engine keeps no play-count column; its history views count entries the same way. `lastPlayed` ignores plays without a reliable time.
+
+### Reviewed playlist from a played session
+
+`session.import` creates a new playlist holding a session's tracks in play order. It never changes the history, track metadata, or an existing playlist.
+
+1. Submit `session` and `dry_run:true`. The preview is a collection read, remains available while Desktop is running, and creates no snapshot or undo record. Without `name`, the playlist takes the session's `title`, numbered `Title 2`, `Title 3`, and so on when a sibling already uses it, as Engine names imported history. An explicit `name` is used exactly; a sibling with that name blocks creation. `parent` accepts a numeric playlist ID or an opaque playlist reference; omitted uses the collection root.
+2. Review `entries`. Playlists hold each track once, so a repeated play keeps the track's first position and is marked `duplicate`. Plays of tracks no longer in the library are `missing` and block application unless reviewed with `skip_missing:true`; a session with no library track always blocks. The preview returns `session`, `session_title`, `name`, `parent_id` (zero for root), `skip_missing`, `entries`, ordered `track_ids`, `duplicate_count`, `missing_count`, `can_apply`, and `plan_token`.
+3. Apply the same options with `dry_run:false` and the returned `plan_token`, only when `can_apply:true`. The token binds the session's plays, options, destination, and library identity. Validation runs before Desktop checks, snapshots, and history, then repeats inside the apply transaction. Fresh Desktop protection, one safety snapshot, and one undo record cover the new playlist and its memberships; undo removes the playlist.
+
+The CLI shares these reads and the reviewed import:
+
+```sh
+engine-cli session list
+engine-cli session inspect 12
+engine-cli session import 12 --dry-run
+engine-cli session import 12 --plan-token <reviewed-token>
+```
+
+Keep `--name`, `--parent`, and `--skip-missing` identical between review and apply. Human output prints tables and counts; `--json` emits the structured HTTP results.

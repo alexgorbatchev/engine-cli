@@ -132,7 +132,11 @@ func (s *Server) trackOperations() []operation {
 				for i := range tracks {
 					all[i] = &tracks[i]
 				}
-				return details.Tracks(ctx, d, all...)
+				history, err := s.playHistory(ctx, d)
+				if err != nil {
+					return nil, err
+				}
+				return details.Tracks(ctx, d, history, all...)
 			})
 		}),
 		define("track.add", true, []string{"paths"}, func(ctx context.Context, p addTrackParams) (any, error) {

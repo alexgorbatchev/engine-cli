@@ -81,7 +81,11 @@ func (s *Server) readSelectedDetails(ctx context.Context, kind string, p detailP
 		return nil, err
 	}
 	defer d.Close()
-	return details.ReadRefs(ctx, d, kind, p.Refs)
+	history, err := s.playHistory(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	return details.ReadRefs(ctx, d, history, kind, p.Refs)
 }
 
 func (s *Server) readDetails(ctx context.Context, kind string, ids []int64) (*details.Report, error) {
@@ -90,5 +94,9 @@ func (s *Server) readDetails(ctx context.Context, kind string, ids []int64) (*de
 		return nil, err
 	}
 	defer d.Close()
-	return details.Read(ctx, d, kind, ids)
+	history, err := s.playHistory(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	return details.Read(ctx, d, history, kind, ids)
 }

@@ -86,7 +86,7 @@ func selectTracks(ctx context.Context, d *sql.DB, s Selection) (*details.Report,
 	}
 	result := &details.Report{Items: []details.Item{}}
 	for start := 0; start < len(ids); start += details.MaxItems {
-		batch, err := details.Read(ctx, d, "track", ids[start:min(start+details.MaxItems, len(ids))])
+		batch, err := details.Read(ctx, d, nil, "track", ids[start:min(start+details.MaxItems, len(ids))])
 		if err != nil {
 			return nil, err
 		}

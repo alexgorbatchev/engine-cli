@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/playhistory"
 	"github.com/spf13/cobra"
 	"path/filepath"
 	"strconv"
@@ -36,11 +37,15 @@ func newDetailsCommand(kind string) *cobra.Command {
 			return err
 		}
 		defer d.Close()
+		history, err := playhistory.Counts(c.Context(), libDirFlag, d)
+		if err != nil {
+			return err
+		}
 		var r *details.Report
 		if useRefs {
-			r, err = details.ReadRefs(c.Context(), d, kind, args)
+			r, err = details.ReadRefs(c.Context(), d, history, kind, args)
 		} else {
-			r, err = details.Read(c.Context(), d, kind, ids)
+			r, err = details.Read(c.Context(), d, history, kind, ids)
 		}
 		if err != nil {
 			return err

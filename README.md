@@ -16,6 +16,7 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Creates timestamped backup snapshots of collection databases and artwork caches with one-command restore, including committed database changes still in SQLite's write-ahead log (WAL).
 - Manages library-local custom tag categories and multiple named values per track, separately from embedded audio-file tags. Custom assignments follow native Engine origin identities and participate in backup, restore, undo, library moves, and reviewed library synchronization.
 - Visualizes nested playlist and folder hierarchies with track counts and durations.
+- Reads Engine DJ's play history: played sessions in play order, per-track play counts and last-played times, and reviewed playlists created from a session. The history database is never changed.
 - Finds duplicate candidates, compares their quality and playlists, and merges selected database records while retaining audio files.
 - Records undo history for every library-modifying command, including audio and artwork changes, with persistent identities for affected entities.
 - Exposes library, playlist, and track operations through a local HTTP API with job status, cancellation, and streamed progress. See the [HTTP API guide](docs/http-api.md).
@@ -117,6 +118,11 @@ engine-cli track grid update 42 --shift 0.012
 
 # Display playlist hierarchy tree
 engine-cli playlist list
+
+# Review a played session, then save it as a playlist
+engine-cli session inspect 12
+engine-cli session import 12 --skip-missing --dry-run
+engine-cli session import 12 --skip-missing --plan-token <reviewed-token>
 
 # Fetch replacement audio while keeping your track information and playlists
 engine-cli track upgrade 42

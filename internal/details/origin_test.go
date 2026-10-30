@@ -19,7 +19,7 @@ func TestPlaylistUsesOriginIdentity(t *testing.T) {
 	INSERT INTO PlaylistEntity(listId,trackId,databaseUuid,nextEntityId) VALUES(1,1,'source',0);`); err != nil {
 		t.Fatal(err)
 	}
-	r, err := Read(context.Background(), d, "playlist", []int64{1})
+	r, err := Read(context.Background(), d, nil, "playlist", []int64{1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestPlaylistUsesOriginIdentity(t *testing.T) {
 	if _, err := db.AddTrackToPlaylist(context.Background(), d, 1, 1); err != nil {
 		t.Fatal(err)
 	}
-	r, err = Read(context.Background(), d, "playlist", []int64{1})
+	r, err = Read(context.Background(), d, nil, "playlist", []int64{1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestPlaylistUsesOriginIdentity(t *testing.T) {
 	if err := db.RemoveTrackFromPlaylist(context.Background(), d, 1, 42); err != nil {
 		t.Fatal(err)
 	}
-	r, err = Read(context.Background(), d, "playlist", []int64{1})
+	r, err = Read(context.Background(), d, nil, "playlist", []int64{1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestPlaylistUsesOriginIdentity(t *testing.T) {
 	if err := db.DeleteTrack(context.Background(), d, 42); err != nil {
 		t.Fatal(err)
 	}
-	r, err = Read(context.Background(), d, "playlist", []int64{1})
+	r, err = Read(context.Background(), d, nil, "playlist", []int64{1})
 	if err != nil {
 		t.Fatal(err)
 	}

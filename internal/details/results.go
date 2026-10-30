@@ -4,9 +4,22 @@ import (
 	"context"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/playhistory"
 	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
+
+// History holds the library's recorded plays by track ID. A nil History means
+// the library has no play history, so tracks report unknown rather than zero plays.
+type History map[int64]playhistory.Plays
+
+func (h History) values(id int64) (any, any) {
+	if h == nil {
+		return nil, nil
+	}
+	plays := h[id]
+	return plays.Count, valueOrNull(plays.LastPlayed, plays.LastPlayed > 0)
+}
 
 func valueOrNull[T any](value T, valid bool) any {
 	if !valid {
@@ -15,15 +28,17 @@ func valueOrNull[T any](value T, valid bool) any {
 	return value
 }
 
-// Track converts t and the IDs of playlists that directly contain it. HTTP
-// consumers receive JSON values and nulls, not database/sql wrappers.
-func Track(t *db.Track, playlistIDs []int64) map[string]any {
+// Track converts t, the IDs of playlists that directly contain it, and its
+// recorded plays. HTTP consumers receive JSON values and nulls, not
+// database/sql wrappers.
+func Track(t *db.Track, playlistIDs []int64, history History) map[string]any {
 	if t == nil {
 		return nil
 	}
 	if playlistIDs == nil {
 		playlistIDs = []int64{}
 	}
+	playCount, lastPlayed := history.values(t.ID)
 	return map[string]any{
 		"id":                 t.ID,
 		"playOrder":          valueOrNull(t.PlayOrder.Int64, t.PlayOrder.Valid),
@@ -55,12 +70,14 @@ func Track(t *db.Track, playlistIDs []int64) map[string]any {
 		"lastEditTime":       valueOrNull(t.LastEditTime.String, t.LastEditTime.Valid),
 		"albumArtSourceHash": valueOrNull(t.AlbumArtSourceHash.String, t.AlbumArtSourceHash.Valid),
 		"playlistIds":        playlistIDs,
+		"playCount":          playCount,
+		"lastPlayed":         lastPlayed,
 	}
 }
 
 // Tracks converts tracks after one membership lookup shared by all of them.
 // Nil tracks stay nil, matching Track.
-func Tracks(ctx context.Context, q db.Querier, tracks ...*db.Track) ([]map[string]any, error) {
+func Tracks(ctx context.Context, q db.Querier, history History, tracks ...*db.Track) ([]map[string]any, error) {
 	memberships, err := PlaylistIDs(ctx, q, tracks...)
 	if err != nil {
 		return nil, err
@@ -68,18 +85,18 @@ func Tracks(ctx context.Context, q db.Querier, tracks ...*db.Track) ([]map[strin
 	result := make([]map[string]any, len(tracks))
 	for i, t := range tracks {
 		if t != nil {
-			result[i] = Track(t, memberships[t.ID])
+			result[i] = Track(t, memberships[t.ID], history)
 		}
 	}
 	return result, nil
 }
 
 // OneTrack converts a single track with its playlist memberships.
-func OneTrack(ctx context.Context, q db.Querier, t *db.Track) (map[string]any, error) {
+func OneTrack(ctx context.Context, q db.Querier, history History, t *db.Track) (map[string]any, error) {
 	if t == nil {
 		return nil, nil
 	}
-	result, err := Tracks(ctx, q, t)
+	result, err := Tracks(ctx, q, history, t)
 	if err != nil {
 		return nil, err
 	}
@@ -109,13 +126,13 @@ func PlaylistIDs(ctx context.Context, q db.Querier, tracks ...*db.Track) (map[in
 	return result, nil
 }
 
-func playlistValue(p *playlist.PlaylistDetails, memberships map[int64][]int64) map[string]any {
+func playlistValue(p *playlist.PlaylistDetails, memberships map[int64][]int64, history History) map[string]any {
 	if p == nil {
 		return nil
 	}
 	tracks := make([]map[string]any, 0, len(p.Tracks))
 	for i := range p.Tracks {
-		tracks = append(tracks, Track(&p.Tracks[i], memberships[p.Tracks[i].ID]))
+		tracks = append(tracks, Track(&p.Tracks[i], memberships[p.Tracks[i].ID], history))
 	}
 	return map[string]any{"id": p.ID, "title": p.Title, "parentId": p.ParentID, "trackCount": p.TrackCount, "totalDurationSeconds": p.TotalDuration, "tracks": tracks}
 }
