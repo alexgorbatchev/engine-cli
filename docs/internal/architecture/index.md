@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-29 21:49
+last_modified: 2026-10-30 00:41
 status: current
 ---
 
@@ -12,11 +12,11 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 | --- | --- |
 | [System overview](overview.html) | CLI and HTTP entry points, operation execution, collection services, library storage, recovery, and managed tools |
 | [HTTP job lifecycle](job-lifecycle.html) | Queued and running jobs, success, failure, cooperative cancellation, scheduling, and retained results |
-| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, exact-plan M3U import, and the separate read-only-source M3U export boundary |
+| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, per-track guarded analysis writes, exact-plan M3U import, and the separate read-only-source M3U export boundary |
 
 All three specifications cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`. Their source links and claims describe that revision. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
-The collection-write HTML was regenerated with released [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.2` under Node `22.23.4`. Its embedded software notices preserve the Apache 2.0 license and historical MIT grants. Other diagrams retain their original renderer and notices.
+All three HTML pages were regenerated with [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.4` under Node `26.12.0`. Their embedded software notices preserve the Apache 2.0 license and historical MIT grants.
 
 ## Viewing
 
@@ -25,6 +25,8 @@ The collection-write page's bulk-metadata card describes the `track.batch.update
 The collection-write page's M3U-import card cites committed engine-cli `cbac846503e303552ed223020d47a37f3c3783a9`: read-only review and pre-artifact validation precede the ordinary protected write path, while playlist creation and ordered memberships commit atomically and share one undo record. It covers new playlists from existing collection tracks, not acquisition, append, or replacement. The original diagram source pin and bulk-metadata evidence remain unchanged. Uncommitted working-tree changes are outside this review.
 
 The collection-write page's M3U-export card cites committed engine-cli `9c9a37eeea33b447fbb33217cac2cdbbfc6b8646`: review and apply observe saved direct-membership order in a read-only transaction under the collection read barrier. Apply also takes the shared write gate, checks the exact reviewed output, and exclusively creates a new server-local destination. The source collection remains unchanged, so this specialized path has no Desktop check, snapshot, history, or undo. The output can be visible while writing; failure cleanup is best-effort and checks file identity before removal. Historical evidence pins remain unchanged; diagram review does not advance an integration revision. Uncommitted working-tree changes are outside this review.
+
+The collection-write page's analysis card and the overview's analysis card describe committed engine-cli `050ada5` and `b333e89`, after the pinned source revision: `track.analyze` shares the ordinary collection-write snapshot and history but rechecks Desktop before each per-track transaction, the read-only grid edit endpoint never enters the write path, and `track.grid.update` saves a reviewed draft with its matching BPM. Grid storage uses `djtools` v0.1.2's native `beatData` codec. Uncommitted working-tree changes are outside this review.
 
 The overview's saved-marker card describes the working-tree performance-read endpoint separately from the pinned evidence: Engine CLI owns database access and the collection barrier, while `djtools` decodes supplied blobs without opening a database.
 

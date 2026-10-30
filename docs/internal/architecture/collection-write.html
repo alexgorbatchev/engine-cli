@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="generator" content="archify 3.2.1-dev.2">
+  <meta name="generator" content="archify 3.2.1-dev.4">
   <meta name="archify-reader-contract" content="declared-wide-v1">
   <title>Ordinary API collection write Diagram</title>
   <script>
@@ -5901,6 +5901,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Non-preview apply also takes the shared write gate to serialize its output-file write. Its catalog effect remains read: it does not modify the source collection and skips Desktop checks, safety backups, history, and undo. This specialized path is outside the ordinary collection-write drawing above.</li>
           <li>Publication opens the destination parent with os.OpenRoot and exclusively creates a new file with O_CREATE|O_EXCL. Existing files, directories, and symlinks are refused; no overwrite, append, or audio copy occurs. The file can be visible while writing. Write, sync, close, or cancellation failures attempt cleanup only while the path still identifies the created file; cleanup is best-effort and preserves external replacements.</li>
           <li>Evidence: 9c9a37eeea33b447fbb33217cac2cdbbfc6b8646, internal/api/playlist_export.go:14–30; internal/api/scheduling.go:9–41; internal/api/operations.go:175–241; internal/playlist/export.go:81–173; internal/playlist/export_order.go:23–80; internal/playlist/export_file.go:13–70. Historical evidence pins remain unchanged. Uncommitted working-tree changes are outside this review.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Track analysis and grid saves — after the pinned revision</h3>
+        </div>
+        <ul>
+          <li>track.analyze uses the ordinary collection-write path for its one safety snapshot and history record, then analyzes up to four tracks concurrently and writes each in its own transaction. Before every write it rechecks Engine DJ Desktop, so a long batch stops before its next write when Desktop starts; tracks already written stay covered by the same undo record.</li>
+          <li>Analysis keeps a saved grid&#39;s sample rate, writes analyzed grids to both stored vectors, respects isBeatGridLocked, and never sets isAnalyzed. Per-track no_beat, no_key and audio failures are result outcomes, not job failures. track.add and staging.import with analyze:true run the same analysis after their imports.</li>
+          <li>track.grid.update validates a reviewed draft and replaces only the adjusted grid with the matching BPM; POST tracks/{id}/beatgrid/edits computes drafts read-only and never enters this path. Committed in 050ada5 and b333e89 after the source revision pinned above.</li>
         </ul>
       </div>
     </div>

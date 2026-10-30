@@ -306,6 +306,15 @@
         "Publication opens the destination parent with os.OpenRoot and exclusively creates a new file with O_CREATE|O_EXCL. Existing files, directories, and symlinks are refused; no overwrite, append, or audio copy occurs. The file can be visible while writing. Write, sync, close, or cancellation failures attempt cleanup only while the path still identifies the created file; cleanup is best-effort and preserves external replacements.",
         "Evidence: 9c9a37eeea33b447fbb33217cac2cdbbfc6b8646, internal/api/playlist_export.go:14–30; internal/api/scheduling.go:9–41; internal/api/operations.go:175–241; internal/playlist/export.go:81–173; internal/playlist/export_order.go:23–80; internal/playlist/export_file.go:13–70. Historical evidence pins remain unchanged. Uncommitted working-tree changes are outside this review."
       ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Track analysis and grid saves — after the pinned revision",
+      "items": [
+        "track.analyze uses the ordinary collection-write path for its one safety snapshot and history record, then analyzes up to four tracks concurrently and writes each in its own transaction. Before every write it rechecks Engine DJ Desktop, so a long batch stops before its next write when Desktop starts; tracks already written stay covered by the same undo record.",
+        "Analysis keeps a saved grid's sample rate, writes analyzed grids to both stored vectors, respects isBeatGridLocked, and never sets isAnalyzed. Per-track no_beat, no_key and audio failures are result outcomes, not job failures. track.add and staging.import with analyze:true run the same analysis after their imports.",
+        "track.grid.update validates a reviewed draft and replaces only the adjusted grid with the matching BPM; POST tracks/{id}/beatgrid/edits computes drafts read-only and never enters this path. Committed in 050ada5 and b333e89 after the source revision pinned above."
+      ]
     }
   ]
 }
