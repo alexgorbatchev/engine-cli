@@ -5815,6 +5815,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>library.refresh stops on unexpected file inspection, database write, or folder scan errors. Stable library_refresh_stat_failed, library_refresh_write_failed, and library_refresh_scan_failed codes identify recovery guidance.</li>
           <li>Cancellation and errors retain the report after track enumeration. updatedCount counts only saved updates; missing and unindexed counts can be incomplete. Initial failures can have no result.</li>
           <li>Saved updates remain covered by the existing safety snapshot and history. Review partial counts and the undo record before retrying; no automatic retry or rollback is performed. Cobra prints incomplete counts and returns an error.</li>
+          <li>Absolute stored audio paths are inspected at their original location, including external drives; relative paths resolve from the absolute library directory. Stored paths are preserved. Only the library directory is scanned for unindexed audio; an external path on another volume is not part of that scan. Committed Engine CLI eef34bf5d80e2d137f1f9029e40df07221a2d9ff: https://github.com/alexgorbatchev/engine-cli/blob/eef34bf5d80e2d137f1f9029e40df07221a2d9ff/internal/sync/sync.go#L48-L115 and https://github.com/alexgorbatchev/engine-cli/blob/eef34bf5d80e2d137f1f9029e40df07221a2d9ff/docs/http-api.md#L220-L239. This path-resolution addition leaves the existing Desktop, snapshot, history, partial-result and safe-error contracts unchanged.</li>
         </ul>
       </div>
     </div>

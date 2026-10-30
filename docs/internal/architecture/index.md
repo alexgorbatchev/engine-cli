@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 10:48
+last_modified: 2026-10-30 12:43
 status: current
 ---
 
@@ -21,6 +21,8 @@ All three HTML pages were regenerated with [Archify](https://github.com/alexgorb
 ## Viewing
 
 The job lifecycle includes committed metadata-refresh failure handling in `c012308d842940a41e2aad703d31f08c14e02d03`: unexpected inspection, write, and scan failures stop refresh with stable codes; failed and cancelled jobs retain saved counts and their existing undo record. Initial failures can have no report, and partial counts do not imply completion or authorize automatic retry. The scheduler, fresh Desktop guard, snapshot, and history ownership are unchanged. Uncommitted working-tree changes are outside this review.
+
+The metadata-refresh path-resolution addition is separately reviewed at committed Engine CLI [eef34bf](https://github.com/alexgorbatchev/engine-cli/commit/eef34bf5d80e2d137f1f9029e40df07221a2d9ff). [Native path resolution](https://github.com/alexgorbatchev/engine-cli/blob/eef34bf5d80e2d137f1f9029e40df07221a2d9ff/internal/sync/sync.go#L48-L115) inspects absolute stored audio paths at their original location and resolves relative paths from the absolute library directory. Stored paths remain unchanged; unindexed-file scanning remains limited to the library directory. The [HTTP contract](https://github.com/alexgorbatchev/engine-cli/blob/eef34bf5d80e2d137f1f9029e40df07221a2d9ff/docs/http-api.md#L220-L239) preserves the existing partial-result, Desktop, snapshot, history and undo ownership. Historical evidence pins remain unchanged; diagram review does not advance the integration revision. Uncommitted working-tree changes are outside this review.
 
 The collection-write page's bulk-metadata card describes the `track.batch.update` addition committed in `07441d1`, after the pinned source revision: all selected tracks share one transaction, snapshot, and undo record under the existing collection-write safeguards.
 
