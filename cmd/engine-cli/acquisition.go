@@ -218,7 +218,7 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 		}
 	}
 	if result != nil {
-		if handled, err := printFindReplace(c, result, asJSON); handled {
+		if handled, err := printMetadataTransform(c, result, asJSON); handled {
 			return errors.Join(runErr, err)
 		}
 		if !asJSON {

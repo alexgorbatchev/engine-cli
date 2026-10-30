@@ -29,12 +29,12 @@ func newFindReplaceCommand() *cobra.Command {
 	return c
 }
 
-func printFindReplace(c *cobra.Command, result any, asJSON bool) (bool, error) {
+func printMetadataTransform(c *cobra.Command, result any, asJSON bool) (bool, error) {
 	if asJSON {
 		return false, nil
 	}
 	switch r := result.(type) {
-	case *track.FindReplacePlan:
+	case *track.MetadataTransformPlan:
 		if _, err := fmt.Fprintf(c.OutOrStdout(), "Selected tracks: %d\nChanged tracks: %d\nChanged fields: %d\n", r.SelectedTracks, r.ChangedTracks, r.ChangedFields); err != nil {
 			return true, err
 		}
@@ -56,7 +56,7 @@ func printFindReplace(c *cobra.Command, result any, asJSON bool) (bool, error) {
 		}
 		_, err := fmt.Fprintf(c.OutOrStdout(), "Plan token: %s\nApply identical options with --plan-token and without --dry-run.\n", r.PlanToken)
 		return true, err
-	case *track.FindReplaceResult:
+	case *track.MetadataTransformResult:
 		_, err := fmt.Fprintf(c.OutOrStdout(), "Updated %d fields across %d tracks. One undo restores the complete edit.\n", r.ChangedFields, len(r.TrackIDs))
 		return true, err
 	}

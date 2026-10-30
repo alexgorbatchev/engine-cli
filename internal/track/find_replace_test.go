@@ -10,6 +10,29 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
+func TestFindReplacePreflightRequiresExactReview(t *testing.T) {
+	d, _, _ := createTestDB(t)
+	if _, err := d.Exec("INSERT INTO Track(id,title,path) VALUES(1,'before','one.mp3')"); err != nil {
+		t.Fatal(err)
+	}
+	opts := FindReplaceOptions{Identifiers: []string{"1"}, Fields: []string{"title"}, Find: "before", Replacement: new("after")}
+	plan, err := PreviewFindReplace(t.Context(), d, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CheckFindReplace(t.Context(), d, opts); progress.ErrorCode(err) != "metadata_transform_stale" {
+		t.Fatalf("unreviewed preflight accepted: %v", err)
+	}
+	opts.PlanToken = plan.PlanToken
+	if checked, err := CheckFindReplace(t.Context(), d, opts); err != nil || checked.PlanToken != plan.PlanToken {
+		t.Fatalf("exact preflight failed: %+v %v", checked, err)
+	}
+	opts.Fields = []string{"path"}
+	if _, err := CheckFindReplace(t.Context(), d, opts); err == nil {
+		t.Fatal("invalid preflight accepted")
+	}
+}
+
 func TestFindReplaceRejectsAmplification(t *testing.T) {
 	for _, tc := range []struct{ name, find, replacement, mode string }{
 		{"literal", "x", strings.Repeat("y", 1024), "literal"},

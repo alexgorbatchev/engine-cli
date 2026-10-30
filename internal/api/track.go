@@ -103,6 +103,7 @@ func (p upgradeParams) acquisitionOptions() acquire.TrackOptions {
 func (s *Server) trackOperations() []operation {
 	return []operation{
 		s.findReplaceOperation(),
+		s.capitalizationOperation(),
 		s.suggestionOperation(),
 		s.detailOperation("track"),
 		define("track.batch.update", true, []string{"identifiers"}, func(ctx context.Context, p batchMetadataParams) (any, error) {

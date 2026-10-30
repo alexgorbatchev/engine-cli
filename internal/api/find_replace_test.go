@@ -80,7 +80,7 @@ func TestFindReplaceSnapshotUndoAndProtection(t *testing.T) {
 	if err != nil || id != "" {
 		t.Fatalf("preview=%+v id=%s err=%v", result, id, err)
 	}
-	options.PlanToken = result.(*track.FindReplacePlan).PlanToken
+	options.PlanToken = result.(*track.MetadataTransformPlan).PlanToken
 	options.DryRun = false
 	_, _, err = run()
 	if progress.ErrorCode(err) != "engine_desktop_running" {
@@ -106,9 +106,9 @@ func TestFindReplaceSnapshotUndoAndProtection(t *testing.T) {
 		t.Fatal(err)
 	}
 	options.DryRun = false
-	options.PlanToken = result.(*track.FindReplacePlan).PlanToken
+	options.PlanToken = result.(*track.MetadataTransformPlan).PlanToken
 	result, id, err = run()
-	if err != nil || id == "" || len(result.(*track.FindReplaceResult).TrackIDs) != 2 {
+	if err != nil || id == "" || len(result.(*track.MetadataTransformResult).TrackIDs) != 2 {
 		t.Fatalf("apply=%+v id=%s err=%v", result, id, err)
 	}
 	entries, err = history.List(root)

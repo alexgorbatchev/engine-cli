@@ -29,9 +29,17 @@ func (s *Server) findReplaceOperation() operation {
 	return defineChecked("track.batch.find-replace", "collection", []string{"identifiers", "fields", "find"}, before, func(ctx context.Context, p findReplaceParams) (any, error) {
 		return s.database(ctx, func(d *sql.DB) (any, error) {
 			if p.DryRun {
-				return track.PreviewFindReplace(ctx, d, track.FindReplaceOptions(p))
+				plan, err := track.PreviewFindReplace(ctx, d, track.FindReplaceOptions(p))
+				if err != nil {
+					return nil, err
+				}
+				return plan, nil
 			}
-			return track.ApplyFindReplace(ctx, d, track.FindReplaceOptions(p))
+			result, err := track.ApplyFindReplace(ctx, d, track.FindReplaceOptions(p))
+			if err != nil {
+				return nil, err
+			}
+			return result, nil
 		})
 	})
 }

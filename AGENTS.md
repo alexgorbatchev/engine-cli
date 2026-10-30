@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-30 12:40
+last_modified: 2026-10-30 16:32
 status: current
 ---
 
@@ -40,6 +40,7 @@ The test for everything this CLI writes: close the app, open the library in Engi
 - **List Playlists:** `bin/engine-cli playlist list`
 - **Inspect Playlists:** `bin/engine-cli playlist inspect <id...> [--json]`
 - **Inspect Tracks:** `bin/engine-cli track inspect <id...> [--json]`
+- **Capitalize Metadata:** `bin/engine-cli track batch capitalize <id|ref|path...> --fields title,artist --recipe upper|lower|title [--language tr] --dry-run [--json]`; apply identical options without `--dry-run` and with `--plan-token <reviewed-token>`. HTTP `track.batch.capitalize` shares per-track review, language-aware Unicode casing, bounded transformations and atomic protected snapshot/undo handling. Null fields and unrelated metadata remain unchanged; no-op previews cannot apply.
 - **Suggest Metadata Cleanup:** `bin/engine-cli track suggest <id|ref...> --harness claude|codex [--json]` or `track suggest --playlists <id|ref,...> --harness claude|codex`; HTTP `track.suggest` accepts `tracks` or `playlists` arrays and native harness options. Playlist selection includes direct members only, with first-seen deduplication and complete batched processing. Suggestions never write the library.
 - **Create Playlist:** `bin/engine-cli playlist create <name> [--parent <id>] [--folder]`
 - **Import Playlist:** `bin/engine-cli playlist import <server-path.m3u8> --name <name> [--parent <id|ref>] [--encoding utf-8|windows-1252|iso-8859-1] [--skip-missing] --dry-run`, then apply identical options with `--plan-token <reviewed-token>`. HTTP `playlist.import` shares the reviewed contract. Import creates a new playlist from existing collection tracks in source order; no acquisition, append, or replacement. Unresolved entries block application unless explicitly reviewed with the skip policy. M3U8 requires UTF-8. Preview is read-only; apply is atomic, Desktop-protected, snapshotted, and undoable.

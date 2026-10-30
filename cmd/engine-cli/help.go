@@ -120,6 +120,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli track update":             {Summary: "Update supplied metadata fields and star rating while preserving audio and timing", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track batch update":       {Summary: "Update selected tracks atomically with one snapshot and undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track batch find-replace": {Summary: "Review and apply per-track text replacements with one snapshot and undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track batch capitalize":   {Summary: "Review and apply per-track capitalization with one snapshot and undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track analyze":            {Summary: "Analyze BPM, musical key, and beat grid, writing each track with one undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track grid update":        {Summary: "Apply one beat-grid edit and save it with the matching BPM and undo", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli playlist rm": {
