@@ -394,6 +394,16 @@
         "A folder containing ordinary child playlists or saved Smartlists requires explicit recursive removal. The playlist_not_empty code reaches CLI errors, HTTP job failures and progress. Existing Desktop protection, snapshots, history and Undo retain ownership; no actor, migration or rule evaluator is added.",
         "Reviewed committed evidence b07c6e03b078dc0b94b991392c4187c50c79dc61: internal/db/smartlist_paths.go:47–65; internal/db/playlist_order.go:162–170; internal/db/db.go:476–495. Native HTTP Undo, malformed-object rollback and CLI refusal controls are in internal/api/playlist_smartlist_test.go, internal/playlist/smartlist_test.go and cmd/engine-cli/playlist_smartlist_test.go. Original 87475af and historical diagram evidence pins remain unchanged."
       ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Metadata find/replace — bounded exact review",
+      "items": [
+        "track.batch.find-replace and track batch find-replace share collection-only transformations of eight text fields across 1–500 explicit selectors. Native Go regular expressions provide Unicode case folding and capture expansion; literal mode keeps replacement dollars literal. Audio files and embedded tags are unchanged.",
+        "A read-only review binds normalized options, canonical library root, library UUID, resolved track IDs, native origins and current metadata. Apply checks the captured token before Desktop checks, snapshots and history, then rechecks inside one metadata transaction. Empty titles block the whole batch; failed writes roll back. Results return affected IDs without rereading committed entities.",
+        "Before hydration, source values are limited to 1 MiB each and 16 MiB of review evidence. Output is separately bounded to 1 MiB per field and 16 MiB per batch; native match-index storage and capture expansion are bounded before allocation. Cancellation is checked around native matching and during assembly. Oversized work fails with metadata_transform_too_large before mutation artifacts.",
+        "Reviewed committed evidence 18a4587f84bc9cfe799395ed28f03d2c0f77ff43: internal/api/find_replace.go:21–37; internal/track/find_replace.go:112–142,201–339; internal/track/bounded_replace.go:9–103; cmd/engine-cli/find_replace.go:12–31. Historical graph and evidence pins remain unchanged; no new actor or database owner is introduced."
+      ]
     }
   ]
 }

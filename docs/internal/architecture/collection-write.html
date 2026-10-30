@@ -5966,6 +5966,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 8e33df9d106215b5fd9723c82800867c72b670c6: internal/api/tags.go:126–138; internal/tags/batch.go:60–79,129–192,195–263; internal/api/tags_batch_test.go:17–155. Historical workflow nodes, links and evidence pins remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Metadata find/replace — preflight, one transaction, one Undo</h3>
+        </div>
+        <ul>
+          <li>Dry-run find/replace is a collection read. Apply uses checked preflight before fresh Desktop protection, safety snapshots and history: the exact token binds library identity, canonical root, selected identities, options and current metadata. Stale review, invalid titles, no changes or resource-budget failures never enroll mutation artifacts.</li>
+          <li>Inside the ordinary protected write, ApplyFindReplace rebuilds the review in the same transaction that saves every changed field. It checks the token again, preserves unselected and null values, and returns affected IDs only after commit. Cancellation or any failed write rolls back the batch; the surrounding ordinary collection operation provides one snapshot and one undo record.</li>
+          <li>The transform checks SQL byte lengths before hydrating evidence, caps native match-index storage, and bounds each native capture expansion before allocation. These limits also apply during transactional revalidation, rather than trusting an earlier preview. Native regex matching is not individually interruptible; bounded inputs and context checkpoints limit the work between cancellation observations.</li>
+          <li>Reviewed committed evidence 18a4587f84bc9cfe799395ed28f03d2c0f77ff43: internal/api/find_replace.go:12–37; internal/track/find_replace.go:126–142,201–339; internal/track/bounded_replace.go:49–103; internal/api/find_replace_test.go:16–138. Historical workflow nodes, links and evidence pins remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
