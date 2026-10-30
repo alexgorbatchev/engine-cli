@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 13:07
+last_modified: 2026-10-30 13:24
 status: current
 ---
 
@@ -37,6 +37,8 @@ The overview's saved-marker card describes the working-tree performance-read end
 The overview and collection-write pages include separately reviewed custom-tag additions committed in engine-cli `56cee6e56c5001e0d68795442cc3b7a72856df39`: the CLI-owned `.engine-cli/tags.db` companion, validation before backup/history artifacts, explicit unavailable-origin reconciliation, native database snapshots and presence-aware undo/restore, taxonomy-aware sync, and retained pending history for incomplete cross-file publication. Whole-library/root mirroring can remove destination-only definitions; playlist mirrors preserve unrelated destination taxonomy. Engine and companion SQLite commits and identity/sync JSON publications remain separate, not an atomic cross-database transaction. The original source pins and supplemental evidence remain unchanged. This slice adds no separate CLI actor or HTTP job lifecycle.
 
 The batch custom-tag cards cite committed Engine CLI `8e33df9d106215b5fd9723c82800867c72b670c6`: batch inspection counts assignments across the selected library tracks, and exact review binds the global taxonomy revision, resolved tracks, native origins and add/remove actions. Checked preflight rejects a zero-change apply before mutation artifacts while permitting a zero-change preview. Apply revalidates inside one companion transaction and shares the ordinary Desktop, snapshot and single-undo ownership. The historical source pins remain unchanged; this addition introduces no separate CLI actor or job lifecycle.
+
+The overview’s custom-tag filtering card cites committed Engine CLI [716327b](https://github.com/alexgorbatchev/engine-cli/commit/716327b379a737aafd13f3808f8faa75424be4be). The [library-wide read](https://github.com/alexgorbatchev/engine-cli/blob/716327b379a737aafd13f3808f8faa75424be4be/internal/tags/collection.go#L10-L63) returns taxonomy and current-origin assignments at one companion revision through the [collection-read operation](https://github.com/alexgorbatchev/engine-cli/blob/716327b379a737aafd13f3808f8faa75424be4be/internal/api/tag_assignments.go#L10-L20). Unassigned tracks and unavailable origins are omitted from the track array; unavailable counts remain explicit. Reads do not enroll companion storage or create mutation artifacts. Historical and batch-write evidence pins remain unchanged; diagram review does not advance the UI integration revision. Uncommitted working-tree changes are outside this review.
 
 1. Install [devhost](https://alexgorbatchev.github.io/devhost/) with its native `serve` command. Follow its HTTPS setup instructions if certificate trust has not been configured; that step can require an interactive terminal.
 2. From this repository, run `just architecture-serve`. Open the URL devhost prints; the default is `https://engine-cli-archify.localhost`.

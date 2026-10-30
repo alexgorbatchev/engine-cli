@@ -5945,6 +5945,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 8e33df9d106215b5fd9723c82800867c72b670c6: internal/tags/batch.go:16–115,129–192,200–263; internal/api/tags.go:126–138; cmd/engine-cli/custom_tags.go:38–39,78–91. Historical evidence pins remain unchanged. No additional actor, daemon or collection database writer is introduced.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Custom-tag filtering — one read-only collection snapshot</h3>
+        </div>
+        <ul>
+          <li>track.custom-tags.list returns categories and current track assignments from one companion read and revision under the ordinary collection read barrier. It resolves assignments against native origin identities in the selected Engine library; row IDs remain library-local.</li>
+          <li>The complete response orders tracks by native row ID and value IDs deterministically, omits unassigned tracks and absent origins, and retains unavailable-origin counts. Browsing never creates companion storage, prunes assignments, or creates backup/history artifacts. No additional collection writer or HTTP lifecycle is introduced.</li>
+          <li>Reviewed committed evidence 716327b379a737aafd13f3808f8faa75424be4be: internal/api/tag_assignments.go:10–20; internal/tags/collection.go:10–63; internal/tags/store.go:29–49; docs/http-api.md:466–481. Existing batch-write and historical evidence pins remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
