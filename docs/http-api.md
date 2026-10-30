@@ -318,10 +318,10 @@ The grid keeps a saved grid's sample rate, because saved cues and loops are posi
 Up to four tracks analyze concurrently. Each track's results are written in its own transaction as soon as they are ready, after rechecking that Engine DJ Desktop is closed; when Desktop starts, the job fails before its next write. One safety snapshot and one undo record cover every track written, including the tracks written before a failure or cancellation. Per-track analysis failures are reported in the result rather than failing the job:
 
 ```json
-{"tracks":[{"track_id":5,"bpm":{"status":"written","bpm":124.0065},"key":{"status":"written","key":23},"grid":{"status":"written","bpm":124.0065}},{"track_id":6,"bpm":{"status":"failed","error":{"code":"no_beat","message":"…"}},"grid":{"status":"locked"}}]}
+{"tracks":[{"track_id":5,"title":"Night Drive","bpm":{"status":"written","bpm":124.0065},"key":{"status":"written","key":23},"grid":{"status":"written","bpm":124.0065}},{"track_id":6,"title":"Ambient Intro","bpm":{"status":"failed","error":{"code":"no_beat","message":"…"}},"grid":{"status":"locked"}}]}
 ```
 
-Tracks appear in request order after aliases are deduplicated. Only selected analyses appear. `status` is `written`, `kept` (`missing_only` found a value), `locked`, or `failed` with an `error` code: `no_beat`, `no_key`, `audio_too_short`, `audio_unavailable`, or `analysis_failed`. Written grids report `tempo_markers` when the analysis found tempo changes.
+Tracks appear in request order after aliases are deduplicated, with the display title read before analysis: the title, or the filename without its extension. Only selected analyses appear. `status` is `written`, `kept` (`missing_only` found a value), `locked`, or `failed` with an `error` code: `no_beat`, `no_key`, `audio_too_short`, `audio_unavailable`, or `analysis_failed`. Written grids report `tempo_markers` when the analysis found tempo changes.
 
 `track.add` and `staging.import` accept `analyze:true` and an optional `bpm_range` to analyze BPM, key, and beat grid of the tracks they add, in the second half of the job's progress. File-tag BPMs are replaced so the stored tempo matches the grid. Analysis failures are reported per track as `analysis` on each added or imported entry and never undo the import; Desktop starting during analysis fails the job, keeping the imports and their undo record.
 

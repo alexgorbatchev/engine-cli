@@ -95,9 +95,11 @@ type AnalysisOutcome struct {
 	Error        *AnalysisError `json:"error,omitempty"`
 }
 
-// AnalyzedTrack reports every requested analysis of one track.
+// AnalyzedTrack reports every requested analysis of one track. Title is the display title read before analysis: the
+// track's title, or its filename without one.
 type AnalyzedTrack struct {
 	TrackID int64            `json:"track_id"`
+	Title   string           `json:"title"`
 	BPM     *AnalysisOutcome `json:"bpm,omitempty"`
 	Key     *AnalysisOutcome `json:"key,omitempty"`
 	Grid    *AnalysisOutcome `json:"grid,omitempty"`
@@ -227,17 +229,22 @@ type savedAnalysis struct {
 	key       sql.NullInt64
 	locked    sql.NullBool
 	path      string
+	title     string
 	beatData  *engine.BeatData
 	trackRate float64
 }
 
 func readSavedAnalysis(ctx context.Context, d *sql.DB, libDir string, id int64) (savedAnalysis, error) {
 	var saved savedAnalysis
-	var path sql.NullString
-	if err := d.QueryRowContext(ctx, "SELECT bpmAnalyzed, key, isBeatGridLocked, path FROM Track WHERE id=?", id).Scan(&saved.bpm, &saved.key, &saved.locked, &path); err != nil {
+	var path, title, filename sql.NullString
+	if err := d.QueryRowContext(ctx, "SELECT bpmAnalyzed, key, isBeatGridLocked, path, title, filename FROM Track WHERE id=?", id).Scan(&saved.bpm, &saved.key, &saved.locked, &path, &title, &filename); err != nil {
 		return saved, fmt.Errorf("reading track %d: %w", id, err)
 	}
 	saved.path = path.String
+	saved.title = title.String
+	if strings.TrimSpace(saved.title) == "" {
+		saved.title = strings.TrimSuffix(filename.String, filepath.Ext(filename.String))
+	}
 	if saved.path != "" && !filepath.IsAbs(saved.path) {
 		saved.path = filepath.Join(libDir, filepath.FromSlash(saved.path))
 	}
@@ -267,7 +274,7 @@ func prepareAnalysis(ctx context.Context, d *sql.DB, libDir string, id int64, s 
 	if err != nil {
 		return nil, err
 	}
-	plan := &analysisPlan{trackID: id, selected: s, outcome: AnalyzedTrack{TrackID: id}}
+	plan := &analysisPlan{trackID: id, selected: s, outcome: AnalyzedTrack{TrackID: id, Title: saved.title}}
 	hasGrid := saved.beatData != nil && engine.ValidateBeatAnchors(saved.beatData.Adjusted) == nil
 	wantBPM := s.BPM && !(s.MissingOnly && saved.bpm.Valid && saved.bpm.Float64 > 0)
 	wantKey := s.Key && !(s.MissingOnly && saved.key.Valid && saved.key.Int64 >= 0)

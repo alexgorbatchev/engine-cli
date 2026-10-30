@@ -119,6 +119,9 @@ func TestAnalyzeWritesTempoKeyAndGridAndReportsFailuresPerTrack(t *testing.T) {
 		t.Fatalf("tracks=%+v guard calls=%d", report.Tracks, guarded)
 	}
 	song := report.Tracks[0]
+	if song.Title != "song" || report.Tracks[1].Title != "silence" {
+		t.Fatalf("titles=%q %q", song.Title, report.Tracks[1].Title)
+	}
 	if song.TrackID != 1 || song.BPM.Status != AnalysisWritten || math.Abs(song.BPM.BPM-120) > 0.05 || song.Grid.Status != AnalysisWritten || song.Grid.TempoMarkers != 0 || song.Key.Status != AnalysisWritten || *song.Key.Key != 1 {
 		t.Fatalf("song=%+v bpm=%+v key=%+v grid=%+v", song, song.BPM, song.Key, song.Grid)
 	}
