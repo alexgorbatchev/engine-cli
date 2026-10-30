@@ -358,3 +358,24 @@ func TestRefusedWritesStillReportTracksAlreadyWritten(t *testing.T) {
 		t.Fatalf("written key=%v err=%v", key, err)
 	}
 }
+
+func TestCancellationAfterAWriteKeepsTheWrittenTracksInTheReport(t *testing.T) {
+	d, root := analysisLibrary(t)
+	writeAudio(t, filepath.Join(root, "Music", "other.mp3"), music(70))
+	if _, err := d.Exec("INSERT INTO Track(id, path, filename, length) VALUES(4, 'Music/other.mp3', 'other.mp3', 70)"); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	writes := 0
+	// Cancellation arrives after the first track is written, before the second.
+	report, err := Analyze(ctx, d, root, AnalysisRequest{Identifiers: []string{"1", "4"}, AnalysisSelection: AnalysisSelection{Key: true}}, func(ctx context.Context) error {
+		if writes++; writes == 2 {
+			cancel()
+		}
+		return ctx.Err()
+	})
+	if !errors.Is(err, context.Canceled) || report == nil || len(report.Tracks) != 1 || report.Tracks[0].Key.Status != AnalysisWritten {
+		t.Fatalf("report=%+v err=%v", report, err)
+	}
+}

@@ -275,3 +275,26 @@ func TestEditsNeverEndBeforeTheGridDidWithoutASavedLimit(t *testing.T) {
 		t.Fatalf("grid ends at %v before %v", end, source.Adjusted[1].Sample)
 	}
 }
+
+func TestDownbeatAndScaleEditsKeepEveryTempoSegment(t *testing.T) {
+	shifted := apply(t, changing(), nil, Edit{Kind: EditBarShift, Beats: 1})
+	for i, anchor := range shifted.Anchors[:2] {
+		if anchor.Sample != changing().Adjusted[i].Sample || anchor.Beat != changing().Adjusted[i].Beat-1 {
+			t.Fatalf("bar shift moved anchor %d: %+v", i, anchor)
+		}
+	}
+	doubled := apply(t, changing(), nil, Edit{Kind: EditScale, Factor: 2})
+	halved := apply(t, changing(), nil, Edit{Kind: EditScale, Factor: 0.5})
+	for i, want := range []float64{120, 100} {
+		if got := segmentBPM(rate, doubled.Anchors, i); math.Abs(got-2*want) > 1e-9 {
+			t.Fatalf("doubled segment %d bpm=%v", i, got)
+		}
+		if got := segmentBPM(rate, halved.Anchors, i); math.Abs(got-want/2) > 1e-9 {
+			t.Fatalf("halved segment %d bpm=%v", i, got)
+		}
+	}
+	// The tempo change stays where it was.
+	if doubled.Anchors[1].Sample != changing().Adjusted[1].Sample || halved.Anchors[1].Sample != changing().Adjusted[1].Sample {
+		t.Fatalf("marker moved: %+v %+v", doubled.Anchors[1], halved.Anchors[1])
+	}
+}
