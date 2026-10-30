@@ -6,6 +6,20 @@ import (
 )
 
 var techCatalog = cobrahelptree.TechCatalog{
+	"engine-cli tag":                        {Summary: "Manage library-local custom tag categories and named values"},
+	"engine-cli tag category":               {Summary: "Manage custom tag categories"},
+	"engine-cli tag category list":          {Summary: "List custom categories, named values, assignment counts and current revision"},
+	"engine-cli tag reconcile":              {Summary: "Review or remove assignments for unavailable track origins with exact consent", MutatesDB: true, AutoBackup: true},
+	"engine-cli tag category create":        {Summary: "Create a custom tag category at the reviewed revision", Args: "<name>", MutatesDB: true, AutoBackup: true},
+	"engine-cli tag category update":        {Summary: "Rename a custom tag category at the reviewed revision", Args: "<id>", MutatesDB: true, AutoBackup: true},
+	"engine-cli tag category delete":        {Summary: "Preview or apply exact reviewed category deletion and assignment impact", Args: "<id>", MutatesDB: true, AutoBackup: true},
+	"engine-cli tag value":                  {Summary: "Manage custom named values within categories"},
+	"engine-cli tag value create":           {Summary: "Create a named value within a custom tag category", Args: "<name>", MutatesDB: true, AutoBackup: true},
+	"engine-cli tag value update":           {Summary: "Rename a custom named value at the reviewed revision", Args: "<id>", MutatesDB: true, AutoBackup: true},
+	"engine-cli tag value delete":           {Summary: "Preview or apply exact reviewed value deletion and assignment impact", Args: "<id>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track custom-tags":          {Summary: "Inspect or replace one track's library-local custom values"},
+	"engine-cli track custom-tags inspect":  {Summary: "Inspect assigned custom value IDs and current revision", Args: "<track>"},
+	"engine-cli track custom-tags update":   {Summary: "Replace all custom values on one track; explicit --values= clears them", Args: "<track>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track suggest":              {Summary: "Suggest title/artist cleanup for explicit track IDs or playlist memberships without writing the collection", Args: "[id|ref...]", Description: "Use track arguments or --playlists with up to 500 IDs/references. All direct playlist members are included and deduplicated. Choose --harness claude or codex; optional --model, --effort, --thinking and --harness-config-* options follow agent-ask-cli. Returns original metadata and reviewable suggestions; no backup or history is created."},
 	"engine-cli library delete":             {Summary: "Delete library databases and artwork with a reviewed file plan and exact path confirmation", Args: "<path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli library move":               {Summary: "Move a complete library, preserving identity and undo history", Args: "<path>", MutatesDB: true, AutoBackup: true},

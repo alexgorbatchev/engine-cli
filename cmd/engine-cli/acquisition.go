@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -217,6 +218,11 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 		}
 	}
 	if result != nil {
+		if !asJSON {
+			if handled, err := printCustomTags(c, result); handled {
+				return errors.Join(runErr, err)
+			}
+		}
 		if handled, err := printPlaylistExport(c, result, asJSON); handled {
 			return err
 		}

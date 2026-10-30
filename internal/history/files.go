@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
 type fileState struct {
@@ -69,17 +71,33 @@ func captureDatabases(ctx context.Context, lib, dir string, databases map[string
 				continue
 			}
 			path := filepath.Join(base, entry.Name())
-			target := filepath.Join(dir, hashText(path)+".db")
-			if err := copyDatabase(ctx, path, target); err != nil {
+			if err := captureDatabase(ctx, path, dir, databases); err != nil {
 				return err
 			}
-			digest, err := fingerprint(ctx, target)
-			if err != nil {
-				return err
-			}
-			databases[path] = databaseState{Path: target, Hash: digest}
 		}
 	}
+	paths, err := companion.Databases(lib)
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := captureDatabase(ctx, path, dir, databases); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func captureDatabase(ctx context.Context, path, dir string, databases map[string]databaseState) error {
+	target := filepath.Join(dir, hashText(path)+".db")
+	if err := copyDatabase(ctx, path, target); err != nil {
+		return err
+	}
+	digest, err := fingerprint(ctx, target)
+	if err != nil {
+		return err
+	}
+	databases[path] = databaseState{Path: target, Hash: digest}
 	return nil
 }
 

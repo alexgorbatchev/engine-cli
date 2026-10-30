@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
 func (p *plan) checkSpace() error {
@@ -13,6 +15,24 @@ func (p *plan) checkSpace() error {
 		return err
 	}
 	var databaseBytes int64
+	for _, library := range []string{p.source.Path, p.destination.Path} {
+		paths, err := companion.Databases(library)
+		if err != nil {
+			return err
+		}
+		for _, path := range paths {
+			for _, suffix := range []string{"", "-wal"} {
+				info, err := os.Stat(path + suffix)
+				if os.IsNotExist(err) {
+					continue
+				}
+				if err != nil {
+					return err
+				}
+				databaseBytes += info.Size()
+			}
+		}
+	}
 	for _, base := range []string{filepath.Join(p.source.Path, "Database2"), p.destination.Path, filepath.Join(p.destination.Path, "Database2")} {
 		entries, err := os.ReadDir(base)
 		if err != nil {

@@ -17,6 +17,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	libraryidentity "github.com/alexgorbatchev/engine-cli/internal/identity"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/tags"
 )
 
 // Run returns the same comparison for CLI and HTTP. Only apply creates history.
@@ -69,6 +70,15 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Companion state is captured before the Engine transaction changes track
+	// identities. The post-apply Engine read below must not reinterpret the old
+	// companion against rows that have already been removed by this plan.
+	if err := readTags(ctx, s); err != nil {
+		return nil, err
+	}
+	if err := readTags(ctx, d); err != nil {
+		return nil, err
+	}
 	p, err := buildPlan(ctx, o, s, d)
 	if err != nil {
 		return nil, err
@@ -107,6 +117,9 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 		after.State.Revisions[s.Instance] = max(s.State.revision(d), d.State.revision(s)) + 1
 		for key, b := range p.baseline {
 			if e := after.Entities[key]; e != nil {
+				if isTag(e) {
+					continue
+				}
 				if e.Kind == "track" {
 					e.Hash, e.Size, err = fileHash(ctx, e.File)
 					if err != nil {
@@ -120,18 +133,42 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 		if err = history.Preserve(ctx, statePath(o.Destination)); err != nil {
 			return err
 		}
+		// The Engine transaction and companion cannot commit atomically in WAL
+		// mode. Validate both snapshots before the first commit; publication
+		// failures thereafter deliberately retain pending history for recovery.
+		for _, check := range []struct {
+			path     string
+			expected string
+		}{{o.Source, s.Tags.Revision()}, {o.Destination, d.Tags.Revision()}} {
+			current, err := tags.Read(ctx, check.path)
+			if err != nil {
+				return err
+			}
+			if current.Revision() != check.expected {
+				return &progress.Error{Code: "tag_revision_stale", Cause: fmt.Errorf("custom tags changed while applying the sync plan")}
+			}
+		}
 		if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
 			return err
+		}
+		nextTags := p.plannedTags()
+		if nextTags.Revision() != d.Tags.Revision() {
+			if _, err := tags.Replace(ctx, o.Destination, d.Tags.Revision(), nextTags); err != nil {
+				return errors.Join(err, history.RequireRecovery(ctx))
+			}
 		}
 		if d.Registry != nil {
 			for id, key := range after.State.Playlists {
 				d.Registry.Playlists[id] = strings.TrimPrefix(key, "playlist:")
 			}
 			if err := history.WriteJSON(ctx, libraryidentity.Path(o.Destination), d.Registry); err != nil {
-				return err
+				return errors.Join(err, history.RequireRecovery(ctx))
 			}
 		}
-		return writeState(o.Destination, after.State)
+		if err := writeState(o.Destination, after.State); err != nil {
+			return errors.Join(err, history.RequireRecovery(ctx))
+		}
+		return nil
 	})
 	if entry != nil {
 		p.report.OperationID = entry.ID

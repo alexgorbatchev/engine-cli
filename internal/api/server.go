@@ -100,6 +100,7 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.libraryLifecycleOperations()...)
 	ops = append(ops, s.trackOperations()...)
 	ops = append(ops, s.analysisOperations()...)
+	ops = append(ops, s.tagOperations()...)
 	ops = append(ops, s.historyOperations()...)
 	ops = append(ops, s.duplicateOperations()...)
 	ops = append(ops, s.systemOperations()...)

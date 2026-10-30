@@ -63,6 +63,7 @@ func defineEffect[P any](name, effect string, required []string, run func(contex
 // snapshots and history, with the decoded parameters and their bound operation.
 func defineChecked[P any](name, effect string, required []string, before func(context.Context, P, *boundOperation) error, run func(context.Context, P) (any, error)) operation {
 	params := make(map[string]string)
+	allowEmpty := make(map[string]bool)
 	typ := reflect.TypeFor[P]()
 	for _, f := range reflect.VisibleFields(typ) {
 		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
@@ -70,6 +71,7 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 			continue
 		}
 		params[name] = f.Type.String()
+		allowEmpty[name] = f.Tag.Get("allowempty") == "true"
 	}
 	var parameterEffects map[string]string
 	if _, ok := params["auto_install"]; ok {
@@ -107,7 +109,7 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 				}
 				var list []string
 				if json.Unmarshal(value, &list) == nil {
-					if len(list) == 0 {
+					if len(list) == 0 && !allowEmpty[key] {
 						return nil, fmt.Errorf("%s must not be empty", key)
 					}
 					for _, item := range list {

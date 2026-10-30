@@ -414,6 +414,92 @@ Reconnect with the `Last-Event-ID` header to replay events after that sequence. 
 
 The server retains up to 128 jobs and 1,024 events per job in memory. It evicts completed jobs as needed and rejects submissions with `503` when all slots are active. Restarting clears job status and events. Durable library undo history is separate. An evicted or unknown job returns `404`.
 
+## Library-local custom tags
+
+Custom tags are separate from embedded audio-file tags. Existing
+`track.tags.inspect` and `track.tags.update` retain their file-metadata meaning.
+The following operations use the selected library endpoint and the ordinary job
+submission/result envelope. Category and value IDs are opaque UUID strings.
+
+| Operation | Parameters | Result |
+| --- | --- | --- |
+| `tag.category.list` | None | `{revision,unavailable_tracks,categories:[{id,name,values:[{id,name,track_count}]}]}` |
+| `tag.category.create` | `name`, `revision` | `{id,revision,changed}` |
+| `tag.category.update` | `id`, `name`, `revision` | `{id,revision,changed}` |
+| `tag.value.create` | `category`, `name`, `revision` | `{id,revision,changed}` |
+| `tag.value.update` | `id`, `name`, `revision` | `{id,revision,changed}` |
+| `tag.category.delete`, `tag.value.delete` | `id`, `revision`, `dry_run`, optional `plan_token` | `{id,revision,plan_token,affected_tracks,removed_assignments,removed_values,applied}` |
+| `track.custom-tags.inspect` | `track` | `{track_id,revision,values:[value_id...]}` |
+| `track.custom-tags.update` | `track`, `revision`, `values` | `{track_id,revision,values:[value_id...]}` |
+| `tag.reconcile` | `revision`, `dry_run`, optional `plan_token` | `{revision,plan_token,unavailable_tracks,removed_assignments,applied}` |
+
+`track` uses the existing single-track selector syntax. `values` is the complete
+replacement array of value UUID strings; an explicit empty array clears the
+track's custom tags. Missing or null arrays are rejected. Duplicate IDs and IDs
+not present in this library are rejected. Assigning several values from the same
+category is supported. Response arrays are arrays even when empty.
+
+The opaque `revision` covers both taxonomy definitions and all track assignments.
+Read it from the latest list or inspect result and submit it unchanged with every
+write. A concurrent definition or assignment change rejects a stale write with
+`tag_revision_stale`; refresh both taxonomy and the selected track before editing
+again. An unchanged replacement succeeds without modifying the store.
+
+Assignments use Engine's native origin UUID and origin track ID, not paths or
+local row IDs. `track_count` counts distinct assigned origins still present in
+the selected Engine library. `unavailable_tracks` counts distinct assigned
+origins no longer present after external edits, separately from current track
+counts. Neither derived count changes the stored revision. List, inspect, and
+preview never remove assignments or create a companion database.
+
+To remove unavailable-track assignments, review `tag.reconcile` with
+`dry_run:true`, then submit the same revision and returned plan token with
+`dry_run:false`. The token binds the exact missing origins as well as companion
+content; external origin restoration invalidates it even if companion bytes did
+not change. Successful apply retains the reviewed counts and token, returns the
+resulting revision and `applied:true`, and is undoable. Existing unavailable
+assignments survive unrelated edits. Normal collection mutations remove only
+assignments whose origins that mutation removed; duplicate merge unions values
+onto the surviving native origin within the same history boundary. Sync rejects
+unavailable assignments with `tag_assignments_stale` until reconciliation has
+been reviewed and applied. No origin is inferred from matching filenames.
+
+Deletion requires review. Submit `dry_run:true` to obtain counts and a plan token.
+Submit the same ID, revision, and token with `dry_run:false` to apply. The token is
+bound to the deletion kind, identity, and complete revision. Applying a category
+deletion removes its values and their assignments; applying a value deletion
+removes that value's assignments. `affected_tracks` counts distinct assigned
+origins currently present in Engine; `removed_assignments` counts all stored
+track/value pairs, including unavailable origins. `removed_values` counts value
+definitions. The token also binds the exact currently affected origins, so an
+external removal or restoration requires a fresh review even when the companion
+revision is unchanged. Preview returns the current revision and `applied:false`; successful
+application returns the new revision and `applied:true`. Changed impact requires
+a new preview rather than accepting a stale consent.
+
+Names are trimmed using Unicode whitespace and normalized to NFC. They must
+contain 1–100 Unicode code points, valid UTF-8, and no control characters.
+Unicode case-folded names must be unique across categories in the library, or
+across values within the same category. The normalized display spelling is
+retained. Renaming a value does not move it to another category.
+
+List, inspect, deletion previews, and reconciliation previews are reads. Actual writes use the collection
+write barrier, fresh Desktop protection, snapshot, and durable history contracts.
+Validation errors include `tag_name_invalid`, `tag_name_exists`,
+`tag_values_required`, `tag_value_duplicate`, `tag_not_found`,
+`tag_track_identity_invalid`, `tag_revision_stale`, and `tag_plan_stale`.
+`track_not_found` retains its existing meaning. Clients must display their safe
+error-code catalog messages rather than raw diagnostic text.
+
+Unreadable or unsupported companion storage reports `tag_store_unavailable`.
+Sync previews report `sync_tag_name_conflict` for distinct taxonomy IDs with
+colliding normalized names and `sync_tag_reference_conflict` for accepted
+decisions that would leave retained values or assignments without definitions.
+Those conflicts must be resolved in the source/destination taxonomy or plan;
+an automatic name-based identity merge is not performed. Partial multi-file
+publication reports `history_recovery_required`, retains the pending history ID,
+and refuses further collection writes until explicit forced undo recovery.
+
 ## Operations
 
 ### Staged music

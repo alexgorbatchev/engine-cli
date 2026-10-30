@@ -3,10 +3,13 @@ package duplicate
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/alexgorbatchev/engine-cli/internal/fingerprint"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
+	"github.com/alexgorbatchev/engine-cli/internal/tags"
 )
 
 type MergeOptions struct {
@@ -23,8 +26,9 @@ type MergeResult struct {
 	Removed []Track `json:"removed"`
 }
 
-// Merge changes database records atomically. Audio remains at its original path.
-// The caller records history and snapshots before invoking any mutation.
+// Merge commits Engine records, then merges companion assignments. Audio remains
+// at its original path. The caller records both stores in history; a companion
+// publication failure retains that pending record for explicit recovery.
 func Merge(ctx context.Context, d *sql.DB, opts MergeOptions) (*MergeResult, error) {
 	var err error
 	opts, err = resolveMerge(ctx, d, opts)
@@ -91,6 +95,13 @@ func Merge(ctx context.Context, d *sql.DB, opts MergeOptions) (*MergeResult, err
 	}
 	if err = tx.Commit(); err != nil {
 		return nil, err
+	}
+	removed := make([]tags.TrackOrigin, 0, len(result.Removed))
+	for _, track := range result.Removed {
+		removed = append(removed, tags.TrackOrigin{UUID: track.originUUID, ID: track.originID})
+	}
+	if err := tags.MergeOrigins(ctx, lib, tags.TrackOrigin{UUID: result.Kept.originUUID, ID: result.Kept.originID}, removed); err != nil {
+		return nil, errors.Join(err, history.RequireRecovery(ctx))
 	}
 	return result, nil
 }

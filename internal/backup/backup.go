@@ -100,6 +100,12 @@ func createBackup(ctx context.Context, engineLibDir, outDir string, artwork bool
 	}
 	dbCount += rootCount
 	totalSize := dbBytes + rootBytes
+	companionCount, companionBytes, err := snapshotCompanion(ctx, engineLibDir, staging)
+	if err != nil {
+		return nil, err
+	}
+	dbCount += companionCount
+	totalSize += companionBytes
 	progress.Stage(ctx, "backup.artwork", 70)
 	artCount := 0
 	if artwork {
@@ -228,7 +234,7 @@ func ListBackups(lib, backupBaseDir string) ([]BackupInfo, error) {
 						totalSize += info.Size()
 						if strings.HasSuffix(strings.ToLower(d.Name()), ".db") {
 							dbCount++
-						} else {
+						} else if path != filepath.Join(fullPath, companionFolder, companionManifest) {
 							artCount++
 						}
 					}

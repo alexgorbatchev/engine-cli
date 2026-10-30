@@ -47,6 +47,7 @@ func newTrackCommand() *cobra.Command {
 	trCmd.AddCommand(newTrackRelocateCommand())
 	trCmd.AddCommand(newTrackArtworkCommand())
 	trCmd.AddCommand(newDuplicateCommand())
+	trCmd.AddCommand(newTrackCustomTagsCommand())
 
 	return trCmd
 }

@@ -43,6 +43,10 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 	if err != nil {
 		return err
 	}
+	companionSource, err := planCompanion(ctx, backupDir)
+	if err != nil {
+		return err
+	}
 	for _, section := range sections {
 		progress.Stage(ctx, section.phase, section.percent)
 		for _, entry := range section.entries {
@@ -62,10 +66,19 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 					return err
 				}
 			}
+			if section.databases {
+				if err := restoreDatabase(ctx, source, destination); err != nil {
+					return fmt.Errorf("restoring %s: %w", source, err)
+				}
+				continue
+			}
 			if _, err := copyFile(source, destination); err != nil {
 				return fmt.Errorf("restoring %s: %w", source, err)
 			}
 		}
+	}
+	if err := restoreCompanion(ctx, engineLibDir, companionSource); err != nil {
+		return errors.Join(err, history.RequireRecovery(ctx))
 	}
 	return nil
 }

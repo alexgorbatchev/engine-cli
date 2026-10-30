@@ -10,10 +10,25 @@ import (
 
 type recorderKey struct{}
 type recorder struct {
-	mu         sync.Mutex
-	entry      *Entry
-	dir        string
-	workspaces []string
+	mu               sync.Mutex
+	entry            *Entry
+	dir              string
+	workspaces       []string
+	recoveryRequired bool
+}
+
+// RequireRecovery retains the already durable pending entry when one part of a
+// cross-file publication failed after another part committed. It does not claim
+// that independent SQLite databases and JSON files share an atomic transaction.
+func RequireRecovery(ctx context.Context) error {
+	r, _ := ctx.Value(recorderKey{}).(*recorder)
+	if r == nil {
+		return fmt.Errorf("cross-file recovery requires collection history")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.recoveryRequired = true
+	return nil
 }
 
 // Workspace declares a directory that holds the operation's own retryable work,

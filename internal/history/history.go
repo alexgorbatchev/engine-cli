@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/tags"
 
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
@@ -182,7 +183,7 @@ func Run(ctx context.Context, lib, operation string, scope Scope, paths []string
 	}
 	for _, e := range previous {
 		if e.After == nil {
-			return nil, fmt.Errorf("operation %s was interrupted; inspect it and use library undo %s --force to recover", e.ID, e.ID)
+			return nil, &progress.Error{Code: "history_recovery_required", Cause: fmt.Errorf("operation %s was interrupted; inspect it and use library undo %s --force to recover", e.ID, e.ID)}
 		}
 	}
 	if err = collect(dir, previous); err != nil {
@@ -216,11 +217,26 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 	}
 	r := &recorder{entry: e, dir: dir}
 	runErr := run(context.WithValue(ctx, recorderKey{}, r))
+	r.mu.Lock()
+	recoveryRequired := r.recoveryRequired
+	r.mu.Unlock()
+	if recoveryRequired {
+		return e, &progress.Error{Code: "history_recovery_required", Cause: errors.Join(runErr, fmt.Errorf("operation %s has an incomplete cross-file publication; inspect it and use library undo %s --force to recover", e.ID, e.ID))}
+	}
 	lib, dir = e.Library, r.dir
 	work = filepath.Join(dir, e.ID)
 	// Capture actual partial changes after a cancellation or failure too.
 	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Minute)
 	defer cancel()
+	if scope.capturesDatabases() {
+		// RelocateLibrary rebases snapshot paths in place when the library moves.
+		engineBefore := before.Databases[filepath.Join(lib, "Database2", "m.db")]
+		if engineBefore.Path != "" {
+			if err := tags.ReconcileRemoved(finish, lib, engineBefore.Path); err != nil {
+				return e, &progress.Error{Code: "history_recovery_required", Cause: errors.Join(runErr, fmt.Errorf("reconciling custom tags; operation %s remains pending for recovery: %w", e.ID, err))}
+			}
+		}
+	}
 	e.After, err = captureAfter(finish, lib, scope, filepath.Join(work, "after"), before)
 	if err != nil {
 		return e, errors.Join(runErr, fmt.Errorf("operation history is pending; original data is retained: %w", err))

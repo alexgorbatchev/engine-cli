@@ -142,6 +142,7 @@ func selection(c *collection, scope Scope) (map[string]bool, map[string]bool, er
 			ancestors[parent] = true
 		}
 	}
+	selectTags(c, selected)
 	return selected, ancestors, nil
 }
 func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) {
@@ -232,6 +233,12 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 			}
 		}
 		sf, df := fingerprint(src), fingerprint(dst)
+		// Empty assignment groups carry a clearing baseline, but adding an
+		// unassigned track does not itself mutate the companion database.
+		if src.Kind == "tag_assignment" && dst == nil && len(tagValues(src)) == 0 {
+			p.baseline[key] = baseline{Source: sf, Destination: sf}
+			continue
+		}
 		b, known := p.baseline[key]
 		change := Change{Entity: src.Kind, ID: key, Action: "add", SourceID: src.ID, Label: str(src.Values["title"])}
 		if dst != nil {
@@ -326,6 +333,8 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	if err := p.checkSpace(); err != nil {
 		return nil, err
 	}
+	p.checkTagNames()
+	p.checkTagReferences()
 	p.report.Summary.Conflicts = len(p.report.Conflicts)
 	p.report.Applicable = len(p.report.Conflicts) == 0
 	sort.Slice(p.report.Conflicts, func(i, j int) bool {
@@ -343,7 +352,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	tokenOptions.DryRun = false
 	tokenOptions.PlanToken = ""
 	tokenOptions.NoBackup = false
-	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
+	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.Tags, d.Tags, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
 	return p, nil
 }
 

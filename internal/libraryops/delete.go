@@ -7,10 +7,22 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 )
 
 func planDelete(ctx context.Context, p *Plan) error {
+	companions, err := companion.Databases(p.Path)
+	if err != nil {
+		return err
+	}
+	for _, path := range companions {
+		hash, err := history.DatabaseFingerprint(ctx, path)
+		if err != nil {
+			return err
+		}
+		p.Files = append(p.Files, File{Path: path, Action: "database", Hash: hash, Libraries: []Library{}})
+	}
 	for _, dir := range []string{p.Path, filepath.Join(p.Path, "Database2")} {
 		entries, err := os.ReadDir(dir)
 		if os.IsNotExist(err) {
@@ -35,7 +47,7 @@ func planDelete(ctx context.Context, p *Plan) error {
 		}
 	}
 	art := filepath.Join(p.Path, "Artwork")
-	err := filepath.WalkDir(art, func(path string, entry fs.DirEntry, err error) error {
+	err = filepath.WalkDir(art, func(path string, entry fs.DirEntry, err error) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
