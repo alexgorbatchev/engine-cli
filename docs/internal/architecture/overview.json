@@ -357,6 +357,26 @@
         "internal/playhistory opens Engine's Database2/hm.db read-only beside m.db and never creates or changes it. History track copies resolve to library tracks by exact path, then origin identity; session.list, session.inspect and GET /v1/sessions follow Engine's listing order and labels.",
         "Track records add playCount and lastPlayed from history entries, unknown when history is missing or unreadable. session.import reviews a session as a plan token, then writes only m.db: one new playlist in play order, first plays kept, under the usual Desktop check, snapshot and undo record."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "PCM windows — committed addition: retained source ownership",
+      "items": [
+        "Collection-track and staging PCM endpoints run directly through HTTP, outside the operation job scheduler. The collection read barrier covers source resolution and opening a retained regular file; it is released before FFmpeg decoding. Library-scoped generations never accept arbitrary caller paths or cross-library access.",
+        "The API owns at most eight generations, two active decoder owners and a shared 32 MiB page cache. Each generation serializes access to its retained file. Native nonblocking opening rejects special files before they can hold the collection barrier; retained-descriptor checks preserve source identity across pathname races.",
+        "Release and shutdown cancel active decoding and wait for the direct child and reader to finish before closing its retained descriptor. Idle generations expire after two minutes. Observed source identity, size or modification-time changes invalidate a generation; this is not an immutable-file or full-content-hash guarantee.",
+        "Reviewed committed evidence 0e7acd45359f88a82f5d73c3e5718a28b10604b5: internal/api/pcm.go:41–94; internal/regularfile/open.go:12–36; internal/pcm/store.go:63–136; internal/pcm/lifecycle.go:5–65. Historical diagram source pins remain unchanged."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "PCM windows — committed addition: bounded decoding and observed end",
+      "items": [
+        "FFmpeg receives the retained regular file through its native fd protocol, with no shell or pathname protocol. Fixed two-second page anchors, native warmup and a fixed stereo resampler produce 44.1 or 48 kHz interleaved float PCM; requests assemble at most 96,000 frames from bounded cached pages. Source presentation and priming metadata remain native decoder responsibilities.",
+        "A bounded framecrc observation validates contiguous resampled timestamps and sample counts. Only successful nonempty output below both the sample and packet caps establishes an exact exclusive end; cap hits and wholly empty overshot seeks do not. Discontinuous or contradictory observations invalidate the generation. Repeatability is scoped to the fixed page anchor, not byte parity with a stochastic codec's independent whole-track decode.",
+        "Every started decoder is joined with Command.Wait, including cancellation and output-budget failure. This read-only service creates no collection snapshot, history or undo record and does not decode an entire source merely to estimate its length.",
+        "Reviewed committed evidence 0e7acd45359f88a82f5d73c3e5718a28b10604b5: internal/pcm/decode.go:12–128; internal/pcm/extent.go:15–73; internal/pcm/window.go:9–107. This separately reviewed addition does not repin the historical graph."
+      ]
     }
   ]
 }

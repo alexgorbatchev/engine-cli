@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 10:48
+last_modified: 2026-10-30 11:33
 status: current
 ---
 
@@ -33,6 +33,8 @@ The collection-write page's analysis card and the overview's analysis card descr
 The overview's saved-marker card describes the working-tree performance-read endpoint separately from the pinned evidence: Engine CLI owns database access and the collection barrier, while `djtools` decodes supplied blobs without opening a database.
 
 The overview and collection-write pages include separately reviewed custom-tag additions committed in engine-cli `56cee6e56c5001e0d68795442cc3b7a72856df39`: the CLI-owned `.engine-cli/tags.db` companion, validation before backup/history artifacts, explicit unavailable-origin reconciliation, native database snapshots and presence-aware undo/restore, taxonomy-aware sync, and retained pending history for incomplete cross-file publication. Whole-library/root mirroring can remove destination-only definitions; playlist mirrors preserve unrelated destination taxonomy. Engine and companion SQLite commits and identity/sync JSON publications remain separate, not an atomic cross-database transaction. The original source pins and supplemental evidence remain unchanged. This slice adds no separate CLI actor or HTTP job lifecycle.
+
+The overview's PCM cards describe separately reviewed committed engine-cli [`0e7acd45359f88a82f5d73c3e5718a28b10604b5`](https://github.com/alexgorbatchev/engine-cli/commit/0e7acd45359f88a82f5d73c3e5718a28b10604b5). Direct library-scoped HTTP requests resolve collection or staging media under the collection read barrier, then release it before decoding from a retained regular descriptor ([API ownership](https://github.com/alexgorbatchev/engine-cli/blob/0e7acd45359f88a82f5d73c3e5718a28b10604b5/internal/api/pcm.go#L41-L94)). Bounded generations, decoder owners and page cache belong to the API; release, expiry and shutdown own descriptor cleanup and cancellation joins ([generation lifetime](https://github.com/alexgorbatchev/engine-cli/blob/0e7acd45359f88a82f5d73c3e5718a28b10604b5/internal/pcm/lifecycle.go#L5-L65)). Native frame metadata establishes an exact end only from successful nonempty observations below both caps; empty overshoots and capped observations remain inconclusive ([extent validation](https://github.com/alexgorbatchev/engine-cli/blob/0e7acd45359f88a82f5d73c3e5718a28b10604b5/internal/pcm/extent.go#L15-L73)). These read-only endpoints bypass asynchronous operation jobs and create no collection snapshot, history or undo record. The historical pins and F092 job-failure evidence remain unchanged; uncommitted changes are outside this review.
 
 1. Install [devhost](https://alexgorbatchev.github.io/devhost/) with its native `serve` command. Follow its HTTPS setup instructions if certificate trust has not been configured; that step can require an interactive terminal.
 2. From this repository, run `just architecture-serve`. Open the URL devhost prints; the default is `https://engine-cli-archify.localhost`.
