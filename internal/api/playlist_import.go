@@ -31,9 +31,17 @@ func (s *Server) importPlaylistOperation() operation {
 	return defineChecked("playlist.import", "collection", []string{"path", "name"}, before, func(ctx context.Context, p importPlaylistParams) (any, error) {
 		return s.database(ctx, func(d *sql.DB) (any, error) {
 			if p.DryRun {
-				return playlist.PreviewImport(ctx, d, s.config.LibraryDir, playlist.ImportOptions(p))
+				plan, err := playlist.PreviewImport(ctx, d, s.config.LibraryDir, playlist.ImportOptions(p))
+				if err != nil {
+					return nil, err
+				}
+				return plan, nil
 			}
-			return playlist.ApplyImport(ctx, d, s.config.LibraryDir, playlist.ImportOptions(p))
+			result, err := playlist.ApplyImport(ctx, d, s.config.LibraryDir, playlist.ImportOptions(p))
+			if err != nil {
+				return nil, err
+			}
+			return result, nil
 		})
 	})
 }
