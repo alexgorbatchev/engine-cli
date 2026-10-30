@@ -330,6 +330,25 @@
         "internal/analysis decodes audio once through FFmpeg and combines windowed tactus tempo and mixedkey key candidates with beat-phase, downbeat and tempo-change fitting. internal/beatgrid converts results into Engine anchors, computes reviewed edits, and stores grids through djtools v0.1.3's native beatData codec.",
         "The HTTP API and CLI share track.analyze, track.grid.update and the read-only grid edit endpoint; commands are track analyze, track grid update and track add --analyze. Engine CLI remains the only component that opens Engine databases. Committed in 050ada5 and b333e89."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Custom tags — committed addition: companion ownership",
+      "items": [
+        "Engine CLI owns the separate library-local .engine-cli/tags.db companion: named categories and values use opaque UUIDs; assignments use native Engine origin UUID/track-ID pairs. Embedded-file track.tags operations remain a different domain. The browser accesses neither database directly.",
+        "Taxonomy and assignment reads never create storage or remove unavailable assignments. Taxonomy reports live-origin counts and unavailable origins, while its revision remains the stored taxonomy/assignment revision. Collection mutations use the existing scheduler, fresh Desktop guard, safety backup and history.",
+        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/companion/companion.go:10–35; internal/api/tags.go:39–120; internal/tags/store.go:30–50. This separately reviewed addition preserves the historical diagram graph and source pins."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Custom tags — committed addition: recovery and synchronization",
+      "items": [
+        "The enrolled companion participates in native database snapshots, explicit backup presence, conflict-sensitive undo, and portable library recovery. A first-write undo can restore companion absence. This is CLI-owned library state, not UI preferences or embedded audio metadata.",
+        "Sync carries UUID-defined taxonomy and origin-based assignments. Destination-only definitions remain except under explicit whole-library/root mirroring. Playlist mirrors never delete unrelated destination taxonomy. Distinct-identity normalized-name collisions and retained references to removed definitions block application; a generic conflict winner does not repair these constraints.",
+        "Engine, companion and identity/sync JSON publications are separate commits. A later publication failure retains pending history and reports history_recovery_required; it does not claim all-or-nothing cross-database atomicity. Unresolved history blocks later collection writes until explicit recovery.",
+        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/history/files.go:57–104; internal/backup/companion.go:26–117; internal/transfer/tags.go:15–43; internal/transfer/apply.go:133–171; internal/history/history.go:161–264. The historical source pins remain unchanged."
+      ]
     }
   ]
 }

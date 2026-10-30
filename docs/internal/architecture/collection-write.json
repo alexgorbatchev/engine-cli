@@ -315,6 +315,35 @@
         "Analysis keeps a saved grid's sample rate, writes analyzed grids to both stored vectors, respects isBeatGridLocked, and never sets isAnalyzed. Per-track no_beat, no_key and audio failures are result outcomes, not job failures. track.add and staging.import with analyze:true run the same analysis after their imports.",
         "track.grid.update refuses grids locked in Engine DJ, requires the draft to reach the saved sample-length limit, and replaces only the adjusted grid with the matching BPM; POST tracks/{id}/beatgrid/edits computes drafts read-only and never enters this path. Failed or stopped runs still report the tracks and imports they wrote. Committed in 050ada5, b333e89 and 2434750 after the source revision pinned above."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Custom tags — committed addition: validation before mutation artifacts",
+      "items": [
+        "Custom-tag category/value edits, exact track assignment replacements, deletions and orphan reconciliation share the ordinary collection-write path. Bound preflight checks run before Desktop checks, automatic backups and history creation: invalid names, duplicate names, missing targets, stale revisions and mismatched review tokens fail there.",
+        "Companion writes enforce foreign keys on the same physical connection used for the transaction, re-read the stored revision, and recheck the operation inside that transaction. Preview deletion and reconciliation remain read-only. An empty assignment list explicitly clears values; omission is rejected.",
+        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/api/tags.go:39–120; internal/api/operations.go:177–244; internal/tags/validation.go:9–82; internal/tags/edit.go:12–73. The historical source pins remain unchanged. Historical workflow nodes and links retain their original evidence."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Custom tags — committed addition: explicit orphan consent",
+      "items": [
+        "External Engine removals leave stored assignments intact. List counts include only available native origins and report unavailable origins separately, without changing the stored revision. tag.reconcile previews exactly those missing-origin assignments and requires its reviewed token and revision on apply.",
+        "Deletion impact separates currently affected Engine origins from all removed assignments, including unavailable ones. Delete tokens bind the live affected-origin set as well as stored revision. Reconciliation tokens bind exact missing assignments; both are rechecked during apply.",
+        "Ordinary collection history prunes only origins present before and removed by that operation, preserving pre-existing external orphans. Duplicate merging unions assignments onto the survivor. Browsing, renaming and unrelated edits do not silently reconcile missing origins.",
+        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/tags/store.go:192–222; internal/tags/delete.go:10–88; internal/tags/reconcile.go:22–89; internal/tags/lifecycle.go:19–41,69–91; internal/duplicate/merge.go:96–106. The historical source pins remain unchanged."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Custom tags — committed addition: companion recovery boundary",
+      "items": [
+        "Collection history captures enrolled Engine and companion databases with native database snapshots. Backups record explicit companion presence; restore validates that presence and database integrity before live writes. Undo preserves conflict checks and can reverse companion creation or removal.",
+        "A durable pending history entry precedes execution. Sync validates both companion revisions before committing Engine changes, then publishes companion and identity/sync state separately. If a later publication fails, retained pending history requires explicit inspected recovery rather than a blind retry.",
+        "Sync is a specialized path, outside the ordinary workflow above. Its name/reference conflict checks and tag_assignments_stale refusal protect the planned taxonomy and assignments; external orphan cleanup requires a separate reviewed reconciliation.",
+        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/history/files.go:57–104; internal/history/history.go:161–264; internal/history/undo.go:53–109; internal/backup/companion.go:26–117; internal/backup/restore.go:40–83; internal/transfer/tags.go:15–43,157–190; internal/transfer/apply.go:133–171. The historical source pins remain unchanged."
+      ]
     }
   ]
 }

@@ -55,11 +55,11 @@ clean:
 setup:
     go mod download
 
-# Regenerate architecture diagrams with Archify 3.2.0
+# Regenerate architecture diagrams with Archify 3.2.1-dev.4
 architecture:
     #!/bin/sh
     set -eu
-    : "${ARCHIFY_CLI:?Set ARCHIFY_CLI to Archify 3.2.0 bin/archify.mjs}"
+    : "${ARCHIFY_CLI:?Set ARCHIFY_CLI to Archify 3.2.1-dev.4 bin/archify.mjs}"
     mkdir -p .tmp/architecture-review
     review_dir=$(mktemp -d .tmp/architecture-review/run.XXXXXX)
     for candidate in docs/internal/architecture/*.json; do

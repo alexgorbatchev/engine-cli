@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-29 23:51
+last_modified: 2026-10-30 08:45
 status: current
 ---
 
@@ -9,7 +9,7 @@ status: current
 Go CLI utility for managing, verifying, backing up, synchronizing, and repairing Engine DJ collection databases (`m.db`), playlist hierarchies, and album artwork caches.
 
 ## Commands
-- **Architecture:** [diagram index](docs/internal/architecture/index.md); `just architecture` regenerates the diagrams with `ARCHIFY_CLI` pointing to Archify 3.2.0's `bin/archify.mjs`. `just architecture-serve` serves the index through devhost at `https://engine-cli-archify.localhost`; `ENGINE_DEV_HOST_SUFFIX` overrides the hostname suffix.
+- **Architecture:** [diagram index](docs/internal/architecture/index.md); `just architecture` regenerates the diagrams with `ARCHIFY_CLI` pointing to Archify 3.2.1-dev.4's `bin/archify.mjs`. `just architecture-serve` serves the index through devhost at `https://engine-cli-archify.localhost`; `ENGINE_DEV_HOST_SUFFIX` overrides the hostname suffix.
 - **Build Local Binary:** `just build` (compiles to `bin/engine-cli`)
 - **Run CLI with Arguments:** `just run [args...]`
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
