@@ -349,6 +349,14 @@
         "Engine, companion and identity/sync JSON publications are separate commits. A later publication failure retains pending history and reports history_recovery_required; it does not claim all-or-nothing cross-database atomicity. Unresolved history blocks later collection writes until explicit recovery.",
         "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/history/files.go:57–104; internal/backup/companion.go:26–117; internal/transfer/tags.go:15–43; internal/transfer/apply.go:133–171; internal/history/history.go:161–264. The historical source pins remain unchanged."
       ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Play history — after the pinned revision",
+      "items": [
+        "internal/playhistory opens Engine's Database2/hm.db read-only beside m.db and never creates or changes it. History track copies resolve to library tracks by exact path, then origin identity; session.list, session.inspect and GET /v1/sessions follow Engine's listing order and labels.",
+        "Track records add playCount and lastPlayed from history entries, unknown when history is missing or unreadable. session.import reviews a session as a plan token, then writes only m.db: one new playlist in play order, first plays kept, under the usual Desktop check, snapshot and undo record."
+      ]
     }
   ]
 }

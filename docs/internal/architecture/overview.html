@@ -5922,6 +5922,17 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/history/files.go:57–104; internal/backup/companion.go:26–117; internal/transfer/tags.go:15–43; internal/transfer/apply.go:133–171; internal/history/history.go:161–264. The historical source pins remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Play history — after the pinned revision</h3>
+        </div>
+        <ul>
+          <li>internal/playhistory opens Engine&#39;s Database2/hm.db read-only beside m.db and never creates or changes it. History track copies resolve to library tracks by exact path, then origin identity; session.list, session.inspect and GET /v1/sessions follow Engine&#39;s listing order and labels.</li>
+          <li>Track records add playCount and lastPlayed from history entries, unknown when history is missing or unreadable. session.import reviews a session as a plan token, then writes only m.db: one new playlist in play order, first plays kept, under the usual Desktop check, snapshot and undo record.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
