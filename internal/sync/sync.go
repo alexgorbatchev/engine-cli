@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -76,7 +77,7 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 	for i, t := range tracks {
 		progress.Item(progress.Range(ctx, 10, 85), "sync.tracks", i, len(tracks))
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return report, err
 		}
 		pathStr := t.PathString()
 		if pathStr == "" {
@@ -87,11 +88,17 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 		fullPath := filepath.Join(musicBaseDir, pathStr)
 		info, statErr := os.Stat(fullPath)
 		if statErr != nil {
-			report.MissingCount++
-			continue
+			if errors.Is(statErr, fs.ErrNotExist) {
+				report.MissingCount++
+				continue
+			}
+			return report, refreshFailure(ctx, "library_refresh_stat_failed", statErr)
 		}
 
-		relPath, _ := filepath.Rel(musicBaseDir, fullPath)
+		relPath, err := filepath.Rel(musicBaseDir, fullPath)
+		if err != nil {
+			return report, refreshFailure(ctx, "library_refresh_stat_failed", err)
+		}
 		if relPath != "" {
 			indexedPaths[filepath.Clean(relPath)] = true
 		}
@@ -103,6 +110,9 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 			"-of", "json",
 			fullPath,
 		)
+		if err := ctx.Err(); err != nil {
+			return report, err
+		}
 
 		hasChanges := false
 		if t.FileBytes.Int64 != info.Size() {
@@ -158,33 +168,48 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 		}
 
 		if hasChanges {
-			if errUpdate := db.UpdateTrackMetadata(ctx, database, &t); errUpdate == nil {
-				report.UpdatedCount++
+			if err := db.UpdateTrackMetadata(ctx, database, &t); err != nil {
+				return report, refreshFailure(ctx, "library_refresh_write_failed", err)
 			}
+			report.UpdatedCount++
 		}
 	}
 
 	// Scan musicBaseDir for unindexed audio files
 	progress.Stage(ctx, "sync.scan", 90)
-	_ = filepath.WalkDir(musicBaseDir, func(path string, d fs.DirEntry, walkErr error) error {
+	err = filepath.WalkDir(musicBaseDir, func(path string, d fs.DirEntry, walkErr error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if walkErr == nil && !d.IsDir() {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !d.IsDir() {
 			ext := strings.ToLower(filepath.Ext(path))
 			if ext == ".m4a" || ext == ".mp3" || ext == ".opus" || ext == ".flac" || ext == ".wav" {
 				rel, errRel := filepath.Rel(musicBaseDir, path)
-				if errRel == nil {
-					cleanRel := filepath.Clean(rel)
-					if !indexedPaths[cleanRel] {
-						report.UnindexedCount++
-						report.UnindexedPaths = append(report.UnindexedPaths, cleanRel)
-					}
+				if errRel != nil {
+					return errRel
+				}
+				cleanRel := filepath.Clean(rel)
+				if !indexedPaths[cleanRel] {
+					report.UnindexedCount++
+					report.UnindexedPaths = append(report.UnindexedPaths, cleanRel)
 				}
 			}
 		}
 		return nil
 	})
+	if err != nil {
+		return report, refreshFailure(ctx, "library_refresh_scan_failed", err)
+	}
 
 	return report, ctx.Err()
+}
+
+func refreshFailure(ctx context.Context, code string, cause error) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return &progress.Error{Code: code, Cause: cause}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/alexgorbatchev/engine-cli/internal/verify"
 	"github.com/spf13/cobra"
@@ -158,13 +159,18 @@ Automatically saves a safety backup of your library before making changes unless
 			if !agent.IsAgentMode() {
 				cmd.Println("Scanning on-disk audio files and synchronizing tags with database...")
 			}
-			report, err := sync.SyncLibrary(cmd.Context(), database, libDirFlag)
-			if err != nil {
-				return err
+			report, refreshErr := sync.SyncLibrary(cmd.Context(), database, libDirFlag)
+			if report == nil {
+				return refreshErr
 			}
 
 			if agent.IsAgentMode() {
-				cmd.Println("status: complete")
+				if refreshErr != nil {
+					cmd.Println("status: incomplete")
+					cmd.Printf("error_code: %s\n", progress.ErrorCode(refreshErr))
+				} else {
+					cmd.Println("status: complete")
+				}
 				cmd.Printf("total_tracks: %d\n", report.TotalDBTracks)
 				cmd.Printf("updated_records: %d\n", report.UpdatedCount)
 				cmd.Printf("missing_files: %d\n", report.MissingCount)
@@ -172,10 +178,14 @@ Automatically saves a safety backup of your library before making changes unless
 				for _, p := range report.UnindexedPaths {
 					cmd.Printf("unindexed: %s\n", p)
 				}
-				return nil
+				return refreshErr
 			}
 
-			cmd.Println("Library Sync Complete!")
+			if refreshErr != nil {
+				cmd.Println("Refresh stopped before completion. Review the partial counts below; use library undo to revert saved updates.")
+			} else {
+				cmd.Println("Library Sync Complete!")
+			}
 			cmd.Printf("  Total Tracks in DB:   %d\n", report.TotalDBTracks)
 			cmd.Printf("  Updated Records:      %d\n", report.UpdatedCount)
 			cmd.Printf("  Missing Files:        %d\n", report.MissingCount)
@@ -193,7 +203,7 @@ Automatically saves a safety backup of your library before making changes unless
 				}
 			}
 
-			return nil
+			return refreshErr
 		},
 	}
 }

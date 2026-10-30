@@ -217,6 +217,25 @@ A disconnected client does not cancel its job. Cancellation is cooperative and c
 
 The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. Collection tracks include `hasArtwork`: true when inline artwork bytes or a nonempty regular cache file exists, false when absent (including dangling artwork IDs), and null when availability cannot be determined. Collection lists, single/batch inspection, and playlist tracks share this field. Collection tracks also include `playlistIds`, described under [Library, playlist, and track operations](#library-playlist-and-track-operations), which also lists mutation results; those report changed IDs and paths rather than track objects. Availability checks read artwork catalogue metadata in one batch and reuse filesystem observations for shared covers; they do not load image bytes. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
 
+## Metadata refresh outcomes
+
+`library.refresh` refreshes embedded tags and file sizes and scans for unindexed
+audio. Missing files are counted; unreadable or malformed embedded tags leave
+their metadata unchanged while file-size updates can still proceed. Unexpected
+file inspection, database write, and directory enumeration errors stop the job.
+
+A failed or cancelled refresh can retain a partial `result` with `totalDbTracks`,
+`updatedCount`, `missingCount`, `unindexedCount`, and any `unindexedPaths` found so
+far. `updatedCount` counts saved updates only; the other counts can be incomplete.
+The job remains failed or cancelled. Its `history_id`, when present, identifies
+the saved changes for review and `library.undo`; partial results do not authorize
+automatic retry. Initial failures before track enumeration can have no result.
+
+The equivalent `engine-cli library refresh` command prints these partial counts
+before returning an error. Agent output uses `status: incomplete` and
+`error_code`; successful runs retain `status: complete`. Both modes include the
+undo `operation_id` when changes were saved.
+
 ## Failure codes
 
 Request and job errors use `{code,message}`. The code is the stable consumer contract; `message` is diagnostic text and must not be displayed directly in a user interface. Map known codes to user-friendly guidance and use a safe generic message for unknown codes. Do the same for partial failures inside results and upstream progress details.
@@ -226,6 +245,9 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | Code | Meaning and recovery |
 | --- | --- |
 | `library_not_found` | The configured library database is absent. Add or connect the library on the server computer, then refresh. No database is created by this read. |
+| `library_refresh_write_failed` | Refresh stopped because a track update could not be saved. Check library access, then review the partial result and history before retrying or undoing saved changes. |
+| `library_refresh_stat_failed` | Refresh could not inspect an audio file. Check its drive and access permissions, then review the partial result before retrying. This is not counted as a missing file. |
+| `library_refresh_scan_failed` | Refresh could not finish scanning the library folder. Restore access and review the partial result before retrying; earlier track updates remain saved. |
 | `library_unavailable` | The library could not be opened. Check the selected library and drive. |
 | `permission_denied` | File access was denied. Check permissions on the server computer. |
 | `resource_not_found` | A required file is missing. Restore access or choose another file. |
