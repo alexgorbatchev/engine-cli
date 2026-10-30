@@ -10,6 +10,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/regularfile"
 )
 
 func (s *Server) requestTrack(w http.ResponseWriter, r *http.Request) *db.Track {
@@ -71,17 +72,9 @@ func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "origin_required", "Audio previews require an allowed browser origin.")
 		return
 	}
-	track := s.requestTrack(w, r)
-	if track == nil {
-		return
-	}
-	path := track.PathString()
+	path := s.requestAudioPath(w, r)
 	if path == "" {
-		writeError(w, http.StatusNotFound, "audio_unavailable", "This track has no local audio file.")
 		return
-	}
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(s.config.LibraryDir, path)
 	}
 	contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(path)))
 	// M4A is an MP4 audio container (RFC 4337), not the LATM transport that
@@ -93,9 +86,8 @@ func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnsupportedMediaType, "unsupported_audio", "This file type is not available for browser playback.")
 		return
 	}
-	file, err := os.Open(path)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "audio_unavailable", "The audio file could not be opened. Check that its drive is connected.")
+	file := openAudio(w, path)
+	if file == nil {
 		return
 	}
 	defer file.Close()
@@ -109,4 +101,29 @@ func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", audioCacheControl)
 	release()
 	http.ServeContent(w, r, info.Name(), info.ModTime(), file)
+}
+
+func (s *Server) requestAudioPath(w http.ResponseWriter, r *http.Request) string {
+	track := s.requestTrack(w, r)
+	if track == nil {
+		return ""
+	}
+	path := track.PathString()
+	if path == "" {
+		writeError(w, http.StatusNotFound, "audio_unavailable", "This track has no local audio file.")
+		return ""
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(s.config.LibraryDir, path)
+	}
+	return path
+}
+
+func openAudio(w http.ResponseWriter, path string) *os.File {
+	file, err := regularfile.Open(path)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "audio_unavailable", "The audio file could not be opened. Check that its drive is connected.")
+		return nil
+	}
+	return file
 }
