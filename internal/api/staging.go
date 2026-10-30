@@ -22,7 +22,10 @@ type stagedIDsParams struct {
 type stagedImportParams struct {
 	IDs        []string `json:"ids"`
 	ToPlaylist string   `json:"to_playlist"`
+	importAnalysis
 }
+
+func (p stagedImportParams) validate() error { return p.importAnalysis.validate() }
 
 func (s *Server) stagingOperations() []operation {
 	store := staging.New(s.config.LibraryDir)
@@ -44,7 +47,23 @@ func (s *Server) stagingOperations() []operation {
 		}),
 		define("staging.import", true, []string{"ids"}, func(ctx context.Context, p stagedImportParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				return store.Import(ctx, d, staging.ImportOptions{IDs: p.IDs, ToPlaylist: p.ToPlaylist})
+				report, err := store.Import(p.importProgress(ctx), d, staging.ImportOptions{IDs: p.IDs, ToPlaylist: p.ToPlaylist})
+				if err != nil || !p.Analyze {
+					return report, err
+				}
+				ids := make([]int64, len(report.Imported))
+				for i, imported := range report.Imported {
+					ids[i] = imported.TrackID
+				}
+				analyzed, err := s.analyzeImports(ctx, d, ids, p.BPMRange)
+				if err != nil {
+					return nil, err
+				}
+				for i := range report.Imported {
+					outcome := analyzed[report.Imported[i].TrackID]
+					report.Imported[i].Analysis = &outcome
+				}
+				return report, nil
 			})
 		}),
 	}

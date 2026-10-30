@@ -179,84 +179,90 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 		if flagErr != nil {
 			return flagErr
 		}
-		parameters, err := json.Marshal(values)
-		if err != nil {
-			return err
-		}
-		if strings.HasPrefix(operation, "library.") && statePath == "" {
-			statePath, err = state.DefaultPath()
-			if err != nil {
-				return err
-			}
-		}
-		server, err := api.New(api.Config{StatePath: statePath, LibraryDir: libDirFlag, NoBackup: noBackupFlag, CheckSystem: querySystem, ToolRunner: acquisitionRunner})
-		if err != nil {
-			return err
-		}
-		defer server.Close()
-		result, historyID, runErr := server.RunOperation(c.Context(), operation, parameters)
-		if batch, ok := result.(*api.MediaBatchResult); ok && runErr == nil {
-			// A partial batch succeeds as an API job, but the command still exits unsuccessfully.
-			runErr = batch.Err()
-		}
-		if historyID != "" {
-			historyOutput := c.ErrOrStderr()
-			if operation == "track.upgrade" && !asJSON {
-				historyOutput = c.OutOrStdout()
-			}
-			if _, err := fmt.Fprintf(historyOutput, "operation_id: %s\n", historyID); err != nil {
-				return err
-			}
-		}
-		if result != nil {
-			if handled, err := printPlaylistExport(c, result, asJSON); handled {
-				return err
-			}
-			if plan, ok := result.(*playlist.ImportPlan); ok {
-				display := *plan
-				display.Path = displayPath(display.Path)
-				display.Entries = append([]playlist.ImportEntry{}, plan.Entries...)
-				for i := range display.Entries {
-					display.Entries[i].Path = displayPath(display.Entries[i].Path)
-				}
-				if !asJSON {
-					return printPlaylistImportPlan(c, &display)
-				}
-				result = &display
-			}
-			if imported, ok := result.(*playlist.ImportResult); ok && !asJSON {
-				_, err := fmt.Fprintf(c.OutOrStdout(), "Created playlist %d: %d tracks, %d repeated entries omitted, %d unresolved entries skipped.\n", imported.PlaylistID, imported.ImportedCount, imported.DuplicateCount, imported.SkippedCount)
-				return err
-			}
-			if created, ok := result.(*api.CreatedLibrary); ok {
-				display := *created
-				display.Path = displayPath(display.Path)
-				result = &display
-			}
-			if plan, ok := result.(*libraryops.Plan); ok {
-				result = displayLibraryPlan(plan)
-			}
-			if libraries, ok := result.([]api.KnownLibrary); ok {
-				display := append([]api.KnownLibrary{}, libraries...)
-				for i := range display {
-					display[i].Path = displayPath(display[i].Path)
-				}
-				result = display
-			}
-			if operation == "track.upgrade" && !asJSON && runErr == nil {
-				return printTrackUpgrade(c, result.(api.UpgradedTrack))
-			}
-			encoder := json.NewEncoder(c.OutOrStdout())
-			if !asJSON {
-				encoder.SetIndent("", "  ")
-			}
-			if err := encoder.Encode(result); err != nil {
-				return err
-			}
-		}
-		return runErr
+		return runOperation(c, operation, values, asJSON, statePath)
 	}
 	return command
+}
+
+// runOperation runs an API operation in process with the same validation, guards, snapshots, and undo journal as
+// HTTP jobs, then prints its result.
+func runOperation(c *cobra.Command, operation string, values map[string]any, asJSON bool, statePath string) error {
+	parameters, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+	if strings.HasPrefix(operation, "library.") && statePath == "" {
+		statePath, err = state.DefaultPath()
+		if err != nil {
+			return err
+		}
+	}
+	server, err := api.New(api.Config{StatePath: statePath, LibraryDir: libDirFlag, NoBackup: noBackupFlag, CheckSystem: querySystem, ToolRunner: acquisitionRunner})
+	if err != nil {
+		return err
+	}
+	defer server.Close()
+	result, historyID, runErr := server.RunOperation(c.Context(), operation, parameters)
+	if batch, ok := result.(*api.MediaBatchResult); ok && runErr == nil {
+		// A partial batch succeeds as an API job, but the command still exits unsuccessfully.
+		runErr = batch.Err()
+	}
+	if historyID != "" {
+		historyOutput := c.ErrOrStderr()
+		if operation == "track.upgrade" && !asJSON {
+			historyOutput = c.OutOrStdout()
+		}
+		if _, err := fmt.Fprintf(historyOutput, "operation_id: %s\n", historyID); err != nil {
+			return err
+		}
+	}
+	if result != nil {
+		if handled, err := printPlaylistExport(c, result, asJSON); handled {
+			return err
+		}
+		if plan, ok := result.(*playlist.ImportPlan); ok {
+			display := *plan
+			display.Path = displayPath(display.Path)
+			display.Entries = append([]playlist.ImportEntry{}, plan.Entries...)
+			for i := range display.Entries {
+				display.Entries[i].Path = displayPath(display.Entries[i].Path)
+			}
+			if !asJSON {
+				return printPlaylistImportPlan(c, &display)
+			}
+			result = &display
+		}
+		if imported, ok := result.(*playlist.ImportResult); ok && !asJSON {
+			_, err := fmt.Fprintf(c.OutOrStdout(), "Created playlist %d: %d tracks, %d repeated entries omitted, %d unresolved entries skipped.\n", imported.PlaylistID, imported.ImportedCount, imported.DuplicateCount, imported.SkippedCount)
+			return err
+		}
+		if created, ok := result.(*api.CreatedLibrary); ok {
+			display := *created
+			display.Path = displayPath(display.Path)
+			result = &display
+		}
+		if plan, ok := result.(*libraryops.Plan); ok {
+			result = displayLibraryPlan(plan)
+		}
+		if libraries, ok := result.([]api.KnownLibrary); ok {
+			display := append([]api.KnownLibrary{}, libraries...)
+			for i := range display {
+				display[i].Path = displayPath(display[i].Path)
+			}
+			result = display
+		}
+		if operation == "track.upgrade" && !asJSON && runErr == nil {
+			return printTrackUpgrade(c, result.(api.UpgradedTrack))
+		}
+		encoder := json.NewEncoder(c.OutOrStdout())
+		if !asJSON {
+			encoder.SetIndent("", "  ")
+		}
+		if err := encoder.Encode(result); err != nil {
+			return err
+		}
+	}
+	return runErr
 }
 
 func collectionArgument(value string) bool {

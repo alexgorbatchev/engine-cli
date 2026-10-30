@@ -11,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
 
@@ -18,7 +19,33 @@ type addTrackParams struct {
 	Paths      []string `json:"paths"`
 	ToPlaylist string   `json:"to_playlist"`
 	Move       bool     `json:"move"`
+	importAnalysis
 }
+
+// importAnalysis analyzes BPM, key, and beat grid of the tracks an import adds.
+type importAnalysis struct {
+	Analyze  bool   `json:"analyze"`
+	BPMRange string `json:"bpm_range"`
+}
+
+func (p importAnalysis) validate() error {
+	if !p.Analyze {
+		if p.BPMRange != "" {
+			return fmt.Errorf("choose analyze to use a BPM range")
+		}
+		return nil
+	}
+	return track.AnalysisSelection{BPM: true, BPMRange: p.BPMRange}.Validate()
+}
+
+// importProgress leaves the second half of an analyzing import's progress to its analysis.
+func (p importAnalysis) importProgress(ctx context.Context) context.Context {
+	if p.Analyze {
+		return progress.Range(ctx, 0, 50)
+	}
+	return ctx
+}
+
 type removeTrackParams struct {
 	Tracks     []string `json:"tracks"`
 	DeleteFile bool     `json:"delete_file"`
@@ -59,6 +86,8 @@ func (p batchMetadataParams) validate() error { return track.BatchMetadataEdit(p
 type changedTracks struct {
 	TrackIDs []int64 `json:"track_ids"`
 }
+
+func (p addTrackParams) validate() error { return p.importAnalysis.validate() }
 
 func (p upgradeParams) validate() error {
 	if p.KeepTiming && p.ClearTiming {
@@ -108,13 +137,29 @@ func (s *Server) trackOperations() []operation {
 		}),
 		define("track.add", true, []string{"paths"}, func(ctx context.Context, p addTrackParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				return batch(ctx, "track.add", p.Paths, func(ctx context.Context, path string) (addedTrack, error) {
+				added, err := batch(p.importProgress(ctx), "track.add", p.Paths, func(ctx context.Context, path string) (addedTrack, error) {
 					r, err := track.AddTrack(ctx, d, s.config.LibraryDir, path, p.ToPlaylist, p.Move)
 					if err != nil {
 						return addedTrack{}, err
 					}
 					return newAddedTrack(r), nil
 				})
+				if err != nil || !p.Analyze {
+					return added, err
+				}
+				ids := make([]int64, len(added))
+				for i, a := range added {
+					ids[i] = a.TrackID
+				}
+				analyzed, err := s.analyzeImports(ctx, d, ids, p.BPMRange)
+				if err != nil {
+					return nil, err
+				}
+				for i := range added {
+					outcome := analyzed[added[i].TrackID]
+					added[i].Analysis = &outcome
+				}
+				return added, nil
 			})
 		}),
 		define("track.rm", true, []string{"tracks"}, func(ctx context.Context, p removeTrackParams) (any, error) {

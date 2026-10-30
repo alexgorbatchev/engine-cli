@@ -16,10 +16,11 @@ type movedTrack struct {
 }
 
 type addedTrack struct {
-	TrackID    int64  `json:"track_id"`
-	Path       string `json:"path"`
-	PlaylistID int64  `json:"playlist_id,omitempty"`
-	Moved      bool   `json:"moved"`
+	TrackID    int64                `json:"track_id"`
+	Path       string               `json:"path"`
+	PlaylistID int64                `json:"playlist_id,omitempty"`
+	Moved      bool                 `json:"moved"`
+	Analysis   *track.AnalyzedTrack `json:"analysis,omitempty"`
 }
 
 func newAddedTrack(r *track.AddTrackResult) addedTrack {

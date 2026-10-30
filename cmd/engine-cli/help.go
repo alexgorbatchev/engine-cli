@@ -102,6 +102,8 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli playlist export":    {Summary: "Review and export saved playlist order to a new M3U/M3U8 file without modifying the collection", Args: "<id|ref>"},
 	"engine-cli track update":       {Summary: "Update supplied metadata fields and star rating while preserving audio and timing", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track batch update": {Summary: "Update selected tracks atomically with one snapshot and undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track analyze":      {Summary: "Analyze BPM, musical key, and beat grid, writing each track with one undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track grid update":  {Summary: "Apply one beat-grid edit and save it with the matching BPM and undo", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli playlist rm": {
 		Summary:     "Delete a playlist or folder and its membership references",
 		Description: "Deletes PlaylistEntity associations and Playlist record from Database2/m.db without deleting underlying Track records.",

@@ -25,6 +25,8 @@ type ImportOptions struct {
 type Imported struct {
 	ID      string `json:"id"`
 	TrackID int64  `json:"track_id"`
+	// Analysis reports the import's optional BPM, key, and beat-grid analysis of this track.
+	Analysis *track.AnalyzedTrack `json:"analysis,omitempty"`
 }
 
 type Failure struct {

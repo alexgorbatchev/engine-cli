@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 	"github.com/spf13/cobra"
 )
@@ -38,6 +40,8 @@ func newTrackCommand() *cobra.Command {
 	batch.AddCommand(newTrackEditCommand(true))
 	trCmd.AddCommand(batch)
 	trCmd.AddCommand(newTrackUpgradeCommand())
+	trCmd.AddCommand(newTrackAnalyzeCommand())
+	trCmd.AddCommand(newTrackGridCommand())
 	trCmd.AddCommand(newTrackRmCommand())
 	trCmd.AddCommand(newTrackMoveCommand())
 	trCmd.AddCommand(newTrackRelocateCommand())
@@ -50,6 +54,8 @@ func newTrackCommand() *cobra.Command {
 func newTrackAddCommand() *cobra.Command {
 	var toPlaylistFlag string
 	var moveFlag bool
+	var analyzeFlag bool
+	var bpmRangeFlag string
 
 	cmd := &cobra.Command{
 		Use:   "add <path...>",
@@ -84,6 +90,10 @@ Automatically saves a safety backup of your library before making changes unless
 			}
 			defer database.Close()
 
+			if !analyzeFlag && cmd.Flags().Changed("bpm-range") {
+				return fmt.Errorf("choose --analyze to use a BPM range")
+			}
+			var added []int64
 			for _, filePath := range args {
 				res, err := track.AddTrack(cmd.Context(), database, libDirFlag, filePath, toPlaylistFlag, moveFlag)
 				if err != nil {
@@ -91,6 +101,7 @@ Automatically saves a safety backup of your library before making changes unless
 				}
 
 				t := res.Track
+				added = append(added, t.ID)
 				title := t.Title.String
 				if title == "" {
 					title = t.Filename.String
@@ -117,12 +128,27 @@ Automatically saves a safety backup of your library before making changes unless
 				}
 			}
 
-			return nil
+			if !analyzeFlag {
+				return nil
+			}
+			report, err := track.AnalyzeImported(cmd.Context(), database, libDirFlag, added, bpmRangeFlag, func(ctx context.Context) error {
+				r, err := querySystem(ctx, nil)
+				if err != nil {
+					return err
+				}
+				return systemcheck.AllowMutation(r)
+			})
+			if err != nil {
+				return err
+			}
+			return printAnalysisReport(cmd, report)
 		},
 	}
 
 	cmd.Flags().StringVar(&toPlaylistFlag, "to-playlist", "", "Assign imported track(s) to the specified playlist (creates if missing)")
 	cmd.Flags().BoolVar(&moveFlag, "move", false, "Move audio file(s) into the Engine Library folder")
+	cmd.Flags().BoolVar(&analyzeFlag, "analyze", false, "Analyze BPM, musical key, and beat grid of the added tracks")
+	cmd.Flags().StringVar(&bpmRangeFlag, "bpm-range", track.DefaultBPMRange, "Tempo range for --analyze: 58-115, 68-135, 78-155, 88-175, or 98-195")
 
 	return cmd
 }

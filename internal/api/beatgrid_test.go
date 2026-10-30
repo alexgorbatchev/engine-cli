@@ -3,11 +3,13 @@ package api
 import (
 	"bytes"
 	"compress/zlib"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"math"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
@@ -92,7 +94,23 @@ func TestTrackBeatGrid(t *testing.T) {
 	}
 }
 
-func TestDecodeBeatGridRejectsMalformedPayloads(t *testing.T) {
+// gridLibrary stores beatData blobs for track 1 and serves its saved grid.
+func gridLibrary(t *testing.T) (*Server, *sql.DB) {
+	t.Helper()
+	s, lib := testAPI(t)
+	database, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Exec("CREATE TABLE PerformanceData(trackId INTEGER PRIMARY KEY, beatData BLOB)"); err != nil {
+		t.Fatal(err)
+	}
+	return s, database
+}
+
+func TestTrackBeatGridRejectsMalformedPayloads(t *testing.T) {
+	s, database := gridLibrary(t)
 	valid := gridPayload()
 	invalidRate := bytes.Clone(valid)
 	binary.BigEndian.PutUint64(invalidRate, math.Float64bits(math.NaN()))
@@ -102,23 +120,31 @@ func TestDecodeBeatGridRejectsMalformedPayloads(t *testing.T) {
 	binary.LittleEndian.PutUint64(invalidSample[17+8+48+8:], math.Float64bits(math.Inf(1)))
 	unsafeBeat := bytes.Clone(valid)
 	binary.LittleEndian.PutUint64(unsafeBeat[17+8+48+8+8:], 1<<53)
+	var blobs [][]byte
 	for _, payload := range [][]byte{{}, valid[:16], valid[:25], invalidRate, invalidCount, invalidSample, unsafeBeat} {
-		if _, err := decodeBeatGrid(compressedGrid(t, payload)); err == nil {
-			t.Fatalf("accepted malformed payload %x", payload)
-		}
+		blobs = append(blobs, compressedGrid(t, payload))
 	}
-	for _, encoded := range [][]byte{{}, {0, 0, 0, 0}, {1, 2, 3, 4, 5}, compressedGrid(t, valid)[:10]} {
-		if _, err := decodeBeatGrid(encoded); err == nil {
-			t.Fatalf("accepted malformed compression %x", encoded)
+	blobs = append(blobs, []byte{0, 0, 0, 0}, []byte{1, 2, 3, 4, 5}, compressedGrid(t, valid)[:10])
+	for _, blob := range blobs {
+		if _, err := database.Exec("INSERT OR REPLACE INTO PerformanceData VALUES(1,?)", blob); err != nil {
+			t.Fatal(err)
+		}
+		w := requestAPI(t, s, http.MethodGet, "/v1/tracks/1/beatgrid", "")
+		if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "invalid_beatgrid") {
+			t.Fatalf("accepted malformed grid %x: %d %s", blob, w.Code, w.Body)
 		}
 	}
 }
 
-func TestDecodeBeatGridWithoutSegments(t *testing.T) {
+func TestTrackBeatGridWithoutSegmentsIsMissing(t *testing.T) {
+	s, database := gridLibrary(t)
 	payload := make([]byte, 33) // Header and two empty saved anchor vectors.
 	binary.BigEndian.PutUint64(payload, math.Float64bits(48000))
-	grid, err := decodeBeatGrid(compressedGrid(t, payload))
-	if err != nil || grid != nil {
-		t.Fatalf("empty analysis grid=%+v error=%v", grid, err)
+	if _, err := database.Exec("INSERT INTO PerformanceData VALUES(1,?)", compressedGrid(t, payload)); err != nil {
+		t.Fatal(err)
+	}
+	w := requestAPI(t, s, http.MethodGet, "/v1/tracks/1/beatgrid", "")
+	if w.Code != http.StatusOK || w.Body.String() != "{\"grid\":null}\n" {
+		t.Fatalf("empty analysis: %d %s", w.Code, w.Body)
 	}
 }

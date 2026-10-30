@@ -261,6 +261,17 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `cancelled` | Work was cancelled. Completed changes may remain. |
 | `operation_failed` | Unclassified failure. Inspect current state before retrying. |
 | `invalid_response` | Engine could not encode a response. Refresh or update Engine. |
+| `no_beat` | Analysis found no steady beat, as in ambient or spoken audio. Set the grid with tap tempo instead. |
+| `no_key` | Analysis found no musical key, as in silent or percussion-only audio. Set the key manually. |
+| `audio_too_short` | The audio is shorter than analysis needs. |
+| `audio_unavailable` | The track's audio file could not be read or decoded. Check the file and FFmpeg on the server computer. |
+| `analysis_failed` | Analysis produced no usable result. Retry or set the value manually. |
+| `beatgrid_missing` | The track has no saved beat grid to edit. Analyze its beat grid first. |
+| `beatgrid_invalid` | A supplied or saved grid is inconsistent. Start again from the saved grid. |
+| `beatgrid_edit_invalid` | The edit or its fields are invalid. Choose a supported edit and values. |
+| `beatgrid_tempo_range` | The edit would leave a tempo outside 30–250 BPM. |
+| `beatgrid_half_unaligned` | A tempo marker sits between the beats of the halved tempo. Move or remove it before halving. |
+| `beatgrid_marker_exists` | A tempo marker already sits on that beat. Choose another beat. |
 
 Existing request validation, origin protection, missing-entity, media, and desktop-check codes keep their meanings. Job status and its terminal progress event report the same failure code. Error classification follows wrapped Go error causes, not diagnostic message strings.
 
@@ -292,9 +303,50 @@ The applied result's `operation_id` and job's `history_id` identify undo history
 
 ## Saved beat grids
 
-The beat-grid response contains `grid.sampleRate` and `grid.anchors`. Each anchor has `sample` (sample position, which can be negative for preroll), `beat` (zero-based beat index), and `beatsUntilNext` (the outgoing segment's beat count). Interpolate the interval between adjacent anchors using `beatsUntilNext`, then divide sample positions by `sampleRate` for seconds. Every fourth beat is a bar boundary. The last anchor ends the preceding segment.
+The beat-grid response contains `grid.sampleRate`, `grid.bpm`, and `grid.anchors`. Each anchor has `sample` (sample position, which can be negative for preroll), `beat` (zero-based beat index), and `beatsUntilNext` (the outgoing segment's beat count, `0` on the final anchor). Interpolate the interval between adjacent anchors using `beatsUntilNext`, then divide sample positions by `sampleRate` for seconds. Beats whose index is a multiple of four start bars. The last anchor ends the preceding segment. `bpm` is the whole-grid tempo Engine reports: the beats spanned divided by the grid's duration.
 
-The API reads the current saved grid from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM or modify analysis. Missing analysis returns `{"grid":null}`. Invalid compressed payloads return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. The Qt framing and mixed-endian anchor format follow the existing [Engine DJ app codec](https://github.com/alexgorbatchev/engine-dj-app/tree/main/src/beat_grid) and its [compression framing](https://github.com/alexgorbatchev/engine-dj-app/blob/main/src/compression.rs).
+The API reads the adjusted grid Engine plays and edits from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM. Missing analysis, and grids with fewer than two anchors, return `{"grid":null}`. Invalid compressed payloads or inconsistent anchors return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. Encoding and decoding use `djtools` v0.1.2's native `BeatData` codec, which writes the full header, both grids, and the trailing source and reference-sample fields.
+
+## Track analysis
+
+`track.analyze` analyzes 1–500 `identifiers` from their audio and writes the selected results: `bpm`, `key`, and `grid` booleans, at least one required. `missing_only:true` keeps a BPM (`bpmAnalyzed` above zero), a key (zero or above), or a usable saved grid a track already has. Tracks with `isBeatGridLocked` keep their grids. `bpm_range` folds tempos into `58-115`, `68-135`, `78-155`, `88-175` (default), or `98-195`.
+
+Audio decodes once through FFmpeg as 22.05 kHz mono. Tempo candidates come from `tactus` and key candidates from `mixedkey`, each over 30-second windows. The beat period and phase are fitted to a spectral-flux onset envelope of the whole track; the bar phase is the one whose beats bring the most spectral change. Windows that agree on a different tempo for at least a minute become tempo-change anchors at the change point between the two fitted grids. Analyzed grids follow Engine's analyzer layout: one anchor a bar before the first downbeat, one per tempo change, and a final anchor at least one second past the end of the audio, written to both the default and adjusted grids so Engine's reset returns to the analysis.
+
+The grid keeps a saved grid's sample rate, because saved cues and loops are positioned with it, and otherwise uses the sample rate Engine recorded in `trackData` or the file's own. BPM analysis stores the whole-grid tempo in `bpmAnalyzed` and its rounded value in `bpm`. Key analysis stores Engine's key index in `Track.key` and, when Engine has written `trackData`, in its key field, because Engine reads the key from track data when it loads a track; unreadable track data is left for Engine to rebuild. Analysis never sets `isAnalyzed` or writes overview waveforms, which Engine builds when it loads or analyzes the track. Unselected fields are untouched.
+
+Up to four tracks analyze concurrently. Each track's results are written in its own transaction as soon as they are ready, after rechecking that Engine DJ Desktop is closed; when Desktop starts, the job fails before its next write. One safety snapshot and one undo record cover every track written, including the tracks written before a failure or cancellation. Per-track analysis failures are reported in the result rather than failing the job:
+
+```json
+{"tracks":[{"track_id":5,"bpm":{"status":"written","bpm":124.0065},"key":{"status":"written","key":23},"grid":{"status":"written","bpm":124.0065}},{"track_id":6,"bpm":{"status":"failed","error":{"code":"no_beat","message":"…"}},"grid":{"status":"locked"}}]}
+```
+
+Tracks appear in request order after aliases are deduplicated. Only selected analyses appear. `status` is `written`, `kept` (`missing_only` found a value), `locked`, or `failed` with an `error` code: `no_beat`, `no_key`, `audio_too_short`, `audio_unavailable`, or `analysis_failed`. Written grids report `tempo_markers` when the analysis found tempo changes.
+
+`track.add` and `staging.import` accept `analyze:true` and an optional `bpm_range` to analyze BPM, key, and beat grid of the tracks they add, in the second half of the job's progress. File-tag BPMs are replaced so the stored tempo matches the grid. Analysis failures are reported per track as `analysis` on each added or imported entry and never undo the import; Desktop starting during analysis fails the job, keeping the imports and their undo record.
+
+## Beat-grid edits
+
+`POST /v1/tracks/{id}/beatgrid/edits` computes one edit for review without writing the library. It shares the collection read barrier, remains available while Desktop is running, and is available under `/v1/libraries/{key}`. The body is an edit with an optional draft: `anchors` (an adjusted grid from an earlier response) chains edits, and omitting it edits the saved grid. Times are seconds on the track's timeline; `marker` indexes the grid's anchors from 0.
+
+| `edit` | Fields | Effect |
+| --- | --- | --- |
+| `shift` | `seconds` (nonzero, at most 60 either way) | Moves every beat, including fractional offsets |
+| `bar_shift` | `beats` (±1 to ±3) | Moves every downbeat later (positive) or earlier, keeping beat positions |
+| `downbeat` | `seconds` | Makes the beat nearest the time start a bar |
+| `scale` | `factor` (`2` or `0.5`) | Doubles or halves every segment's tempo from the same anchors; doubling keeps every downbeat and halving every other one. Halving fails with `beatgrid_half_unaligned` when a tempo marker sits between the halved beats |
+| `tempo` | `bpm`, `marker?` | Sets the BPM of the segment starting at the marker (default 0); later markers move with the segment's end |
+| `marker_add` | `seconds` | Adds a tempo marker on the nearest beat, keeping both tempos |
+| `marker_move` | `marker`, `seconds` | Moves an inner marker between its neighbours; both segments keep their beat counts |
+| `marker_remove` | `marker` | Joins the segments either side of an inner marker at their average tempo |
+| `tap` | `taps` (4–64 increasing times) | Fits the tempo and beat phase to taps. A pause over two seconds restarts the sequence, intervals more than 30% from the median are dropped, and a skipped tap counts two beats. The beat nearest the first tap keeps its index, so bars stay in place |
+| `reset` | none | Restores the default grid from the last analysis |
+
+Every result keeps beat indexes consistent and extends or trims the final anchor to the saved sample-length limit. The response is `{"grid":{"sampleRate":44100,"bpm":124.5,"anchors":[…]}}`. Missing analysis returns `409 beatgrid_missing`; malformed edits return `400 beatgrid_edit_invalid`; tempos outside 30–250 BPM return `422 beatgrid_tempo_range`; a marker on an existing marker returns `422 beatgrid_marker_exists`; inconsistent drafts return `422 beatgrid_invalid`.
+
+`track.grid.update` saves a reviewed draft: `identifier` and `anchors`. It validates the grid, replaces the adjusted grid while keeping the default grid, header, and metadata, and sets `bpm` and `bpmAnalyzed` to the edited grid's whole-grid tempo, as Engine does when editing. Saving is Desktop-protected, snapshotted, and undoable, and returns `{"track_id":5}`. It fails with the edit codes above. Saved cues and loops keep their sample positions.
+
+The matching commands are `engine-cli track analyze <tr|id|path...> [--bpm] [--key] [--grid] [--missing-only] [--bpm-range <range>]`, which analyzes everything when no analysis is chosen, `engine-cli track add --analyze [--bpm-range <range>] <path...>`, and `engine-cli track grid update <tr|id|path>` with exactly one of `--shift`, `--bar-shift`, `--downbeat`, `--double`, `--half`, `--tempo [--marker n]`, `--marker-add`, `--marker-move --marker n`, `--marker-remove`, `--tap t1,t2,…`, or `--reset`, plus `--dry-run` to print the edited grid without saving it.
 
 ## Saved cues and loops
 
@@ -371,7 +423,7 @@ Staged acquisitions live under `<lib-dir>/.engine-cli/staging/`, independently o
 
 `GET /v1/staging/{id}/audio` and `/artwork` stream the staged item's media, with normal origin checks and HTTP byte ranges. Media paths cannot be supplied by clients; paths and symlinks are confined to staging storage. Missing items or media return `404`; unsupported media types return `415`.
 
-`staging.import` accepts `{"ids":["..."],"to_playlist":"optional existing playlist ID"}`. Individual track IDs select tracks; a mix ID selects all its child tracks. Repeated selections are deduplicated. The result contains `imported` (`{id,track_id}` entries pairing each staged ID with its collection track) and `failed` (`{id,error}` entries), always arrays. Failed/pending children remain staged. Each ready track is installed under `Music/staging/<id>/`, imported through the ordinary Engine track operation, and optionally assigned to the playlist before its staged item is removed. Failed imports retain their acquisition for retry. If collection import succeeds but staged cleanup fails, the same ID appears in both arrays with a `track imported but staged cleanup failed` error; the acquisition stays staged for retry, which reuses the existing collection track. Completed mix groups disappear only after all children have been imported. Partial success is represented by both arrays; inspect `failed` even when the job succeeds.
+`staging.import` accepts `{"ids":["..."],"to_playlist":"optional existing playlist ID"}`, plus `analyze` and `bpm_range` to analyze the imported tracks as described under track analysis. Individual track IDs select tracks; a mix ID selects all its child tracks. Repeated selections are deduplicated. The result contains `imported` (`{id,track_id}` entries pairing each staged ID with its collection track) and `failed` (`{id,error}` entries), always arrays. Failed/pending children remain staged. Each ready track is installed under `Music/staging/<id>/`, imported through the ordinary Engine track operation, and optionally assigned to the playlist before its staged item is removed. Failed imports retain their acquisition for retry. If collection import succeeds but staged cleanup fails, the same ID appears in both arrays with a `track imported but staged cleanup failed` error; the acquisition stays staged for retry, which reuses the existing collection track. Completed mix groups disappear only after all children have been imported. Partial success is represented by both arrays; inspect `failed` even when the job succeeds.
 
 `staging.rm` accepts `{"ids":["..."]}` and returns `{"removed":["..."]}`. Selecting a mix removes its children too. Removal records the actual manifests and media in undo history and leaves collection rows untouched. Import requires the ordinary fresh desktop check and safety snapshot. Undoing import restores staged acquisitions and reverses installed files, collection records, and playlist changes. Stage-only removal does not require a desktop check or collection snapshot.
 
@@ -445,9 +497,10 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 
 | Operation | Result |
 | --- | --- |
-| `track.update`, `PUT /v1/tracks/{id}` | `{"track_id":5}` |
+| `track.update`, `PUT /v1/tracks/{id}`, `track.grid.update` | `{"track_id":5}` |
+| `track.analyze` | `{"tracks":[{"track_id":5,"bpm":{"status":"written","bpm":124.0065}}]}`; see track analysis above |
 | `track.batch.update` | `{"track_ids":[5,6]}` |
-| `track.add` | `[{"track_id":7,"path":"Music/song.mp3","playlist_id":2,"moved":true}]`; `path` is the stored path and `playlist_id` is omitted without `to_playlist` |
+| `track.add` | `[{"track_id":7,"path":"Music/song.mp3","playlist_id":2,"moved":true}]`; `path` is the stored path, `playlist_id` is omitted without `to_playlist`, and `analysis` reports `analyze:true` per track |
 | `track.rm` | `[{"track_id":5}]` |
 | `track.move` | `{"track_id":5,"path":"moved/song.mp3"}` with the stored path |
 | `track.upgrade` | `{"track_id":5,"path":"…","original_path":"…","timing_cleared":false,"reanalysis_required":true}` |
@@ -456,7 +509,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | `playlist.track.move` | `[{"from_playlist_id":3,"to_playlist_id":2,"track_id":5}]` |
 | `playlist.import` (apply) | `{"playlist_id":3,"track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
 | `playlist.export` (apply) | `{"playlist_id":3,"path":"/Music/set.m3u8","encoding":"utf-8","path_mode":"absolute","exported_count":2,"skipped_count":0}` |
-| `staging.import` | `{"imported":[{"id":"…","track_id":7}],"failed":[]}` |
+| `staging.import` | `{"imported":[{"id":"…","track_id":7}],"failed":[]}`; each imported entry carries `analysis` with `analyze:true` |
 
 Audio requests accept only positive numeric database IDs. Engine resolves the file path from that track's database record; clients cannot supply arbitrary filesystem paths. Missing tracks/files return `404`, unsupported audio file types return `415`, and unavailable libraries return `503`, using structured API errors. These endpoints read the library and stream the original file without changing or re-encoding it. Browser codec support determines which files can play. The normal loopback-host and allowed-origin checks apply to metadata and audio requests.
 
@@ -487,7 +540,9 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling ID, omitted appends |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
 | `playlist.track.move` | `from`, `to`, `tracks` array |
-| `track.add` | `paths` array, `to_playlist?`, `move?` |
+| `track.add` | `paths` array, `to_playlist?`, `move?`, `analyze?`, `bpm_range?` |
+| `track.analyze` | `identifiers` (1–500), at least one of `bpm`, `key`, `grid`, plus `missing_only?`, `bpm_range?`; see track analysis above |
+| `track.grid.update` | `identifier`, `anchors`; see beat-grid edits above |
 | `track.list` | `{}` |
 | `track.update` | `identifier`, plus at least one metadata field; see collection editing above |
 | `track.batch.update` | `identifiers` (1–500), plus at least one scalar metadata field; see collection editing above |
@@ -500,7 +555,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `track.duplicate.inspect` | Either `ids` array of positive integers or `refs` array of stable references |
 | `track.duplicate.merge` | `keep`, `remove` array, `performance_from?` |
 
-Upgrade timing options are mutually exclusive. When saved cues, loops, or beat grids exist, choose whether to keep or clear them. Upgrades retain the original audio and curated metadata; the replacement needs analysis in Engine DJ.
+Upgrade timing options are mutually exclusive. When saved cues, loops, or beat grids exist, choose whether to keep or clear them. Upgrades retain the original audio and curated metadata; analyze the replacement with `track.analyze` or in Engine DJ.
 
 HTTP validation errors use `{ "error": { "code": "...", "message": "..." } }`. Failures after acceptance appear in job status and terminal events; a successful submission alone does not mean the operation succeeded.
 

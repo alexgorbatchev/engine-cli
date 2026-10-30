@@ -6,6 +6,8 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Audits Engine DJ SQLite collection databases for missing audio files, file size mismatches, and broken playlist links.
 - Imports audio files into collection with automatic metadata tag probing, optional file relocation, and instant playlist assignment.
 - Upgrades tracks through Fetch Track CLI while preserving curated track information, artwork, and playlist membership; extended mixes may replace radio edits.
+- **Analyzes tracks:** Detects BPM, musical key, downbeats, and tempo changes from the audio and writes them as Engine beat grids, keeping values you choose to keep and locked grids.
+- **Edits beat grids:** Shifts grids by fractional seconds, moves downbeats, halves or doubles tempos, fits taps, and adds, moves, or removes tempo markers, with a dry-run preview and undo.
 - Manages nested playlists and folders with creation, deletion, moving, saved sibling ordering, and track membership control. Use `playlist move <id> --to <parent-id> --before <sibling-id>` to choose a position, or omit `--before` to append.
 - **Suggests metadata fixes:** Reviews selected tracks or playlists with your chosen AI model and returns title/artist corrections for approval, preserving the collection and audio files.
 - Extracts and center-crops embedded album artwork to 1:1 square (1400x1400) for crisp jog wheel and media player displays.
@@ -28,7 +30,8 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - Updates database track records from modified on-disk tags and discovers unindexed music files.
 - Automatically saves a safety backup snapshot before performing any database-modifying operation.
 - Close Engine DJ before modifying the library or undoing an operation. Commands check desktop status on macOS and Windows and refuse changes while Engine DJ is running or its status is unknown. Linux reports that Engine DJ is not running without inspecting processes. Read-only commands and dry runs remain available. Use `system check --json` for status and `library undo <id> --dry-run` to check undo conflicts.
-- Keeps the original audio file when upgrading a track. Close Engine DJ before running the upgrade, then analyze the replacement in Engine DJ before playing it.
+- Keeps the original audio file when upgrading a track. Close Engine DJ before running the upgrade, then analyze the replacement with `track analyze` or in Engine DJ before playing it.
+- `track analyze` writes each track as soon as its analysis finishes and checks again that Engine DJ is closed before every write. One undo record covers the whole run, including tracks written before a failure or cancellation. Tracks without a steady beat or a detectable key report it and keep their values.
 - When an upgraded track has saved cues, loops, or beat grids, requires `--keep-timing` or `--clear-timing`. An extended mix can shift those positions, so check retained timing before playing.
 - Track upgrades require at least 16 kHz of measured audio bandwidth and either a higher measured bandwidth than the original or a longer mix with equal bandwidth. This is a screening measure, not a guarantee of audible improvement.
 - Track upgrades keep the original audio file and reject formats outside Engine DJ's supported codec/container combinations, including Opus. Audio is never re-encoded to make an unsupported download fit.
@@ -44,6 +47,9 @@ A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchroni
 - `--dry-run --json` returns the HTTP preview format: entity changes, conflicts, copy sizes, free space, and an approximate space requirement including database snapshots. It creates no backups, history, media, or sync-state files. Apply recomputes the comparison; `--plan-token` additionally rejects an outdated preview. Mappings and baselines live in the destination's `.engine-cli/sync/` and participate in undo. Reverse the paths to sync back. No-op repeats create no history when their baseline is current.
 - Sync publishes verified audio before committing database changes. Failed or interrupted operations can leave completed file changes; destination history preserves recovery data. Use `engine-cli -l <destination> library undo <operation-id>` to reverse them. Pending interrupted entries require `--force` recovery. Keep Engine DJ closed during application and recovery.
 - `library discover [path...]` checks current `Database2/m.db` libraries without opening SQLite or writing library state. Automatic discovery uses Music (including redirected Windows Music folders) and mounted local drives; Windows scans fixed/removable drive letters. Optional paths replace automatic locations and check each path directly, `Engine Library/`, and `Music/Engine Library/`. It does not search recursively, scan network drives automatically, or list legacy root-level databases. Results include `name`, `source` (`local`, `drive`, or `folder`), `path`, and `database`; unreadable or invalid candidates appear in `warnings`. Use `--json` for structured output.
+- Analysis decodes each file once through `ffmpeg` at 22.05 kHz mono and analyzes up to four tracks at a time; a five-minute track takes a few seconds. Beat grids start one bar before the first downbeat and end past the end of the track, matching Engine DJ's analyzer, and are written as both the grid Engine plays and the one its reset restores. Tempo changes appear as markers only when the tempo stays different for about a minute.
+- Analysis keeps a saved grid's sample rate so saved cues and loops stay in place, stores the key where Engine reads it on load, and never writes overview waveforms or marks the track analyzed; Engine builds its waveforms when it loads or analyzes the track. Downbeats come from changes in the music and can land a beat off on tracks with little harmonic movement; correct them with `track grid update --bar-shift` or `--downbeat`.
+- `track grid update` applies one edit to the saved grid and sets the track's BPM to match, as Engine's grid editor does. Saved cues and loops keep their positions.
 - Connects to SQLite collection databases (`Database2/m.db`, `Database2/p.db`) using modern zero-CGO SQLite drivers.
 - Executes `ffprobe` JSON stream analysis to detect attached picture stream dimensions and extract audio tags.
 - Invokes `ffmpeg` with `-c:a copy` to ensure zero lossy-to-lossy audio transcoding during metadata operations.
@@ -98,6 +104,13 @@ engine-cli library verify
 
 # Import an audio file, move it to library storage, and add to a playlist
 engine-cli track add --move --to-playlist 2 "/Downloads/song.mp3"
+
+# Analyze BPM, key, and beat grid, keeping values tracks already have
+engine-cli track analyze --missing-only 42 43
+
+# Preview a slightly later grid, then save it
+engine-cli track grid update 42 --shift 0.012 --dry-run
+engine-cli track grid update 42 --shift 0.012
 
 # Display playlist hierarchy tree
 engine-cli playlist list
@@ -230,6 +243,37 @@ Human and agent text results contain `copied`, `existing`, `failed`, `unavailabl
 | `--list` | `-` | `false` | List available backup snapshots without creating a new backup |
 | `--version` | `-v` | `false` | Print version information and exit |
 | `--help` | `-h` | `false` | Print command line help |
+
+`engine-cli track analyze <tr|id|path...>`
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--bpm` | `-` | `false` | Analyze BPM; without `--bpm`, `--key`, or `--grid` every analysis runs |
+| `--key` | `-` | `false` | Analyze the musical key |
+| `--grid` | `-` | `false` | Analyze the beat grid; locked grids are kept |
+| `--missing-only` | `-` | `false` | Keep BPM, keys, and grids tracks already have |
+| `--bpm-range <range>` | `-` | `88-175` | Fold tempos into `58-115`, `68-135`, `78-155`, `88-175`, or `98-195` |
+| `--json` | `-` | `false` | Compact per-track results |
+
+`engine-cli track add --analyze` analyzes BPM, key, and beat grid of the added tracks and accepts the same `--bpm-range`.
+
+`engine-cli track grid update <tr|id|path>` takes exactly one edit; times are seconds and markers count from 0 at the start of the grid.
+
+| Flag | Short | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--shift <seconds>` | `-` | none | Move every beat, up to 60 seconds either way |
+| `--bar-shift <beats>` | `-` | none | Move every downbeat by 1 to 3 beats; negative moves earlier |
+| `--downbeat <seconds>` | `-` | none | Make the beat nearest this time start a bar |
+| `--double`, `--half` | `-` | `false` | Double or halve the tempo |
+| `--tempo <bpm>` | `-` | none | Set the BPM of the segment chosen by `--marker` (30–250) |
+| `--marker <n>` | `-` | `0` | Segment for `--tempo` or marker for `--marker-move` |
+| `--marker-add <seconds>` | `-` | none | Add a tempo marker on the nearest beat |
+| `--marker-move <seconds>` | `-` | none | Move the `--marker` marker between its neighbours |
+| `--marker-remove <n>` | `-` | none | Remove a tempo marker, joining its segments |
+| `--tap <t1,t2,...>` | `-` | none | Fit tempo and beat phase to four or more tap times |
+| `--reset` | `-` | `false` | Restore the grid from the last analysis |
+| `--dry-run` | `-` | `false` | Print the edited grid without saving it |
+| `--json` | `-` | `false` | Compact output |
 
 `engine-cli api serve`
 

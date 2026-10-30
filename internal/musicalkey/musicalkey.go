@@ -49,14 +49,20 @@ func Parse(text string) (int64, error) {
 			pitch--
 		}
 		isMinor := m[3] == "m" || strings.HasPrefix(strings.ToLower(m[3]), "min")
-		if isMinor {
-			// A minor key shares its position on the circle with its relative major, three semitones higher.
-			pitch += 3
-		}
-		// Each fifth is seven semitones, and seven is its own inverse modulo twelve.
-		return index((pitch+12)%12*7%12, isMinor), nil
+		return FromPitchClass(pitch, isMinor), nil
 	}
 	return 0, fmt.Errorf("%q is not a musical key; use Camelot like 8A, Open Key like 1m, a name like Am or F#, or none", text)
+}
+
+// FromPitchClass returns the stored index of the key whose tonic is pitchClass (C is 0, C♯ is 1, … B is 11).
+func FromPitchClass(pitchClass int, isMinor bool) int64 {
+	pitch := (pitchClass%12 + 12) % 12
+	if isMinor {
+		// A minor key shares its position on the circle with its relative major, three semitones higher.
+		pitch += 3
+	}
+	// Each fifth is seven semitones, and seven is its own inverse modulo twelve.
+	return index(pitch%12*7%12, isMinor)
 }
 
 // index converts a position on the circle of fifths, counted from C major, into Engine's stored index.
