@@ -42,10 +42,11 @@ func GetPlaylistHierarchy(ctx context.Context, database *sql.DB) ([]PlaylistNode
 
 	trackCounts := make(map[int64]int)
 	for _, pl := range allLists {
-		tracks, errT := db.GetPlaylistTracks(ctx, database, pl.ID)
-		if errT == nil {
-			trackCounts[pl.ID] = len(tracks)
+		tracks, err := db.GetPlaylistTracks(ctx, database, pl.ID)
+		if err != nil {
+			return nil, fmt.Errorf("fetching tracks for playlist %d: %w", pl.ID, err)
 		}
+		trackCounts[pl.ID] = len(tracks)
 	}
 
 	// Build parent -> children map
