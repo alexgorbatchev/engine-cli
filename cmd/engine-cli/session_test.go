@@ -3,8 +3,10 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/playhistory"
 	"github.com/alexgorbatchev/engine-cli/internal/playhistory/historytest"
 )
 
@@ -77,5 +79,31 @@ func TestSessionCommandsListInspectAndImport(t *testing.T) {
 	data := inspected["items"].([]any)[0].(map[string]any)["data"].(map[string]any)
 	if data["playCount"] != float64(2) || data["lastPlayed"] != float64(1700000300) {
 		t.Fatalf("track plays: %+v", data)
+	}
+}
+
+func TestSessionOutputForEmptyHistoryAndUnresolvedPlans(t *testing.T) {
+	var out strings.Builder
+	if handled, err := printSession(&out, &playhistory.Sessions{Available: true, Sessions: []playhistory.Session{}}, false); !handled || err != nil {
+		t.Fatalf("sessions: %v %v", handled, err)
+	}
+	if handled, _ := printSession(&out, &playhistory.Sessions{Available: true}, true); handled {
+		t.Fatal("JSON output was printed as a table")
+	}
+	plan := &playhistory.ImportPlan{Name: "Set", SessionTitle: "Set", Entries: []playhistory.Entry{{Position: 1, Title: "Gone", Status: "missing"}}}
+	if _, err := printSession(&out, plan, false); err != nil {
+		t.Fatal(err)
+	}
+	played := int64(1700000000)
+	if got := sessionTime(&played, "Not/AZone"); got != time.Unix(played, 0).Local().Format("2006-01-02 15:04") {
+		t.Fatalf("unknown zone time = %q", got)
+	}
+	for _, text := range []string{"No played sessions.", "Not applicable: none of this session's tracks are in the library."} {
+		if !strings.Contains(out.String(), text) {
+			t.Fatalf("missing %q in %s", text, out.String())
+		}
+	}
+	if help, err := executeCommand("session"); err != nil || !strings.Contains(help, "session import <id>") {
+		t.Fatalf("help: %s %v", help, err)
 	}
 }
