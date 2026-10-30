@@ -222,6 +222,9 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 			return errors.Join(runErr, err)
 		}
 		if !asJSON {
+			if handled, err := printCues(c, result); handled {
+				return errors.Join(runErr, err)
+			}
 			if handled, err := printCustomTags(c, result); handled {
 				return errors.Join(runErr, err)
 			}
