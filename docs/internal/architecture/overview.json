@@ -357,6 +357,15 @@
         "internal/playhistory opens Engine's Database2/hm.db read-only beside m.db and never creates or changes it. History track copies resolve to library tracks by exact path, then origin identity; session.list, session.inspect and GET /v1/sessions follow Engine's listing order and labels.",
         "Track records add playCount and lastPlayed from history entries, unknown when history is missing or unreadable. session.import reviews a session as a plan token, then writes only m.db: one new playlist in play order, first plays kept, under the usual Desktop check, snapshot and undo record."
       ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Batch custom tags — committed reviewed assignment",
+      "items": [
+        "track.custom-tags.batch-inspect resolves 1–500 selectors, deduplicates library tracks in first-seen order, and counts assignments only across that captured selection. Custom-tag values retain their UUID identity; unspecified values stay unchanged.",
+        "track.custom-tags.batch-update accepts explicit add and remove lists. Preview binds the global taxonomy revision, resolved track IDs, native origin identities and exact actions into one review token. Apply changes the companion in one transaction under the existing Desktop, safety snapshot and history ownership; one undo restores the batch.",
+        "Reviewed committed evidence 8e33df9d106215b5fd9723c82800867c72b670c6: internal/tags/batch.go:16–115,129–192,200–263; internal/api/tags.go:126–138; cmd/engine-cli/custom_tags.go:38–39,78–91. Historical evidence pins remain unchanged. No additional actor, daemon or collection database writer is introduced."
+      ]
     }
   ]
 }

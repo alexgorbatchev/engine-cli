@@ -5953,6 +5953,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/history/files.go:57–104; internal/history/history.go:161–264; internal/history/undo.go:53–109; internal/backup/companion.go:26–117; internal/backup/restore.go:40–83; internal/transfer/tags.go:15–43,157–190; internal/transfer/apply.go:133–171. The historical source pins remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Batch custom tags — exact consent and atomic companion write</h3>
+        </div>
+        <ul>
+          <li>Batch inspection and dry-run review are read-only. The plan preserves first-seen resolved track order, rejects duplicate or overlapping value actions, and reports changed tracks separately from added and removed native-origin assignments. Multiple library rows sharing one native origin change that assignment only once.</li>
+          <li>The checked API preflight rejects stale revision or token, missing values and zero-change apply before Desktop checks, safety backup or history creation. A zero-change preview remains valid; an apply reports tag_no_changes rather than creating a misleading history entry.</li>
+          <li>Apply re-resolves native identities, checks the token and revision again inside the companion transaction, then deletes and inserts all assignments atomically. An error or cancellation rolls back that transaction. The ordinary collection operation supplies the existing snapshot and one undo entry; this does not claim atomic publication across Engine, companion and history files.</li>
+          <li>Reviewed committed evidence 8e33df9d106215b5fd9723c82800867c72b670c6: internal/api/tags.go:126–138; internal/tags/batch.go:60–79,129–192,195–263; internal/api/tags_batch_test.go:17–155. Historical workflow nodes, links and evidence pins remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

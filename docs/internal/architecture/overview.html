@@ -5933,6 +5933,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Track records add playCount and lastPlayed from history entries, unknown when history is missing or unreadable. session.import reviews a session as a plan token, then writes only m.db: one new playlist in play order, first plays kept, under the usual Desktop check, snapshot and undo record.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Batch custom tags — committed reviewed assignment</h3>
+        </div>
+        <ul>
+          <li>track.custom-tags.batch-inspect resolves 1–500 selectors, deduplicates library tracks in first-seen order, and counts assignments only across that captured selection. Custom-tag values retain their UUID identity; unspecified values stay unchanged.</li>
+          <li>track.custom-tags.batch-update accepts explicit add and remove lists. Preview binds the global taxonomy revision, resolved track IDs, native origin identities and exact actions into one review token. Apply changes the companion in one transaction under the existing Desktop, safety snapshot and history ownership; one undo restores the batch.</li>
+          <li>Reviewed committed evidence 8e33df9d106215b5fd9723c82800867c72b670c6: internal/tags/batch.go:16–115,129–192,200–263; internal/api/tags.go:126–138; cmd/engine-cli/custom_tags.go:38–39,78–91. Historical evidence pins remain unchanged. No additional actor, daemon or collection database writer is introduced.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
