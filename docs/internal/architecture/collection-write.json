@@ -295,6 +295,17 @@
         "Apply rebuilds and checks the plan inside one transaction, then creates the playlist and every ordered membership together. Cancellation or an insertion failure rolls back the entire playlist. The ordinary collection-write path supplies Desktop protection, the configured safety backup, and one history entry; one undo reverses the import.",
         "Evidence: cbac846503e303552ed223020d47a37f3c3783a9, internal/api/playlist_import.go:12–38; internal/api/operations.go:175–234; internal/playlist/import.go:73–108,164–282. This extension is separate from the historical revision pinned above. Uncommitted working-tree changes are outside this review."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "M3U export — read source, write destination",
+      "items": [
+        "playlist.export and playlist export review direct playlist memberships in saved nextEntityId order, including every origin identity. Malformed links fail; unavailable media blocks export unless the exact review explicitly includes skipping it. UTF-8, Windows-1252, or Latin-1 output and absolute or destination-relative paths are validated before creating a file; M3U8 requires UTF-8.",
+        "Preview and apply hold the collection read barrier. Each review reads the playlist title, memberships, and library UUID in one read-only transaction. Apply rebuilds the review and matches its token before publication; the token binds source identities, normalized options, availability, and serialized output. The read transaction ends before the destination is created, while API scheduling retains the source read barrier.",
+        "Non-preview apply also takes the shared write gate to serialize its output-file write. Its catalog effect remains read: it does not modify the source collection and skips Desktop checks, safety backups, history, and undo. This specialized path is outside the ordinary collection-write drawing above.",
+        "Publication opens the destination parent with os.OpenRoot and exclusively creates a new file with O_CREATE|O_EXCL. Existing files, directories, and symlinks are refused; no overwrite, append, or audio copy occurs. The file can be visible while writing. Write, sync, close, or cancellation failures attempt cleanup only while the path still identifies the created file; cleanup is best-effort and preserves external replacements.",
+        "Evidence: 9c9a37eeea33b447fbb33217cac2cdbbfc6b8646, internal/api/playlist_export.go:14–30; internal/api/scheduling.go:9–41; internal/api/operations.go:175–241; internal/playlist/export.go:81–173; internal/playlist/export_order.go:23–80; internal/playlist/export_file.go:13–70. Historical evidence pins remain unchanged. Uncommitted working-tree changes are outside this review."
+      ]
     }
   ]
 }

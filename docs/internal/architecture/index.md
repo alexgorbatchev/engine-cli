@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-29 20:03
+last_modified: 2026-10-29 21:49
 status: current
 ---
 
@@ -12,17 +12,19 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 | --- | --- |
 | [System overview](overview.html) | CLI and HTTP entry points, operation execution, collection services, library storage, recovery, and managed tools |
 | [HTTP job lifecycle](job-lifecycle.html) | Queued and running jobs, success, failure, cooperative cancellation, scheduling, and retained results |
-| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path: access control, Desktop checks, safety backups, before/after history, failure recovery, and exact-plan M3U import |
+| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, exact-plan M3U import, and the separate read-only-source M3U export boundary |
 
 All three specifications cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`. Their source links and claims describe that revision. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
-The collection-write HTML was regenerated with the CDP-enabled [Archify fork](https://github.com/alexgorbatchev/archify) at `6bd7822dcda53c7a87978ac73f413a9b1968c25b` (3.2.1-dev.1). Its embedded software notices preserve the Apache 2.0 license and historical MIT grants. Other diagrams retain their original renderer and notices.
+The collection-write HTML was regenerated with released [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.2` under Node `22.23.4`. Its embedded software notices preserve the Apache 2.0 license and historical MIT grants. Other diagrams retain their original renderer and notices.
 
 ## Viewing
 
 The collection-write page's bulk-metadata card describes the `track.batch.update` addition committed in `07441d1`, after the pinned source revision: all selected tracks share one transaction, snapshot, and undo record under the existing collection-write safeguards.
 
 The collection-write page's M3U-import card cites committed engine-cli `cbac846503e303552ed223020d47a37f3c3783a9`: read-only review and pre-artifact validation precede the ordinary protected write path, while playlist creation and ordered memberships commit atomically and share one undo record. It covers new playlists from existing collection tracks, not acquisition, append, or replacement. The original diagram source pin and bulk-metadata evidence remain unchanged. Uncommitted working-tree changes are outside this review.
+
+The collection-write page's M3U-export card cites committed engine-cli `9c9a37eeea33b447fbb33217cac2cdbbfc6b8646`: review and apply observe saved direct-membership order in a read-only transaction under the collection read barrier. Apply also takes the shared write gate, checks the exact reviewed output, and exclusively creates a new server-local destination. The source collection remains unchanged, so this specialized path has no Desktop check, snapshot, history, or undo. The output can be visible while writing; failure cleanup is best-effort and checks file identity before removal. Historical evidence pins remain unchanged; diagram review does not advance an integration revision. Uncommitted working-tree changes are outside this review.
 
 The overview's saved-marker card describes the working-tree performance-read endpoint separately from the pinned evidence: Engine CLI owns database access and the collection barrier, while `djtools` decodes supplied blobs without opening a database.
 
