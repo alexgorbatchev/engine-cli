@@ -51,6 +51,20 @@ type trackCustomTagsParams struct {
 }
 type assignCustomTagsParams tags.AssignmentEdit
 
+type batchCustomTagsParams struct {
+	Tracks []string `json:"tracks"`
+}
+
+type batchAssignCustomTagsParams tags.BatchOptions
+
+func (p batchAssignCustomTagsParams) operationPreview() bool { return p.DryRun }
+func (p batchAssignCustomTagsParams) operationEffect() string {
+	if p.DryRun {
+		return "read"
+	}
+	return "collection"
+}
+
 type tagReconcileParams tags.ReconcileOptions
 
 func (p tagReconcileParams) operationPreview() bool { return p.DryRun }
@@ -108,6 +122,19 @@ func (s *Server) tagOperations() []operation {
 		s.tagDeleteOperation(false),
 		define("track.custom-tags.inspect", false, []string{"track"}, func(ctx context.Context, p trackCustomTagsParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return tags.InspectTrack(ctx, d, s.config.LibraryDir, p.Track) })
+		}),
+		define("track.custom-tags.batch-inspect", false, []string{"tracks"}, func(ctx context.Context, p batchCustomTagsParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) { return tags.InspectBatch(ctx, d, s.config.LibraryDir, p.Tracks) })
+		}),
+		defineChecked("track.custom-tags.batch-update", "collection", []string{"tracks", "revision", "add", "remove"}, func(ctx context.Context, p batchAssignCustomTagsParams, _ *boundOperation) error {
+			_, err := s.database(ctx, func(d *sql.DB) (any, error) {
+				return nil, tags.CheckBatch(ctx, d, s.config.LibraryDir, tags.BatchOptions(p))
+			})
+			return err
+		}, func(ctx context.Context, p batchAssignCustomTagsParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				return tags.AssignBatch(ctx, d, s.config.LibraryDir, tags.BatchOptions(p))
+			})
 		}),
 		defineChecked("track.custom-tags.update", "collection", []string{"track", "revision", "values"}, func(ctx context.Context, p assignCustomTagsParams, _ *boundOperation) error {
 			_, err := s.database(ctx, func(d *sql.DB) (any, error) {

@@ -32,9 +32,11 @@ func newCustomTagsCommand() *cobra.Command {
 }
 
 func newTrackCustomTagsCommand() *cobra.Command {
-	root := &cobra.Command{Use: "custom-tags", Short: "Inspect or replace one track's library-local custom values", Args: cobra.NoArgs}
+	root := &cobra.Command{Use: "custom-tags", Short: "Inspect and change library-local custom values for selected tracks", Args: cobra.NoArgs}
 	root.AddCommand(acquisitionCommand("track.custom-tags.inspect", "inspect <track>", "Inspect custom values and current taxonomy revision", "track", nil))
 	root.AddCommand(acquisitionCommand("track.custom-tags.update", "update <track>", "Replace all custom values on one track; --values= clears them", "track", []acquisitionFlag{{"values", "strings", "Complete value ID list; repeat or use commas, explicit empty clears all"}, {"revision", "string", "Current custom-tag revision from inspection or category list"}}))
+	root.AddCommand(acquisitionCommand("track.custom-tags.batch-inspect", "batch-inspect", "Inspect mixed custom-tag assignments on selected tracks", "", []acquisitionFlag{{"tracks", "strings", "Selected track IDs or selectors, in selection order (1–500)"}}))
+	root.AddCommand(acquisitionCommand("track.custom-tags.batch-update", "batch-update", "Review and atomically add or remove selected custom-tag values", "", []acquisitionFlag{{"tracks", "strings", "Selected track IDs or selectors, in selection order (1–500)"}, {"revision", "string", "Current custom-tag revision"}, {"add", "strings", "Value IDs to add; explicit empty preserves all other assignments"}, {"remove", "strings", "Value IDs to remove; explicit empty preserves all other assignments"}, {"dry-run", "bool", "Review exact assignment impact without changing the library"}, {"plan-token", "string", "Exact batch review token; required without --dry-run"}}))
 	return root
 }
 
@@ -58,6 +60,24 @@ func printCustomTags(command *cobra.Command, result any) (bool, error) {
 		return true, nil
 	case *tags.TrackTags:
 		_, err := fmt.Fprintf(output, "Track: %d\nCustom values: %s\nRevision: %s\n", value.TrackID, strings.Join(value.Values, ", "), value.Revision)
+		return true, err
+	case *tags.BatchTags:
+		if _, err := fmt.Fprintf(output, "Selected tracks: %v\nRevision: %s\n", value.TrackIDs, value.Revision); err != nil {
+			return true, err
+		}
+		for _, category := range value.Categories {
+			if _, err := fmt.Fprintf(output, "%s [%s]\n", category.Name, category.ID); err != nil {
+				return true, err
+			}
+			for _, v := range category.Values {
+				if _, err := fmt.Fprintf(output, "  %s [%s] — %d of %d selected tracks\n", v.Name, v.ID, v.SelectedTracks, len(value.TrackIDs)); err != nil {
+					return true, err
+				}
+			}
+		}
+		return true, nil
+	case *tags.BatchChange:
+		_, err := fmt.Fprintf(output, "Selected tracks: %v\nAdd values: %s\nRemove values: %s\nChanged tracks: %d\nAdded assignments: %d\nRemoved assignments: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.TrackIDs, strings.Join(value.Add, ", "), strings.Join(value.Remove, ", "), value.ChangedTracks, value.AddedAssignments, value.RemovedAssignments, value.Applied, value.Revision, value.PlanToken)
 		return true, err
 	case *tags.Mutation:
 		_, err := fmt.Fprintf(output, "Custom tag: %s\nChanged: %t\nRevision: %s\n", value.ID, value.Changed, value.Revision)

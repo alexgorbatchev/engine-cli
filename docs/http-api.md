@@ -465,6 +465,8 @@ submission/result envelope. Category and value IDs are opaque UUID strings.
 | `tag.category.delete`, `tag.value.delete` | `id`, `revision`, `dry_run`, optional `plan_token` | `{id,revision,plan_token,affected_tracks,removed_assignments,removed_values,applied}` |
 | `track.custom-tags.inspect` | `track` | `{track_id,revision,values:[value_id...]}` |
 | `track.custom-tags.update` | `track`, `revision`, `values` | `{track_id,revision,values:[value_id...]}` |
+| `track.custom-tags.batch-inspect` | `tracks` | `{revision,track_ids,categories:[{id,name,values:[{id,name,selected_tracks}]}]}` |
+| `track.custom-tags.batch-update` | `tracks`, `revision`, `add`, `remove`, `dry_run`, optional `plan_token` | `{revision,track_ids,add,remove,plan_token,changed_tracks,added_assignments,removed_assignments,applied}` |
 | `tag.reconcile` | `revision`, `dry_run`, optional `plan_token` | `{revision,plan_token,unavailable_tracks,removed_assignments,applied}` |
 
 `track` uses the existing single-track selector syntax. `values` is the complete
@@ -472,6 +474,28 @@ replacement array of value UUID strings; an explicit empty array clears the
 track's custom tags. Missing or null arrays are rejected. Duplicate IDs and IDs
 not present in this library are rejected. Assigning several values from the same
 category is supported. Response arrays are arrays even when empty.
+
+Batch inspection and updates accept 1–500 track selectors in `tracks`. Repeated
+selectors resolving to the same local track are deduplicated in first-seen order;
+`track_ids` returns that exact resolved order. Inspection counts each value's
+assignments among these selected current tracks in `selected_tracks`, including
+zero counts. It never changes assignments.
+
+For batch updates, `add` and `remove` are required arrays of value UUIDs. Explicit
+empty arrays preserve existing assignments. Values absent from both arrays are
+kept; the operation does not replace each track's entire assignment set. Duplicate
+IDs, unknown IDs, and IDs present in both arrays are rejected. Preview with
+`dry_run:true`, then apply the same selection, revision, actions, and returned
+`plan_token` with `dry_run:false`. The token binds the deduplicated local IDs,
+their native origins, the global revision, and exact Add/Remove actions. Changes
+to those identities or assignments require a new review.
+
+`changed_tracks` counts selected local tracks whose assignments change.
+`added_assignments` and `removed_assignments` count distinct native-origin/value
+pairs. Apply commits the whole batch atomically and creates one undo history
+entry. A preview with zero changed tracks succeeds; applying that reviewed no-op
+is rejected with `tag_no_changes` before Desktop checks, backup, or history.
+It does not change the operation's collection-write effect or scheduling.
 
 The opaque `revision` covers both taxonomy definitions and all track assignments.
 Read it from the latest list or inspect result and submit it unchanged with every
@@ -517,11 +541,12 @@ Unicode case-folded names must be unique across categories in the library, or
 across values within the same category. The normalized display spelling is
 retained. Renaming a value does not move it to another category.
 
-List, inspect, deletion previews, and reconciliation previews are reads. Actual writes use the collection
+List, inspect, batch inspection, batch previews, deletion previews, and reconciliation previews are reads. Actual writes use the collection
 write barrier, fresh Desktop protection, snapshot, and durable history contracts.
 Validation errors include `tag_name_invalid`, `tag_name_exists`,
 `tag_values_required`, `tag_value_duplicate`, `tag_not_found`,
-`tag_track_identity_invalid`, `tag_revision_stale`, and `tag_plan_stale`.
+`tag_track_identity_invalid`, `tag_revision_stale`, `tag_plan_stale`,
+`tag_tracks_invalid`, `tag_actions_overlap`, and `tag_no_changes`.
 `track_not_found` retains its existing meaning. Clients must display their safe
 error-code catalog messages rather than raw diagnostic text.
 
