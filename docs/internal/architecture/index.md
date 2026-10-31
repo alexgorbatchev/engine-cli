@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 22:08
+last_modified: 2026-10-31 05:09
 status: current
 ---
 
@@ -96,3 +96,7 @@ Overview and collection-write supplemental cards cite committed Engine CLI `067f
 ## Rooted staging manifest publication
 
 The overview adds separately reviewed staging publication evidence at committed Engine CLI `067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0`. A synced temporary manifest is published through retained rooted handles; Unix directory synchronization remains, while Windows uses native relative-handle write-through replacement and rejects source reparse points. NTFS rename-metadata durability is an explicit filesystem-specific guarantee. Staging history scope and scheduling remain unchanged.
+
+## Complete library health-check reads
+
+The overview’s health-check card cites committed Engine CLI [5be6ff3](https://github.com/alexgorbatchev/engine-cli/commit/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275). [Required collection and playlist reads](https://github.com/alexgorbatchev/engine-cli/blob/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275/internal/verify/verify.go#L61-L180) fail without a report when incomplete, preserving cancellation and deadline classifications. [Membership inspection](https://github.com/alexgorbatchev/engine-cli/blob/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275/internal/verify/verify.go#L183-L216) uses native origin pairs and propagates query, scan, iteration and close failures. The [HTTP contract](https://github.com/alexgorbatchev/engine-cli/blob/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275/docs/http-api.md#L668-L672) reports library_verify_incomplete without a result; CLI human, agent and JSON modes omit success reports. Verification remains read-only with no repair, snapshot or Undo enrollment; existing graph topology, ownership and historical evidence pins remain unchanged. Uncommitted changes are outside this evidence.
