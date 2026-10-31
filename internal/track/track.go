@@ -41,28 +41,46 @@ func defaultRunner(ctx context.Context, name string, args ...string) ([]byte, er
 	return stdout.Bytes(), nil
 }
 
-// RequireAudio refuses a file ffprobe reports has no audio, because a Track row
-// for it would be unplayable in Engine DJ. A missing ffprobe leaves the decision
-// to the operations that need it.
+// RequireAudio requires a native audio stream and a decoded frame before a
+// collection import. Inspect the first second relative to the input's initial
+// timestamp, so delayed-start streams remain eligible without decoding a track
+// in its entirety.
 func RequireAudio(ctx context.Context, filePath string, runnerOpt ...sync.CommandRunner) error {
 	runner := defaultRunner
 	if len(runnerOpt) > 0 && runnerOpt[0] != nil {
 		runner = runnerOpt[0]
 	}
-	out, err := runner(ctx, "ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "json", filePath)
-	if errors.Is(err, exec.ErrNotFound) {
-		return nil
-	}
+	out, err := runner(ctx, "ffprobe", "-v", "error", "-select_streams", "a", "-read_intervals", "%+1", "-show_frames", "-show_entries", "stream=codec_type:frame=media_type", "-of", "json", filePath)
 	if contextErr := ctx.Err(); contextErr != nil {
 		return contextErr
 	}
+	if errors.Is(err, exec.ErrNotFound) {
+		return fmt.Errorf("checking audio requires ffprobe: %w", err)
+	}
 	var probe struct {
-		Streams *[]struct{} `json:"streams"`
+		Streams []struct {
+			CodecType string `json:"codec_type"`
+		} `json:"streams"`
+		Frames []struct {
+			MediaType string `json:"media_type"`
+		} `json:"frames"`
 	}
-	if err == nil && (json.Unmarshal(out, &probe) != nil || probe.Streams == nil || len(*probe.Streams) > 0) {
-		return nil
+	if err == nil {
+		err = json.Unmarshal(out, &probe)
+		if err == nil {
+			for _, stream := range probe.Streams {
+				if stream.CodecType != "audio" {
+					continue
+				}
+				for _, frame := range probe.Frames {
+					if frame.MediaType == "audio" {
+						return nil
+					}
+				}
+			}
+		}
 	}
-	return &progress.Error{Code: "track_not_audio", Cause: fmt.Errorf("%q has no readable audio", filepath.Base(filePath))}
+	return &progress.Error{Code: "track_not_audio", Cause: errors.Join(fmt.Errorf("%q has no readable audio", filepath.Base(filePath)), err)}
 }
 
 // AddTrack imports an audio file into the Engine DJ collection.
@@ -104,6 +122,9 @@ func AddTrack(
 	}
 	if info.IsDir() {
 		return nil, fmt.Errorf("%q is a directory, expected an audio file", filePath)
+	}
+	if err := RequireAudio(ctx, filePath, runner); err != nil {
+		return nil, err
 	}
 
 	actualPath := filePath

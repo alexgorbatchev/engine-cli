@@ -73,6 +73,9 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 		if result != nil {
 			report.Imported = append(report.Imported, Imported{ID: item.ID, TrackID: result.Track.ID})
 		}
+		if err := ctx.Err(); err != nil {
+			return report, err
+		}
 		if err != nil {
 			report.Failed = append(report.Failed, Failure{ID: item.ID, Error: err.Error(), ErrorCode: progress.ErrorCode(err)})
 			continue
@@ -104,6 +107,9 @@ func (s *Store) importTrack(ctx context.Context, d *sql.DB, item Item, opts Impo
 		return nil, err
 	}
 	defer source.Close()
+	if err := track.RequireAudio(ctx, filepath.Join(s.root(), filepath.FromSlash(item.AudioPath)), opts.Runner); err != nil {
+		return nil, err
+	}
 	root, err := os.OpenRoot(s.lib)
 	if err != nil {
 		return nil, err

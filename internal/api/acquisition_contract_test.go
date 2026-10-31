@@ -17,6 +17,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 	"github.com/alexgorbatchev/godeps"
 )
 
@@ -362,9 +363,9 @@ func TestAcquisitionFetchStagesAndOptionallyImports(t *testing.T) {
 					guards++
 					return &systemcheck.Report{Checks: map[string]systemcheck.Result{systemcheck.EngineDesktop: {Status: "ok", Running: new(false)}}}, nil
 				}
-				s.config.ToolRunner = func(_ context.Context, tool string, args ...string) ([]byte, error) {
+				s.config.ToolRunner = func(ctx context.Context, tool string, args ...string) ([]byte, error) {
 					if tool == "ffprobe" {
-						return []byte(`{"format":{"tags":{"title":"Imported title"}},"streams":[]}`), nil
+						return testaudio.Metadata(`{"format":{"tags":{"title":"Imported title"}},"streams":[]}`)(ctx, tool, args...)
 					}
 					if slices.Contains(args, "--dry-run") {
 						return []byte(`{"status":"preview","title":"Mix"}`), nil
@@ -374,9 +375,7 @@ func TestAcquisitionFetchStagesAndOptionallyImports(t *testing.T) {
 						t.Fatalf("no output directory %s %v", tool, args)
 					}
 					path := filepath.Join(args[index+1], "download.mp3")
-					if err := os.WriteFile(path, []byte("downloaded"), 0600); err != nil {
-						t.Fatal(err)
-					}
+					testaudio.Write(t, path)
 					if kind == "mix" {
 						return json.Marshal(map[string]any{"status": "success", "title": "Mix", "tracks": []map[string]any{{"index": 1, "title": "Song", "status": "completed", "output_file": path}}})
 					}

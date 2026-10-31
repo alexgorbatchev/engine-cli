@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -19,16 +20,22 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
 // installFakeDecoder makes ffmpeg stream the PCM sidecar of the requested file, or FAKE_PCM for files without one,
 // and ffprobe report a 44.1 kHz stream.
 func installFakeDecoder(t *testing.T) {
 	t.Helper()
+	probe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NATIVE_FFPROBE", probe)
 	bin := t.TempDir()
 	scripts := map[string]string{
 		"ffmpeg":  "#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\nif [ -f \"${2#file:}.pcm\" ]; then cat \"${2#file:}.pcm\"; elif [ -n \"$FAKE_PCM\" ]; then cat \"$FAKE_PCM\"; else exit 1; fi\n",
-		"ffprobe": "#!/bin/sh\necho '{\"streams\":[{\"sample_rate\":\"44100\"}],\"format\":{\"duration\":\"40\"}}'\n",
+		"ffprobe": "#!/bin/sh\nfor arg do\nif [ \"$arg\" = '-show_frames' ]; then exec \"$NATIVE_FFPROBE\" \"$@\"; fi\ndone\necho '{\"streams\":[{\"sample_rate\":\"44100\"}],\"format\":{\"duration\":\"40\"}}'\n",
 	}
 	for name, script := range scripts {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0o755); err != nil {
@@ -68,9 +75,7 @@ func nativeAPI(t *testing.T) (*Server, string, *sql.DB) {
 	}
 	t.Cleanup(func() { _ = d.Close() })
 	for _, name := range []string{"one.mp3", "two.mp3"} {
-		if err := os.WriteFile(filepath.Join(lib, name), []byte("audio"), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		testaudio.Write(t, filepath.Join(lib, name))
 		beatPCM(t, filepath.Join(lib, name+".pcm"))
 	}
 	if _, err := d.Exec("INSERT INTO Track(id, path, filename, length, bpm, bpmAnalyzed, key) VALUES(1, 'one.mp3', 'one.mp3', 40, 90, 90, 4), (2, 'two.mp3', 'two.mp3', 40, 90, 90, 4)"); err != nil {
@@ -226,9 +231,7 @@ func TestGridEditsPreviewAndSaveUndoably(t *testing.T) {
 func TestImportsAnalyzeAddedTracks(t *testing.T) {
 	s, lib, d := nativeAPI(t)
 	source := filepath.Join(t.TempDir(), "new.mp3")
-	if err := os.WriteFile(source, []byte("audio"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, source)
 	beatPCM(t, source+".pcm")
 	added := runAPIJob(t, s, "track.add", fmt.Sprintf(`{"paths":[%q],"analyze":true}`, source))
 	item := added["result"].([]any)[0].(map[string]any)
@@ -258,9 +261,7 @@ func TestImportsAnalyzeAddedTracks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "audio.mp3"), []byte("audio"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, filepath.Join(dir, "audio.mp3"))
 	staged.AudioPath = staged.ID + "/audio.mp3"
 	if err := store.Update(ctx, *staged); err != nil {
 		t.Fatal(err)
@@ -299,9 +300,7 @@ func TestLockedGridsRefuseEditsAndSaves(t *testing.T) {
 func TestImportsKeepTheirEntriesWhenDesktopStopsAnalysis(t *testing.T) {
 	s, _, _ := nativeAPI(t)
 	source := filepath.Join(t.TempDir(), "late.mp3")
-	if err := os.WriteFile(source, []byte("audio"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, source)
 	beatPCM(t, source+".pcm")
 	var checks atomic.Int32
 	s.config.CheckSystem = func(ctx context.Context, names []string) (*systemcheck.Report, error) {
@@ -327,9 +326,7 @@ func importSources(t *testing.T) (string, string) {
 	dir := t.TempDir()
 	beat, silent := filepath.Join(dir, "beat.mp3"), filepath.Join(dir, "silent.mp3")
 	for _, path := range []string{beat, silent} {
-		if err := os.WriteFile(path, []byte("audio"), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		testaudio.Write(t, path)
 	}
 	beatPCM(t, beat+".pcm")
 	if err := os.WriteFile(silent+".pcm", make([]byte, 4*30*analysis.SampleRate), 0o644); err != nil {

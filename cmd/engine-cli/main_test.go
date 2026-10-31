@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
 func createTestLibrary(t *testing.T) string {
@@ -44,15 +45,11 @@ func createTestLibrary(t *testing.T) string {
 		t.Fatalf("create fixture audio directory: %v", err)
 	}
 	audioFile := filepath.Join(audioDir, "track1.m4a")
-	if err := os.WriteFile(audioFile, []byte("audio dummy 20 bytes"), 0644); err != nil {
-		t.Fatalf("write fixture audio file: %v", err)
-	}
+	testaudio.Write(t, audioFile)
 
 	// Create unindexed file
 	unindexedFile := filepath.Join(dir, "Music", "unindexed.mp3")
-	if err := os.WriteFile(unindexedFile, []byte("unindexed audio"), 0644); err != nil {
-		t.Fatalf("write unindexed fixture audio file: %v", err)
-	}
+	testaudio.Write(t, unindexedFile)
 
 	for _, statement := range []struct{ name, sql string }{
 		{"track", `
@@ -879,9 +876,7 @@ func TestNewTrackCommands_E2E(t *testing.T) {
 
 	// Create a new audio file
 	newAudio := filepath.Join(libDir, "incoming.mp3")
-	if err := os.WriteFile(newAudio, []byte("incoming track dummy bytes"), 0o644); err != nil {
-		t.Fatalf("write incoming fixture audio: %v", err)
-	}
+	testaudio.Write(t, newAudio)
 
 	// 1. Track add with --to-playlist and --move
 	outAdd, err := executeCommand("-l", libDir, "track", "add", "--to-playlist", "2", "--move", newAudio)
@@ -981,9 +976,7 @@ func TestAgentMode_NewCommands(t *testing.T) {
 
 	// 7. Track add in AGENT mode
 	newAudio := filepath.Join(libDir, "agent_song.mp3")
-	if err := os.WriteFile(newAudio, []byte("agent song data"), 0o644); err != nil {
-		t.Fatalf("write agent fixture audio: %v", err)
-	}
+	testaudio.Write(t, newAudio)
 	taOut, err := executeCommand("-l", libDir, "track", "add", newAudio)
 	if err != nil {
 		t.Fatalf("track add in agent mode failed: %v", err)
@@ -1044,9 +1037,7 @@ func TestCommandHelpAndErrorBranches(t *testing.T) {
 
 	// Commands with --no-backup
 	newAudio := filepath.Join(libDir, "nobackup.mp3")
-	if err := os.WriteFile(newAudio, []byte("data"), 0o644); err != nil {
-		t.Fatalf("write no-backup fixture audio: %v", err)
-	}
+	testaudio.Write(t, newAudio)
 	if _, err := executeCommand("-l", libDir, "--no-backup", "track", "add", newAudio); err != nil {
 		t.Fatalf("track add --no-backup error: %v", err)
 	}
