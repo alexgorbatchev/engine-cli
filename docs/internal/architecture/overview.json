@@ -462,6 +462,36 @@
         "A caller-owned *sql.Tx remains caller-owned: Add participates without beginning or committing another transaction. Deduplication and native originTrackId plus originDatabaseUuid identity remain unchanged, including equal origin IDs from different libraries.",
         "Reviewed committed evidence 86e33dbd1cbb1409cee82ab67af1167d10d95df0: internal/db/db.go:529–604; internal/db/membership_add_atomic_test.go:1–163. Existing API/Cobra Desktop protection, snapshots and Undo remain the owners; no multi-track batch atomicity is added. Historical evidence pins and graph topology remain unchanged."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Playlist track ordering — exact native membership review",
+      "items": [
+        "playlist.reorder and playlist reorder share native membership ordering. Preview resolves local tracks through the originTrackId/originDatabaseUuid pair and validates the full PlaylistEntity chain. Ambiguous origins, cycles, missing links and multiple heads fail closed; unresolved native memberships remain preserved in the chain.",
+        "The supplied view must follow native ascending or descending membership order. Selected displayed runs retain their internal order and hidden memberships between their endpoints; the planner translates the displayed drop gap into native links without assigning local track IDs as membership identities.",
+        "Read-only preview binds the canonical library root, library UUID, target identity/title/parent/edit timestamp, complete membership observations and exact move options to a plan token. Checked apply rejects stale or ineffective consent before safety artifacts and rebuilds the same plan within its write transaction.",
+        "Application changes only affected nextEntityId links and the target playlist timestamp, checks each affected row and commits once. Failed writes roll back. The result is constructed from the committed plan without a fallible post-commit entity read. Existing collection scheduling, fresh Desktop protection, snapshot and Undo remain the owners; no actor or persistence store is introduced.",
+        "Reviewed committed evidence dc21b3adb3b874cbc47c618b706e1295299af7ba: internal/db/membership_order.go:9-50; internal/playlist/reorder.go:51-146; internal/playlist/reorder_plan.go:29-187; internal/playlist/reorder_read.go:16-81; internal/playlist/reorder_write.go:10-76; internal/api/playlist_reorder.go:21-39; cmd/engine-cli/playlist_reorder.go:11-37. Historical evidence pins remain unchanged; no new actor or persistence owner is introduced."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Custom track colors — independent companion ownership",
+      "items": [
+        "Engine CLI owns library-local .engine-cli/colors.db independently of tags.db and imports.db. Canonical RGB assignments use native origin UUID/track-ID pairs. They do not change Engine Desktop color fields, embedded metadata or custom-tag taxonomy; the browser accesses this state only through Engine CLI.",
+        "track.color.list projects assigned collection rows from one stored observation; track.color.inspect resolves one selected track. Reads neither enroll storage nor prune unavailable origins. The revision covers stored assignments, so an external Desktop removal changes availability without silently discarding colors or changing that revision.",
+        "Reviewed committed evidence f0db5cd495abc6491bb70a8e0e3857e54932dda7: internal/companion/companion.go:10-64; internal/colors/model.go:17-57; internal/colors/store.go:30-41; internal/colors/collection.go:21-49; internal/api/colors.go:39-70. This addition preserves historical graph topology and evidence pins; no new actor is introduced."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Custom track colors — recovery and synchronization",
+      "items": [
+        "Shared native database snapshots preserve independent companion enrollment. Backup presence version 3 records colors separately from tags and imports. Older backup presence versions imply color absence; restoration validates required databases before publication. Existing history and Undo preserve before-images, including first-enrollment absence.",
+        "Collection removal prunes only origins actually removed within that history boundary, retaining earlier unavailable assignments. Duplicate merge keeps an assigned survivor color, otherwise inherits one unambiguous removed color; conflicting removed colors are refused before safety enrollment.",
+        "Library sync includes selected color assignments and destination observations in its reviewed entity plan. Companion revisions are checked before Engine publication. Colors publish separately from Engine and other companions; a later publication failure retains pending recovery history rather than claiming a cross-file atomic commit.",
+        "Reviewed committed evidence f0db5cd495abc6491bb70a8e0e3857e54932dda7: internal/backup/companion.go:20-109,116-170; internal/colors/lifecycle.go:10-29; internal/colors/merge.go:10-64; internal/duplicate/merge.go:34-134; internal/transfer/colors.go:13-61; internal/transfer/companions.go:21-70; internal/history/history.go:213-239. Existing collection, snapshot and Undo owners remain unchanged."
+      ]
     }
   ]
 }

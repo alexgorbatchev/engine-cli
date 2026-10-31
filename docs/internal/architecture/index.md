@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 19:20
+last_modified: 2026-10-30 20:27
 status: current
 ---
 
@@ -80,3 +80,11 @@ Overview and collection-write supplemental cards cite reviewed committed runtime
 ## Atomic standalone playlist insertion
 
 Reviewed committed runtime 86e33dbd1cbb1409cee82ab67af1167d10d95df0. Standalone Add commits the new membership and previous-tail link together. Caller-owned transactions retain their commit/rollback responsibility; native origin-pair identity and deduplication are preserved. Existing Desktop, snapshot and Undo owners remain unchanged; this adds no multi-track batch guarantee. Historical evidence pins remain unchanged.
+
+## Reviewed playlist track ordering
+
+The overview and collection-write cards cite committed Engine CLI [dc21b3a](https://github.com/alexgorbatchev/engine-cli/commit/dc21b3adb3b874cbc47c618b706e1295299af7ba). Native membership validation follows the complete origin-pair chain, preserving unresolved memberships and refusing ambiguous or malformed order. Filtered and reversed moves bind exact review to the library, playlist observations and displayed intent. Checked application rejects stale or ineffective consent before safety artifacts, rechecks inside one transaction, and updates only affected links and the target timestamp. Existing collection scheduling, fresh Desktop protection, snapshots and Undo retain ownership. Historical graph and source pins remain unchanged; uncommitted changes are outside this evidence.
+
+## Library-local custom track colors
+
+The overview and collection-write cards cite committed Engine CLI [f0db5cd](https://github.com/alexgorbatchev/engine-cli/commit/f0db5cd495abc6491bb70a8e0e3857e54932dda7). Independent `.engine-cli/colors.db` assignments use native origin identities and stored-content revisions; collection reads do not enroll or prune storage. Explicit assignment and clearing use checked collection writes, while unavailable-origin reconciliation binds consent to exact revision and reviewed assignments. Shared snapshots, presence-aware restore, Undo, removal, duplicate merging and library synchronization preserve the independent companion lifecycle. Engine and companion publications remain separate; incomplete cross-file publication retains recovery history. These cards add no actor and preserve historical graph/source pins and the separately reviewed F521 ordering evidence. Uncommitted changes and UI completion are outside this evidence.
