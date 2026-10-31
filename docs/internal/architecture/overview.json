@@ -424,6 +424,35 @@
         "Native codec edits preserve unrelated cue slots, loops, opaque bytes and trailer fields. A successful write returns the exact track/slot/revision result constructed from the committed plan, without a fallible post-commit entity read.",
         "Reviewed committed evidence 81ae0430470400191f0e053c9b6e5a2f72bc480d: internal/api/performance.go:62-85; cmd/engine-cli/cues.go:12-86; internal/performance/edit.go:46-145; internal/performance/performance.go:44-118"
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Rekordbox XML import — immutable review and native preparation",
+      "items": [
+        "migrate.import and migrate import read server-local Rekordbox XML into a reviewed new root hierarchy. Preview is a collection read and does not enroll source storage. Explicit missing-media, native-conflict and unsupported-field policies determine each source disposition; complete extant imports refuse duplicate hierarchy creation, while partial imports disclose retained mappings, omissions and the new root.",
+        "One job owns immutable XML bytes, destination observations, native origins, media observations and decoded first-audio sample extents. Checked preparation binds exact consent before Desktop protection, snapshot and history. Expensive decoding stays outside the write transaction; native file identity, size/time and exact XML content are rechecked before application and again after acquiring its transaction.",
+        "Maintained djtools codecs encode supported native grids, fractional saved positions and explicit cue/loop slots. Unsupported meters do not become invented 4/4 grids; memory/load marks do not invent a main cue. Unsupported source fields remain in exact XML and require explicit review. Saved markers receive the disclosed neutral-white color, rather than an unverified imported RGB value.",
+        "Reviewed committed evidence 69d2534cb8aae75ba9e1fa8e10a1040ebb8f8f06: internal/api/rekordbox_import.go:13-51; internal/rekordbox/import.go:18-105; internal/rekordbox/performance.go:12-57. Historical graph and source pins remain unchanged. The CLI remains the sole Engine database owner."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Preserved import evidence — separate publication and recovery",
+      "items": [
+        "The native transaction creates metadata, performance data and ordered hierarchy together, with explicit reviewed reuse and skips. A success receipt projects the committed root/document IDs and actual counts only after native commit and source-archive publication both succeed; it does not perform a fallible post-commit entity reread.",
+        "CLI-owned .engine-cli/imports.db stores exact source XML and document-local selector to native-origin mappings. Named companion enrollment keeps imports independent of custom tags. Snapshots and presence-aware restore/Undo preserve or remove each companion independently; damaged or unreadable evidence fails closed.",
+        "Engine and archive publication are separate commits. A publication failure after the Engine commit retains pending recovery history and returns failure, rather than claiming atomic cross-database rollback. Library sync transfers exact documents and selected extant mappings, preserves historical destination evidence during mirror, and refuses conflicting immutable document or mapping identities.",
+        "Reviewed committed evidence 69d2534cb8aae75ba9e1fa8e10a1040ebb8f8f06: internal/rekordbox/publication.go:18-32; internal/rekordbox/result.go:8-35; internal/backup/companion.go:18-159; internal/transfer/imports.go:19-89. Existing scheduler, fresh Desktop protection, snapshot and Undo retain ownership; no additional actor is introduced."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Playlist membership — atomic removal and move",
+      "items": [
+        "RemoveTrackFromPlaylist owns one SQLite transaction for predecessor relinking and target deletion. MoveTrackInPlaylist shares one transaction across source removal, destination insertion and destination-tail relinking; failures preserve both playlists.",
+        "Membership resolution matches the native originTrackId and originDatabaseUuid pair. Engine’s native before-delete trigger remains installed; explicit relink failures propagate instead of being ignored. Existing API and CLI protection, snapshot and Undo wrappers retain ownership.",
+        "Reviewed committed evidence f5d8f4f04a35b4b62bc2d4e4ed8b5499e509ca23: internal/db/db.go:588–655; internal/db/library_schema.sql:172–180; internal/db/membership_atomic_test.go:18–269. This is atomicity for one removal or move, not standalone Add or a multi-track batch. Historical graph and evidence pins remain unchanged."
+      ]
     }
   ]
 }

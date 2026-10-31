@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 17:39
+last_modified: 2026-10-30 18:42
 status: current
 ---
 
@@ -68,3 +68,11 @@ Each regeneration run writes its validation and browser receipts into a separate
 ## Native saved hot cues
 
 Overview and collection-write supplemental cards cite reviewed committed runtime 81ae0430470400191f0e053c9b6e5a2f72bc480d. Cue inspection, Set and Clear share revision-bound native interpretation, codec preservation, decoded first-audio extent, fresh Desktop protection, snapshots and Undo. Checked preparation validates before safety artifacts; the transaction rechecks captured native state before changing cue bytes. Historical source pins and graph topology remain unchanged.
+
+## Reviewed Rekordbox XML import
+
+The overview and collection-write import cards cite committed Engine CLI [69d2534](https://github.com/alexgorbatchev/engine-cli/commit/69d2534cb8aae75ba9e1fa8e10a1040ebb8f8f06). [Per-job preparation and application](https://github.com/alexgorbatchev/engine-cli/blob/69d2534cb8aae75ba9e1fa8e10a1040ebb8f8f06/internal/rekordbox/import.go#L18-L105) bind reviewed XML, destination/native origins, physical media observations and exact decoded extents before mutation artifacts, then recheck source freshness outside and inside the native transaction. Explicit policies disclose missing media, reuse, retained mappings, unsupported semantics and the new root; unsupported meters and main-cue semantics are not invented. [Publication](https://github.com/alexgorbatchev/engine-cli/blob/69d2534cb8aae75ba9e1fa8e10a1040ebb8f8f06/internal/rekordbox/publication.go#L18-L32) commits Engine changes before the independent source archive and retains recovery history on archive failure. [Presence-aware companions](https://github.com/alexgorbatchev/engine-cli/blob/69d2534cb8aae75ba9e1fa8e10a1040ebb8f8f06/internal/backup/companion.go#L18-L159) enroll exact XML and source-to-origin mappings in snapshot, restore and Undo; [sync](https://github.com/alexgorbatchev/engine-cli/blob/69d2534cb8aae75ba9e1fa8e10a1040ebb8f8f06/internal/transfer/imports.go#L19-L89) transfers selected extant mappings with exact documents while retaining historical evidence. Historical evidence pins remain unchanged; this addition introduces no actor and does not advance the UI integration revision. Uncommitted working-tree changes are outside this review.
+
+## Atomic playlist membership
+
+Overview and collection-write supplemental cards cite reviewed committed runtime f5d8f4f04a35b4b62bc2d4e4ed8b5499e509ca23. A removal commits predecessor relinking and target deletion together; a move also includes destination insertion and tail relinking in the same transaction. Native origin-pair identity and Engine’s before-delete trigger are preserved. Errors roll back the complete single-track operation. Existing Desktop protection, snapshots and Undo wrappers retain ownership. This does not extend atomicity to standalone Add or a multi-track batch; historical evidence pins and graph topology remain unchanged.
