@@ -3,7 +3,7 @@ package history
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"os"
 )
 
 // OperationID identifies the already durable Before record only when its
@@ -19,11 +19,15 @@ func OperationID(ctx context.Context, library, operation string, scope Scope) (s
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	abs, err := filepath.Abs(library)
+	requested, err := os.Stat(library)
 	if err != nil {
 		return "", err
 	}
-	if r.entry.Library != abs || r.entry.Operation != operation || r.entry.Scope != scope {
+	owned, err := os.Stat(r.entry.Library)
+	if err != nil {
+		return "", err
+	}
+	if !os.SameFile(requested, owned) || r.entry.Operation != operation || r.entry.Scope != scope {
 		return "", fmt.Errorf("operation identity does not match the required library, operation and scope")
 	}
 	return r.entry.ID, nil

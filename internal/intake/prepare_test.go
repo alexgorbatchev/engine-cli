@@ -72,10 +72,10 @@ func TestPreparationRecoversPublishedCopyAfterProcessDeath(t *testing.T) {
 	}
 	waited := false
 	defer func() {
-		if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			t.Error(err)
-		}
 		if !waited {
+			if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				t.Error(err)
+			}
 			_ = cmd.Wait() // Reap the child on assertion failures too.
 		}
 	}()

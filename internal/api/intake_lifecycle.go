@@ -51,11 +51,7 @@ func (q *intakeLibraries) entry(path string) *intakeLibrary {
 // open resumes only already enrolled queues unless an explicit queue action
 // requests creation. Merely browsing a library must not enroll intake storage.
 func (q *intakeLibraries) open(path string, create bool) (*intake.Service, error) {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
-	}
-	path, err = filepath.EvalSymlinks(path)
+	path, err := intakeLibraryPath(path)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +85,7 @@ func (q *intakeLibraries) open(path string, create bool) (*intake.Service, error
 }
 
 func (q *intakeLibraries) wake(path string) {
-	path, err := filepath.EvalSymlinks(path)
+	path, err := intakeLibraryPath(path)
 	if err != nil {
 		return // A moved/deleted library has no remaining worker to notify.
 	}
@@ -105,6 +101,10 @@ func (q *intakeLibraries) wake(path string) {
 // they never queue behind a replacement while holding collection ownership.
 // The returned release must run after collection/History ownership is released.
 func (q *intakeLibraries) stop(ctx context.Context, path string) (func(bool) error, error) {
+	path, err := intakeLibraryPath(path)
+	if err != nil {
+		return nil, err
+	}
 	q.mu.Lock()
 	if q.closed {
 		q.mu.Unlock()
@@ -127,7 +127,6 @@ func (q *intakeLibraries) stop(ctx context.Context, path string) (func(bool) err
 	service := e.service
 	e.service = nil
 	q.mu.Unlock()
-	var err error
 	if service != nil {
 		err = service.Close()
 	}
@@ -149,6 +148,14 @@ func (q *intakeLibraries) stop(ctx context.Context, path string) (func(bool) err
 		return nil, errors.Join(err, release(true))
 	}
 	return release, nil
+}
+
+func intakeLibraryPath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(abs)
 }
 
 func (s *Server) replacementIntake(ctx context.Context, op operation, bound *boundOperation) (func() error, error) {

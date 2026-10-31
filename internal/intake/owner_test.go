@@ -52,12 +52,11 @@ func TestWorkerOwnershipReleasedByProcessDeath(t *testing.T) {
 	}
 	waited := false
 	defer func() {
-		// Kill is harmless after Wait, and ensures assertion failures cannot leave
-		// a child retaining the native owner until the test process exits.
-		if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			t.Error(err)
-		}
 		if !waited {
+			// Wait releases the native process handle; only kill an unreaped child.
+			if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				t.Error(err)
+			}
 			_ = cmd.Wait() // Every started child is reaped, including assertion failure paths.
 		}
 	}()

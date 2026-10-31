@@ -15,6 +15,11 @@ import (
 
 func TestAPIIntakeReviewedImportAndUndo(t *testing.T) {
 	s, lib := testAPI(t)
+	testAPIIntakeReviewedImportAndUndo(t, s, lib)
+}
+
+func testAPIIntakeReviewedImportAndUndo(t *testing.T, s *Server, lib string) {
+	t.Helper()
 	s.intake.quiet = 0
 	source := intakeAPISource(t)
 	raw, err := json.Marshal(intakePaths{Paths: []string{source}})
