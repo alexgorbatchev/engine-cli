@@ -24,7 +24,7 @@ func TestPCMHelperProcess(t *testing.T) {
 	case "error":
 		os.Exit(19)
 	case "wait":
-		if err := os.WriteFile(os.Getenv("PCM_HELPER_STARTED"), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+		if err := publishChildPID(os.Getenv("PCM_HELPER_STARTED")); err != nil {
 			os.Exit(20)
 		}
 		time.Sleep(time.Hour)
@@ -41,12 +41,20 @@ func TestPCMHelperProcess(t *testing.T) {
 		}
 		time.Sleep(30 * time.Second)
 	case "descendant":
-		if err := os.WriteFile(os.Getenv("PCM_HELPER_STARTED"), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+		if err := publishChildPID(os.Getenv("PCM_HELPER_STARTED")); err != nil {
 			os.Exit(23)
 		}
 		time.Sleep(30 * time.Second)
 	}
 	os.Exit(0)
+}
+
+func publishChildPID(path string) error {
+	tmp := path + ".pending"
+	if err := os.WriteFile(tmp, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 func TestCancellationWithDescendantHoldingOutput(t *testing.T) {
@@ -226,9 +234,7 @@ func TestTeardownCancelsAndJoinsActiveChild(t *testing.T) {
 				s.Close()
 			}
 			awaitChild(t, finished)
-			if _, err := g.file.Stat(); !errors.Is(err, os.ErrClosed) {
-				t.Fatalf("teardown retained file: %v", err)
-			}
+			assertFileClosed(t, g.file)
 			s.mu.Lock()
 			active, resident := s.active, len(s.items)
 			s.mu.Unlock()
