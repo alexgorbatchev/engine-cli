@@ -77,7 +77,10 @@ func TestAPICatalogCoversCLI(t *testing.T) {
 		}
 	}
 	for _, group := range root.Commands() {
-		if group.Name() != "api" {
+		switch group.Name() {
+		case "api", "skill":
+			// Server startup and skill installation instructions are local CLI commands.
+		default:
 			check(group)
 		}
 	}

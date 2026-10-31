@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-30 19:20
+last_modified: 2026-10-30 19:45
 status: current
 ---
 
@@ -79,6 +79,7 @@ The test for everything this CLI writes: close the app, open the library in Engi
 - **Temporary Files:** Production code uses the OS temporary directory for disposable workspaces, never project `.tmp/`. Agent development artifacts may use project `.tmp/`. Atomic publication staging stays beside its destination to support same-filesystem rename.
 
 ## Conventions
+- **Maintained CLI Skill:** Keep `skills/engine-cli/SKILL.md` and its linked command references synchronized in the same change as public commands, aliases, arguments, flags, defaults, environment variables, output and recovery behavior. Use cobra-help-tree's native `SkillSource` and `SkillOmissions` integration; the executable prints installation instructions rather than embedding or loading repository Markdown. Run the maintained-skill drift test when changing the command tree.
 - **Architecture Documentation:** Keep diagram JSON specifications and generated HTML together in `docs/internal/architecture/`, linked from its `index.md`. Review relevant CLI/API, scheduling, mutation safeguards, and persistence changes against the diagrams. Pin source evidence to inspected committed revisions and regenerate affected diagrams with Archify's complete validation and browser gates. Keep the regeneration recipe current. Serve delivery artifacts through devhost and verify their exact URLs before reporting completion; `.archify/` and browser receipts are local scratch output. Never record private deployment hostnames in tracked files.
 - **LLM Integration:** Use the managed `agent-ask-cli` executable (minimum 1.0.0) with its native harness request interface and existing Claude Code or Codex authentication. Align cleanup CLI/API options with agent-ask-cli; do not introduce provider API keys or compatibility adapters.
 - **LLM Metadata Suggestions:** Accept explicit track or playlist identifiers through shared CLI/API behavior. Send selected metadata with a cleanup prompt to the LLM and return identifiable title/artist suggestions for user review. Generating suggestions is read-only; never apply suggestions automatically. Emit each validated batch immediately through CLI output and API result events; retain completed suggestions in job status and returned reports when later work fails or is cancelled. Never discard completed batches.

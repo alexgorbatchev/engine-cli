@@ -3,7 +3,7 @@ module github.com/alexgorbatchev/engine-cli
 go 1.27.2
 
 require (
-	github.com/alexgorbatchev/cobra-help-tree v1.1.0
+	github.com/alexgorbatchev/cobra-help-tree/v3 v3.0.0
 	github.com/alexgorbatchev/gochromaprint v1.6.1-0.20261018234412-8ac11c575443
 	github.com/alexgorbatchev/godeps v1.1.0
 	github.com/cabbagekobe/mixedkey v0.1.0
@@ -21,11 +21,13 @@ require (
 )
 
 require (
+	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
+	github.com/mattn/go-runewidth v0.0.30 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/stretchr/testify v1.12.1 // indirect

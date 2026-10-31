@@ -1,5 +1,7 @@
 A fast, reliable CLI tool for DJs to audit, repair, normalize artwork, synchronize, and back up Engine DJ collection databases (`m.db`) and artwork caches.
 
+For agent usage, run `engine-cli skill` for installation instructions or read the maintained [Engine CLI skill](skills/engine-cli/SKILL.md), including command references and protected review/apply workflows.
+
 # What It Does
 
 - Finds current Engine DJ libraries in Music and attached local drives on macOS and Windows, with friendly names for choosing a library.

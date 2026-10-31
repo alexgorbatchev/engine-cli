@@ -1,5 +1,5 @@
-github.com/alexgorbatchev/cobra-help-tree v1.1.0 h1:CtKIG6p2S1LptDLRh1ZCcaj1E1XseEvU/1bi822RiAY=
-github.com/alexgorbatchev/cobra-help-tree v1.1.0/go.mod h1:l0Hv9bKEyt8mAucPP76MUarRMb3KbqqbohZsccF2jEY=
+github.com/alexgorbatchev/cobra-help-tree/v3 v3.0.0 h1:t6wvTnWwj2v4Igf3xbR4ZsJtXgSk7t2suPJrzvzyzdI=
+github.com/alexgorbatchev/cobra-help-tree/v3 v3.0.0/go.mod h1:svCW/AgjJrFTC3AIKoyS/cr6Jg/RKggdBlW/Q+JIfak=
 github.com/alexgorbatchev/djtools v0.4.0 h1:bfychGu4PYy34YpWfWsoTBaQRaf/rRCtA5SeVRAh4nM=
 github.com/alexgorbatchev/djtools v0.4.0/go.mod h1:BHbwo0S5KUWxcMKYw6jQ+XJmYvu+ChfXy6XPvJLax4Q=
 github.com/alexgorbatchev/gochromaprint v1.6.1-0.20261018234412-8ac11c575443 h1:axbcL34eyi2I/V9CmxctJWarlVXOtDrk+qeFTVaRLzM=
@@ -10,6 +10,8 @@ github.com/cabbagekobe/mixedkey v0.1.0 h1:MZ7Tz5VLxzPNTWH8qRcJ62Zc+j3iCvy/Drspeh
 github.com/cabbagekobe/mixedkey v0.1.0/go.mod h1:Sn1F+WNz7oNnX6fuCbujhBLyFiW7FD9We455SsHSU2s=
 github.com/cabbagekobe/tactus v0.1.0 h1:Yjfqt+Cg8eBWPmYdJaapy5JLhLbbSANDrNxFjkgGS7s=
 github.com/cabbagekobe/tactus v0.1.0/go.mod h1:Sfl5OlvuflZB5ewNkHMeOnrIvS+LNYr4pwRqa4tSPc4=
+github.com/clipperhouse/uax29/v2 v2.2.0 h1:ChwIKnQN3kcZteTXMgb1wztSgaU+ZemkgWdohwgs8tY=
+github.com/clipperhouse/uax29/v2 v2.2.0/go.mod h1:EFJ2TJMRUaplDxHKj1qAEhCtQPW2tJSwu5BF98AuoVM=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
@@ -27,6 +29,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
 github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
+github.com/mattn/go-runewidth v0.0.30 h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk=
+github.com/mattn/go-runewidth v0.0.30/go.mod h1:3qAiGCV4Koz/yuveO58qUefmUTRm8r0IGEXZ9jeHp/8=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=

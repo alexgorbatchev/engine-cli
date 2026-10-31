@@ -741,7 +741,7 @@ func TestAgentMode_HelpScreens(t *testing.T) {
 			args: []string{"playlist", "inspect", "--help"},
 			wantSubstr: []string{
 				"command: engine-cli playlist inspect",
-				"args: <id...>",
+				"args:\n  - <id...>",
 			},
 		},
 		{

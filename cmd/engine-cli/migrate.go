@@ -5,14 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
 	"github.com/alexgorbatchev/engine-cli/internal/migrate"
 	"github.com/spf13/cobra"
 )
 
 func init() {
 	techCatalog["engine-cli migrate"] = cobrahelptree.TechInfo{Summary: "Import and export DJ application libraries"}
-	techCatalog["engine-cli migrate import"] = cobrahelptree.TechInfo{Summary: "Review and import Rekordbox XML into a new playlist hierarchy", Args: "<path>", MutatesDB: true, AutoBackup: true}
+	techCatalog["engine-cli migrate import"] = cobrahelptree.TechInfo{Summary: "Review and import Rekordbox XML into a new playlist hierarchy", Args: []cobrahelptree.ArgSpec{{Name: "<path>"}}, MutatesDB: true, AutoBackup: true}
 	techCatalog["engine-cli migrate export"] = cobrahelptree.TechInfo{Summary: "Copy Engine DJ audio and export Rekordbox XML without changing the source", Description: "Runs unattended; writes Contents/, rekordbox.xml, and .sync_state.json under the target. --source defaults to --lib-dir; --target defaults to ./rekordbox. --json prints the HTTP result format."}
 }
 
