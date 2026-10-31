@@ -17,6 +17,15 @@ import (
 
 func TestAPIIntakeRestoreJoinsActualImport(t *testing.T) {
 	s, lib := testAPI(t)
+	testAPIIntakeRestoreJoinsActualImport(t, s, lib)
+}
+
+func testAPIIntakeRestoreJoinsActualImport(t *testing.T, s *Server, lib string) {
+	t.Helper()
+	registryPath, err := intakeLibraryPath(lib)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s.intake.quiet = 0
 	source := intakeAPISource(t)
 	original, err := os.ReadFile(source)
@@ -76,8 +85,12 @@ func TestAPIIntakeRestoreJoinsActualImport(t *testing.T) {
 	defer tick.Stop()
 	for {
 		s.intake.mu.Lock()
-		blocked := s.intake.entries[lib].blocked
+		entry := s.intake.entries[registryPath]
+		blocked := entry != nil && entry.blocked
 		s.intake.mu.Unlock()
+		if entry == nil {
+			t.Fatal("active import has no intake registry entry at the observed library path")
+		}
 		if blocked {
 			break
 		}

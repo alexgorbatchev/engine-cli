@@ -17,6 +17,13 @@ func TestAPIIntakeLibraryAliasImportAndUndo(t *testing.T) {
 	testAPIIntakeReviewedImportAndUndo(t, s, alias)
 }
 
+func TestAPIIntakeLibraryAliasRestoreJoinsActualImport(t *testing.T) {
+	s, lib := testAPI(t)
+	alias := intakeLibraryAlias(t, lib)
+	s.config.LibraryDir = alias
+	testAPIIntakeRestoreJoinsActualImport(t, s, alias)
+}
+
 func TestAPIIntakeLibraryAliasStopsCanonicalWorker(t *testing.T) {
 	s, lib := testAPI(t)
 	alias := intakeLibraryAlias(t, lib)
