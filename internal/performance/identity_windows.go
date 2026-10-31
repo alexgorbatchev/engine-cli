@@ -2,7 +2,9 @@ package performance
 
 import (
 	"encoding/hex"
+	"fmt"
 	"os"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -18,9 +20,12 @@ func mediaIdentity(path string, _ os.FileInfo) (string, error) {
 	}
 	defer windows.CloseHandle(handle)
 	// FILE_ID_INFO contains the volume serial followed by the full 128-bit file ID, including on ReFS.
-	var info [24]byte
-	if err := windows.GetFileInformationByHandleEx(handle, windows.FileIdInfo, &info[0], uint32(len(info))); err != nil {
+	var info struct {
+		VolumeSerialNumber uint64
+		FileID             [16]byte
+	}
+	if err := windows.GetFileInformationByHandleEx(handle, windows.FileIdInfo, (*byte)(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info))); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(info[:]), nil
+	return fmt.Sprintf("%016x:%s", info.VolumeSerialNumber, hex.EncodeToString(info.FileID[:])), nil
 }
