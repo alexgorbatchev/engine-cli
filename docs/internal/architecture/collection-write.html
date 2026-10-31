@@ -5979,6 +5979,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 18a4587f84bc9cfe799395ed28f03d2c0f77ff43: internal/api/find_replace.go:12–37; internal/track/find_replace.go:126–142,201–339; internal/track/bounded_replace.go:49–103; internal/api/find_replace_test.go:16–138. Historical workflow nodes, links and evidence pins remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Metadata capitalization — Unicode recipes and exact review</h3>
+        </div>
+        <ul>
+          <li>track.batch.capitalize and track batch capitalize apply upper, lower or title casing to eight selected collection text fields. Existing golang.org/x/text cases and language APIs own Unicode and BCP 47 semantics; an empty language uses language.Und rather than the host locale. Audio and embedded tags remain unchanged.</li>
+          <li>Read-only preview and checked apply share the metadata transformation owner with find/replace. Exact consent binds canonical library root, UUID, resolved identities, native origins, options and current metadata. Checked preflight runs before Desktop protection, snapshot and history; application rechecks the token inside one transaction and returns affected IDs after commit without rereading entities.</li>
+          <li>SQL byte-length checks precede hydration. Source evidence and outputs are bounded to 1 MiB per field and 16 MiB per batch. Whole-field casing supplies EOF for contextual word endings, resets before bounded expansion retries, and observes cancellation between attempts. Invalid recipes, languages, UTF-8 and empty resulting titles cannot authorize a write.</li>
+          <li>Reviewed committed evidence 195709a8a69741190a17c9f1732c739bfd8062f1: internal/track/capitalization.go:25–130; internal/track/metadata_transform.go:136–288; internal/api/capitalization.go:12–44. Historical graph and evidence pins remain unchanged; the ordinary collection writer retains Desktop, snapshot and single-Undo ownership. No separate actor or persistence store is introduced.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
