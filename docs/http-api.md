@@ -665,6 +665,12 @@ The corresponding commands are `track color list`, `track color inspect <track>`
 `track color reconcile --revision <revision> --dry-run`, followed by the same
 revision and `--plan-token <token>` to apply. Use `--color=` for explicit clearing.
 
+## Library health checks
+
+`library.verify` audits the selected library through the collection read barrier. A completed report retains the existing health counters and `isHealthy` field. Playlist memberships resolve through both their origin database UUID and track ID; a local track row ID alone does not identify a saved membership.
+
+An unreadable collection table, unreadable membership row, or invalid saved playlist chain fails the job with `error.code: "library_verify_incomplete"` and no result. An incomplete audit never returns a partial healthy or unhealthy report. Cancellation and timeout retain their existing classifications. Retry the check; if the failure persists, inspect the library in Engine DJ before making changes. Verification performs no repair and creates no snapshot or Undo entry.
+
 ## Operations
 
 ### Staged music

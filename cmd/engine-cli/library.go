@@ -57,7 +57,9 @@ func newLibraryVerifyCommand() *cobra.Command {
 		Short: "Check your library for missing songs, broken links, and empty playlists",
 		Long: `Perform a read-only audit of your Engine DJ collection to find missing audio files, file size mismatches, broken playlist links, and missing album artwork.
 
-Outputs a clear plain text summary by default or JSON when --json is passed.`,
+Outputs a clear plain text summary by default or JSON when --json is passed.
+If any collection or playlist check cannot finish, the command fails without a report.
+Retry the check; if it still fails, inspect the library in Engine DJ before making changes.`,
 		Example: `  engine-cli library verify
   engine-cli -l "/Volumes/DJ_USB/Engine Library" library verify
   engine-cli library verify --json`,

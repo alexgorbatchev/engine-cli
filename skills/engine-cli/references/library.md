@@ -275,8 +275,10 @@ Usage: `engine-cli library verify [flags]`.
 Perform a read-only audit of your Engine DJ collection to find missing audio files, file size mismatches, broken playlist links, and missing album artwork.
 
 Outputs a clear plain text summary by default or JSON when --json is passed.
+If any collection or playlist check cannot finish, the command fails without a report.
+Retry the check; if it still fails, inspect the library in Engine DJ before making changes.
 
-Audits Track, Playlist, PlaylistEntity, and AlbumArt tables in Database2/m.db for missing audio files on disk, fileBytes mismatches, orphaned entity foreign keys, missing album art, and empty playlists.
+Audits Track, Playlist, PlaylistEntity, and AlbumArt tables in Database2/m.db for missing audio files on disk, fileBytes mismatches, unresolved native membership origins, missing album art, and empty playlists. Membership origins resolve by both origin database UUID and track ID, independently of the local track row ID. Unreadable tables, membership rows, or invalid playlist chains fail with `library_verify_incomplete`; no partial report or automatic repair is returned. Cancellation retains its cancellation or timeout classification. This read-only operation does not create a safety snapshot or Undo entry.
 
 - `--help, -h` (bool; default `false`): help for verify.
 - `--json` (bool; default `false`): Output verification report in JSON format.
