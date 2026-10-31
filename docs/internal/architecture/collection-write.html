@@ -5992,6 +5992,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 195709a8a69741190a17c9f1732c739bfd8062f1: internal/track/capitalization.go:25–130; internal/track/metadata_transform.go:136–288; internal/api/capitalization.go:12–44. Historical graph and evidence pins remain unchanged; the ordinary collection writer retains Desktop, snapshot and single-Undo ownership. No separate actor or persistence store is introduced.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Hot-cue revision and decoded extent — committed safeguards</h3>
+        </div>
+        <ul>
+          <li>The inspected revision covers native origin and track identity, performance table/row presence, and all cue/beat/loop/track bytes determining interpretation. Set and Clear require that revision; apply reloads and compares it inside the transaction.</li>
+          <li>When beat data is absent, valid native track extent is preferred. Otherwise the inspected media availability and eager physical identity bind preparation to the same file. Native-rate first-audio decoding counts actual samples with bounded streaming and cancellation; container/video duration is never used as the audio extent.</li>
+          <li>Fallback media is checked before and after decoding and again at transaction application. Missing media remains explicit; non-ENOENT observation failures fail closed. Existing saved native extent permits offline read/Clear without imposing an unrelated media requirement.</li>
+          <li>Reviewed committed evidence 81ae0430470400191f0e053c9b6e5a2f72bc480d: internal/performance/performance.go:44-118; internal/performance/edit.go:46-145; internal/performance/media.go:16-137; internal/audiodecode/decode.go:25-82</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

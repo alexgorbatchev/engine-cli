@@ -6008,6 +6008,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 195709a8a69741190a17c9f1732c739bfd8062f1: internal/track/capitalization.go:25–130; internal/track/metadata_transform.go:136–288; internal/api/capitalization.go:12–44. Historical graph and evidence pins remain unchanged; the ordinary collection writer retains Desktop, snapshot and single-Undo ownership. No separate actor or persistence store is introduced.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Native saved hot cues — committed API ownership</h3>
+        </div>
+        <ul>
+          <li>track.cue.inspect is a library read; track.cue.set and track.cue.clear are checked collection writes. Cobra exposes the same slot A–H, revision, position/name/color contract with readable output. The UI never opens Engine databases.</li>
+          <li>Preparation validates target, slot, exact native revision and encodable values before Desktop protection, safety snapshot and history. The protected transaction rechecks native interpretation and media identity, then changes only the target cue bytes and any initially absent unset beat header required for interpretation.</li>
+          <li>Native codec edits preserve unrelated cue slots, loops, opaque bytes and trailer fields. A successful write returns the exact track/slot/revision result constructed from the committed plan, without a fallible post-commit entity read.</li>
+          <li>Reviewed committed evidence 81ae0430470400191f0e053c9b6e5a2f72bc480d: internal/api/performance.go:62-85; cmd/engine-cli/cues.go:12-86; internal/performance/edit.go:46-145; internal/performance/performance.go:44-118</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

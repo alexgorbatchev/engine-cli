@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 16:58
+last_modified: 2026-10-30 17:39
 status: current
 ---
 
@@ -64,3 +64,7 @@ The overview and collection-write capitalization cards cite separately reviewed 
 4. Inspect changed drawings before claiming visual review. Automated browser checks validate browser behavior and geometry; they do not establish perceptual quality. Run `just architecture-serve` and verify each changed page's exact URL before delivering it.
 
 Each regeneration run writes its validation and browser receipts into a separate `.tmp/architecture-review/run.*` directory; delivery receipts beside the HTML are ignored. `.archify/` is scratch space. Keep browser captures, renderer installation paths, and verification receipts out of commits.
+
+## Native saved hot cues
+
+Overview and collection-write supplemental cards cite reviewed committed runtime 81ae0430470400191f0e053c9b6e5a2f72bc480d. Cue inspection, Set and Clear share revision-bound native interpretation, codec preservation, decoded first-audio extent, fresh Desktop protection, snapshots and Undo. Checked preparation validates before safety artifacts; the transaction rechecks captured native state before changing cue bytes. Historical source pins and graph topology remain unchanged.
