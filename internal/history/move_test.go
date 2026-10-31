@@ -188,8 +188,18 @@ func TestMoveFailureRecovery(t *testing.T) {
 			if err == nil {
 				t.Fatal("accepted failed move")
 			}
-			if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); err != nil {
-				t.Fatal(err)
+			if scenario == "overlap" || scenario == "missing parent" || scenario == "cancelled" {
+				if e == nil {
+					t.Fatal("lost recorded move recovery")
+				}
+				if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if e != nil {
+					t.Fatalf("refused move became undoable: %+v", e)
+				}
+				assertNoHistoryResidue(t, lib)
 			}
 			data, err := os.ReadFile(src)
 			if err != nil || string(data) != "original audio" {

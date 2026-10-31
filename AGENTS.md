@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-30 19:45
+last_modified: 2026-10-31 13:17
 status: current
 ---
 
@@ -92,7 +92,7 @@ The test for everything this CLI writes: close the app, open the library in Engi
 - **Library Discovery:** Recognize current `Database2/m.db` libraries; ignore legacy root-level database leftovers. Keep enumeration read-only and provide a friendly `name`, `source`, and absolute path for UI library pickers through the HTTP API.
 - **Reversible Library Operations:** Every operation that modifies the source library must support undo, including database changes and changes to audio files or artwork. Apply this requirement to existing operations as well as duplicate-track operations, through both the CLI and HTTP API.
 - **Custom Tags:** Library-local categories, named values, and multi-value track assignments belong to the enrolled `.engine-cli/tags.db` companion. Use native Engine origin pairs, revision-bound writes, and exact reviewed deletion/reconciliation impacts. Reads never enroll or repair storage. Snapshot, restore, undo, move, delete, and sync include explicit companion presence; independent database publications retain pending history on partial failure. Preserve assignments during unrelated edits, prune only origins removed by the current collection mutation, and union duplicate assignments onto the survivor. External removals require explicit reviewed `tag.reconcile` consent.
-- **Failed Acquisitions:** A failed acquisition is retryable staging state, not an undoable change. Acquisitions declare each staged item's directory with `history.Workspace`; a failed operation whose only changes are inside declared workspaces leaves no history entry. Failures that changed databases or other files keep their undo record.
+- **Failed Operations:** Failed or cancelled operations with unchanged captured state and no recorded moves, relocation, or pending recovery leave no history entry or new latest Undo target. Acquisitions declare each staged item's directory with `history.Workspace`; a failed operation whose only changes are inside declared workspaces also leaves no history entry. Retain undo records for database or other file changes, recorded file moves or library relocations, and pending recovery.
 - **History Scope:** `history.Run` takes a scope. `ScopeCollection` snapshots every Engine database before and after the operation; `ScopeFiles` operations (API `staging` and `filesystem` effects) never write Engine databases and copy none. Undo inherits the scope of the entry it reverses.
 - **Unreferenced History Storage:** Under the history lock, each operation removes saved objects, entry work directories, and temporary entries that no remaining entry references before it runs. Leave referenced storage and unrecognized names in place.
 - **Affected Files Only:** Plan and preserve only files an operation will modify or delete. Database-only operations must not copy audio or artwork. Record file moves as reversible path changes rather than audio backups. Explicit library backups may include all databases and artwork.

@@ -274,7 +274,7 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 	r.mu.Lock()
 	workspaces := r.workspaces
 	r.mu.Unlock()
-	// A failure that only touched its own retryable workspace is not a library change to undo.
+	// Refusals and failures confined to retryable workspaces have no library change to undo.
 	if runErr != nil && onlyWorkspaceChanges(e, workspaces) {
 		if err = discard(dir, e); err != nil {
 			return nil, errors.Join(runErr, fmt.Errorf("discarding history of a failed operation: %w", err))
