@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
@@ -188,9 +188,14 @@ func TestAPIIntakeImportKeepsUntaggedSourceName(t *testing.T) {
 	job := runAPIJob(t, s, "intake.import", string(raw))
 	waitIntakeItem(t, service, id, "imported")
 	trackID := int64(job["result"].(map[string]any)["track_id"].(float64))
-	listed := runAPIJob(t, s, "track.inspect", fmt.Sprintf(`{"ids":[%d]}`, trackID))
-	if !strings.Contains(fmt.Sprint(listed["result"]), "Evening Set") {
-		t.Fatalf("untagged import lost its name: %+v", listed["result"])
+	database, err := db.Open(filepath.Join(lib, "Database2", "m.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	var title string
+	if err := database.QueryRow("SELECT title FROM Track WHERE id=?", trackID).Scan(&title); err != nil || title != "Evening Set" {
+		t.Fatalf("untagged import lost its name: %q %v", title, err)
 	}
 }
 
