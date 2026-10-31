@@ -3,18 +3,16 @@ package backup
 import (
 	"context"
 	"database/sql"
-	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 func createSnapshotFixture(t *testing.T, path, value string) {
 	t.Helper()
-	u := url.URL{Scheme: "file", Path: path}
-	database, err := sql.Open("sqlite", u.String())
+	database, err := db.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,8 +105,7 @@ func TestSnapshotDatabaseSpecialPaths(t *testing.T) {
 	if err != nil || size != info.Size() || size == 0 {
 		t.Fatalf("snapshot size=%d stat=%v error=%v", size, info, err)
 	}
-	u := url.URL{Scheme: "file", Path: target}
-	database, err := sql.Open("sqlite", u.String())
+	database, err := db.Open(target, true)
 	if err != nil {
 		t.Fatal(err)
 	}
