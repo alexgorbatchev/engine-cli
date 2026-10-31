@@ -676,6 +676,39 @@ An unreadable collection table, unreadable membership row, or invalid saved play
 
 ## Operations
 
+### Incoming local-file queue
+
+The `intake.*` jobs use the selected library endpoint and server-local source paths. The durable queue lives in `<lib-dir>/.engine-cli/intake.db`. Opening an API library resumes preparation; closing the library or API cancels and joins its worker before closing storage. Preparation copies files into staging and preserves the originals. Source identity, size and modification time are checked around copying; a quiet interval is a readiness heuristic, not a promise that another application has finished writing. Preparation never imports into the collection.
+
+| Operation | Parameters | Result |
+| --- | --- | --- |
+| `intake.list` | none | queue view |
+| `intake.process` | none | queue view after preparation reaches no eligible work |
+| `intake.enqueue` | required `paths: string[]` | items in request order |
+| `intake.cancel`, `intake.retry` | required positive integer `id` | updated item |
+| `intake.pause`, `intake.resume` | none | durable control state |
+| `intake.import.review` | required positive integer `id`; optional `to_playlist` selector | staged import review |
+| `intake.import` | required positive integer `id` and `plan_token`; same optional `to_playlist` | `{item_id,history_id,track_id}` |
+
+List and import review are read operations. Enqueue, process, cancel, retry, pause and resume have `system` effects and create no collection snapshot or Undo entry. Import has a `collection` effect with fresh Desktop protection, automatic backup unless disabled, and ordinary collection History/Undo. Inspect the live operation catalog for parameter metadata.
+
+The queue view contains `items`, `control:{paused,reason?}`, and optional safe `worker_error_code` and `recovery_error_code`. Items contain `id`, `source_path`, `source_size`, `source_modified` (Unix nanoseconds), `status`, `attempt` and `cancel_requested`; `stage_id`, `content_hash`, `error_code` and `history_id` appear when available. Queue IDs are distinct from collection track IDs and opaque staging IDs. Status is `queued`, `preparing`, `staged`, `failed`, `importing`, `imported` or `cancelled`. Listing waits for initial receipt reconciliation, not completion of preparation. Empty storage returns an empty item array. A queue reopen failure after a committed library replacement is exposed separately as `recovery_error_code`; it does not reverse that replacement.
+
+Enqueue preserves FIFO insertion order and deduplicates the same observed source version, including versions with retained import receipts. Earlier items remain durable if a later path fails. Processing waits for reconciliation and eligible preparation; item failures remain on the items, so a completed process job is not proof that every item staged successfully. Cancellation preserves sources and does not undo a committed import. Retry refuses History-owned import versions; a prepared copy returns to staged, otherwise it returns to queued.
+
+Pause stops preparation and explicit imports. Control reasons are `manual`, `restored` or `history_unavailable`; an active queue omits the reason. Library replacement stops and joins the local worker before replacing storage. Backup/restore includes the queue, but restored queues remain paused until explicit resume. Unavailable History ownership retains a recovery condition rather than authorizing a duplicate import. The operational queue and its import receipts are excluded from ordinary collection snapshots, so Undo cannot reset deduplication or make a committed version eligible again.
+
+Use the reviewed import sequence:
+
+1. Enqueue sources and inspect or process the queue until the chosen item is staged.
+2. Submit `intake.import.review` with that item ID and the optional existing destination playlist selector. Review returns `items` (staging `id`, `title`, `status`, optional `destination` and `content_hash`), `to_playlist`, `ready`, `skipped` and `plan_token`.
+3. Inspect the destination and submit `intake.import` with the exact token, queue item ID and identical playlist selection. Changed staged bytes or destination state require a fresh review.
+4. Monitor the job and refresh the queue. Retain a nonempty result and `history_id` even when the job fails during cleanup: a failed job does not prove that the collection remained unchanged. Offer the retained Undo/recovery information instead of submitting the import again.
+
+The durable import intent precedes installation, and the exact imported track receipt precedes the History After snapshot. Restart reconciliation resolves interrupted post-commit results without repeating collection import. Undo changes the effective item state to cancelled; Undo-of-Undo restores imported status. Both retain the receipt and source-version deduplication. Prepared staging evidence remains retained for recovery.
+
+Render stable codes through the client's safe message catalog. `intake_replacing` means a competing library replacement owner must finish; `intake_paused` requires inspecting control state and explicit resume. `intake_import_recovery_required` and `intake_recovery_required` require retained History/storage recovery. `intake_source_changed`, `intake_staged_changed` and `intake_state_changed` refuse stale observations. Worker and recovery codes describe confirmed failures; pending refreshes do not establish a new failure. The CLI equivalents and flags are documented in the [incoming-file command reference](../skills/engine-cli/references/intake.md).
+
 ### Staged music
 
 Staged acquisitions live under `<lib-dir>/.engine-cli/staging/`, independently of collection rows. Each item has a stable opaque `id`, `kind` (`track` or `mix`), `title`, `status` (`pending`, `ready`, or `failed`), and UTC `created_at`. Optional fields include `artist`, `album`, `source_url`, `query`, `error`, `audio_path`, `artwork_path`, `parent_id`, and `index`. Paths are relative to staging storage so moving the library preserves acquisitions. A track's `parent_id` identifies its mix; `index` preserves mix order. Failed or missing acquisitions remain available for retry after restarting the server. A failed `track.fetch`, `mix.fetch`, or `staging.retry` whose changes stay inside its own staged items records no undo history, and its job has no `history_id`; discard the failed item with `staging.rm` instead. A failure that changed the collection or files outside those items keeps its undo record.
@@ -809,6 +842,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | `playlist.import` (apply) | `{"playlist_id":3,"track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
 | `playlist.export` (apply) | `{"playlist_id":3,"path":"/Music/set.m3u8","encoding":"utf-8","path_mode":"absolute","exported_count":2,"skipped_count":0}` |
 | `staging.import` | `{"imported":[{"id":"…","track_id":7}],"failed":[]}`; each imported entry carries `analysis` with `analyze:true` |
+| `intake.import` | `{"item_id":3,"history_id":"…","track_id":7}`; retained with its History ID if later cleanup fails |
 
 Audio requests accept only positive numeric database IDs. Engine resolves the file path from that track's database record; clients cannot supply arbitrary filesystem paths. Missing tracks/files return `404`, unsupported audio file types return `415`, and unavailable libraries return `503`, using structured API errors. These endpoints read the library and stream the original file without changing or re-encoding it. Browser codec support determines which files can play. The normal loopback-host and allowed-origin checks apply to metadata and audio requests.
 

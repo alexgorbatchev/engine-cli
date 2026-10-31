@@ -71,20 +71,9 @@ func Preview(ctx context.Context, opts Options, known []Library) (*Plan, error) 
 	p := &Plan{Path: path, Action: opts.Action, Applicable: true, Files: []File{}, AffectedLibraries: []Library{}, UnavailableLibraries: []Library{}, Warnings: []string{}, databases: map[string]string{}}
 	p.databases[path] = hash
 	if opts.Action == "move" {
-		p.Destination, err = filepath.Abs(opts.Destination)
+		p.Destination, err = MoveDestination(path, opts.Destination)
 		if err != nil {
 			return nil, err
-		}
-		parent, e := filepath.EvalSymlinks(filepath.Dir(p.Destination))
-		if e != nil {
-			return nil, fmt.Errorf("destination parent must exist: %w", e)
-		}
-		p.Destination = filepath.Join(parent, filepath.Base(p.Destination))
-		if inside(path, p.Destination) || inside(p.Destination, path) {
-			return nil, fmt.Errorf("library locations must not overlap")
-		}
-		if _, e = os.Lstat(p.Destination); !os.IsNotExist(e) {
-			return nil, fmt.Errorf("destination must not exist")
 		}
 	}
 	shared := map[string][]Library{}
@@ -221,6 +210,30 @@ func Preview(ctx context.Context, opts Options, known []Library) (*Plan, error) 
 	sum := sha256.Sum256(input)
 	p.PlanToken = hex.EncodeToString(sum[:])
 	return p, nil
+}
+
+// MoveDestination validates a vacant canonical move target before acquiring
+// replacement ownership, and is repeated by the current collection preview.
+func MoveDestination(source, destination string) (string, error) {
+	if destination == "" {
+		return "", fmt.Errorf("destination is required")
+	}
+	path, err := filepath.Abs(destination)
+	if err != nil {
+		return "", err
+	}
+	parent, err := filepath.EvalSymlinks(filepath.Dir(path))
+	if err != nil {
+		return "", fmt.Errorf("destination parent must exist: %w", err)
+	}
+	path = filepath.Join(parent, filepath.Base(path))
+	if inside(source, path) || inside(path, source) {
+		return "", fmt.Errorf("library locations must not overlap")
+	}
+	if _, err := os.Lstat(path); !os.IsNotExist(err) {
+		return "", fmt.Errorf("destination must not exist")
+	}
+	return path, nil
 }
 
 func Check(ctx context.Context, opts Options, known []Library) (*Plan, error) {

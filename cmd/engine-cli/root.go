@@ -51,6 +51,7 @@ and safely back up Engine DJ music libraries and album cover art on your compute
 	rootCmd.AddCommand(newSystemCommand())
 	rootCmd.AddCommand(newMigrateCommand())
 	rootCmd.AddCommand(newStagingCommand())
+	rootCmd.AddCommand(newIntakeCommand())
 	addAcquisitionCommands(rootCmd)
 	installHistory(rootCmd)
 	installMutationGuard(rootCmd)

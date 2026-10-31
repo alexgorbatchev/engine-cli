@@ -2,7 +2,9 @@ package staging
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -64,7 +66,7 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 		if err := ctx.Err(); err != nil {
 			return report, err
 		}
-		result, err := s.importTrack(ctx, d, item, opts)
+		result, err := s.importTrack(ctx, d, item, opts, nil)
 		if result != nil {
 			report.Imported = append(report.Imported, Imported{ID: item.ID, TrackID: result.Track.ID})
 		}
@@ -90,7 +92,7 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 	return report, nil
 }
 
-func (s *Store) importTrack(ctx context.Context, d *sql.DB, item Item, opts ImportOptions) (*track.AddTrackResult, error) {
+func (s *Store) importTrack(ctx context.Context, d *sql.DB, item Item, opts ImportOptions, reviewed *importObservation) (*track.AddTrackResult, error) {
 	if item.Status != "ready" {
 		return nil, fmt.Errorf("staged track is %s; retry acquisition first", item.Status)
 	}
@@ -113,17 +115,37 @@ func (s *Store) importTrack(ctx context.Context, d *sql.DB, item Item, opts Impo
 		return nil, err
 	}
 	// Installation stays in the library and never overwrites another staged ID.
-	out, err := root.OpenFile(rel, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+	if reviewed != nil {
+		// A queue retry must reconcile its collection receipt first. A pathname
+		// already present is never evidence that this operation committed.
+		flags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
+	}
+	out, err := root.OpenFile(rel, flags, 0600)
 	if err != nil {
 		return nil, err
 	}
-	_, copyErr := io.Copy(out, source)
+	var copyErr error
+	if reviewed == nil {
+		copyErr = copyLocalBytes(ctx, out, source)
+	} else {
+		hash := sha256.New()
+		copyErr = copyLocalBytes(ctx, io.MultiWriter(out, hash), source)
+		if copyErr == nil && hex.EncodeToString(hash.Sum(nil)) != reviewed.ContentHash {
+			copyErr = staleImport()
+		}
+	}
 	if err := errors.Join(copyErr, out.Sync(), out.Close(), ctx.Err()); err != nil {
 		return nil, err
 	}
 	result, err := track.AddTrack(ctx, d, s.lib, dest, opts.ToPlaylist, false, opts.Runner)
 	if err != nil {
 		return nil, err
+	}
+	if reviewed != nil {
+		// The durable intake owner must link its result to History before
+		// discarding the immutable staged evidence. Cleanup is a later action.
+		return result, nil
 	}
 	if err := s.remove(ctx, item); err != nil {
 		return result, fmt.Errorf("track imported but staged cleanup failed: %w", err)

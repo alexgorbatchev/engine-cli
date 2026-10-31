@@ -21,6 +21,7 @@ Use the installed `engine-cli` executable. Prefer structured output when a comma
 | Read played sessions or create a playlist from one | [Sessions](references/session.md) |
 | Import/export a DJ application's library | [Migration](references/migrate.md) |
 | Acquire, inspect and import staged media | [Staging](references/staging.md), [Mixes](references/mix.md) |
+| Queue local files, prepare staged copies and review incoming imports | [Incoming local files](references/intake.md) |
 | Use a local API, runtime checks, managed tools or AI providers | [HTTP API](references/api.md), [System](references/system.md), [Tools](references/tool.md), [AI](references/ai.md) |
 | Install this skill, inspect help or configure shell completion | [Skill](references/skill.md), [Help](references/help.md), [Completion](references/completion.md) |
 

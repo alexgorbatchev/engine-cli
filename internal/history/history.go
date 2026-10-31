@@ -307,6 +307,14 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 		return nil, err
 	}
 	abs := filepath.Dir(filepath.Dir(dir))
+	var ownership *undoOwnership
+	if !opts.DryRun {
+		ownership, err = ownUndo(ctx, abs, dir, id)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { err = errors.Join(err, ownership.lease.Close()) }()
+	}
 	l, err := lock(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -324,22 +332,14 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	if err != nil {
 		return nil, err
 	}
-	var target *Entry
-	undone := make(map[string]bool)
-	for i := range all {
-		e := &all[i]
-		if e.State == "complete" && e.UndoOf != "" && !undone[e.ID] {
-			undone[e.UndoOf] = true
-		}
-		if target == nil && (e.ID == id || (id == "" && e.UndoOf == "" && !undone[e.ID])) {
-			target = e
-		}
+	target, err := selectUndoTarget(all, id)
+	if err != nil {
+		return nil, err
 	}
-	if target == nil {
-		return nil, fmt.Errorf("operation %q not found in library history", id)
-	}
-	if undone[target.ID] {
-		return nil, fmt.Errorf("operation %s has already been undone", target.ID)
+	if ownership != nil {
+		if err := ownership.validate(target); err != nil {
+			return nil, err
+		}
 	}
 	if target.RelocationFrom != "" {
 		if _, e := os.Lstat(target.RelocationFrom); !os.IsNotExist(e) {

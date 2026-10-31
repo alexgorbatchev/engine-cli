@@ -17,10 +17,5 @@ func (s *Server) RunOperation(ctx context.Context, name string, parameters json.
 	if err != nil {
 		return nil, "", err
 	}
-	release, err := s.acquireOperation(ctx, op, bound)
-	if err != nil {
-		return nil, "", err
-	}
-	defer release()
-	return s.execute(ctx, op, bound)
+	return s.runOperation(ctx, nil, op, bound)
 }
