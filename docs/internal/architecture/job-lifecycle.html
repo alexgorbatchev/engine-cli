@@ -5818,6 +5818,30 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Absolute stored audio paths are inspected at their original location, including external drives; relative paths resolve from the absolute library directory. Stored paths are preserved. Only the library directory is scanned for unindexed audio; an external path on another volume is not part of that scan. Committed Engine CLI eef34bf5d80e2d137f1f9029e40df07221a2d9ff: https://github.com/alexgorbatchev/engine-cli/blob/eef34bf5d80e2d137f1f9029e40df07221a2d9ff/internal/sync/sync.go#L48-L115 and https://github.com/alexgorbatchev/engine-cli/blob/eef34bf5d80e2d137f1f9029e40df07221a2d9ff/docs/http-api.md#L220-L239. This path-resolution addition leaves the existing Desktop, snapshot, history, partial-result and safe-error contracts unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Intake jobs and preparation have different lifetimes</h3>
+        </div>
+        <ul>
+          <li>The HTTP job state machine remains the one shown above. Intake processing asks the library-owned service for a preparation round and waits for it; cancelling that waiter does not cancel the service. The worker uses the API/library lifecycle context and only prepares eligible work. Manual/restored suspension and recovery evidence remain durable queue state.</li>
+          <li>An intake.import job wakes receipt reconciliation after its native History and API collection owners have released. The job result can retain a committed import receipt and History ID even when cleanup fails. Scheduler ownership is released before replacement cleanup reopens a service; all acquisition, execution and cleanup errors remain inside the sole terminal progress boundary.</li>
+          <li>Reviewed supplemental evidence 6f724a545fa0944deef7d8e260d0d403549d2d42: https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/service.go#L36-L47; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/service.go#L104-L119; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/jobs.go#L147-L202; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/operations.go#L181-L195. The historical job topology and source pin remain unchanged.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Intake completion — reconcile evidence, never resubmit</h3>
+        </div>
+        <ul>
+          <li>An HTTP job finishing does not merge the queue journal, staged manifest, Engine transaction and History capture into one commit. The queue reaches imported only after exact completed History and a positive persisted Track receipt, unless an effective Undo makes it cancelled. Reversing that Undo restores imported only when the original completion evidence is valid.</li>
+          <li>An effective complete Undo can cancel an incomplete original import. Otherwise absent, pending or failed History or missing Track identity pauses recovery; explicit Resume reconciles first. Retry is allowed only for failed/cancelled items without import History and cannot clear unresolved import ownership.</li>
+          <li>See the linked preparation/review and import/recovery lifecycle pages. Reviewed evidence 6f724a545fa0944deef7d8e260d0d403549d2d42: https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L130-L180; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/control.go#L24-L44; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/queue.go#L134-L138.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

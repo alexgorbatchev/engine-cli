@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-31 05:09
+last_modified: 2026-10-31 08:33
 status: current
 ---
 
@@ -10,13 +10,15 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 
 | Diagram | What it explains |
 | --- | --- |
-| [System overview](overview.html) | CLI and HTTP entry points, operation execution, collection services, library storage, recovery, and managed tools |
+| [System overview](overview.html) | CLI and HTTP entry points, operation execution, collection services, library storage, recovery, managed tools, and library-owned intake |
 | [HTTP job lifecycle](job-lifecycle.html) | Queued and running jobs, success, failure, cooperative cancellation, scheduling, and retained results |
-| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, per-track guarded analysis writes, exact-plan M3U import, and the separate read-only-source M3U export boundary |
+| [Intake preparation and review](intake-preparation-lifecycle.html) | Durable queued/preparing/staged work, cancellation, retry, and preparation recovery |
+| [Intake import and recovery](intake-import-lifecycle.html) | Reviewed import, independent completion evidence, effective Undo and reversed Undo |
+| [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, reviewed intake import, per-track guarded analysis writes, exact-plan M3U import, and the separate read-only-source M3U export boundary |
 
-The overview and collection-write specifications cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`; the HTTP job lifecycle cites `c012308d842940a41e2aad703d31f08c14e02d03`. Their source links and claims describe those revisions and the supplemental evidence below. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
+The historical overview and current collection-write topology cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`; the HTTP job lifecycle cites `c012308d842940a41e2aad703d31f08c14e02d03`. Their source links and claims describe those revisions and the supplemental evidence below. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
-All three HTML pages were regenerated with [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.4` under Node `22.23.4`. Their embedded software notices preserve the Apache 2.0 license and historical MIT grants.
+The five diagram definitions use [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.4` under Node `26.12.0`. Their embedded software notices preserve the Apache 2.0 license and historical MIT grants.
 
 ## Viewing
 
@@ -100,3 +102,23 @@ The overview adds separately reviewed staging publication evidence at committed 
 ## Complete library health-check reads
 
 The overview’s health-check card cites committed Engine CLI [5be6ff3](https://github.com/alexgorbatchev/engine-cli/commit/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275). [Required collection and playlist reads](https://github.com/alexgorbatchev/engine-cli/blob/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275/internal/verify/verify.go#L61-L180) fail without a report when incomplete, preserving cancellation and deadline classifications. [Membership inspection](https://github.com/alexgorbatchev/engine-cli/blob/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275/internal/verify/verify.go#L183-L216) uses native origin pairs and propagates query, scan, iteration and close failures. The [HTTP contract](https://github.com/alexgorbatchev/engine-cli/blob/5be6ff3feeeee68f0b1ca896ac2b39f6af07a275/docs/http-api.md#L668-L672) reports library_verify_incomplete without a result; CLI human, agent and JSON modes omit success reports. Verification remains read-only with no repair, snapshot or Undo enrollment; existing graph topology, ownership and historical evidence pins remain unchanged. Uncommitted changes are outside this evidence.
+
+## Library-owned local intake
+
+The overview's primary components and source ranges are reviewed at committed Engine CLI [6f724a5](https://github.com/alexgorbatchev/engine-cli/commit/6f724a545fa0944deef7d8e260d0d403549d2d42). The original overview pin `b85be4d87dc1045eca6133f6868e0b13f7bceb62`, all existing supplemental cards and their individual evidence pins remain recorded. The collection-write and HTTP job topologies retain their original pins and add separately identified 6f724a545fa0944deef7d8e260d0d403549d2d42 intake evidence; this review does not advance a UI integration revision. The committed native identity correction shares one canonical service key across open, wake and stop and validates the import History owner by native directory identity.
+
+The API owns a shared per-library intake service. An enrolled queue resumes eligible preparation independently of request cancellation; ordinary browsing does not create absent intake storage. Native worker and replacement ownership keep preparation, storage replacement, and service shutdown ordered. The worker copies retained regular source files into staging and checks native identity, size and mtime, and records the copied content hash; it does not import. Manual or restored suspension remains paused until explicit Resume.
+
+A reviewed import uses the ordinary fresh Desktop check, safety snapshot and History owner. Durable queue intent precedes Engine publication, the exact Track receipt precedes History After capture, and later reconciliation reads completed History after collection ownership releases. These are independent commits. Reconciliation never resubmits; effective Undo makes the receipt cancelled, while reversed Undo requires valid original completion evidence before restoring imported. Missing original completion evidence without an effective Undo pauses recovery.
+
+Ordinary collection Undo excludes the live intake journal. Explicit backup includes its presence and contents; replacement joins the service before publication and restores queue data paused. The [preparation/review lifecycle](intake-preparation-lifecycle.html) and [import/recovery lifecycle](intake-import-lifecycle.html) split one state graph at shared staged/cancelled boundaries without dropping transitions. No working Desktop fixture or new platform qualification is implied by these diagrams.
+
+Source ownership: [API service registry](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake_lifecycle.go#L51-L209), [worker and shutdown](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/service.go#L129-L187), [reviewed import and reconciliation](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L52-L180), [ordinary History exclusion](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/files.go#L78-L94), and [explicit restore suspension](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/backup/companion.go#L153-L189).
+
+The native alias correction is reviewed at the same source revision: [service identity](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake_lifecycle.go#L51-L158) uses one absolute, symlink-resolved library key, and [import History identity](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/operation_id.go#L9-L34) checks native directory identity with the exact operation and scope. The [alias import/Undo and worker-release regressions](https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake_alias_unix_test.go#L14-L40) exercise those paths. These tests do not establish native Windows or macOS execution.
+
+## Native intake reservation qualification
+
+The retained-anchor correction is reviewed at committed Engine CLI [a9ba978](https://github.com/alexgorbatchev/engine-cli/commit/a9ba978288c964bccd9bdffb3ccc4953f6483922). [Anchor acquisition](https://github.com/alexgorbatchev/engine-cli/blob/a9ba978288c964bccd9bdffb3ccc4953f6483922/internal/intakelease/reservation.go#L229-L237) separates exclusive creation from opening an existing anchor, preserving the retained-root, regular-file, empty-file, native-identity and locking checks. Only an existing-file result selects the non-creating open; other failures remain refusals. [Concurrent native acquisition](https://github.com/alexgorbatchev/engine-cli/blob/a9ba978288c964bccd9bdffb3ccc4953f6483922/internal/intakelease/reservation_anchor_open_test.go#L12-L82) exercises that production helper with two retained directory handles and verifies both opens refer to the same native file.
+
+[Native qualification run 41213582838](https://github.com/alexgorbatchev/engine-cli/actions/runs/41213582838) passes all eleven jobs on this exact revision, including Linux, macOS and Windows intake behavior, required macOS/Windows case-alias ownership checks, and native PCM coverage. This supersedes the earlier execution limit above; it does not advance those historical source pins or the UI integration revision.
