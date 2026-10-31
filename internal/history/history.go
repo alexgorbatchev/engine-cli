@@ -71,7 +71,11 @@ func storeDir(lib string) (string, error) {
 }
 
 func lock(ctx context.Context, dir string) (*sqlite.Conn, error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	// Publish new ancestors before a pending repair can rely on their entries.
+	if err := createSmartlistDirectory(filepath.Dir(dir)); err != nil {
+		return nil, err
+	}
+	if err := createSmartlistDirectory(dir); err != nil {
 		return nil, err
 	}
 	c, err := open(ctx, filepath.Join(dir, "lock.db"), sqlite.OpenReadWrite|sqlite.OpenCreate)
@@ -149,11 +153,19 @@ func List(lib string) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return entries(dir)
+	return listSmartlistSafeHistory(dir)
 }
 
 func Run(ctx context.Context, lib, operation string, scope Scope, paths []string, run func(context.Context) error) (result *Entry, err error) {
-	if err = scope.validate(); err != nil {
+	return RunPrepared(ctx, lib, RunOptions{Operation: operation, Scope: scope, Paths: paths}, run)
+}
+
+// RunPrepared holds publication exclusion across preparation and the operation.
+// Callers must establish fresh Desktop absence before enabling Smartlist repair.
+// Prepare runs after repair and before the operation's Before snapshot, allowing
+// safety backups to observe the repaired state without an unlocked interval.
+func RunPrepared(ctx context.Context, lib string, options RunOptions, run func(context.Context) error) (result *Entry, err error) {
+	if err = options.Scope.validate(); err != nil {
 		return nil, err
 	}
 	dir, err := storeDir(lib)
@@ -171,6 +183,9 @@ func Run(ctx context.Context, lib, operation string, scope Scope, paths []string
 			err = errors.Join(err, result.cleanup())
 		}
 	}()
+	if err := checkSmartlistRepair(dir); err != nil {
+		return nil, err
+	}
 	previous, err := entries(dir)
 	if err != nil {
 		return nil, err
@@ -183,7 +198,17 @@ func Run(ctx context.Context, lib, operation string, scope Scope, paths []string
 	if err = collect(dir, previous); err != nil {
 		return nil, fmt.Errorf("removing unreferenced operation history: %w", err)
 	}
-	return runLocked(ctx, abs, dir, operation, "", scope, paths, run)
+	if options.RepairSmartlists && options.Scope.capturesDatabases() {
+		if _, err := applySmartlistRepairLocked(ctx, abs, dir, ""); err != nil {
+			return nil, err
+		}
+	}
+	if options.Prepare != nil {
+		if err := options.Prepare(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return runLocked(ctx, abs, dir, options.Operation, "", options.Scope, options.Paths, run)
 }
 
 func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Scope, paths []string, run func(context.Context) error) (*Entry, error) {
@@ -264,6 +289,8 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 type UndoOptions struct {
 	Force  bool
 	DryRun bool
+	// Prepare runs under the history owner after validation, before Undo captures its snapshot.
+	Prepare func(context.Context) error
 }
 
 func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry, err error) {
@@ -282,6 +309,9 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 			err = errors.Join(err, result.cleanup())
 		}
 	}()
+	if err := checkSmartlistRepair(dir); err != nil {
+		return nil, err
+	}
 	all, err := entries(dir)
 	if err != nil {
 		return nil, err
@@ -325,6 +355,11 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	defer cleanup()
 	if opts.DryRun {
 		return target, nil
+	}
+	if opts.Prepare != nil {
+		if err := opts.Prepare(ctx); err != nil {
+			return nil, err
+		}
 	}
 	entry, err := runLocked(ctx, abs, dir, "library.undo", target.ID, target.Scope, nil, func(ctx context.Context) error {
 		if err := plan.apply(ctx, filepath.Join(dir, "objects")); err != nil {

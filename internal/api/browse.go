@@ -1,11 +1,12 @@
 package api
 
 import (
+	"context"
+	"database/sql"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
@@ -13,48 +14,16 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/regularfile"
 )
 
-func (s *Server) requestTrack(w http.ResponseWriter, r *http.Request) *db.Track {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if (err != nil || id <= 0) && !strings.HasPrefix(r.PathValue("id"), "eng:") {
-		writeError(w, http.StatusBadRequest, "invalid_track", "Use a positive numeric track ID.")
-		return nil
-	}
-	database, err := db.Open(filepath.Join(s.config.LibraryDir, "Database2", "m.db"), true)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
-		return nil
-	}
-	defer database.Close()
-	track, err := db.FindTrack(r.Context(), database, r.PathValue("id"))
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read this track from the library.")
-		return nil
-	}
-	if track == nil {
-		writeError(w, http.StatusNotFound, "track_not_found", "This track is no longer in the library.")
-	}
-	return track
-}
-
 func (s *Server) trackMetadata(w http.ResponseWriter, r *http.Request) {
-	track := s.requestTrack(w, r)
-	if track == nil {
-		return
-	}
-	database, err := db.Open(filepath.Join(s.config.LibraryDir, "Database2", "m.db"), true)
+	result, err := readRequestTrack(s, r, func(ctx context.Context, database *sql.DB, track *db.Track) (any, error) {
+		plays, err := s.playHistory(ctx, database)
+		if err != nil {
+			return nil, err
+		}
+		return details.OneTrack(ctx, database, plays, track)
+	})
 	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
-		return
-	}
-	defer database.Close()
-	history, err := s.playHistory(r.Context(), database)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read this track from the library.")
-		return
-	}
-	result, err := details.OneTrack(r.Context(), database, history, track)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read this track's playlists from the library.")
+		writeCollectionReadError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
@@ -72,58 +41,56 @@ func (s *Server) trackAudio(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "origin_required", "Audio previews require an allowed browser origin.")
 		return
 	}
-	path := s.requestAudioPath(w, r)
-	if path == "" {
+	var file *os.File
+	defer func() {
+		if file != nil {
+			file.Close()
+		}
+	}()
+	prepared, err := readRequestTrack(s, r, func(ctx context.Context, _ *sql.DB, track *db.Track) (*preparedAudio, error) {
+		// An optimistic observation may be retried after history enrollment.
+		if file != nil {
+			file.Close()
+			file = nil
+		}
+		path := track.PathString()
+		if path == "" {
+			return nil, &collectionReadError{http.StatusNotFound, "audio_unavailable", "This track has no local audio file."}
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(s.config.LibraryDir, path)
+		}
+		contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(path)))
+		// M4A is an MP4 audio container, not the LATM transport reported by some MIME databases.
+		if strings.EqualFold(filepath.Ext(path), ".m4a") {
+			contentType = "audio/mp4"
+		}
+		if !strings.HasPrefix(contentType, "audio/") {
+			return nil, &collectionReadError{http.StatusUnsupportedMediaType, "unsupported_audio", "This file type is not available for browser playback."}
+		}
+		var err error
+		file, err = regularfile.Open(path)
+		if err != nil {
+			return nil, &collectionReadError{http.StatusNotFound, "audio_unavailable", "The audio file could not be opened. Check that its drive is connected."}
+		}
+		info, err := file.Stat()
+		if err != nil || !info.Mode().IsRegular() {
+			return nil, &collectionReadError{http.StatusNotFound, "audio_unavailable", "The track path is not an audio file."}
+		}
+		return &preparedAudio{info: info, contentType: contentType}, nil
+	})
+	if err != nil {
+		writeCollectionReadError(w, err)
 		return
 	}
-	contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(path)))
-	// M4A is an MP4 audio container (RFC 4337), not the LATM transport that
-	// some system MIME databases incorrectly associate with this extension.
-	if strings.EqualFold(filepath.Ext(path), ".m4a") {
-		contentType = "audio/mp4"
-	}
-	if !strings.HasPrefix(contentType, "audio/") {
-		writeError(w, http.StatusUnsupportedMediaType, "unsupported_audio", "This file type is not available for browser playback.")
-		return
-	}
-	file := openAudio(w, path)
-	if file == nil {
-		return
-	}
-	defer file.Close()
-	info, err := file.Stat()
-	if err != nil || !info.Mode().IsRegular() {
-		writeError(w, http.StatusNotFound, "audio_unavailable", "The track path is not an audio file.")
-		return
-	}
-	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Type", prepared.contentType)
 	// Private clients may reuse audio-derived waveforms after checking the file validators.
 	w.Header().Set("Cache-Control", audioCacheControl)
 	release()
-	http.ServeContent(w, r, info.Name(), info.ModTime(), file)
+	http.ServeContent(w, r, prepared.info.Name(), prepared.info.ModTime(), file)
 }
 
-func (s *Server) requestAudioPath(w http.ResponseWriter, r *http.Request) string {
-	track := s.requestTrack(w, r)
-	if track == nil {
-		return ""
-	}
-	path := track.PathString()
-	if path == "" {
-		writeError(w, http.StatusNotFound, "audio_unavailable", "This track has no local audio file.")
-		return ""
-	}
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(s.config.LibraryDir, path)
-	}
-	return path
-}
-
-func openAudio(w http.ResponseWriter, path string) *os.File {
-	file, err := regularfile.Open(path)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "audio_unavailable", "The audio file could not be opened. Check that its drive is connected.")
-		return nil
-	}
-	return file
+type preparedAudio struct {
+	info        os.FileInfo
+	contentType string
 }

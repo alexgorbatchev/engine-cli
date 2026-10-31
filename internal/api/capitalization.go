@@ -43,3 +43,5 @@ func (s *Server) capitalizationOperation() operation {
 		})
 	})
 }
+
+func (p capitalizationParams) operationCollectionRead() bool { return p.DryRun }

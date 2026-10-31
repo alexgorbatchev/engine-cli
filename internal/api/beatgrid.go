@@ -1,9 +1,10 @@
 package api
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"net/http"
-	"path/filepath"
 
 	"github.com/alexgorbatchev/engine-cli/internal/beatgrid"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
@@ -14,17 +15,14 @@ import (
 // trackBeatGrid reads the adjusted grid Engine plays and edits. Grids with fewer than two anchors are reported as
 // missing, as Engine replaces them with its fallback.
 func (s *Server) trackBeatGrid(w http.ResponseWriter, r *http.Request) {
-	track := s.requestTrack(w, r)
-	if track == nil {
+	data, err := readRequestTrack(s, r, func(ctx context.Context, database *sql.DB, track *db.Track) (*engine.BeatData, error) {
+		return beatgrid.Load(ctx, database, track.ID)
+	})
+	var readErr *collectionReadError
+	if errors.As(err, &readErr) {
+		writeCollectionReadError(w, err)
 		return
 	}
-	database, err := db.Open(filepath.Join(s.config.LibraryDir, "Database2", "m.db"), true)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library.")
-		return
-	}
-	defer database.Close()
-	data, err := beatgrid.Load(r.Context(), database, track.ID)
 	var coded *progress.Error
 	if errors.As(err, &coded) && coded.Code == "invalid_beatgrid" {
 		writeError(w, http.StatusUnprocessableEntity, "invalid_beatgrid", "The saved Engine beat grid could not be read. Reanalyze this track.")

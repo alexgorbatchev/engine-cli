@@ -32,7 +32,7 @@ func (s *Server) stagingOperations() []operation {
 	return []operation{
 		define("staging.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) { return store.List(ctx) }),
 		define("staging.inspect", false, []string{"id"}, func(ctx context.Context, p stagedIDParams) (any, error) { return store.Inspect(ctx, p.ID) }),
-		define("staging.duplicates", false, []string{"id"}, func(ctx context.Context, p stagedIDParams) (any, error) {
+		defineCollectionRead("staging.duplicates", []string{"id"}, func(ctx context.Context, p stagedIDParams) (any, error) {
 			item, err := store.Inspect(ctx, p.ID)
 			if err != nil {
 				return nil, err

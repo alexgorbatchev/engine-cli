@@ -2,15 +2,19 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
 	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/pcm"
+	"github.com/alexgorbatchev/engine-cli/internal/regularfile"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
@@ -54,11 +58,35 @@ func (s *Server) createStagedPCM(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) openTrackPCM(w http.ResponseWriter, r *http.Request) *os.File {
-	path := s.requestAudioPath(w, r)
-	if path == "" {
+	var file *os.File
+	_, err := readRequestTrack(s, r, func(_ context.Context, _ *sql.DB, track *db.Track) (struct{}, error) {
+		// History enrollment may discard the first observation and rerun it.
+		if file != nil {
+			file.Close()
+			file = nil
+		}
+		path := track.PathString()
+		if path == "" {
+			return struct{}{}, &collectionReadError{http.StatusNotFound, "audio_unavailable", "This track has no local audio file."}
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(s.config.LibraryDir, path)
+		}
+		var err error
+		file, err = regularfile.Open(path)
+		if err != nil {
+			return struct{}{}, &collectionReadError{http.StatusNotFound, "audio_unavailable", "The audio file could not be opened. Check that its drive is connected."}
+		}
+		return struct{}{}, nil
+	})
+	if err != nil {
+		if file != nil {
+			file.Close()
+		}
+		writeCollectionReadError(w, err)
 		return nil
 	}
-	return openAudio(w, path)
+	return file
 }
 
 func (s *Server) createPCM(w http.ResponseWriter, r *http.Request, open func(http.ResponseWriter, *http.Request) *os.File) {

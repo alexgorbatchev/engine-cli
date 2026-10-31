@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -23,7 +24,9 @@ func installHistory(root *cobra.Command) {
 		run := c.RunE
 		c.RunE = func(c *cobra.Command, args []string) error {
 			operation := strings.ReplaceAll(strings.TrimPrefix(c.CommandPath(), root.Name()+" "), " ", ".")
-			e, err := history.Run(c.Context(), libDirFlag, operation, history.ScopeCollection, nil, func(ctx context.Context) error {
+			options := history.RunOptions{Operation: operation, Scope: history.ScopeCollection,
+				RepairSmartlists: operation != "library.create" && operation != "library.restore"}
+			e, err := history.RunPrepared(c.Context(), libDirFlag, options, func(ctx context.Context) error {
 				previous := c.Context()
 				c.SetContext(ctx)
 				defer c.SetContext(previous)
@@ -69,13 +72,13 @@ func newUndoCommand() *cobra.Command {
 	var statePath string
 	c := &cobra.Command{Use: "undo [id]", Short: "Undo a library operation, preserving unrelated later edits", Args: cobra.MaximumNArgs(1),
 		Long: "Undo the latest operation, or an operation ID from library history. Conflicts are refused unless --force is given. Use --dry-run to check first. Close Engine DJ before modifying the library. Forced undo also retains recovery history.",
-		RunE: func(c *cobra.Command, args []string) error {
+		RunE: func(c *cobra.Command, args []string) (err error) {
 			var store *state.Store
 			id := ""
 			if len(args) > 0 {
 				id = args[0]
 			}
-			if !dryRun {
+			prepare := func(ctx context.Context) error {
 				var err error
 				if statePath == "" {
 					statePath, err = state.DefaultPath()
@@ -87,12 +90,15 @@ func newUndoCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				defer store.Close()
-				if _, err := backup.AutoBackupIfNeeded(c.Context(), libDirFlag, noBackupFlag); err != nil {
-					return err
-				}
+				_, err = backup.AutoBackupIfNeeded(ctx, libDirFlag, noBackupFlag)
+				return err
 			}
-			e, err := history.Undo(c.Context(), libDirFlag, id, history.UndoOptions{Force: force, DryRun: dryRun})
+			defer func() {
+				if store != nil {
+					err = errors.Join(err, store.Close())
+				}
+			}()
+			e, err := history.Undo(c.Context(), libDirFlag, id, history.UndoOptions{Force: force, DryRun: dryRun, Prepare: prepare})
 			if err != nil {
 				return err
 			}

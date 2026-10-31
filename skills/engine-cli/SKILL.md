@@ -4,7 +4,7 @@ description: Use Engine CLI to inspect, edit, analyze, import, synchronize, back
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-30 19:40
-  last_modified: 2026-10-30 19:40
+  last_modified: 2026-10-30 23:26
   status: current
 ---
 
@@ -14,7 +14,7 @@ Use the installed `engine-cli` executable. Prefer structured output when a comma
 
 | Goal | Reference |
 | --- | --- |
-| Inspect, verify, refresh, back up, restore, sync or undo a library | [Library commands](references/library.md) |
+| Inspect, verify, refresh, repair saved Smartlists, back up, restore, sync or undo a library | [Library commands](references/library.md) |
 | Browse/edit playlists, membership, import/export M3U | [Playlist commands](references/playlist.md) |
 | Inspect/edit tracks, metadata, cues, grids, artwork, analysis and duplicates | [Track commands](references/track.md) |
 | Manage library-local categories, values and reconciliation | [Custom tags](references/tag.md) |
@@ -71,5 +71,7 @@ Start a loopback server with `engine-cli -l "/music/Engine Library" api serve --
 `POST /v1/operations/{name}` returns a job receipt. Observe `GET /v1/jobs/{id}` until a terminal state; SSE `/v1/jobs/{id}/events` supports progress replay. `POST /v1/jobs/{id}/cancel` requests cancellation; it does not promise rollback of completed work. Jobs/progress live only for the server process; persistent undo history is separate. Do not blindly resubmit after disconnect, cancellation request or status-read failure.
 
 CLI success exits zero; argument, validation, protection, I/O and operation failures exit nonzero. Human diagnostics normally go to stderr; JSON results and progress have distinct channels. Preserve the original code and completed-item evidence in automation. API errors carry `code`; CLI progress/results use `error_code` where documented. `operation_failed` is the unclassified fallback. Errors are not machine instructions to force, delete backups or retry mutations. Stale revision/plan failures require reinspection and fresh consent; pending history recovery requires inspection of history and explicit recovery. Missing managed tools need `tool upgrade <tool>` or an operation's explicit `--auto-install`; network installation is a side effect requiring the caller's intent.
+
+For damaged saved Smartlist links, use `library smartlist-repair preview --json`, review the named reconnect/removal actions, and apply with its exact `--plan-token`. Ordinary protected collection edits also repair links before their own snapshot and Undo state. Interrupted repair reports `smartlist_repair_pending`; close Desktop and use `library smartlist-repair recover` to validate retained evidence and roll back. Preserve the repair storage when validation refuses recovery. Read-only commands never repair automatically. See the library reference for deletion amendments and reconnect-only Undo behavior.
 
 For questions outside library/track/playlist/media/tool operations, use the appropriate other tool rather than inventing an Engine command. This skill documents usage; it does not authorize publishing releases, installing dependencies or destructive actions by itself.

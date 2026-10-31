@@ -29,3 +29,5 @@ func (s *Server) exportPlaylistOperation() operation {
 		})
 	})
 }
+
+func (p exportPlaylistParams) operationCollectionRead() bool { return p.DryRun }

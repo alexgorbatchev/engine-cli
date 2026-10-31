@@ -2,13 +2,13 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"errors"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/artworkcache"
@@ -16,40 +16,34 @@ import (
 )
 
 func (s *Server) trackArtwork(w http.ResponseWriter, r *http.Request) {
-	t := s.requestTrack(w, r)
-	if t == nil {
-		return
-	}
-	d, err := db.Open(filepath.Join(s.config.LibraryDir, "Database2", "m.db"), true)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library artwork.")
-		return
-	}
-	defer d.Close()
-	var data, hash []byte
-	err = d.QueryRowContext(r.Context(), "SELECT albumArt, hash FROM AlbumArt WHERE id = ?", t.AlbumArtID).Scan(&data, &hash)
-	if errors.Is(err, sql.ErrNoRows) {
-		err = nil
-	}
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "artwork_unavailable", "Could not read this track's cover artwork.")
-		return
-	}
-	if len(data) == 0 {
-		data, err = s.cachedArtwork(hash, []byte(t.AlbumArtSourceHash.String))
+	data, err := readRequestTrack(s, r, func(ctx context.Context, d *sql.DB, t *db.Track) ([]byte, error) {
+		var data, hash []byte
+		err := d.QueryRowContext(ctx, "SELECT albumArt, hash FROM AlbumArt WHERE id = ?", t.AlbumArtID).Scan(&data, &hash)
+		if errors.Is(err, sql.ErrNoRows) {
+			err = nil
+		}
 		if err != nil {
-			writeError(w, http.StatusServiceUnavailable, "artwork_unavailable", "Could not read this track's cached cover artwork.")
-			return
+			return nil, &collectionReadError{http.StatusServiceUnavailable, "artwork_unavailable", "Could not read this track's cover artwork."}
 		}
-	}
-	if r.URL.Query().Get("size") == "full" && len(data) > 0 {
-		full, cacheErr := s.cachedArtwork(hash, []byte(t.AlbumArtSourceHash.String))
-		if cacheErr == nil && len(full) > 0 {
-			data = full
+		if len(data) == 0 {
+			data, err = s.cachedArtwork(hash, []byte(t.AlbumArtSourceHash.String))
+			if err != nil {
+				return nil, &collectionReadError{http.StatusServiceUnavailable, "artwork_unavailable", "Could not read this track's cached cover artwork."}
+			}
 		}
-	}
-	if len(data) == 0 {
-		writeError(w, http.StatusNotFound, "artwork_unavailable", "This track has no cover artwork.")
+		if r.URL.Query().Get("size") == "full" && len(data) > 0 {
+			full, cacheErr := s.cachedArtwork(hash, []byte(t.AlbumArtSourceHash.String))
+			if cacheErr == nil && len(full) > 0 {
+				data = full
+			}
+		}
+		if len(data) == 0 {
+			return nil, &collectionReadError{http.StatusNotFound, "artwork_unavailable", "This track has no cover artwork."}
+		}
+		return data, nil
+	})
+	if err != nil {
+		writeCollectionReadError(w, err)
 		return
 	}
 	contentType := http.DetectContentType(data)

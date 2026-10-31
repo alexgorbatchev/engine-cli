@@ -19,7 +19,7 @@ import (
 func TestPCMRejectsFIFOWithoutHoldingCollection(t *testing.T) {
 	target := os.Getenv("ENGINE_PCM_FIFO_CHILD")
 	if target == "" {
-		for _, target := range []string{"collection", "staging", "collection-symlink", "staging-symlink"} {
+		for _, target := range []string{"collection", "staging", "collection-symlink", "staging-symlink", "audio", "audio-symlink"} {
 			t.Run(target, func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 				defer cancel()
@@ -65,7 +65,11 @@ func TestPCMRejectsFIFOWithoutHoldingCollection(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 3 {
-		w := requestAPI(t, s, http.MethodPost, route, `{"sample_rate":48000}`)
+		method, body := http.MethodPost, `{"sample_rate":48000}`
+		if strings.HasPrefix(target, "audio") {
+			method, route, body = http.MethodGet, "/v1/tracks/1/audio", ""
+		}
+		w := requestAPI(t, s, method, route, body)
 		if w.Code != 404 || !strings.Contains(w.Body.String(), code) {
 			t.Fatalf("special source=%d %s", w.Code, w.Body)
 		}
