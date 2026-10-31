@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 22:08
+last_modified: 2026-10-31 01:33
 status: current
 ---
 
@@ -14,7 +14,7 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 | [HTTP job lifecycle](job-lifecycle.html) | Queued and running jobs, success, failure, cooperative cancellation, scheduling, and retained results |
 | [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, per-track guarded analysis writes, exact-plan M3U import, and the separate read-only-source M3U export boundary |
 
-The overview and collection-write specifications cite committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`; the HTTP job lifecycle cites `c012308d842940a41e2aad703d31f08c14e02d03`. Their source links and claims describe those revisions and the supplemental evidence below. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
+The overview specification cites committed engine-cli `b85be4d87dc1045eca6133f6868e0b13f7bceb62`; the HTTP job lifecycle cites `c012308d842940a41e2aad703d31f08c14e02d03`. The collection-write topology cites repair commit 9c73c219e66a760ef38d79ce606e3c233bce9079. Source links and claims describe these revisions and the supplemental evidence below. Documentation and viewing configuration added afterward do not change the runtime evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
 All three HTML pages were regenerated with [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.4` under Node `22.23.4`. Their embedded software notices preserve the Apache 2.0 license and historical MIT grants.
 
@@ -96,3 +96,11 @@ Overview and collection-write supplemental cards cite committed Engine CLI `067f
 ## Rooted staging manifest publication
 
 The overview adds separately reviewed staging publication evidence at committed Engine CLI `067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0`. A synced temporary manifest is published through retained rooted handles; Unix directory synchronization remains, while Windows uses native relative-handle write-through replacement and rejects source reparse points. NTFS rename-metadata durability is an explicit filesystem-specific guarantee. Staging history scope and scheduling remain unchanged.
+
+## Damaged Smartlist repair and coherent observation
+
+The Smartlist supplements and current collection-write topology cite committed Engine CLI [9c73c21](https://github.com/alexgorbatchev/engine-cli/commit/9c73c219e66a760ef38d79ce606e3c233bce9079). Shared coherent read leases exclude publication while preserving overlapping in-process reads; newly enrolled history causes an optimistic read to retry, and pending repair refuses observation without recovering on reads. Retained audio and PCM sources release observation before streaming or decoding.
+
+Selected protected collection mutations repair before safety-backup preparation and the requested operation's Before snapshot. Exact-token repair stages immutable originals, corrected deletion-time Before/After evidence and reconnect-only Undo; damaged components without usable history are removed without invented Undo. Durable pending intent precedes multi-target publication. Interrupted publication requires explicit protected recovery that validates all originals and allowed target states before restoring anything. Native publications remain separate files, not one cross-file SQLite transaction.
+
+The overview retains its historical repository pin; its new cards cite the repair commit separately. The collection-write topology is rebound to that commit, retaining separately pinned historical supplemental cards. Native synthetic fixtures and process-death/filesystem failure tests qualify these code paths; they do not prove Desktop-authored rules or successful Desktop opening/evaluation. Desktop acceptance remains outstanding.

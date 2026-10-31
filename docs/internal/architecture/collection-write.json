@@ -2,128 +2,132 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Ordinary API collection write",
+    "title": "Ordinary API collection write safeguards",
     "locale": "en",
     "output": "docs/internal/architecture/collection-write.html",
     "quality_profile": "showcase",
     "repository": {
       "url": "git@github.com:alexgorbatchev/engine-cli.git",
-      "revision": "b85be4d87dc1045eca6133f6868e0b13f7bceb62",
+      "revision": "9c73c219e66a760ef38d79ce606e3c233bce9079",
       "link_mode": "local-only"
     }
   },
   "lanes": [
     {
       "id": "execution",
-      "label": "Operation execution"
+      "label": "API operation lifetime"
+    },
+    {
+      "id": "history",
+      "label": "Exclusive History owner held"
     },
     {
       "id": "errors",
-      "label": "Failure outcomes",
+      "label": "Refusal and failure outcomes",
       "variant": "exception"
     }
   ],
   "mainPath": [
-    "bind",
-    "schedule",
-    "desktop",
-    "backup",
+    "access",
+    "check",
+    "owner",
+    "repair",
     "journal",
     "complete"
   ],
   "nodes": [
     {
-      "id": "bind",
+      "id": "access",
       "lane": "execution",
       "col": 0,
       "type": "backend",
-      "label": "Bind request",
-      "sublabel": "validate + classify",
+      "label": "Bind + acquire API access",
+      "sublabel": "outer API barrier held through result",
       "sources": [
-        {
-          "path": "internal/api/operations.go",
-          "line": 83,
-          "end_line": 148
-        },
         {
           "path": "internal/api/run.go",
           "line": 11,
           "end_line": 25
-        }
-      ]
-    },
-    {
-      "id": "schedule",
-      "lane": "execution",
-      "col": 1,
-      "type": "backend",
-      "label": "Acquire access",
-      "sublabel": "write gate + exclusive",
-      "sources": [
+        },
         {
           "path": "internal/api/scheduling.go",
           "line": 9,
-          "end_line": 41
-        }
-      ]
-    },
-    {
-      "id": "desktop",
-      "lane": "execution",
-      "col": 2,
-      "type": "security",
-      "label": "Check Desktop",
-      "sublabel": "fresh process status",
-      "sources": [
-        {
-          "path": "internal/api/operations.go",
-          "line": 194,
-          "end_line": 202
-        }
-      ]
-    },
-    {
-      "id": "backup",
-      "lane": "execution",
-      "col": 3,
-      "type": "database",
-      "label": "Safety backup",
-      "sublabel": "unless disabled",
-      "sources": [
-        {
-          "path": "internal/api/operations.go",
-          "line": 212,
-          "end_line": 218
+          "end_line": 42
         },
         {
-          "path": "internal/backup/backup.go",
-          "line": 160,
-          "end_line": 190
+          "path": "internal/api/jobs.go",
+          "line": 147,
+          "end_line": 178
+        }
+      ]
+    },
+    {
+      "id": "check",
+      "lane": "execution",
+      "col": 1,
+      "type": "backend",
+      "label": "Preflight → fresh Desktop",
+      "sublabel": "refuse unsafe or unknown observation",
+      "sources": [
+        {
+          "path": "internal/api/operations.go",
+          "line": 182,
+          "end_line": 209
+        }
+      ]
+    },
+    {
+      "id": "owner",
+      "lane": "history",
+      "col": 2,
+      "type": "database",
+      "label": "Acquire + validate History",
+      "sublabel": "exclusive owner; pending/incomplete refusal",
+      "sources": [
+        {
+          "path": "internal/history/history.go",
+          "line": 73,
+          "end_line": 200
+        }
+      ]
+    },
+    {
+      "id": "repair",
+      "lane": "history",
+      "col": 3,
+      "type": "backend",
+      "label": "Repair → API Prepare backup",
+      "sublabel": "owner held; backup unless disabled",
+      "sources": [
+        {
+          "path": "internal/history/history.go",
+          "line": 201,
+          "end_line": 211
+        },
+        {
+          "path": "internal/history/smartlist_publish.go",
+          "line": 44,
+          "end_line": 84
+        },
+        {
+          "path": "internal/api/operations.go",
+          "line": 219,
+          "end_line": 241
         }
       ]
     },
     {
       "id": "journal",
-      "lane": "execution",
+      "lane": "history",
       "col": 4,
       "type": "backend",
-      "label": "Journal + run",
-      "sublabel": "capture before / after",
+      "label": "Before → mutation → After",
+      "sublabel": "ordinary durable history entry",
       "sources": [
         {
-          "path": "internal/api/operations.go",
-          "line": 219,
-          "end_line": 232
-        },
-        {
           "path": "internal/history/history.go",
-          "line": 160,
-          "end_line": 191
-        },
-        {
-          "path": "internal/history/history.go",
-          "line": 194,
-          "end_line": 248
+          "line": 214,
+          "end_line": 285
         }
       ]
     },
@@ -131,39 +135,39 @@
       "id": "complete",
       "lane": "execution",
       "col": 5,
-      "type": "frontend",
-      "label": "Return result",
-      "sublabel": "release access",
+      "type": "backend",
+      "label": "Close History → return result",
+      "sublabel": "then release outer API access",
       "sources": [
         {
-          "path": "internal/api/jobs.go",
-          "line": 147,
-          "end_line": 178
+          "path": "internal/history/history.go",
+          "line": 180,
+          "end_line": 186
         },
         {
           "path": "internal/api/run.go",
           "line": 20,
           "end_line": 25
+        },
+        {
+          "path": "internal/api/jobs.go",
+          "line": 147,
+          "end_line": 178
         }
       ]
     },
     {
       "id": "blocked",
       "lane": "errors",
-      "col": 2,
+      "col": 1,
       "type": "security",
-      "label": "Refuse write",
-      "sublabel": "running / unknown",
+      "label": "Preflight / Desktop refusal",
+      "sublabel": "no History owner acquired",
       "sources": [
         {
           "path": "internal/api/operations.go",
-          "line": 194,
-          "end_line": 201
-        },
-        {
-          "path": "internal/systemcheck/check.go",
-          "line": 84,
-          "end_line": 97
+          "line": 182,
+          "end_line": 209
         }
       ]
     },
@@ -172,71 +176,74 @@
       "lane": "errors",
       "col": 4,
       "type": "backend",
-      "label": "Report failure",
-      "sublabel": "retain recovery state",
+      "label": "Return safe failure",
+      "sublabel": "close only acquired owner; retain recovery",
       "sources": [
         {
           "path": "internal/history/history.go",
-          "line": 221,
-          "end_line": 248
+          "line": 180,
+          "end_line": 211
         },
         {
-          "path": "internal/api/jobs.go",
-          "line": 164,
-          "end_line": 178
+          "path": "internal/history/smartlist_publish.go",
+          "line": 86,
+          "end_line": 101
         }
       ]
     }
   ],
   "edges": [
     {
-      "id": "bind-schedule",
-      "from": "bind",
-      "to": "schedule",
-      "label": "valid",
+      "id": "access-check",
+      "from": "access",
+      "to": "check",
       "variant": "emphasis"
     },
     {
-      "id": "schedule-desktop",
-      "from": "schedule",
-      "to": "desktop",
-      "label": "access",
+      "id": "check-owner",
+      "from": "check",
+      "to": "owner",
       "variant": "emphasis"
     },
     {
-      "id": "desktop-backup",
-      "from": "desktop",
-      "to": "backup",
-      "label": "allowed",
+      "id": "owner-repair",
+      "from": "owner",
+      "to": "repair",
       "variant": "emphasis"
     },
     {
-      "id": "backup-journal",
-      "from": "backup",
+      "id": "repair-journal",
+      "from": "repair",
       "to": "journal",
-      "label": "ready",
       "variant": "emphasis"
     },
     {
       "id": "journal-complete",
       "from": "journal",
       "to": "complete",
-      "label": "success",
       "variant": "emphasis"
     },
     {
-      "id": "desktop-blocked",
-      "from": "desktop",
+      "id": "check-blocked",
+      "from": "check",
       "to": "blocked",
-      "label": "unsafe",
+      "label": "refused",
       "variant": "security",
       "role": "error"
     },
     {
-      "id": "backup-failed",
-      "from": "backup",
+      "id": "owner-failed",
+      "from": "owner",
       "to": "failed",
-      "label": "backup error",
+      "label": "error",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "repair-failed",
+      "from": "repair",
+      "to": "failed",
+      "label": "error",
       "variant": "security",
       "role": "error"
     },
@@ -244,12 +251,31 @@
       "id": "journal-failed",
       "from": "journal",
       "to": "failed",
-      "label": "run / capture error",
+      "label": "error",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "complete-failed",
+      "from": "complete",
+      "to": "failed",
+      "label": "error",
       "variant": "security",
       "role": "error"
     }
   ],
   "cards": [
+    {
+      "dot": "amber",
+      "title": "Current write ownership and historical evidence",
+      "items": [
+        "The main path cites committed Engine CLI 9c73c219e66a760ef38d79ce606e3c233bce9079. API scheduling surrounds protected execution; the exclusive History owner spans pending validation, selected automatic repair, backup preparation and ordinary Before/mutation/After finalization.",
+        "Historical supplemental cards below retain their original committed evidence, including the prior diagram baseline b85be4d87dc1045eca6133f6868e0b13f7bceb62. Statements that the historical topology was unchanged describe those earlier additions, not this current main path.",
+        "After acquiring the History owner, RunPrepared rejects pending repair and incomplete ordinary entries, collects unreferenced history, performs selected automatic repair, invokes API Prepare, then captures the ordinary Before. The owner stays held through callback execution and actual After finalization, including error or cancellation cleanup. Failed owner acquisition has nothing to close; every acquired owner is closed on return.",
+        "The API access barrier surrounds execute and outlives History ownership. Checked preflight precedes the fresh Desktop check. Specialized repair apply/recover, Undo, sync, creation and restoration have explicit policies and are not represented by this ordinary selected-repair path.",
+        "Native Cobra installHistory uses the same exclusive owner and automatic repair before its ordinary Before. It supplies no RunOptions.Prepare: command-specific AutoBackup calls run inside the wrapped callback after Before capture. Both paths keep repair before backup and mutation under History exclusion; this difference alone is not a defect."
+      ]
+    },
     {
       "dot": "cyan",
       "title": "Exact scope",
@@ -451,6 +477,36 @@
         "PCM endpoints use direct HTTP responses rather than operation submission or job polling. Source lookup and opening hold the collection read barrier; the retained regular descriptor is handed to the PCM Store only after that barrier is released. Long decoding and window reads therefore do not retain collection scheduling locks.",
         "Creation, reads and explicit release do not mutate Engine databases or companion stores and do not enroll Desktop write checks, snapshots, history or Undo. Library ownership, request bounds, source-change detection and generation teardown remain enforced. This separate streaming path does not weaken the safeguards of collection-writing operations.",
         "Reviewed committed evidence 067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0: internal/api/pcm.go:21-139; internal/api/server.go:137-152,206-228; internal/pcm/store.go:33-150; internal/pcm/lifecycle.go:5-65. Historical workflow topology and reviewed source pins remain unchanged."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Automatic repair before ordinary Before",
+      "items": [
+        "The main path shows RunPrepared ownership: acquire the exclusive History owner, refuse pending repair or incomplete history, collect unreferenced history, run selected automatic Smartlist repair, run the API safety-backup preparation callback, then capture the ordinary Before and execute it.",
+        "Automatic repair therefore cannot be undone accidentally by the following ordinary operation's Undo. Preview never repairs. Creation, restoration, sync and Undo retain their explicit policies; Undo's safety backup runs inside its own validated exclusive ownership through UndoOptions.Prepare.",
+        "Explicit repair apply/recover bypass generic backup/history wrapping, not Desktop protection. Apply reviews again under the owner, rechecks the exact token after staging, and validates the complete target set before publication.",
+        "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/history.go:1–378; internal/api/operations.go:1–311. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Journal, original deletion and selective Undo",
+      "items": [
+        "Preparation preserves original native database and entry images, stages corrected historical Before/After images, regenerates native changesets and entry entity/hash references, and retains the original evidence. Historical validation preserves untouched full rows and does not require unrelated pre-existing damage to become healthy.",
+        "Only temporally attributable deletion rows are amended. Corrected Before keeps operation-owned saved rows at their proven historical position; corrected After removes the rows that belonged to that deletion. The original delete remains one-step Undo.",
+        "Reconnect Undo compares a baseline with removals already applied against the repaired image, so it reverses reconnections without resurrecting unattributed removals. Only a nonempty reconnect undo_id becomes the job's history_id.",
+        "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_prepare.go:1–203; internal/history/smartlist_amendment.go:1–131; internal/history/smartlist_historical_stage.go:1–88. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Interrupted publication and explicit recovery",
+      "items": [
+        "A durable .engine-cli/smartlist-repair/pending.json precedes publication of the staged history entries and live database. This is journaled multi-target publication, not one cross-file SQLite transaction. Pending blocks ordinary writes, observation, collection, previews and forced Undo before a generic safety backup can run.",
+        "The publisher validates library identity, confined target paths, original/staged hashes and referenced images. Recovery validates every target before the first restore and refuses an external third state rather than overwriting it. It restores genuine originals and durably changes the terminal marker only after successful completion.",
+        "Publication failure attempts rollback without the cancelled request context; a failed rollback leaves pending evidence for explicit protected recovery. After durable commit, the accepted repair remains successful even if the request is subsequently cancelled.",
+        "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_publish.go:1–177; internal/history/smartlist_targets.go:1–156; internal/history/smartlist_references.go:1–137. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
       ]
     }
   ]
