@@ -21,6 +21,9 @@ func testGeneration(t *testing.T, s *Store, owner string) *generation {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if f.Fd() == ^uintptr(0) {
+		t.Fatal("open fixture has an invalid native descriptor")
+	}
 	g, err := s.add(owner, f, 48000)
 	if err != nil {
 		t.Fatal(err)
@@ -45,9 +48,7 @@ func TestStoreScopeMutationAndExpiry(t *testing.T) {
 	if _, err := s.Metadata(t.Context(), "library-a", g.metadata.ID); !errors.Is(err, ErrChanged) {
 		t.Fatalf("mutation: %v", err)
 	}
-	if _, err := g.file.Stat(); !errors.Is(err, os.ErrClosed) {
-		t.Fatalf("invalidated source retained: %v", err)
-	}
+	assertFileClosed(t, g.file)
 	g = testGeneration(t, s, "library-a")
 	s.expire(time.Now().Add(idleLimit))
 	if _, err := s.Metadata(t.Context(), "library-a", g.metadata.ID); !errors.Is(err, ErrMissing) {
@@ -69,9 +70,7 @@ func TestStoreBoundsAndCancellation(t *testing.T) {
 	if _, err := s.Create(t.Context(), "other", f, 48000); !errors.Is(err, ErrBusy) {
 		t.Fatalf("generation cap: %v", err)
 	}
-	if _, err := f.Stat(); !errors.Is(err, os.ErrClosed) {
-		t.Fatal("rejected file not closed")
-	}
+	assertFileClosed(t, f)
 	ctx, _, finish, err := s.acquire(t.Context(), "library", generations[0].metadata.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -190,7 +189,12 @@ func TestCreateRejectsClosedFileAndClosedStore(t *testing.T) {
 	if _, err := s.Create(t.Context(), "library", file, 48000); !errors.Is(err, ErrClosed) {
 		t.Fatalf("closed store: %v", err)
 	}
-	if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
-		t.Fatalf("rejected file retained: %v", err)
+	assertFileClosed(t, file)
+}
+
+func assertFileClosed(t *testing.T, file *os.File) {
+	t.Helper()
+	if descriptor := file.Fd(); descriptor != ^uintptr(0) {
+		t.Fatalf("retained native descriptor remains open: %d", descriptor)
 	}
 }
