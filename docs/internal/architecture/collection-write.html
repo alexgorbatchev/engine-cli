@@ -6137,6 +6137,33 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_publish.go:1–177; internal/history/smartlist_targets.go:1–156; internal/history/smartlist_references.go:1–137. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Intake import — ordinary protected collection ownership</h3>
+        </div>
+        <ul>
+          <li>intake.import.review reads the active staged item and returns the existing staging import review. intake.import requires the item ID and exact plan token, and is classified as a collection mutation. Queue processing, enqueue, retry and preparation are system effects and never import by themselves.</li>
+          <li>Apply retains the API collection owner, establishes fresh Desktop absence and enters RunPrepared with the ordinary safety-backup callback. History captures Before, runs the import and captures actual After, including partial changes on failure. ApplyImport verifies that its context belongs to the matching intake.import collection History operation; it checks current active staged state and revalidates the plan under retained staging import ownership.</li>
+          <li>The staged source remains available after import. Completion is not inferred from the HTTP job alone: intent, Engine publication, exact Track receipt and completed History are separate evidence. A missing receipt after Engine publication keeps History pending for recovery; reconciliation does not retry the import.</li>
+          <li>Reviewed supplemental evidence 6f724a545fa0944deef7d8e260d0d403549d2d42: https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake.go#L34-L87; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake.go#L154-L172; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/operations.go#L217-L257; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/history.go#L161-L279; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L52-L127. Historical workflow topology and source pin remain unchanged.</li>
+          <li>The History context matches the actual library directory through os.Stat and os.SameFile, plus the exact operation and collection scope; a symlink alias does not invent another operation identity. https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/operation_id.go#L9-L34.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Intake recovery — live journal is outside ordinary Undo</h3>
+        </div>
+        <ul>
+          <li>Ordinary collection snapshots deliberately omit intake.db; undoing the imported Engine changes does not erase the queue intent or Track receipt. Reconciliation classifies an effective complete Undo as cancelled even if the original import evidence is incomplete. If that Undo is reversed, imported status requires the original complete History entry and positive persisted Track ID. No reconciliation branch submits another import.</li>
+          <li>Without an effective Undo, missing, pending or failed original History or a missing positive Track receipt requires recovery and pauses the queue with history_unavailable. Manual and restored pauses require explicit Resume, which must reconcile successfully before clearing suspension.</li>
+          <li>Explicit backup captures intake separately. Restore and other supported replacement paths stop/join the service and reserve native replacement ownership before collection/History access. Restored queue data is paused; ordinary Undo remains distinct from explicitly restoring a backed-up journal.</li>
+          <li>https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/files.go#L78-L94; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L130-L180; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/control.go#L15-L44; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/backup/companion.go#L153-L189; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intakecontrol/control.go#L62-L76.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
