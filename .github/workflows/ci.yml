@@ -35,6 +35,7 @@ jobs:
         run: choco install ffmpeg --no-progress -y
       - name: Qualify retained-file decoding and HTTP handoff
         run: |
+          go test -count=1 -v ./internal/staging -run 'TestManifestPublication|TestStorePersistenceAndContainment'
           go test -tags pcm_native -count=1 -v ./internal/regularfile ./internal/pcm
           go test -tags pcm_native -count=1 -v -run PCM ./internal/api
 
