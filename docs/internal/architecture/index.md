@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 18:42
+last_modified: 2026-10-30 19:20
 status: current
 ---
 
@@ -76,3 +76,7 @@ The overview and collection-write import cards cite committed Engine CLI [69d253
 ## Atomic playlist membership
 
 Overview and collection-write supplemental cards cite reviewed committed runtime f5d8f4f04a35b4b62bc2d4e4ed8b5499e509ca23. A removal commits predecessor relinking and target deletion together; a move also includes destination insertion and tail relinking in the same transaction. Native origin-pair identity and Engine’s before-delete trigger are preserved. Errors roll back the complete single-track operation. Existing Desktop protection, snapshots and Undo wrappers retain ownership. This does not extend atomicity to standalone Add or a multi-track batch; historical evidence pins and graph topology remain unchanged.
+
+## Atomic standalone playlist insertion
+
+Reviewed committed runtime 86e33dbd1cbb1409cee82ab67af1167d10d95df0. Standalone Add commits the new membership and previous-tail link together. Caller-owned transactions retain their commit/rollback responsibility; native origin-pair identity and deduplication are preserved. Existing Desktop, snapshot and Undo owners remain unchanged; this adds no multi-track batch guarantee. Historical evidence pins remain unchanged.

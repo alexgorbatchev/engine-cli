@@ -6059,6 +6059,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence f5d8f4f04a35b4b62bc2d4e4ed8b5499e509ca23: internal/db/db.go:588–655; internal/db/library_schema.sql:172–180; internal/db/membership_atomic_test.go:18–269. This is atomicity for one removal or move, not standalone Add or a multi-track batch. Historical graph and evidence pins remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Standalone membership insertion — one transaction</h3>
+        </div>
+        <ul>
+          <li>AddTrackToPlaylist called with *sql.DB begins one transaction before membership lookup and commits only after insertion and tail relinking succeed. Rejected insertion or tail UPDATE leaves exact existing membership rows and links unchanged.</li>
+          <li>A caller-owned *sql.Tx remains caller-owned: Add participates without beginning or committing another transaction. Deduplication and native originTrackId plus originDatabaseUuid identity remain unchanged, including equal origin IDs from different libraries.</li>
+          <li>Reviewed committed evidence 86e33dbd1cbb1409cee82ab67af1167d10d95df0: internal/db/db.go:529–604; internal/db/membership_add_atomic_test.go:1–163. Existing API/Cobra Desktop protection, snapshots and Undo remain the owners; no multi-track batch atomicity is added. Historical evidence pins and graph topology remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
