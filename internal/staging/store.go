@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/regularfile"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
@@ -323,14 +324,9 @@ func (s *Store) Open(ctx context.Context, id string, artwork bool) (*os.File, er
 		return nil, err
 	}
 	defer root.Close()
-	f, err := root.Open(filepath.FromSlash(path))
+	f, err := regularfile.OpenRoot(root, filepath.FromSlash(path))
 	if err != nil {
 		return nil, err
-	}
-	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() {
-		f.Close()
-		return nil, fmt.Errorf("staged media is not a regular file")
 	}
 	return f, nil
 }

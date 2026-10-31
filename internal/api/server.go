@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
+	"github.com/alexgorbatchev/engine-cli/internal/pcm"
 	"github.com/alexgorbatchev/engine-cli/internal/state"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
@@ -28,6 +29,7 @@ const maxRequestBytes = 1 << 20
 type Config struct {
 	StatePath      string
 	state          *state.Store
+	pcm            *pcm.Store
 	LibraryDir     string
 	LibraryPaths   []string
 	NoBackup       bool
@@ -41,6 +43,8 @@ type Config struct {
 
 type Server struct {
 	state      *state.Store
+	pcm        *pcm.Store
+	ownsPCM    bool
 	ownsState  bool
 	config     Config
 	mux        *http.ServeMux
@@ -95,6 +99,12 @@ func New(config Config) (*Server, error) {
 		s.config.state = s.state
 	}
 	s.libraries = make(map[string]openedLibrary)
+	s.pcm = config.pcm
+	if s.pcm == nil {
+		s.pcm = pcm.New()
+		s.ownsPCM = true
+		s.config.pcm = s.pcm
+	}
 	ops := append(s.libraryOperations(), s.playlistOperations()...)
 	ops = append(ops, s.libraryStateOperations()...)
 	ops = append(ops, s.libraryLifecycleOperations()...)
@@ -124,6 +134,7 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("/v1/libraries/{library}/{resource...}", s.libraryRequest)
 	s.mux.HandleFunc("GET /v1/staging", s.collectionRead(s.stagedList))
 	s.mux.HandleFunc("GET /v1/staging/{id}/audio", s.stagedMedia(false))
+	s.mux.HandleFunc("POST /v1/staging/{id}/pcm", s.createStagedPCM)
 	s.mux.HandleFunc("GET /v1/staging/{id}/artwork", s.stagedMedia(true))
 	s.mux.HandleFunc("GET /v1/system/check", s.systemCheck)
 	s.mux.HandleFunc("GET /v1/tracks", s.collectionRead(s.batchDetails("track")))
@@ -135,6 +146,10 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("GET /v1/tracks/{id}", s.collectionRead(s.trackMetadata))
 	s.mux.HandleFunc("PUT /v1/tracks/{id}", s.editTrackUpload)
 	s.mux.HandleFunc("GET /v1/tracks/{id}/audio", s.trackAudio)
+	s.mux.HandleFunc("POST /v1/tracks/{id}/pcm", s.createTrackPCM)
+	s.mux.HandleFunc("GET /v1/pcm/{generation}", s.pcmMetadata)
+	s.mux.HandleFunc("GET /v1/pcm/{generation}/windows", s.pcmWindow)
+	s.mux.HandleFunc("DELETE /v1/pcm/{generation}", s.releasePCM)
 	s.mux.HandleFunc("GET /v1/tracks/{id}/artwork", s.collectionRead(s.trackArtwork))
 	s.mux.HandleFunc("GET /v1/tracks/{id}/beatgrid", s.collectionRead(s.trackBeatGrid))
 	s.mux.HandleFunc("POST /v1/tracks/{id}/beatgrid/edits", s.collectionRead(s.trackGridEdit))
@@ -176,10 +191,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Expose-Headers", "Location, X-PCM-Generation, X-PCM-Sample-Rate, X-PCM-Channels, X-PCM-Start-Frame, X-PCM-Frame-Count, X-PCM-Length-Frames")
 		w.Header().Set("Vary", "Origin")
 	}
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Last-Event-ID")
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -203,6 +219,9 @@ func (s *Server) Close() {
 	s.mu.Unlock()
 	for _, child := range children {
 		child.Close()
+	}
+	if s.ownsPCM {
+		s.pcm.Close()
 	}
 	s.workers.Wait()
 	if s.ownsState {
