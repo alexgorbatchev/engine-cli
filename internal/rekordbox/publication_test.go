@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -28,10 +30,12 @@ func publicationFixture(t *testing.T) (string, *sql.DB, importsource.State) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { d.Close() })
-	if _, err := db.InsertTrack(t.Context(), d, &db.Track{Path: text("/original.wav"), Title: text("Original")}); err != nil {
+	path := filepath.Join(root, "original.wav")
+	if _, err := db.InsertTrack(t.Context(), d, &db.Track{Path: text(path), Title: text("Original")}); err != nil {
 		t.Fatal(err)
 	}
-	src, err := parseSource([]byte(`<DJ_PLAYLISTS><COLLECTION><TRACK TrackID="1" Location="file:///original.wav"/></COLLECTION></DJ_PLAYLISTS>`))
+	location := (&url.URL{Scheme: "file", Host: "localhost", Path: filepath.ToSlash(path)}).String()
+	src, err := parseSource([]byte(fmt.Sprintf(`<DJ_PLAYLISTS><COLLECTION><TRACK TrackID="1" Location="%s"/></COLLECTION></DJ_PLAYLISTS>`, location)))
 	if err != nil {
 		t.Fatal(err)
 	}

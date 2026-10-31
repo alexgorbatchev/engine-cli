@@ -105,14 +105,7 @@ func writeAtomic(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	if err = os.Rename(f.Name(), path); err != nil {
-		return err
-	}
-	d, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	return errors.Join(d.Sync(), d.Close())
+	return publishEntry(f.Name(), path)
 }
 
 func entries(dir string) ([]Entry, error) {
