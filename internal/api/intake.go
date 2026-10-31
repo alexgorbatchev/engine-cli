@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/intake"
 	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
@@ -159,13 +160,22 @@ func (s *Server) intakeImport(ctx context.Context, p intakeImport, apply bool) (
 	var result any
 	err = service.Use(ctx, func(q *intake.Store) error {
 		var err error
-		result, err = s.database(ctx, func(d *sql.DB) (any, error) {
-			opts := intake.ImportOptions{ID: p.ID, ToPlaylist: p.ToPlaylist, PlanToken: p.PlanToken, Runner: s.config.ToolRunner}
-			if apply {
-				return q.ApplyImport(ctx, d, opts)
-			}
-			return q.ReviewImport(ctx, d, opts)
-		})
+		run := func(ctx context.Context) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				opts := intake.ImportOptions{ID: p.ID, ToPlaylist: p.ToPlaylist, PlanToken: p.PlanToken, Runner: s.config.ToolRunner}
+				if apply {
+					return q.ApplyImport(ctx, d, opts)
+				}
+				return q.ReviewImport(ctx, d, opts)
+			})
+		}
+		if apply {
+			result, err = run(ctx)
+		} else {
+			// Only the observation may rerun; opening the service can start
+			// reconciliation and must remain outside History read ownership.
+			result, err = history.ReadSmartlistSafe(ctx, s.config.LibraryDir, run)
+		}
 		return err
 	})
 	return result, err

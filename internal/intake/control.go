@@ -25,10 +25,7 @@ func (s *Store) Pause(ctx context.Context) error {
 // Missing import History cannot be acknowledged away: retained receipts must
 // remain quarantined until their actual collection ownership is recovered.
 func (s *Store) Resume(ctx context.Context) error {
-	return s.withWorker(ctx, func(ctx context.Context) error {
-		if err := s.reconcileImports(ctx); err != nil {
-			return err
-		}
+	return s.withReconciledImports(ctx, func(ctx context.Context) error {
 		return intakecontrol.Set(ctx, s.database, "")
 	})
 }

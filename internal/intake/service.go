@@ -140,6 +140,9 @@ func (s *Service) run(ctx context.Context, quiet time.Duration) {
 		s.pending = nil
 		s.statusMu.Unlock()
 		err := s.store.ReconcileImports(ctx)
+		if ctx.Err() != nil {
+			return
+		}
 		if initial {
 			s.recordError(err)
 			close(s.ready)

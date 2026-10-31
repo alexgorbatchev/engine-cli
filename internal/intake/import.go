@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
@@ -132,14 +134,51 @@ func (s *Store) beginImport(ctx context.Context, item *Item, historyID string, o
 // evidence requires recovery. Effective Undo cancels the source version;
 // Undo-of-Undo restores its imported status without resubmitting any import.
 func (s *Store) ReconcileImports(ctx context.Context) error {
-	return s.withWorker(ctx, s.reconcileImports)
+	return s.withReconciledImports(ctx, func(context.Context) error { return nil })
 }
 
-func (s *Store) reconcileImports(ctx context.Context) error {
-	entries, err := history.List(s.library)
-	if err != nil {
+func (s *Store) withReconciledImports(ctx context.Context, complete func(context.Context) error) error {
+	if err := history.CheckSmartlistRepair(ctx, s.library); err != nil {
 		return err
 	}
+	var exists bool
+	if err := s.database.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM ImportIntent)`).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		// An import publishes its intent under History and wakes reconciliation
+		// after releasing it. Empty queues never enroll History just to browse.
+		return s.withWorker(ctx, complete)
+	}
+	err := history.ObserveEntries(ctx, s.library, func(ctx context.Context, entries []history.Entry) error {
+		// Match import's History -> worker order. Fresh receipt tuples are read
+		// only after both owners are held, including Track results committed
+		// while this observation waited for the importing History owner.
+		return s.withWorker(ctx, func(ctx context.Context) error {
+			if err := s.reconcileImports(ctx, entries); err != nil {
+				return err
+			}
+			return complete(ctx)
+		})
+	})
+	if errors.Is(err, history.ErrHistoryAbsent) {
+		return s.withWorker(ctx, func(ctx context.Context) error {
+			// A newly appeared owner must be observed afresh, never treated as
+			// missing evidence. Replacement restores cannot run while this Store
+			// retains its native lifetime lease.
+			if _, statErr := os.Stat(filepath.Join(s.library, ".engine-cli", "history", "lock.db")); !errors.Is(statErr, os.ErrNotExist) {
+				if statErr != nil {
+					return statErr
+				}
+				return stateChanged()
+			}
+			return errors.Join(&progress.Error{Code: "intake_import_recovery_required", Cause: err}, intakecontrol.Set(ctx, s.database, "history_unavailable"))
+		})
+	}
+	return err
+}
+
+func (s *Store) reconcileImports(ctx context.Context, entries []history.Entry) error {
 	byID := make(map[string]history.Entry, len(entries))
 	undone := make(map[string]bool)
 	for _, e := range entries {
