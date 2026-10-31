@@ -8,7 +8,7 @@
     "quality_profile": "showcase",
     "repository": {
       "url": "git@github.com:alexgorbatchev/engine-cli.git",
-      "revision": "b85be4d87dc1045eca6133f6868e0b13f7bceb62",
+      "revision": "6f724a545fa0944deef7d8e260d0d403549d2d42",
       "link_mode": "local-only"
     }
   },
@@ -30,17 +30,17 @@
         {
           "path": "cmd/engine-cli/root.go",
           "line": 24,
-          "end_line": 59
+          "end_line": 63
         },
         {
           "path": "cmd/engine-cli/acquisition.go",
-          "line": 177,
-          "end_line": 213
+          "line": 191,
+          "end_line": 220
         },
         {
           "path": "cmd/engine-cli/history.go",
-          "line": 14,
-          "end_line": 44
+          "line": 16,
+          "end_line": 54
         }
       ]
     },
@@ -60,18 +60,13 @@
       "sources": [
         {
           "path": "internal/api/server.go",
-          "line": 113,
-          "end_line": 133
-        },
-        {
-          "path": "internal/api/server.go",
-          "line": 145,
-          "end_line": 177
+          "line": 120,
+          "end_line": 167
         },
         {
           "path": "internal/api/jobs.go",
           "line": 48,
-          "end_line": 75
+          "end_line": 120
         }
       ]
     },
@@ -81,7 +76,7 @@
       "label": "Operation runtime",
       "sublabel": "bind / schedule / guard",
       "pos": [
-        400,
+        350,
         270
       ],
       "size": [
@@ -92,7 +87,7 @@
         {
           "path": "internal/api/run.go",
           "line": 9,
-          "end_line": 25
+          "end_line": 21
         },
         {
           "path": "internal/api/scheduling.go",
@@ -101,8 +96,8 @@
         },
         {
           "path": "internal/api/operations.go",
-          "line": 175,
-          "end_line": 243
+          "line": 181,
+          "end_line": 268
         }
       ]
     },
@@ -112,7 +107,7 @@
       "label": "Collection services",
       "sublabel": "metadata / playlists / media",
       "pos": [
-        810,
+        690,
         270
       ],
       "size": [
@@ -122,18 +117,18 @@
       "sources": [
         {
           "path": "internal/api/playlist.go",
-          "line": 39,
-          "end_line": 69
+          "line": 38,
+          "end_line": 76
         },
         {
           "path": "internal/api/track.go",
-          "line": 66,
-          "end_line": 133
+          "line": 103,
+          "end_line": 165
         },
         {
           "path": "internal/api/acquisition.go",
           "line": 111,
-          "end_line": 160
+          "end_line": 161
         }
       ]
     },
@@ -143,7 +138,7 @@
       "label": "Engine library",
       "sublabel": "SQLite / audio / artwork",
       "pos": [
-        1130,
+        990,
         270
       ],
       "size": [
@@ -153,18 +148,18 @@
       "sources": [
         {
           "path": "internal/api/operations.go",
-          "line": 151,
-          "end_line": 172
+          "line": 156,
+          "end_line": 178
         },
         {
           "path": "internal/api/track.go",
-          "line": 89,
-          "end_line": 133
+          "line": 144,
+          "end_line": 165
         },
         {
           "path": "internal/db/db.go",
           "line": 19,
-          "end_line": 55
+          "end_line": 58
         }
       ]
     },
@@ -174,7 +169,7 @@
       "label": "Portable recovery",
       "sublabel": ".engine-cli/backups + history",
       "pos": [
-        400,
+        350,
         510
       ],
       "size": [
@@ -184,18 +179,18 @@
       "sources": [
         {
           "path": "internal/backup/backup.go",
-          "line": 26,
-          "end_line": 40
+          "line": 27,
+          "end_line": 65
         },
         {
           "path": "internal/history/history.go",
-          "line": 53,
-          "end_line": 68
+          "line": 155,
+          "end_line": 198
         },
         {
           "path": "internal/history/history.go",
-          "line": 194,
-          "end_line": 248
+          "line": 200,
+          "end_line": 279
         }
       ]
     },
@@ -205,7 +200,7 @@
       "label": "Managed tools",
       "sublabel": "fetch / tag / agent-ask",
       "pos": [
-        810,
+        690,
         510
       ],
       "size": [
@@ -227,6 +222,140 @@
           "path": "internal/acquire/client.go",
           "line": 134,
           "end_line": 195
+        }
+      ]
+    },
+    {
+      "id": "intake-service",
+      "type": "backend",
+      "label": "Library intake service",
+      "sublabel": "prepare / reconcile / join",
+      "pos": [
+        40,
+        510
+      ],
+      "size": [
+        230,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/api/intake_lifecycle.go",
+          "line": 51,
+          "end_line": 85
+        },
+        {
+          "path": "internal/intake/service.go",
+          "line": 129,
+          "end_line": 164
+        },
+        {
+          "path": "internal/intake/service.go",
+          "line": 175,
+          "end_line": 187
+        }
+      ],
+      "drilldowns": [
+        {
+          "label": "Preparation and review",
+          "href": "intake-preparation-lifecycle.html"
+        },
+        {
+          "label": "Import and recovery",
+          "href": "intake-import-lifecycle.html"
+        }
+      ]
+    },
+    {
+      "id": "intake-owner",
+      "type": "security",
+      "label": "Native intake owners",
+      "sublabel": "worker + replacement leases",
+      "pos": [
+        40,
+        760
+      ],
+      "size": [
+        230,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/intake/owner.go",
+          "line": 15,
+          "end_line": 48
+        },
+        {
+          "path": "internal/intakelease/lease.go",
+          "line": 10,
+          "end_line": 48
+        },
+        {
+          "path": "internal/api/intake_lifecycle.go",
+          "line": 161,
+          "end_line": 209
+        }
+      ]
+    },
+    {
+      "id": "intake-journal",
+      "type": "database",
+      "label": "Live intake journal",
+      "sublabel": ".engine-cli/intake.db",
+      "pos": [
+        350,
+        760
+      ],
+      "size": [
+        230,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/intake/store.go",
+          "line": 19,
+          "end_line": 48
+        },
+        {
+          "path": "internal/intake/store.go",
+          "line": 100,
+          "end_line": 121
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 107,
+          "end_line": 180
+        }
+      ]
+    },
+    {
+      "id": "staged-copy",
+      "type": "database",
+      "label": "Retained staged copy",
+      "sublabel": "manifest / audio / hash",
+      "pos": [
+        690,
+        760
+      ],
+      "size": [
+        230,
+        70
+      ],
+      "sources": [
+        {
+          "path": "internal/intake/prepare.go",
+          "line": 12,
+          "end_line": 69
+        },
+        {
+          "path": "internal/staging/local.go",
+          "line": 35,
+          "end_line": 74
+        },
+        {
+          "path": "internal/staging/local.go",
+          "line": 82,
+          "end_line": 137
         }
       ]
     }
@@ -277,6 +406,45 @@
       "from": "services",
       "to": "tools",
       "label": "selected operations"
+    },
+    {
+      "id": "http-intake",
+      "from": "http",
+      "to": "intake-service",
+      "label": "API lifecycle owner",
+      "variant": "emphasis"
+    },
+    {
+      "id": "intake-native-owner",
+      "from": "intake-service",
+      "to": "intake-owner",
+      "label": "retain / join"
+    },
+    {
+      "id": "intake-journal-write",
+      "from": "intake-service",
+      "to": "intake-journal",
+      "label": "queue + receipts"
+    },
+    {
+      "id": "intake-staged-copy",
+      "from": "intake-service",
+      "to": "staged-copy",
+      "label": "source-preserving copy"
+    },
+    {
+      "id": "staged-checked-import",
+      "from": "staged-copy",
+      "to": "services",
+      "label": "reviewed import",
+      "variant": "emphasis"
+    },
+    {
+      "id": "recovery-intake",
+      "from": "recovery",
+      "to": "intake-journal",
+      "label": "restore paused",
+      "variant": "dashed"
     }
   ],
   "cards": [
@@ -528,6 +696,27 @@
         "Orphan detection resolves PlaylistEntity references through the native originTrackId/originDatabaseUuid pair rather than the local Track ID. Membership query, Scan, iteration and Close errors propagate. Cancellation and deadline errors retain their original classifications.",
         "Incomplete reads use library_verify_incomplete with no report. HTTP jobs fail without a result, while human, agent and JSON CLI modes do not print success reports. Verification does not repair the collection or enroll snapshots and Undo; existing collection-read and job ownership remains unchanged.",
         "Reviewed committed evidence 5be6ff3feeeee68f0b1ca896ac2b39f6af07a275: internal/verify/verify.go:61-74,129-216; internal/api/verify_test.go:11-48; cmd/engine-cli/library.go:52-85; cmd/engine-cli/library_verify_test.go:12-45; docs/http-api.md:668-672. Historical graph topology and source pins remain unchanged; this adds no actor or persistence owner."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Intake ownership — committed service topology",
+      "items": [
+        "The original overview was pinned to b85be4d87dc1045eca6133f6868e0b13f7bceb62. Its existing components have been traced again at 6f724a545fa0944deef7d8e260d0d403549d2d42; historical supplemental cards and their individual pins are preserved verbatim. Their statements about unchanged topology describe those historical additions, not the new intake actors shown here.",
+        "One API-owned registry is shared by opened-library servers. An enrolled library has a preparation service independent of individual HTTP requests. Opening does not enroll an absent queue. Initial receipt reconciliation precedes eligible FIFO preparation; a manually paused, restored or unresolved queue does not silently resume.",
+        "A native SQLite worker owner excludes competing preparation without holding the live queue write transaction across media work. Queue storage also holds a native observation lease. Replacement stops and joins the local worker before acquiring source/destination exclusion and collection/History ownership; exclusion is retained through publication or rollback and released before reopening.",
+        "https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/server.go#L95-L100; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake_lifecycle.go#L51-L85; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake_lifecycle.go#L100-L209; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/service.go#L129-L187.",
+        "Service open, wake and stop share an absolute, symlink-resolved library key. Alias imports prove History ownership by native directory identity, not textual path equality: https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake_lifecycle.go#L51-L158; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/operation_id.go#L9-L34."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Intake persistence — independent publication evidence",
+      "items": [
+        "The live intake journal records source identity/version, attempt, staging reservation, cancellation, durable import intent and exact returned Track ID. The retained staging manifest and copy are separate publications. Quiet time is only an observation heuristic; the retained regular source identity, size and mtime are checked around copying. Original source files remain untouched.",
+        "A reviewed intake import enters the ordinary collection-write Desktop, safety backup and History path. Durable intent precedes Engine writes; the exact Track receipt precedes History After capture. These are independent commits, not a distributed atomic transaction. Reconciliation never resubmits an import.",
+        "Ordinary collection History/Undo excludes the live intake journal so receipts survive Undo. Explicit backup includes intake presence and data; replacing that data marks it restored/paused. Explicit Resume first reconciles retained import evidence. Operational worker ownership is never snapshotted.",
+        "https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L52-L180; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/files.go#L78-L94; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/backup/companion.go#L35-L65; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/backup/companion.go#L153-L189; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/control.go#L24-L44."
       ]
     }
   ]

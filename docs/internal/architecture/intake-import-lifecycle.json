@@ -1,0 +1,202 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Incoming local-file import and recovery lifecycle",
+    "locale": "en",
+    "output": "docs/internal/architecture/intake-import-lifecycle.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:alexgorbatchev/engine-cli.git",
+      "revision": "6f724a545fa0944deef7d8e260d0d403549d2d42",
+      "link_mode": "local-only"
+    },
+    "parentHref": "intake-preparation-lifecycle.html"
+  },
+  "mainPath": [
+    "staged",
+    "importing",
+    "imported"
+  ],
+  "states": [
+    {
+      "id": "staged",
+      "type": "waiting",
+      "label": "Staged",
+      "sublabel": "managed copy; review required",
+      "sources": [
+        {
+          "path": "internal/intake/queue.go",
+          "line": 116,
+          "end_line": 125
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 30,
+          "end_line": 49
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 56,
+          "end_line": 74
+        }
+      ],
+      "drilldowns": [
+        {
+          "href": "intake-preparation-lifecycle.html",
+          "label": "Linked preparation and review lifecycle",
+          "diagram_type": "lifecycle"
+        }
+      ]
+    },
+    {
+      "id": "importing",
+      "type": "active",
+      "label": "Importing",
+      "sublabel": "durable intent before writes",
+      "sources": [
+        {
+          "path": "internal/intake/import.go",
+          "line": 52,
+          "end_line": 89
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 107,
+          "end_line": 127
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 168,
+          "end_line": 178
+        }
+      ]
+    },
+    {
+      "id": "imported",
+      "type": "success",
+      "label": "Imported",
+      "sublabel": "completed History + Track receipt",
+      "sources": [
+        {
+          "path": "internal/intake/import.go",
+          "line": 130,
+          "end_line": 149
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 168,
+          "end_line": 178
+        }
+      ]
+    },
+    {
+      "id": "cancelled",
+      "type": "neutral",
+      "label": "Cancelled",
+      "sublabel": "request completed or effective Undo",
+      "sources": [
+        {
+          "path": "internal/intake/queue.go",
+          "line": 128,
+          "end_line": 137
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 130,
+          "end_line": 149
+        },
+        {
+          "path": "internal/intake/import.go",
+          "line": 168,
+          "end_line": 178
+        }
+      ],
+      "drilldowns": [
+        {
+          "href": "intake-preparation-lifecycle.html",
+          "label": "Linked preparation and review lifecycle",
+          "diagram_type": "lifecycle"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "from": "staged",
+      "to": "importing",
+      "label": "apply",
+      "note": "guarded plan"
+    },
+    {
+      "from": "importing",
+      "to": "imported",
+      "label": "reconcile",
+      "note": "receipt"
+    },
+    {
+      "from": "importing",
+      "to": "cancelled",
+      "label": "effective Undo"
+    },
+    {
+      "from": "imported",
+      "to": "cancelled",
+      "label": "effective Undo"
+    },
+    {
+      "from": "cancelled",
+      "to": "imported",
+      "label": "Undo reversed",
+      "note": "exact receipt"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Linked lifecycle scope",
+      "items": [
+        "Import and recovery scope starts at an already staged item; the initial marker denotes entry to this view, not item creation. Preparation, pre-import cancellation and no-receipt retry routes remain in the linked preparation and review diagram. Cancelled is the same shared persisted status.",
+        "The two views partition the original sixteen transitions without changing transition labels, notes, variants or direction. Shared states retain their original meaning and committed source evidence."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Transition gates",
+      "items": [
+        "Claim is FIFO and requires an active queue and no preparing or importing item. Fenced copy requires the matching attempt and stage identity without cancellation.",
+        "Guarded plan application requires fresh Desktop protection, a History operation and checked exact review. Reconcile to imported requires matching completed History and a persisted positive Track ID.",
+        "Owner recovery requeues abandoned preparation without cancellation; settle cancel means completion or abandoned-preparation recovery observes requested cancellation.",
+        "Retry fresh and reuse copy require no History receipt. Fresh means no retained content hash; reuse copy requires a retained content hash. Effective Undo may cancel importing before receipt completion; reversing Undo requires the complete original receipt. Neither reconciliation path resubmits an import."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Suspension is separate control state",
+      "items": [
+        "QueueControl pauses claims and reviewed imports without inventing an item status.",
+        "Missing, pending, failed or incomplete import evidence pauses the queue for recovery unless effective Undo establishes cancellation; importing does not automatically become retryable.",
+        "Manual and restored suspension require explicit Resume. Resume reconciles import receipts before clearing suspension; opening a service preserves it.",
+        "Reconciliation never submits collection writes. Explicit review and apply own import consent."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Service and request lifetimes",
+      "items": [
+        "An API-owned library service resumes ownership and eligible preparation for enrolled queues independently of HTTP requests, preserving suspension.",
+        "Cancelling a Process waiter leaves background preparation owned by the service.",
+        "Service Close cancels and joins preparation before closing queue storage; replacement obtains this ownership before scheduler and History locks."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Independent publication and recovery",
+      "items": [
+        "Durable import intent precedes collection changes; the exact Track receipt precedes the caller's After snapshot.",
+        "Engine writes, intake receipts and History completion are separate publications. Incomplete evidence retains recovery requirements unless effective Undo establishes cancellation.",
+        "Staged files remain available until explicit cleanup. Quiet time is an observation heuristic, not proof that a source writer has finished."
+      ]
+    }
+  ]
+}

@@ -11,6 +11,56 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  intake-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: 'go.mod'
+      - name: Install FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install ffmpeg-full
+          echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
+      - name: Install FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg --no-progress -y
+      - name: Diagnose native macOS concurrent anchor creation
+        if: runner.os == 'macOS'
+        run: go test -count=50 -timeout=5m -v ./internal/intakelease -run '^(TestReservationNativeConcurrentAnchorCreation|TestReservationReverseAcquisitionDoesNotLeakPartialOwner)$'
+      - name: Test native queue, process death and parent reservations
+        run: go test -count=1 -timeout=10m -v ./internal/intake ./internal/intakecontrol ./internal/intakelease
+      - name: Cover native parent reservations
+        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-native.cover' ./internal/intakelease
+      - name: Require native case-insensitive alias ownership
+        if: runner.os != 'Linux'
+        env:
+          ENGINE_INTAKE_REQUIRE_CASE_ALIAS: '1'
+        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-casealias.cover' ./internal/intakelease -run TestReservationNativeCaseAlias
+      - name: Test native retained staging and reviewed import
+        run: go test -count=1 -timeout=10m -v ./internal/staging -run 'TestLocal|TestImport|TestRetainedImport|TestCancelledImport'
+      - name: Test native queue backup, replacement and Undo
+        run: go test -count=1 -timeout=10m -v ./internal/backup ./internal/history -run 'TestIntake|TestInvalidIntake|TestCollectionUndoRetainsIntake|TestExplicitIntake|TestUndoReplacement|TestUndoRefusesForeignQueue|TestUndoRelocation'
+      - name: Test native API queue lifecycle and committed cleanup failures
+        run: go test -count=1 -timeout=10m -v ./internal/api -run '^TestAPIIntake'
+      - name: Test native public queue commands
+        run: go test -count=1 -timeout=10m -v ./cmd/engine-cli -run '^TestIntakeCLI'
+      - name: Retain native reservation coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: intakelease-${{ matrix.os }}
+          path: intakelease-*.cover
+          if-no-files-found: error
+
   pcm-native:
     strategy:
       fail-fast: false

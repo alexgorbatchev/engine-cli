@@ -153,7 +153,13 @@ func List(lib string) ([]Entry, error) {
 }
 
 func Run(ctx context.Context, lib, operation string, scope Scope, paths []string, run func(context.Context) error) (result *Entry, err error) {
-	if err = scope.validate(); err != nil {
+	return RunPrepared(ctx, lib, RunOptions{Operation: operation, Scope: scope, Paths: paths}, run)
+}
+
+// RunPrepared holds the History owner across preparation and the operation's
+// snapshots. Callers establish fresh Desktop absence before entering this owner.
+func RunPrepared(ctx context.Context, lib string, options RunOptions, run func(context.Context) error) (result *Entry, err error) {
+	if err = options.Scope.validate(); err != nil {
 		return nil, err
 	}
 	dir, err := storeDir(lib)
@@ -183,7 +189,12 @@ func Run(ctx context.Context, lib, operation string, scope Scope, paths []string
 	if err = collect(dir, previous); err != nil {
 		return nil, fmt.Errorf("removing unreferenced operation history: %w", err)
 	}
-	return runLocked(ctx, abs, dir, operation, "", scope, paths, run)
+	if options.Prepare != nil {
+		if err := options.Prepare(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return runLocked(ctx, abs, dir, options.Operation, "", options.Scope, options.Paths, run)
 }
 
 func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Scope, paths []string, run func(context.Context) error) (*Entry, error) {
@@ -264,6 +275,8 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 type UndoOptions struct {
 	Force  bool
 	DryRun bool
+	// Prepare runs under the History owner after validation, before Undo's snapshot.
+	Prepare func(context.Context) error
 }
 
 func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry, err error) {
@@ -272,6 +285,14 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 		return nil, err
 	}
 	abs := filepath.Dir(filepath.Dir(dir))
+	var ownership *undoOwnership
+	if !opts.DryRun {
+		ownership, err = ownUndo(ctx, abs, dir, id)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { err = errors.Join(err, ownership.lease.Close()) }()
+	}
 	l, err := lock(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -286,22 +307,14 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	if err != nil {
 		return nil, err
 	}
-	var target *Entry
-	undone := make(map[string]bool)
-	for i := range all {
-		e := &all[i]
-		if e.State == "complete" && e.UndoOf != "" && !undone[e.ID] {
-			undone[e.UndoOf] = true
-		}
-		if target == nil && (e.ID == id || (id == "" && e.UndoOf == "" && !undone[e.ID])) {
-			target = e
-		}
+	target, err := selectUndoTarget(all, id)
+	if err != nil {
+		return nil, err
 	}
-	if target == nil {
-		return nil, fmt.Errorf("operation %q not found in library history", id)
-	}
-	if undone[target.ID] {
-		return nil, fmt.Errorf("operation %s has already been undone", target.ID)
+	if ownership != nil {
+		if err := ownership.validate(target); err != nil {
+			return nil, err
+		}
 	}
 	if target.RelocationFrom != "" {
 		if _, e := os.Lstat(target.RelocationFrom); !os.IsNotExist(e) {
@@ -325,6 +338,11 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	defer cleanup()
 	if opts.DryRun {
 		return target, nil
+	}
+	if opts.Prepare != nil {
+		if err := opts.Prepare(ctx); err != nil {
+			return nil, err
+		}
 	}
 	entry, err := runLocked(ctx, abs, dir, "library.undo", target.ID, target.Scope, nil, func(ctx context.Context) error {
 		if err := plan.apply(ctx, filepath.Join(dir, "objects")); err != nil {

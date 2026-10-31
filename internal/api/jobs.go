@@ -147,20 +147,7 @@ func (s *Server) record(j *job, e progress.Event) {
 func (s *Server) work(ctx context.Context, j *job, op operation, run *boundOperation) {
 	defer s.workers.Done()
 	defer j.cancel()
-	release, err := s.acquireOperation(ctx, op, run)
-	var result any
-	var historyID string
-	if err == nil {
-		defer release()
-		s.mu.Lock()
-		j.view.State = "running"
-		s.mu.Unlock()
-		result, historyID, err = s.execute(ctx, op, run)
-	} else {
-		// Even jobs cancelled while queued own a terminal progress event.
-		queueErr := err
-		err = progress.Run(ctx, op.Name, func(context.Context) error { return queueErr })
-	}
+	result, historyID, err := s.runOperation(ctx, j, op, run)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if result != nil {
@@ -176,6 +163,42 @@ func (s *Server) work(ctx context.Context, j *job, op operation, run *boundOpera
 		j.view.Error = &progress.Failure{Code: j.terminal.ErrorCode, Message: j.terminal.Error}
 	}
 	j.append(*j.terminal)
+}
+
+func (s *Server) runOperation(ctx context.Context, j *job, op operation, run *boundOperation) (result any, historyID string, err error) {
+	defer func() {
+		if err == nil && !run.preview {
+			s.resumeRelocatedIntake(op.Name, result)
+		}
+	}()
+	if op.Name == "intake.import" {
+		// Final receipt reconciliation must observe completed History, after
+		// both native and API collection owners have been released.
+		defer s.intake.wake(s.config.LibraryDir)
+	}
+	return s.executeOwned(ctx, op, run, func(ctx context.Context) (func() error, error) {
+		resume, err := s.replacementIntake(ctx, op, run)
+		var release func()
+		if err == nil {
+			release, err = s.acquireOperation(ctx, op, run)
+		}
+		finish := func() error {
+			// A resumed worker can need the scheduler, so release it first.
+			if release != nil {
+				release()
+			}
+			if resume != nil {
+				return resume()
+			}
+			return nil
+		}
+		if err == nil && j != nil {
+			s.mu.Lock()
+			j.view.State = "running"
+			s.mu.Unlock()
+		}
+		return finish, err
+	})
 }
 
 func (s *Server) status(w http.ResponseWriter, r *http.Request) {

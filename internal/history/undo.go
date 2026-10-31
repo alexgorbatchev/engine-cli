@@ -11,10 +11,14 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
+	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
+
 	"zombiezen.com/go/sqlite"
 )
 
 type undoPlan struct {
+	library       string
 	moves         []fileMove
 	databases     map[string]string
 	files         map[string]fileState
@@ -28,7 +32,7 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 		return nil, nil, err
 	}
 	cleanup := func() { os.RemoveAll(work) }
-	p := &undoPlan{databases: make(map[string]string), files: make(map[string]fileState), expectedDB: make(map[string]string), expectedFiles: make(map[string]fileState)}
+	p := &undoPlan{library: lib, databases: make(map[string]string), files: make(map[string]fileState), expectedDB: make(map[string]string), expectedFiles: make(map[string]fileState)}
 	fail := func(err error) (*undoPlan, func(), error) { cleanup(); return nil, nil, err }
 	if err = p.prepareMoves(e, force); err != nil {
 		return fail(err)
@@ -161,6 +165,9 @@ func (p *undoPlan) apply(ctx context.Context, objects string) error {
 		}
 	}
 	for path, image := range p.databases {
+		if err := PreserveDatabase(ctx, path); err != nil {
+			return err
+		}
 		if image == "" {
 			if err := removeDatabase(path); err != nil {
 				return err
@@ -171,6 +178,11 @@ func (p *undoPlan) apply(ctx context.Context, objects string) error {
 			}
 			if err := copyDatabase(ctx, image, path); err != nil {
 				return err
+			}
+			if path == filepath.Join(p.library, ".engine-cli", companion.IntakeName) {
+				if err := intakecontrol.Restored(ctx, p.library); err != nil {
+					return err
+				}
 			}
 		}
 	}

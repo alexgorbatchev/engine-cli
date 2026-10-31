@@ -22,7 +22,7 @@ import (
 
 // Run returns the same comparison for CLI and HTTP. Only apply creates history.
 func Run(ctx context.Context, o Options) (*Report, error) {
-	o, err := normalize(o)
+	o, err := Normalize(o)
 	if err != nil {
 		return nil, err
 	}
