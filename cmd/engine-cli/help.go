@@ -123,6 +123,9 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli track batch capitalize":   {Summary: "Review and apply per-track capitalization with one snapshot and undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track analyze":            {Summary: "Analyze BPM, musical key, and beat grid, writing each track with one undo record", Args: "<tr|id|path...>", MutatesDB: true, AutoBackup: true},
 	"engine-cli track grid update":        {Summary: "Apply one beat-grid edit and save it with the matching BPM and undo", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track cue inspect":        {Summary: "Read native saved cues, loops and their edit revision", Args: "<tr|id|path>"},
+	"engine-cli track cue set":            {Summary: "Set one native hot cue after validating its inspected revision", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
+	"engine-cli track cue clear":          {Summary: "Clear one native hot cue while preserving other performance data", Args: "<tr|id|path>", MutatesDB: true, AutoBackup: true},
 	"engine-cli playlist rm": {
 		Summary:     "Delete a playlist or folder and its membership references",
 		Description: "Deletes PlaylistEntity associations and Playlist record from Database2/m.db without deleting underlying Track records.",

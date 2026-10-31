@@ -1,4 +1,4 @@
-package analysis
+package audiodecode
 
 import (
 	"context"
@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"time"
 )
 
 // NativeSampleRate reads the first audio stream's sample rate, which Engine uses for grid sample positions.
 func NativeSampleRate(ctx context.Context, path string) (float64, error) {
-	out, err := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate", "-of", "json", "file:"+path).Output()
+	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate", "-of", "json", "file:"+path)
+	cmd.WaitDelay = 5 * time.Second
+	out, err := cmd.Output()
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return 0, ctxErr
