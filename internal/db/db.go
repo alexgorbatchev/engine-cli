@@ -530,7 +530,25 @@ func AddTrackToPlaylist(ctx context.Context, database Executor, listID int64, tr
 	if database == nil {
 		return 0, fmt.Errorf("database cannot be nil")
 	}
+	if connection, ok := database.(*sql.DB); ok {
+		tx, err := connection.BeginTx(ctx, nil)
+		if err != nil {
+			return 0, fmt.Errorf("starting membership insertion: %w", err)
+		}
+		defer tx.Rollback()
+		id, err := addTrackToPlaylist(ctx, tx, listID, trackID)
+		if err != nil {
+			return 0, err
+		}
+		if err := tx.Commit(); err != nil {
+			return 0, fmt.Errorf("committing membership insertion: %w", err)
+		}
+		return id, nil
+	}
+	return addTrackToPlaylist(ctx, database, listID, trackID)
+}
 
+func addTrackToPlaylist(ctx context.Context, database Executor, listID int64, trackID int64) (int64, error) {
 	var pExists bool
 	err := database.QueryRowContext(ctx, "SELECT 1 FROM Playlist WHERE id = ?", listID).Scan(&pExists)
 	if err != nil {
