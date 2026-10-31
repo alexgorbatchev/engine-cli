@@ -22,7 +22,8 @@ func TestCLITrackJSONReportsPlaylistIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := d.Exec(`INSERT INTO Track(id,title,path,originTrackId,originDatabaseUuid) VALUES(3,'Imported','imported.mp3',900,'imported'),(4,'Loose','loose.mp3',0,'');
-	INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) VALUES(1,1,'fixture'),(1,900,'imported'),(2,3,'fixture')`); err != nil {
+	INSERT INTO PlaylistEntity(id,listId,trackId,databaseUuid,nextEntityId) VALUES(20,1,1,'fixture',21),(21,1,900,'imported',0),(22,2,3,'fixture',0);
+	UPDATE PlaylistEntity SET nextEntityId=22 WHERE listId=2 AND trackId=1 AND databaseUuid='fixture'`); err != nil {
 		t.Fatal(err)
 	}
 	if err := d.Close(); err != nil {

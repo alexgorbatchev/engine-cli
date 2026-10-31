@@ -263,14 +263,13 @@ func GetAllPlaylists(ctx context.Context, database *sql.DB) ([]Playlist, error) 
 // GetPlaylistTracks retrieves all tracks that belong to a specific playlist ID.
 func GetPlaylistTracks(ctx context.Context, database *sql.DB, listID int64) ([]Track, error) {
 	query := `
-		SELECT t.id, t.playOrder, t.length, t.bpm, t.year, t.path, t.filename, t.bitrate, t.bpmAnalyzed,
+		SELECT pe.id, pe.nextEntityId, t.id, t.playOrder, t.length, t.bpm, t.year, t.path, t.filename, t.bitrate, t.bpmAnalyzed,
 		       t.albumArtId, t.fileBytes, t.title, t.artist, t.album, t.genre, t.comment, t.label,
 		       t.composer, t.remixer, t.key, t.rating, t.albumArt, t.fileType, t.isAnalyzed, t.isAvailable,
 		       t.lastEditTime, t.albumArtSourceHash
 		FROM PlaylistEntity pe
-		JOIN Track t ON t.originTrackId = pe.trackId AND t.originDatabaseUuid = pe.databaseUuid
-		WHERE pe.listId = ?
-		ORDER BY pe.id ASC;
+		LEFT JOIN Track t ON t.originTrackId = pe.trackId AND t.originDatabaseUuid = pe.databaseUuid
+		WHERE pe.listId = ?;
 	`
 	rows, err := database.QueryContext(ctx, query, listID)
 	if err != nil {
@@ -278,11 +277,14 @@ func GetPlaylistTracks(ctx context.Context, database *sql.DB, listID int64) ([]T
 	}
 	defer rows.Close()
 
-	var tracks []Track
+	links := make(map[int64]int64)
+	byEntity := make(map[int64]Track)
 	for rows.Next() {
 		var t Track
+		var entityID int64
+		var nextID, trackID sql.NullInt64
 		err := rows.Scan(
-			&t.ID, &t.PlayOrder, &t.Length, &t.BPM, &t.Year, &t.Path, &t.Filename, &t.Bitrate, &t.BPMAnalyzed,
+			&entityID, &nextID, &trackID, &t.PlayOrder, &t.Length, &t.BPM, &t.Year, &t.Path, &t.Filename, &t.Bitrate, &t.BPMAnalyzed,
 			&t.AlbumArtID, &t.FileBytes, &t.Title, &t.Artist, &t.Album, &t.Genre, &t.Comment, &t.Label,
 			&t.Composer, &t.Remixer, &t.Key, &t.Rating, &t.AlbumArt, &t.FileType, &t.IsAnalyzed, &t.IsAvailable,
 			&t.LastEditTime, &t.AlbumArtSourceHash,
@@ -290,12 +292,29 @@ func GetPlaylistTracks(ctx context.Context, database *sql.DB, listID int64) ([]T
 		if err != nil {
 			return nil, fmt.Errorf("scanning playlist track: %w", err)
 		}
-		tracks = append(tracks, t)
+		if _, duplicate := links[entityID]; duplicate {
+			return nil, &progress.Error{Code: "playlist_membership_order_invalid", Cause: fmt.Errorf("membership origin resolves ambiguously")}
+		}
+		links[entityID] = nextID.Int64
+		if trackID.Valid {
+			t.ID = trackID.Int64
+			byEntity[entityID] = t
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterating playlist tracks: %w", err)
 	}
 
+	order, err := OrderPlaylistMemberships(links)
+	if err != nil {
+		return nil, err
+	}
+	var tracks []Track
+	for _, id := range order {
+		if track, exists := byEntity[id]; exists {
+			tracks = append(tracks, track)
+		}
+	}
 	populateArtworkAvailability(ctx, database, tracks)
 	return tracks, nil
 }

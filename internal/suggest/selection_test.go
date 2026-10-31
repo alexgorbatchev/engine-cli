@@ -29,6 +29,7 @@ func TestSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	linkSuggestionMemberships(t, d)
 	if _, err := identity.Register(ctx, d, lib, false); err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +89,7 @@ func TestSelection(t *testing.T) {
 		INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) SELECT 1,originTrackId,originDatabaseUuid FROM Track WHERE id>2`); err != nil {
 		t.Fatal(err)
 	}
+	linkSuggestionMemberships(t, d)
 	if r, err := selectTracks(ctx, d, Selection{Playlists: []string{"1"}}); err != nil || len(r.Items) != 501 {
 		t.Fatalf("large playlist was truncated: %+v %v", r, err)
 	}

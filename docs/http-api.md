@@ -280,6 +280,11 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `playlist_export_format` | The destination is not M3U/M3U8 or a media path cannot be represented unambiguously. |
 | `playlist_export_encoding` | The selected encoding cannot represent the metadata or media paths. M3U8 requires UTF-8. |
 | `playlist_export_order` | Saved membership links are malformed or an origin resolves ambiguously. Repair the playlist in Engine before exporting. |
+| `playlist_membership_order_invalid` | Saved playlist membership links are malformed or a track origin resolves ambiguously. Repair the playlist in Engine before browsing or changing its order. |
+| `playlist_reorder_target` | The selected playlist no longer exists. Refresh the playlists before choosing the target again. |
+| `playlist_reorder_view` | The shown rows, selected rows, direction or drop gap no longer match the saved playlist order. Refresh and select the tracks again. |
+| `playlist_reorder_stale` | The reviewed library, playlist, membership identities or move changed. Review the current order again before applying. |
+| `playlist_reorder_unchanged` | The reviewed move does not change the order. Choose a different position for the selected tracks. |
 | `playlist_export_unavailable` | Unavailable memberships remain without explicit reviewed skip permission. |
 | `playlist_export_stale` | The reviewed options, destination, membership order, metadata, or media availability changed. Review again. |
 | `playlist_export_write` | Creating, writing, syncing, or closing the new file failed. Inspect the destination before retrying; cleanup is best-effort. |
@@ -709,6 +714,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | `track.tags.update`, `track.artwork.embed` | Each file report carries `track_id`, `original_path`, and the tool `result`; `path` names the installed file once the collection points to it |
 | `playlist.track.add`, `playlist.track.rm` | `[{"playlist_id":3,"track_id":5}]` |
 | `playlist.track.move` | `[{"from_playlist_id":3,"to_playlist_id":2,"track_id":5}]` |
+| `playlist.reorder` (apply) | `{"playlist_id":3,"track_ids":[6,5,7]}`; track IDs follow the resulting saved order |
 | `session.import` (apply) | `{"playlist_id":3,"name":"Friday","track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
 | `playlist.import` (apply) | `{"playlist_id":3,"track_ids":[5,6],"imported_count":2,"duplicate_count":1,"skipped_count":0}` |
 | `playlist.export` (apply) | `{"playlist_id":3,"path":"/Music/set.m3u8","encoding":"utf-8","path_mode":"absolute","exported_count":2,"skipped_count":0}` |
@@ -747,6 +753,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling ID, omitted appends |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
 | `playlist.track.move` | `from`, `to`, `tracks` array |
+| `playlist.reorder` | `playlist`, `rows` array, `drop`; optional `view` array, `descending`, `dry_run`, `plan_token`; see reviewed track ordering below |
 | `track.add` | `paths` array, `to_playlist?`, `move?`, `analyze?`, `bpm_range?` |
 | `track.analyze` | `identifiers` (1–500), at least one of `bpm`, `key`, `grid`, plus `missing_only?`, `bpm_range?`; see track analysis above |
 | `track.grid.update` | `identifier`, `anchors`; see beat-grid edits above |
@@ -784,6 +791,23 @@ engine-cli migrate import /Music/rekordbox.xml --name "Reviewed Rekordbox" --pla
 ```
 
 Both commands support `--json`; human output lists source dispositions, proposed hierarchy and source-only warnings. Request and job failures carry stable codes; diagnostic messages are not browser display text.
+
+### Reviewed playlist track ordering
+
+`playlist.reorder` moves selected displayed rows to an insertion gap within one playlist's direct saved memberships. It preserves membership identities, hidden memberships and unresolved origin references. It does not change track metadata, playlist membership counts, other playlists or child playlists. Malformed or ambiguous saved membership chains are refused.
+
+1. Submit `playlist` (numeric ID or opaque playlist reference), `rows` (selected zero-based displayed row indexes), `drop` (the insertion gap before a displayed row, or the displayed row count for the final gap), and `dry_run:true` through the selected library's operation endpoint. Omitted or `null` `view` uses every resolved track in saved order. To reorder a filtered view, supply `view` as the displayed library-local track IDs, in saved order. With `descending:true`, supply the reversed saved-order view; the resulting saved order still uses the native ascending direction. An explicit empty view, duplicated or out-of-range selection, unknown track, or view in an unrelated sort order is invalid.
+2. Review `playlist_id`, the complete resulting resolved `track_ids` in saved order, `can_apply`, and `plan_token`. Hidden and unresolved memberships remain in the native chain, but unresolved memberships have no selectable library-local track ID and do not appear in `track_ids`. The preview is a collection read, works while Desktop is running, and creates no snapshot or history record. A move that leaves the order unchanged returns `can_apply:false`.
+3. Apply the same playlist, view, rows, gap and direction with `dry_run:false` and the returned `plan_token`, only when `can_apply:true`. The token binds the library's location and identity, playlist metadata, complete membership identities and links, and move intent. Missing or stale review tokens and unchanged moves are rejected before Desktop checks, snapshots and history creation. Apply repeats validation in its transaction, updates only changed links and the target playlist timestamp, and returns `playlist_id` and `track_ids` held before commit. Fresh Desktop protection, one safety snapshot and one undo record cover the change. Undo restores the saved order while preserving later unrelated track metadata edits.
+
+The CLI uses the same operation and review token:
+
+```sh
+engine-cli playlist reorder 3 --rows 0,2 --drop 5 --dry-run
+engine-cli playlist reorder 3 --rows 0,2 --drop 5 --plan-token <reviewed-token>
+```
+
+`--rows` and `--view` accept comma-separated integers and repeated flags. Include the identical `--view` and `--descending` options in both commands when applicable. `--rows` and `--drop` are required; gap zero is valid. Human output prints the proposed or saved order, and preview output includes the token and whether the move can apply. `AGENT=1` emits compact labelled values; `--json` emits the structured HTTP plan or result. Progress and the successful apply's undo operation ID go to stderr.
 
 ### Reviewed M3U/M3U8 import
 

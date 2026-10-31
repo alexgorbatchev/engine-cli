@@ -3,8 +3,10 @@ package playlist
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 type exportMember struct {
@@ -45,36 +47,17 @@ func readExportMembers(ctx context.Context, d db.Querier, playlistID int64) ([]e
 }
 
 func orderExportMembers(members map[int64]exportMember) ([]exportMember, error) {
-	incoming := make(map[int64]bool)
-	for _, member := range members {
-		if member.NextID.Int64 == 0 {
-			continue
-		}
-		if _, ok := members[member.NextID.Int64]; !ok || incoming[member.NextID.Int64] {
-			return nil, playlistFileError("playlist_export_order", "playlist has a dangling or branching membership link")
-		}
-		incoming[member.NextID.Int64] = true
+	links := make(map[int64]int64, len(members))
+	for id, member := range members {
+		links[id] = member.NextID.Int64
 	}
-	var head int64
-	for id := range members {
-		if incoming[id] {
-			continue
-		}
-		if head != 0 {
-			return nil, playlistFileError("playlist_export_order", "playlist has multiple saved membership heads")
-		}
-		head = id
+	order, err := db.OrderPlaylistMemberships(links)
+	if err != nil {
+		return nil, &progress.Error{Code: "playlist_export_order", Cause: fmt.Errorf("reading export membership order: %w", err)}
 	}
 	ordered := make([]exportMember, 0, len(members))
-	visited := make(map[int64]bool)
-	for head != 0 && !visited[head] {
-		visited[head] = true
-		member := members[head]
-		ordered = append(ordered, member)
-		head = member.NextID.Int64
-	}
-	if len(ordered) != len(members) {
-		return nil, playlistFileError("playlist_export_order", "playlist contains cyclic membership links")
+	for _, id := range order {
+		ordered = append(ordered, members[id])
 	}
 	return ordered, nil
 }

@@ -37,7 +37,18 @@ func suggestionLibrary(t *testing.T) (*sql.DB, string) {
  INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) SELECT 1,originTrackId,originDatabaseUuid FROM Track`); err != nil {
 		t.Fatal(err)
 	}
+	linkSuggestionMemberships(t, d)
 	return d, lib
+}
+
+// Raw fixture inserts retain insertion order through native membership links.
+func linkSuggestionMemberships(t *testing.T, d *sql.DB) {
+	t.Helper()
+	if _, err := d.Exec(`UPDATE PlaylistEntity SET nextEntityId=COALESCE(
+		(SELECT MIN(next.id) FROM PlaylistEntity next
+		WHERE next.listId=PlaylistEntity.listId AND next.id>PlaylistEntity.id),0)`); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // Fixture processes exercise the real stdin/argv and managed-version boundary.
@@ -119,6 +130,7 @@ func TestSuggestionBatchesAndPreflight(t *testing.T) {
  INSERT INTO PlaylistEntity(listId,trackId,databaseUuid) SELECT 1,originTrackId,originDatabaseUuid FROM Track WHERE id>2`); err != nil {
 		t.Fatal(err)
 	}
+	linkSuggestionMemberships(t, d)
 	var responses []string
 	for start := 1; start <= 51; start += 25 {
 		var items []modelItem

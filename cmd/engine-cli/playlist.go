@@ -36,6 +36,7 @@ func newPlaylistCommand() *cobra.Command {
 	plCmd.AddCommand(newPlaylistRmCommand())
 	plCmd.AddCommand(newPlaylistMoveCommand())
 	plCmd.AddCommand(newPlaylistTrackCommand())
+	plCmd.AddCommand(newPlaylistReorderCommand())
 	plCmd.AddCommand(acquisitionCommand("playlist.export", "export <id|ref>", "Review and export a playlist to a new server-local M3U file", "identifier", []acquisitionFlag{
 		{"path", "string", "New server-local M3U/M3U8 destination; parent must exist and existing files are never replaced"},
 		{"encoding", "string", "File encoding: utf-8 (default), windows-1252, or iso-8859-1; M3U8 requires utf-8"},

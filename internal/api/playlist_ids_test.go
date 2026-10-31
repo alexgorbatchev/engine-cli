@@ -23,8 +23,8 @@ func testPlaylistIDsAPI(t *testing.T) (*Server, string) {
 	execAPIFixture(t, lib, `INSERT INTO Playlist(id,title,parentListId) VALUES(2,'Nested',1),(3,'Other',0);
 	INSERT INTO Track(id,title,path,originTrackId,originDatabaseUuid) VALUES(5,'Imported','imported.mp3',900,'imported');
 	INSERT INTO Track(id,title,path) VALUES(6,'Loose','loose.mp3');
-	INSERT INTO PlaylistEntity(listId,trackId,databaseUuid,nextEntityId) VALUES
-		(3,1,'fixture',0),(1,1,'fixture',0),(1,1,'fixture',0),(2,900,'imported',0),(3,5,'fixture',0)`)
+	INSERT INTO PlaylistEntity(id,listId,trackId,databaseUuid,nextEntityId) VALUES
+		(20,3,1,'fixture',24),(21,1,1,'fixture',22),(22,1,1,'fixture',0),(23,2,900,'imported',0),(24,3,5,'fixture',0)`)
 	return s, lib
 }
 

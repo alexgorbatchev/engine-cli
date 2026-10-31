@@ -39,6 +39,7 @@ func (s *Server) playlistOperations() []operation {
 	return []operation{
 		s.importPlaylistOperation(),
 		s.exportPlaylistOperation(),
+		s.reorderPlaylistOperation(),
 		define("playlist.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.GetPlaylistHierarchy(ctx, d) })
 		}),
