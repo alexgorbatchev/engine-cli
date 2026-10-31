@@ -388,13 +388,28 @@ The matching commands are `engine-cli track analyze <tr|id|path...> [--bpm] [--k
 
 `GET /v1/tracks/{id}/performance` is also available under `/v1/libraries/{key}` and accepts the same track identifiers as track details. It shares the collection read barrier and remains available while Desktop is running. It reads `PerformanceData.beatData`, `quickCues`, and `loops` through Engine CLI; it does not write analysis or create an undo record.
 
-The response has `cues` and `loops` arrays, ordered by native slot (1–8). Unset slots are omitted; an empty name does not mean an unset slot. Colors are `#RRGGBB`. Cue `position` and loop `start`/`end` are seconds derived from the saved sample rate, preserving fractional precision:
+The response has `track_id`, an opaque `revision`, and `cues` and `loops` arrays, ordered by native slot (1–8). Unset slots are omitted; an empty name does not mean an unset slot. Colors are `#RRGGBB`. Cue `position` and loop `start`/`end` are source seconds derived from the saved sample rate, preserving fractional precision independently of browser playback speed:
 
 ```json
-{"cues":[{"slot":8,"name":"Outro","color":"#FF0080","position":1.25}],"loops":[{"slot":3,"name":"Break","color":"#0080FF","start":2.5,"end":6.75}]}
+{"track_id":5,"revision":"opaque-current-revision","cues":[{"slot":8,"name":"Outro","color":"#FF0080","position":1.25}],"loops":[{"slot":3,"name":"Break","color":"#0080FF","start":2.5,"end":6.75}]}
 ```
 
-Missing analysis returns `{"cues":[],"loops":[]}`. Malformed data or a missing sample rate for existing markers returns `422 invalid_saved_performance`; a failed analysis read returns `503 saved_performance_unavailable`. Neither case returns partial markers or guessed timing. Decoding uses `djtools` v0.2.0, including its bounded Qt decompression and native mixed-endian slot codec. This read does not activate cues or loops, expose the temporary main cue, or edit saved markers.
+Missing analysis returns empty marker arrays with the track ID and current revision. Malformed data or a missing sample rate for existing markers returns `422 invalid_saved_performance`; a failed analysis read returns `503 saved_performance_unavailable`. Neither case returns partial markers or guessed timing. Decoding uses `djtools` v0.2.0, including its bounded Qt decompression and native mixed-endian slot codec. The native codec preserves opaque payload fields. Reading does not activate cues or loops or expose the temporary main cue.
+
+The job operation `track.cue.inspect` accepts `identifier` and returns the same saved performance. The collection-writing operations are:
+
+| Operation | Required parameters | Result |
+| --- | --- | --- |
+| `track.cue.set` | `identifier`, `slot` (1–8), `position` (source seconds), `color` (`#RRGGBB`), `revision`; optional `name` defaults to empty | `{track_id,slot,revision,changed}` |
+| `track.cue.clear` | `identifier`, `slot` (1–8), `revision` | `{track_id,slot,revision,changed}` |
+
+Set replaces only the selected slot's position, name, and color. Clear removes only that slot. Both retain unrelated hot cues, loops, beat-grid data, and opaque native payload fields. Names must fit the native 255-byte UTF-8 field. Positions must be finite, nonnegative, and within the native track extent. When beat data is absent, Set uses the rate and extent recorded in native track data or counts decoded first-audio sample frames at that stream's native sample rate. It never derives the extent from container or stream duration metadata, guesses a sample rate, or uses the rounded collection duration. Reading and clearing remain available with offline audio.
+
+The revision binds track origin identity, native performance bytes and row/table presence, and track interpretation inputs. Where audio probing is needed, it also binds the inspected media identity, size, modification time, or explicit unavailable state. Reinspect after replacing or restoring that audio. An incompatible revision fails with `cue_revision_stale`; invalid edits fail with `cue_invalid`; unusable audio fails with `cue_media_unavailable`, and audio changing during preparation fails with `cue_media_changed`. Invalid origin identity fails with `cue_track_identity_invalid`. A missing performance table fails with `saved_performance_unavailable`.
+
+Encoding and validation run before the fresh Desktop check, snapshot, and undo history. Apply rechecks the captured state inside its database transaction. Successful writes are Desktop-protected, snapshotted, and undoable; their result comes from the committed edit without a separate post-commit read. A rejected or unreadable job observation must not be treated as permission to repeat an accepted write.
+
+The matching CLI commands are `engine-cli track cue inspect <tr|id|path>`, `track cue set <tr|id|path> --slot A --position 1.25 --name Intro --color '#FF0080' --revision <revision>`, and `track cue clear <tr|id|path> --slot A --revision <revision>`. Slots accept A–H case-insensitively. All three accept `--json`; human inspection includes exact source positions and the revision needed for an edit.
 
 ## Shared progress fields
 
