@@ -36,12 +36,12 @@ jobs:
       - name: Test native queue, process death and parent reservations
         run: go test -count=1 -timeout=10m -v ./internal/intake ./internal/intakecontrol ./internal/intakelease
       - name: Cover native parent reservations
-        run: go test -count=1 -timeout=10m -v -covermode=atomic -coverprofile=intakelease-native.cover ./internal/intakelease
+        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-native.cover' ./internal/intakelease
       - name: Require native case-insensitive alias ownership
         if: runner.os != 'Linux'
         env:
           ENGINE_INTAKE_REQUIRE_CASE_ALIAS: '1'
-        run: go test -count=1 -timeout=10m -v -covermode=atomic -coverprofile=intakelease-casealias.cover ./internal/intakelease -run TestReservationNativeCaseAlias
+        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-casealias.cover' ./internal/intakelease -run TestReservationNativeCaseAlias
       - name: Test native retained staging and reviewed import
         run: go test -count=1 -timeout=10m -v ./internal/staging -run 'TestLocal|TestImport|TestRetainedImport|TestCancelledImport'
       - name: Test native queue backup, replacement and Undo
