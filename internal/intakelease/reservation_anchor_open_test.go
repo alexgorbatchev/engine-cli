@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// This isolates the native anchor creation primitive used by acquire. Both
+// This exercises the native anchor creation helper used by acquire. Both
 // retained directories survive every attempt, and no anchor is ever removed.
 func TestReservationNativeConcurrentAnchorCreation(t *testing.T) {
 	const rounds = 256
@@ -42,7 +42,7 @@ func TestReservationNativeConcurrentAnchorCreation(t *testing.T) {
 		for i, root := range roots {
 			wg.Go(func() {
 				<-start
-				files[i], failures[i] = root.OpenFile(name, os.O_CREATE|os.O_RDWR, 0600)
+				files[i], failures[i] = openReservationAnchor(root, name)
 			})
 		}
 		close(start)
@@ -53,7 +53,7 @@ func TestReservationNativeConcurrentAnchorCreation(t *testing.T) {
 			}
 			info, observed := roots[i].Lstat(name)
 			identity, identityErr := rootIdentity(roots[i])
-			t.Errorf("round=%d contender=%d phase=Root.OpenFile flags=O_CREATE|O_RDWR error=%v retainedRoot=%s identityError=%v currentEntry=%v statError=%v", round, i, failure, identity, identityErr, info, observed)
+			t.Errorf("round=%d contender=%d phase=openReservationAnchor error=%v retainedRoot=%s identityError=%v currentEntry=%v statError=%v", round, i, failure, identity, identityErr, info, observed)
 		}
 		if files[0] != nil && files[1] != nil {
 			first, err := files[0].Stat()

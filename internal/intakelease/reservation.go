@@ -183,7 +183,7 @@ func (r *reservation) acquire(path string, exclusive bool) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	file, err := anchors.OpenFile(name, os.O_CREATE|os.O_RDWR, 0600)
+	file, err := openReservationAnchor(anchors, name)
 	if err != nil {
 		return err
 	}
@@ -224,6 +224,16 @@ func (r *reservation) acquire(path string, exclusive bool) error {
 		return errors.New("intake path coordination changed during acquisition")
 	}
 	return checkReservationRoots(path, parent, anchors)
+}
+
+func openReservationAnchor(root *os.Root, name string) (*os.File, error) {
+	// Separate creation from opening: concurrent create-or-open can return
+	// spurious ENOENT on macOS (golang/go#81246).
+	file, err := root.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
+	if errors.Is(err, os.ErrExist) {
+		return root.OpenFile(name, os.O_RDWR, 0600)
+	}
+	return file, err
 }
 
 func rootIdentity(root *os.Root) (_ string, err error) {
