@@ -53,7 +53,7 @@ func smartlistRepairPending(cause error) error {
 
 func listSmartlistSafeHistory(dir string) ([]Entry, error) {
 	lib := filepath.Dir(filepath.Dir(dir))
-	return ReadSmartlistSafe(context.Background(), lib, func(context.Context) ([]Entry, error) {
+	return readSmartlistSafe(context.Background(), lib, false, func(context.Context) ([]Entry, error) {
 		return entries(dir)
 	})
 }

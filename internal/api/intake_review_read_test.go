@@ -4,17 +4,19 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
-func TestAPIIntakeReviewRefusesUnpublishedCollection(t *testing.T) {
+func TestAPIIntakeReviewWaitsForPublisherAndRefusesPendingRepair(t *testing.T) {
 	for _, pending := range []bool{false, true} {
 		name := "publisher"
 		if pending {
@@ -89,12 +91,14 @@ func TestAPIIntakeReviewRefusesUnpublishedCollection(t *testing.T) {
 					}
 				}
 			}
-			value, id, err := s.RunOperation(t.Context(), "intake.import.review", params)
-			code := "operation_failed"
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
+			value, id, err := s.RunOperation(ctx, "intake.import.review", params)
+			cancel()
+			refused := errors.Is(err, context.DeadlineExceeded)
 			if pending {
-				code = "smartlist_repair_pending"
+				refused = progress.ErrorCode(err) == "smartlist_repair_pending"
 			}
-			if value != nil || id != "" || err == nil || progress.ErrorCode(err) != code {
+			if value != nil || id != "" || !refused {
 				t.Errorf("unpublished collection issued review: value=%+v history=%q error=%v", value, id, err)
 			}
 			release()
