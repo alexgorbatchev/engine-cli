@@ -160,14 +160,7 @@ func (s *Store) write(ctx context.Context, item Item) error {
 	if err := errors.Join(writeErr, f.Sync(), f.Close(), ctx.Err()); err != nil {
 		return err
 	}
-	if err := root.Rename(tmp, filepath.Join(item.ID, manifestName)); err != nil {
-		return err
-	}
-	dir, err := root.Open(item.ID)
-	if err != nil {
-		return err
-	}
-	return errors.Join(dir.Sync(), dir.Close())
+	return publishManifest(root, item.ID, tmp)
 }
 
 func (s *Store) Create(ctx context.Context, item Item) (*Item, error) {
