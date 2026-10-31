@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"runtime"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -20,6 +21,17 @@ func Identity(path string, _ os.FileInfo) (string, error) {
 		return "", err
 	}
 	defer windows.CloseHandle(handle)
+	return identityHandle(handle)
+}
+
+// IdentityFile observes the retained descriptor, independently of its pathname.
+func IdentityFile(file *os.File) (string, error) {
+	id, err := identityHandle(windows.Handle(file.Fd()))
+	runtime.KeepAlive(file)
+	return id, err
+}
+
+func identityHandle(handle windows.Handle) (string, error) {
 	// FILE_ID_INFO contains the volume serial followed by the full 128-bit file ID, including on ReFS.
 	var info struct {
 		VolumeSerialNumber uint64
