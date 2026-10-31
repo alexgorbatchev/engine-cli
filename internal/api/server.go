@@ -102,6 +102,7 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.analysisOperations()...)
 	ops = append(ops, s.cueOperations()...)
 	ops = append(ops, s.tagOperations()...)
+	ops = append(ops, s.colorOperations()...)
 	ops = append(ops, s.tagAssignmentsOperation())
 	ops = append(ops, s.sessionOperations()...)
 	ops = append(ops, s.historyOperations()...)

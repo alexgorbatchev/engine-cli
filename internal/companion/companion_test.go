@@ -8,7 +8,7 @@ import (
 )
 
 func TestIndependentCompanionEnrollment(t *testing.T) {
-	for _, names := range [][]string{{"imports.db"}, {TagsName, "imports.db"}} {
+	for _, names := range [][]string{{ImportsName}, {TagsName, ImportsName}, {TagsName, ImportsName, ColorsName}} {
 		t.Run(names[0], func(t *testing.T) {
 			library := t.TempDir()
 			dir := filepath.Dir(TagsPath(library))
@@ -80,5 +80,28 @@ func TestExplicitDatabaseEnrollment(t *testing.T) {
 				t.Fatalf("unexpected enrollment=%v", paths)
 			}
 		})
+	}
+}
+
+func TestIndependentColorEnrollment(t *testing.T) {
+	library := t.TempDir()
+	dir := filepath.Join(library, ".engine-cli")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	color := filepath.Join(dir, "colors.db")
+	if err := os.WriteFile(color, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := Databases(library)
+	if err != nil || len(paths) != 1 || paths[0] != color {
+		t.Fatalf("color-only enrollment=%v, error=%v", paths, err)
+	}
+	if err := os.WriteFile(TagsPath(library), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	paths, err = Databases(library)
+	if err != nil || len(paths) != 2 || paths[0] != TagsPath(library) || paths[1] != color {
+		t.Fatalf("independent enrollment=%v, error=%v", paths, err)
 	}
 }

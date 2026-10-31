@@ -157,22 +157,22 @@ func List(ctx context.Context, library string) (*Taxonomy, error) {
 	if len(s.Assignments) == 0 {
 		return taxonomy(s, nil), nil
 	}
-	present, err := readOrigins(ctx, filepath.Join(library, "Database2", "m.db"))
+	present, err := companion.Origins(ctx, filepath.Join(library, "Database2", "m.db"))
 	if err != nil {
 		return nil, err
 	}
 	return taxonomy(s, present), nil
 }
 
-func taxonomy(s State, present map[TrackOrigin]bool) *Taxonomy {
+func taxonomy(s State, present map[companion.Origin]bool) *Taxonomy {
 	storedRevision := revision(s)
 	_, unavailable := missingAssignments(s, present)
-	counts := map[string]map[TrackOrigin]bool{}
+	counts := map[string]map[companion.Origin]bool{}
 	for _, a := range s.Assignments {
-		origin := TrackOrigin{UUID: a.OriginUUID, ID: a.OriginTrackID}
+		origin := companion.Origin{UUID: a.OriginUUID, ID: a.OriginTrackID}
 		if present[origin] {
 			if counts[a.ValueID] == nil {
-				counts[a.ValueID] = map[TrackOrigin]bool{}
+				counts[a.ValueID] = map[companion.Origin]bool{}
 			}
 			counts[a.ValueID][origin] = true
 		}

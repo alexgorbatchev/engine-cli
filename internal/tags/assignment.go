@@ -6,26 +6,18 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
 func trackOrigin(ctx context.Context, engine *sql.DB, selector string) (int64, string, int64, error) {
-	t, err := db.FindTrack(ctx, engine, selector)
+	t, err := companion.ResolveTrack(ctx, engine, selector)
 	if err != nil {
 		return 0, "", 0, err
 	}
-	if t == nil {
-		return 0, "", 0, failure("track_not_found", "the selected track no longer exists")
-	}
-	var origin string
-	var id int64
-	if err := engine.QueryRowContext(ctx, "SELECT originDatabaseUuid,originTrackId FROM Track WHERE id=?", t.ID).Scan(&origin, &id); err != nil {
-		return 0, "", 0, err
-	}
-	if origin == "" || id <= 0 {
+	if t.Origin.UUID == "" || t.Origin.ID <= 0 {
 		return 0, "", 0, failure("tag_track_identity_invalid", "the selected track has no stable origin identity")
 	}
-	return t.ID, origin, id, nil
+	return t.ID, t.Origin.UUID, t.Origin.ID, nil
 }
 
 func InspectTrack(ctx context.Context, engine *sql.DB, library, selector string) (*TrackTags, error) {

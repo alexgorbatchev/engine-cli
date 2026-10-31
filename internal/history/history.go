@@ -13,6 +13,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/alexgorbatchev/engine-cli/internal/colors"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
 
@@ -227,6 +228,9 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 		if engineBefore.Path != "" {
 			if err := tags.ReconcileRemoved(finish, lib, engineBefore.Path); err != nil {
 				return e, &progress.Error{Code: "history_recovery_required", Cause: errors.Join(runErr, fmt.Errorf("reconciling custom tags; operation %s remains pending for recovery: %w", e.ID, err))}
+			}
+			if err := colors.ReconcileRemoved(finish, lib, engineBefore.Path); err != nil {
+				return e, &progress.Error{Code: "history_recovery_required", Cause: errors.Join(runErr, fmt.Errorf("reconciling track colors; operation %s remains pending for recovery: %w", e.ID, err))}
 			}
 		}
 	}

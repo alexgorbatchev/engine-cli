@@ -132,7 +132,7 @@ func Replace(ctx context.Context, library, expected string, next State) (err err
 	if next.Revision() == previous.Revision() {
 		return ctx.Err()
 	}
-	d, created, err := companion.OpenWrite(library, companion.ImportsName)
+	d, created, err := companion.OpenWrite(ctx, library, companion.ImportsName)
 	if err != nil {
 		return err
 	}

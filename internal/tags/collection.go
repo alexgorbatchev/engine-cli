@@ -3,8 +3,9 @@ package tags
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
+
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
 // CollectionTags is a single companion observation resolved against the current
@@ -26,9 +27,9 @@ func ListTracks(ctx context.Context, engine *sql.DB, library string) (*Collectio
 	if err != nil {
 		return nil, err
 	}
-	values := map[TrackOrigin][]string{}
+	values := map[companion.Origin][]string{}
 	for _, assignment := range state.Assignments {
-		origin := TrackOrigin{UUID: assignment.OriginUUID, ID: assignment.OriginTrackID}
+		origin := companion.Origin{UUID: assignment.OriginUUID, ID: assignment.OriginTrackID}
 		values[origin] = append(values[origin], assignment.ValueID)
 	}
 	tracks, present, err := collectionValues(ctx, engine, values)
@@ -38,26 +39,18 @@ func ListTracks(ctx context.Context, engine *sql.DB, library string) (*Collectio
 	return &CollectionTags{Taxonomy: taxonomy(state, present), Tracks: tracks}, nil
 }
 
-func collectionValues(ctx context.Context, engine *sql.DB, values map[TrackOrigin][]string) ([]TrackValues, map[TrackOrigin]bool, error) {
-	rows, err := engine.QueryContext(ctx, "SELECT id,originDatabaseUuid,originTrackId FROM Track ORDER BY id")
+func collectionValues(ctx context.Context, engine *sql.DB, values map[companion.Origin][]string) ([]TrackValues, map[companion.Origin]bool, error) {
+	identities, err := companion.Tracks(ctx, engine)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading custom-tag collection identities: %w", err)
 	}
 	tracks := []TrackValues{}
-	present := map[TrackOrigin]bool{}
-	for rows.Next() {
-		var id int64
-		var origin TrackOrigin
-		if err := rows.Scan(&id, &origin.UUID, &origin.ID); err != nil {
-			return nil, nil, errors.Join(err, rows.Close())
+	present := map[companion.Origin]bool{}
+	for _, track := range identities {
+		present[track.Origin] = true
+		if assigned := values[track.Origin]; len(assigned) != 0 {
+			tracks = append(tracks, TrackValues{TrackID: track.ID, Values: assigned})
 		}
-		present[origin] = true
-		if assigned := values[origin]; len(assigned) != 0 {
-			tracks = append(tracks, TrackValues{TrackID: id, Values: assigned})
-		}
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return nil, nil, err
 	}
 	return tracks, present, nil
 }

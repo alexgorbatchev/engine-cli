@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/api"
+	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
 	"github.com/alexgorbatchev/engine-cli/internal/libraryops"
 	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/alexgorbatchev/engine-cli/internal/state"
@@ -221,6 +222,10 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 		if handled, err := printPlaylistReorder(c, result, asJSON); handled {
 			return errors.Join(runErr, err)
 		}
+		if merged, ok := result.(*duplicate.MergeResult); ok && !asJSON {
+			_, err := fmt.Fprintf(c.OutOrStdout(), "kept_id: %d\nmerged: %d\naudio_files: retained\n", merged.Kept.ID, len(merged.Removed))
+			return errors.Join(runErr, err)
+		}
 		if handled, err := printMetadataTransform(c, result, asJSON); handled {
 			return errors.Join(runErr, err)
 		}
@@ -229,6 +234,9 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 		}
 		if !asJSON {
 			if handled, err := printCues(c, result); handled {
+				return errors.Join(runErr, err)
+			}
+			if handled, err := printTrackColors(c, result); handled {
 				return errors.Join(runErr, err)
 			}
 			if handled, err := printCustomTags(c, result); handled {

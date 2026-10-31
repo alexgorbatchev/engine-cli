@@ -4,13 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
-func missingAssignments(state State, present map[TrackOrigin]bool) ([]Assignment, int) {
+func missingAssignments(state State, present map[companion.Origin]bool) ([]Assignment, int) {
 	missing := []Assignment{}
-	origins := map[TrackOrigin]bool{}
+	origins := map[companion.Origin]bool{}
 	for _, a := range state.Assignments {
-		origin := TrackOrigin{UUID: a.OriginUUID, ID: a.OriginTrackID}
+		origin := companion.Origin{UUID: a.OriginUUID, ID: a.OriginTrackID}
 		if !present[origin] {
 			missing = append(missing, a)
 			origins[origin] = true
@@ -23,7 +25,7 @@ func reconciliation(ctx context.Context, library string, state State, options Re
 	if err := checkRevision(options.Revision, state); err != nil {
 		return nil, nil, err
 	}
-	present, err := readOrigins(ctx, filepath.Join(library, "Database2", "m.db"))
+	present, err := companion.Origins(ctx, filepath.Join(library, "Database2", "m.db"))
 	if err != nil {
 		return nil, nil, err
 	}

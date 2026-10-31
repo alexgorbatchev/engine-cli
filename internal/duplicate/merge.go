@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/alexgorbatchev/engine-cli/internal/colors"
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/fingerprint"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
@@ -52,6 +54,10 @@ func Merge(ctx context.Context, d *sql.DB, opts MergeOptions) (*MergeResult, err
 	if err != nil {
 		return nil, err
 	}
+	keep, removed := mergeOrigins(result)
+	if err := colors.CheckMerge(ctx, lib, keep, removed); err != nil {
+		return nil, err
+	}
 	if opts.PerformanceFrom != 0 {
 		for _, id := range []int64{opts.Keep, opts.PerformanceFrom} {
 			var exists bool
@@ -96,14 +102,44 @@ func Merge(ctx context.Context, d *sql.DB, opts MergeOptions) (*MergeResult, err
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
-	removed := make([]tags.TrackOrigin, 0, len(result.Removed))
-	for _, track := range result.Removed {
-		removed = append(removed, tags.TrackOrigin{UUID: track.originUUID, ID: track.originID})
+	if err := tags.MergeOrigins(ctx, lib, keep, removed); err != nil {
+		return nil, errors.Join(err, history.RequireRecovery(ctx))
 	}
-	if err := tags.MergeOrigins(ctx, lib, tags.TrackOrigin{UUID: result.Kept.originUUID, ID: result.Kept.originID}, removed); err != nil {
+	if err := colors.MergeOrigins(ctx, lib, keep, removed); err != nil {
 		return nil, errors.Join(err, history.RequireRecovery(ctx))
 	}
 	return result, nil
+}
+
+// CheckMerge validates the same selected identities and companion conflict
+// policy before callers create a safety snapshot or history record.
+func CheckMerge(ctx context.Context, d *sql.DB, opts MergeOptions) error {
+	opts, err := resolveMerge(ctx, d, opts)
+	if err != nil {
+		return err
+	}
+	library, err := identity.LibraryPath(ctx, d)
+	if err != nil {
+		return err
+	}
+	tracks, err := readTracks(ctx, d)
+	if err != nil {
+		return err
+	}
+	result, err := selection(ctx, library, tracks, opts)
+	if err != nil {
+		return err
+	}
+	keep, removed := mergeOrigins(result)
+	return colors.CheckMerge(ctx, library, keep, removed)
+}
+
+func mergeOrigins(result *MergeResult) (companion.Origin, []companion.Origin) {
+	removed := make([]companion.Origin, 0, len(result.Removed))
+	for _, track := range result.Removed {
+		removed = append(removed, companion.Origin{UUID: track.originUUID, ID: track.originID})
+	}
+	return companion.Origin{UUID: result.Kept.originUUID, ID: result.Kept.originID}, removed
 }
 
 func resolveMerge(ctx context.Context, d *sql.DB, o MergeOptions) (MergeOptions, error) {

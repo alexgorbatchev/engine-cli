@@ -147,6 +147,7 @@ func selection(c *collection, scope Scope) (map[string]bool, map[string]bool, er
 	}
 	selectTags(c, selected)
 	selectImports(c, selected)
+	selectColors(c, selected)
 	return selected, ancestors, nil
 }
 func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) {
@@ -243,7 +244,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 		}
 		// Empty assignment groups carry a clearing baseline, but adding an
 		// unassigned track does not itself mutate the companion database.
-		if src.Kind == "tag_assignment" && dst == nil && len(tagValues(src)) == 0 {
+		if dst == nil && emptyAssignment(src) {
 			p.baseline[key] = baseline{Source: sf, Destination: sf}
 			continue
 		}
@@ -360,7 +361,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	tokenOptions.DryRun = false
 	tokenOptions.PlanToken = ""
 	tokenOptions.NoBackup = false
-	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.Tags, d.Tags, s.Imports, d.Imports, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
+	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.Tags, d.Tags, s.Imports, d.Imports, s.Colors, d.Colors, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
 	return p, nil
 }
 

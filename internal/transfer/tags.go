@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
 	"golang.org/x/text/cases"
@@ -18,9 +19,9 @@ func readTags(ctx context.Context, c *collection) error {
 		return err
 	}
 	c.Tags = s
-	byOrigin := map[tags.TrackOrigin][]string{}
+	byOrigin := map[companion.Origin][]string{}
 	for _, a := range s.Assignments {
-		origin := tags.TrackOrigin{UUID: a.OriginUUID, ID: a.OriginTrackID}
+		origin := companion.Origin{UUID: a.OriginUUID, ID: a.OriginTrackID}
 		byOrigin[origin] = append(byOrigin[origin], a.ValueID)
 	}
 	for _, category := range s.Categories {
@@ -32,7 +33,7 @@ func readTags(ctx context.Context, c *collection) error {
 		}
 	}
 	for _, track := range slices.Collect(entityTracks(c)) {
-		origin := tags.TrackOrigin{UUID: str(track.Values["originDatabaseUuid"]), ID: number(track.Values["originTrackId"])}
+		origin := companion.Origin{UUID: str(track.Values["originDatabaseUuid"]), ID: number(track.Values["originTrackId"])}
 		values := append([]string{}, byOrigin[origin]...)
 		delete(byOrigin, origin)
 		key := "tag_assignment:" + track.Key
@@ -77,7 +78,7 @@ func tagValues(e *entity) []string {
 
 func isTag(e *entity) bool { return strings.HasPrefix(e.Kind, "tag_") }
 
-// plannedTags applies only accepted entity decisions. Destination-only taxonomy
+// plannedEntities applies only accepted entity decisions. Destination-only taxonomy
 // remains unless root mirroring explicitly removes it; playlist mirrors never
 // remove definitions used outside their selected tracks.
 func (p *plan) plannedEntities() map[string]*entity {

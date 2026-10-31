@@ -19,8 +19,17 @@ type historyParams struct {
 
 func (s *Server) historyOperations() []operation {
 	return []operation{
-		define("track.duplicate.merge", true, nil, func(ctx context.Context, p duplicate.MergeOptions) (any, error) {
-			return s.database(ctx, func(d *sql.DB) (any, error) { return duplicate.Merge(ctx, d, p) })
+		defineChecked("track.duplicate.merge", "collection", nil, func(ctx context.Context, p duplicate.MergeOptions, _ *boundOperation) error {
+			_, err := s.database(ctx, func(d *sql.DB) (any, error) { return nil, duplicate.CheckMerge(ctx, d, p) })
+			return err
+		}, func(ctx context.Context, p duplicate.MergeOptions) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				result, err := duplicate.Merge(ctx, d, p)
+				if err != nil {
+					return nil, err
+				}
+				return result, nil
+			})
 		}),
 		define("library.history", false, nil, func(ctx context.Context, p historyParams) (any, error) {
 			lib := p.Library

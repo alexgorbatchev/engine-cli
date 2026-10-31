@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
 const maxBatchTracks = 500
@@ -53,8 +55,8 @@ type BatchChange struct {
 }
 
 type batchTrack struct {
-	ID     int64       `json:"id"`
-	Origin TrackOrigin `json:"origin"`
+	ID     int64            `json:"id"`
+	Origin companion.Origin `json:"origin"`
 }
 
 func resolveBatch(ctx context.Context, engine *sql.DB, selectors []string) ([]batchTrack, error) {
@@ -73,7 +75,7 @@ func resolveBatch(ctx context.Context, engine *sql.DB, selectors []string) ([]ba
 		}
 		if !seen[id] {
 			seen[id] = true
-			result = append(result, batchTrack{ID: id, Origin: TrackOrigin{UUID: uuid, ID: originID}})
+			result = append(result, batchTrack{ID: id, Origin: companion.Origin{UUID: uuid, ID: originID}})
 		}
 	}
 	return result, nil
@@ -114,10 +116,10 @@ func InspectBatch(ctx context.Context, engine *sql.DB, library string, selectors
 	return result, nil
 }
 
-func batchAssignments(state State) map[TrackOrigin]map[string]bool {
-	assigned := map[TrackOrigin]map[string]bool{}
+func batchAssignments(state State) map[companion.Origin]map[string]bool {
+	assigned := map[companion.Origin]map[string]bool{}
 	for _, a := range state.Assignments {
-		origin := TrackOrigin{UUID: a.OriginUUID, ID: a.OriginTrackID}
+		origin := companion.Origin{UUID: a.OriginUUID, ID: a.OriginTrackID}
 		if assigned[origin] == nil {
 			assigned[origin] = map[string]bool{}
 		}
@@ -156,7 +158,7 @@ func batchPlan(state State, tracks []batchTrack, options BatchOptions) (*BatchCh
 		}
 	}
 	result := &BatchChange{Revision: revision(state), TrackIDs: batchTrackIDs(tracks), Add: add, Remove: remove}
-	assigned, counted := batchAssignments(state), map[TrackOrigin]bool{}
+	assigned, counted := batchAssignments(state), map[companion.Origin]bool{}
 	for _, track := range tracks {
 		added, removed := 0, 0
 		for _, id := range add {
@@ -236,7 +238,7 @@ func AssignBatch(ctx context.Context, engine *sql.DB, library string, options Ba
 		if checked.PlanToken != options.PlanToken {
 			return "", false, failure("tag_plan_stale", "the selected track identities changed; review the batch again")
 		}
-		seen := map[TrackOrigin]bool{}
+		seen := map[companion.Origin]bool{}
 		for _, track := range tracks {
 			if seen[track.Origin] {
 				continue

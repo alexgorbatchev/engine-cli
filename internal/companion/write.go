@@ -1,6 +1,7 @@
 package companion
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"os"
@@ -11,9 +12,12 @@ import (
 
 // OpenWrite exclusively enrolls absent storage. The caller initializes its
 // schema transactionally and removes a newly enrolled file if publication fails.
-func OpenWrite(library, name string) (*sql.DB, bool, error) {
+func OpenWrite(ctx context.Context, library, name string) (*sql.DB, bool, error) {
 	existing, err := Database(library, name)
 	if err != nil {
+		return nil, false, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, false, err
 	}
 	path := filepath.Join(library, ".engine-cli", name)

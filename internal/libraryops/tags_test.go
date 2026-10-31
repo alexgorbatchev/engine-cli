@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alexgorbatchev/engine-cli/internal/colors"
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
@@ -38,6 +39,13 @@ func assignedLibrary(t *testing.T) (string, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	colorState, err := colors.Read(ctx, lib)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := colors.Assign(ctx, d, lib, colors.Edit{Track: "1", Color: "#123456", Revision: colorState.Revision()}); err != nil {
+		t.Fatal(err)
+	}
 	return lib, stored.Revision()
 }
 
@@ -66,9 +74,16 @@ func TestLibraryMoveDeletePreserveCompanionUndo(t *testing.T) {
 				if err != nil || state.Revision() != revision {
 					t.Fatalf("move lost companion: %+v %v", state, err)
 				}
+				moved, err := colors.Read(ctx, undoPath)
+				if err != nil || len(moved.Assignments) != 1 || moved.Assignments[0].Color != "#123456" {
+					t.Fatalf("move lost colors: %+v %v", moved, err)
+				}
 			}
 			if _, err := os.Stat(companion.TagsPath(lib)); !os.IsNotExist(err) {
 				t.Fatalf("source companion remained: %v", err)
+			}
+			if _, err := os.Stat(companion.ColorsPath(lib)); !os.IsNotExist(err) {
+				t.Fatalf("source colors remained: %v", err)
 			}
 			if _, err := history.Undo(ctx, undoPath, entry.ID, history.UndoOptions{}); err != nil {
 				t.Fatal(err)
@@ -77,7 +92,44 @@ func TestLibraryMoveDeletePreserveCompanionUndo(t *testing.T) {
 			if err != nil || state.Revision() != revision || state.Categories[0].Values[0].TrackCount != 1 {
 				t.Fatalf("undo lost companion: %+v %v", state, err)
 			}
+			restored, err := colors.Read(ctx, lib)
+			if err != nil || len(restored.Assignments) != 1 || restored.Assignments[0].Color != "#123456" {
+				t.Fatalf("undo lost colors: %+v %v", restored, err)
+			}
 		})
+	}
+}
+
+func TestDeletePlanRejectsChangedColor(t *testing.T) {
+	library, _ := assignedLibrary(t)
+	options := Options{Path: library, Action: "delete", ConfirmPath: library}
+	plan, err := Preview(t.Context(), options, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options.PlanToken = plan.PlanToken
+	d, err := db.Open(filepath.Join(library, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	before, err := colors.Read(t.Context(), library)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed, err := colors.Assign(t.Context(), d, library, colors.Edit{Track: "1", Color: "#ABCDEF", Revision: before.Revision()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Apply(t.Context(), options, nil); err == nil {
+		t.Fatal("deleted library after color changed")
+	}
+	stored, err := colors.Read(t.Context(), library)
+	if err != nil || stored.Revision() != changed.Revision {
+		t.Fatalf("stale delete touched colors: %+v %v", stored, err)
+	}
+	if _, err := os.Stat(filepath.Join(library, "Database2", "m.db")); err != nil {
+		t.Fatal("stale delete removed Engine database", err)
 	}
 }
 

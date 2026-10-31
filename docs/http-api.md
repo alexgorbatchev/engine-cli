@@ -596,6 +596,75 @@ an automatic name-based identity merge is not performed. Partial multi-file
 publication reports `history_recovery_required`, retains the pending history ID,
 and refuses further collection writes until explicit forced undo recovery.
 
+## Library-local track colors
+
+Track colors are independent Engine CLI companion state, stored in
+`.engine-cli/colors.db`. They are neither embedded audio tags, custom-tag values,
+nor native Engine DJ Desktop colors. Each native origin UUID/track-ID pair has
+at most one color. No identity is inferred from a path, filename, or another
+library's local row ID.
+
+| Operation | Parameters | Result |
+| --- | --- | --- |
+| `track.color.list` | None | `{revision,unavailable_tracks,tracks:[{track_id,color}]}` |
+| `track.color.inspect` | `track` | `{track_id,color,revision,changed}` |
+| `track.color.update` | `track`, `revision`, `color` | `{track_id,color,revision,changed}` |
+| `track.color.reconcile` | `revision`, `dry_run`, optional `plan_token` | `{revision,plan_token,unavailable_tracks,removed_assignments,applied}` |
+
+These operations use the selected library endpoint and ordinary job envelope.
+`track` accepts the existing single-track selector syntax. A color is exactly
+`#RRGGBB`, accepted case-insensitively and returned uppercase. An explicit empty
+string clears a color; missing, null, whitespace, and other formats are rejected.
+An unassigned track returns `color:""`. The opaque revision covers all stored
+assignments, including unavailable origins, and must match on every write.
+
+List returns every assigned current track in ascending local-ID order under one
+collection read barrier and revision. It omits unassigned tracks and separately
+counts unavailable assigned origins. List and inspect do not create storage,
+remove assignments, or create backup/history records. Update requires fresh
+Desktop protection and creates one undoable collection change. An unchanged
+update is rejected with `color_no_changes` before backup or history enrollment.
+
+Colors for externally removed tracks remain recoverable until explicit consent.
+Review reconciliation with `dry_run:true`, then apply the same revision and exact
+returned plan token. The token binds the missing identities, not only their
+count; restoring or replacing an origin requires a new review. Apply returns
+the reviewed counts/token, resulting revision, and `applied:true`. Zero-removal
+application is rejected with `color_no_changes`. Reads and previews never prune
+or enroll storage. Normal collection removal prunes only origins removed by
+that operation, and Undo restores their colors.
+
+Duplicate inspection includes each candidate's color. An assigned survivor
+keeps its color; an unassigned survivor inherits a single distinct color from
+removed tracks. Distinct removed colors with no survivor color are refused
+before safety enrollment with `color_merge_conflict` so a choice can be made
+before destructive merging.
+
+Version-three backup presence metadata records tags, source archives, and colors independently. A snapshot whose
+presence metadata records no colors restores absence rather than retaining later
+colors. Version-one and version-two presence metadata predate colors and likewise restore their
+absence; older backups without any companion section likewise restore absence.
+Undo preserves the state it replaces. Library move/delete and ordinary history
+include enrolled companion files. Sync plans scope colors to selected tracks,
+bind both libraries' stored color revisions, and use the existing source versus
+destination conflict decisions. Audio reuse binds the accepted color to the
+surviving destination origin. Unavailable assignments reject sync with
+`color_assignments_stale` until reviewed reconciliation. Engine and companion
+publications are not one SQLite transaction: a failed companion publication
+after Engine changes retains pending history and reports
+`history_recovery_required` for explicit forced Undo recovery.
+
+Validation and recovery codes are `color_invalid`, `color_revision_stale`,
+`color_track_identity_invalid`, `color_plan_stale`, `color_no_changes`,
+`color_store_unavailable`, `color_merge_conflict`, and `color_assignments_stale`.
+`track_not_found` retains its existing meaning. Render safe catalog guidance
+rather than raw diagnostics.
+
+The corresponding commands are `track color list`, `track color inspect <track>`,
+`track color update <track> --revision <revision> --color <#RRGGBB>`, and
+`track color reconcile --revision <revision> --dry-run`, followed by the same
+revision and `--plan-token <token>` to apply. Use `--color=` for explicit clearing.
+
 ## Operations
 
 ### Staged music

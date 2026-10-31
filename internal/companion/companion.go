@@ -10,6 +10,7 @@ import (
 const (
 	TagsName    = "tags.db"
 	ImportsName = "imports.db"
+	ColorsName  = "colors.db"
 )
 
 func TagsPath(library string) string {
@@ -20,11 +21,13 @@ func ImportsPath(library string) string {
 	return filepath.Join(library, ".engine-cli", ImportsName)
 }
 
+func ColorsPath(library string) string { return filepath.Join(library, ".engine-cli", ColorsName) }
+
 // Databases lists only explicitly enrolled databases. Recovery directories and
 // other CLI state must never become recursive snapshot inputs.
 func Databases(library string) ([]string, error) {
 	var paths []string
-	for _, name := range []string{TagsName, ImportsName} {
+	for _, name := range []string{TagsName, ImportsName, ColorsName} {
 		path, err := Database(library, name)
 		if err != nil {
 			return nil, err
@@ -39,7 +42,7 @@ func Databases(library string) ([]string, error) {
 // Database observes one enrolled companion without mistaking another database's
 // presence for enrollment. An absent database is returned as an empty path.
 func Database(library, name string) (string, error) {
-	if name != TagsName && name != ImportsName {
+	if name != TagsName && name != ImportsName && name != ColorsName {
 		return "", fmt.Errorf("unknown CLI companion database %q", name)
 	}
 	path := filepath.Join(library, ".engine-cli", name)

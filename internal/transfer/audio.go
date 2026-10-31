@@ -122,11 +122,13 @@ func (p *plan) remapAudio(old, key string) {
 	delete(d.Entities, old)
 	e.Key = key
 	d.Entities[key] = e
-	if assignment := d.Entities["tag_assignment:"+old]; assignment != nil {
-		delete(d.Entities, assignment.Key)
-		assignment.Key = "tag_assignment:" + key
-		assignment.Values["track"] = key
-		d.Entities[assignment.Key] = assignment
+	for _, kind := range []string{"tag_assignment", "color_assignment"} {
+		if assignment := d.Entities[kind+":"+old]; assignment != nil {
+			delete(d.Entities, assignment.Key)
+			assignment.Key = kind + ":" + key
+			assignment.Values["track"] = key
+			d.Entities[assignment.Key] = assignment
+		}
 	}
 	d.State.Tracks[nativeTrackKey(e)] = key
 	for _, other := range d.Entities {

@@ -18,7 +18,6 @@ import (
 	libraryidentity "github.com/alexgorbatchev/engine-cli/internal/identity"
 	"github.com/alexgorbatchev/engine-cli/internal/importsource"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
-	"github.com/alexgorbatchev/engine-cli/internal/tags"
 )
 
 // Run returns the same comparison for CLI and HTTP. Only apply creates history.
@@ -74,10 +73,10 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 	// Companion state is captured before the Engine transaction changes track
 	// identities. The post-apply Engine read below must not reinterpret the old
 	// companion against rows that have already been removed by this plan.
-	if err := readTags(ctx, s); err != nil {
+	if err := readCompanions(ctx, s); err != nil {
 		return nil, err
 	}
-	if err := readTags(ctx, d); err != nil {
+	if err := readCompanions(ctx, d); err != nil {
 		return nil, err
 	}
 	for _, c := range []*collection{s, d} {
@@ -142,16 +141,9 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 		// The Engine transaction and companion cannot commit atomically in WAL
 		// mode. Validate both snapshots before the first commit; publication
 		// failures thereafter deliberately retain pending history for recovery.
-		for _, check := range []struct {
-			path     string
-			expected string
-		}{{o.Source, s.Tags.Revision()}, {o.Destination, d.Tags.Revision()}} {
-			current, err := tags.Read(ctx, check.path)
-			if err != nil {
+		for _, captured := range []*collection{s, d} {
+			if err := checkCompanions(ctx, captured); err != nil {
 				return err
-			}
-			if current.Revision() != check.expected {
-				return &progress.Error{Code: "tag_revision_stale", Cause: fmt.Errorf("custom tags changed while applying the sync plan")}
 			}
 		}
 		for _, c := range []*collection{s, d} {
@@ -162,11 +154,8 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 		if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
 			return err
 		}
-		nextTags := p.plannedTags()
-		if nextTags.Revision() != d.Tags.Revision() {
-			if _, err := tags.Replace(ctx, o.Destination, d.Tags.Revision(), nextTags); err != nil {
-				return errors.Join(err, history.RequireRecovery(ctx))
-			}
+		if err := p.publishCompanions(ctx); err != nil {
+			return err
 		}
 		if next := p.plannedImports(); next.Revision() != d.Imports.Revision() {
 			if err := importsource.Replace(ctx, o.Destination, d.Imports.Revision(), next); err != nil {

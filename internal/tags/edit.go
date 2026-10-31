@@ -18,7 +18,7 @@ func mutate(ctx context.Context, library, expected string, run func(*sql.Tx, Sta
 	if err := checkRevision(expected, s); err != nil {
 		return nil, err
 	}
-	d, created, err := companion.OpenWrite(library, companion.TagsName)
+	d, created, err := companion.OpenWrite(ctx, library, companion.TagsName)
 	if err != nil {
 		return nil, err
 	}

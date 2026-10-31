@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
 func deletion(ctx context.Context, library string, state State, options DeleteOptions, category bool) (*Deletion, error) {
@@ -28,16 +30,16 @@ func deletion(ctx context.Context, library string, state State, options DeleteOp
 		return nil, failure("tag_not_found", "the custom-tag category or value no longer exists")
 	}
 	result := &Deletion{ID: options.ID, Revision: revision(state), RemovedValues: len(values)}
-	present, err := readOrigins(ctx, filepath.Join(library, "Database2", "m.db"))
+	present, err := companion.Origins(ctx, filepath.Join(library, "Database2", "m.db"))
 	if err != nil {
 		return nil, err
 	}
-	tracks := map[TrackOrigin]bool{}
+	tracks := map[companion.Origin]bool{}
 	liveAssignments := []Assignment{}
 	for _, a := range state.Assignments {
 		if values[a.ValueID] {
 			result.RemovedAssignments++
-			origin := TrackOrigin{UUID: a.OriginUUID, ID: a.OriginTrackID}
+			origin := companion.Origin{UUID: a.OriginUUID, ID: a.OriginTrackID}
 			if present[origin] {
 				tracks[origin] = true
 				liveAssignments = append(liveAssignments, a)

@@ -104,7 +104,7 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 					return nil, fmt.Errorf("%s is required", key)
 				}
 				var text string
-				if json.Unmarshal(value, &text) == nil && strings.TrimSpace(text) == "" {
+				if json.Unmarshal(value, &text) == nil && strings.TrimSpace(text) == "" && !allowEmpty[key] {
 					return nil, fmt.Errorf("%s must not be empty", key)
 				}
 				var list []string

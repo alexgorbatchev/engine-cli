@@ -12,7 +12,7 @@ func TestWriteRefusesUnknownEnrollment(t *testing.T) {
 	if _, err := Database(library, "unowned.db"); err == nil {
 		t.Fatal("unknown companion accepted")
 	}
-	if d, created, err := OpenWrite(library, "unowned.db"); err == nil || d != nil || created {
+	if d, created, err := OpenWrite(t.Context(), library, "unowned.db"); err == nil || d != nil || created {
 		t.Fatalf("unknown write: database=%v created=%t error=%v", d, created, err)
 	}
 	if entries, err := os.ReadDir(library); err != nil || len(entries) != 0 {
@@ -38,7 +38,7 @@ func TestWritePreservesPermissionFailures(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = os.Chmod(locked, 0700) })
-			d, created, err := OpenWrite(library, ImportsName)
+			d, created, err := OpenWrite(t.Context(), library, ImportsName)
 			if !os.IsPermission(err) || d != nil || created {
 				t.Fatalf("write denied: database=%v created=%t error=%v", d, created, err)
 			}
@@ -93,7 +93,7 @@ func TestInaccessibleEnrollmentIsNotTreatedAsAbsent(t *testing.T) {
 	if path, err := Database(library, ImportsName); !os.IsPermission(err) || path != "" {
 		t.Fatalf("inaccessible observation treated as absent: %q %v", path, err)
 	}
-	if d, created, err := OpenWrite(library, ImportsName); !os.IsPermission(err) || d != nil || created {
+	if d, created, err := OpenWrite(t.Context(), library, ImportsName); !os.IsPermission(err) || d != nil || created {
 		t.Fatalf("inaccessible enrollment opened: %v %t %v", d, created, err)
 	}
 	if err := os.Chmod(parent, 0700); err != nil {

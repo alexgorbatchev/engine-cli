@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alexgorbatchev/engine-cli/internal/colors"
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/importsource"
@@ -17,12 +18,13 @@ import (
 
 const companionFolder = "Companion"
 const companionManifest = "presence.json"
-const companionVersion = 2
+const companionVersion = 3
 
 type companionPresence struct {
 	Version int   `json:"version"`
 	Tags    *bool `json:"tags"`
 	Imports *bool `json:"imports,omitempty"`
+	Colors  *bool `json:"colors,omitempty"`
 }
 
 type companionRestore struct{ name, source string }
@@ -37,7 +39,7 @@ func snapshotCompanion(ctx context.Context, library, staging string) (int, int64
 		return 0, 0, err
 	}
 	var size int64
-	tagsPresent, importsPresent := false, false
+	tagsPresent, importsPresent, colorsPresent := false, false, false
 	for _, path := range paths {
 		name := filepath.Base(path)
 		n, err := snapshotDatabase(ctx, path, filepath.Join(dir, name))
@@ -47,8 +49,9 @@ func snapshotCompanion(ctx context.Context, library, staging string) (int, int64
 		size += n
 		tagsPresent = tagsPresent || name == companion.TagsName
 		importsPresent = importsPresent || name == companion.ImportsName
+		colorsPresent = colorsPresent || name == companion.ColorsName
 	}
-	presence := companionPresence{Version: companionVersion, Tags: &tagsPresent, Imports: &importsPresent}
+	presence := companionPresence{Version: companionVersion, Tags: &tagsPresent, Imports: &importsPresent, Colors: &colorsPresent}
 	data, err := json.Marshal(presence)
 	if err != nil {
 		return 0, 0, err
@@ -61,7 +64,8 @@ func snapshotCompanion(ctx context.Context, library, staging string) (int, int64
 
 // A genuinely old backup has no companion section. New snapshots explicitly
 // record independent absence, so a missing required database cannot masquerade
-// as an old snapshot. Version 1 predates source archives and implies their absence.
+// as an old snapshot. Versions 1 and 2 predate colors and imply their absence;
+// version 1 also predates source archives.
 func planCompanion(ctx context.Context, backup string) ([]companionRestore, error) {
 	dir := filepath.Join(backup, companionFolder)
 	if info, err := os.Lstat(dir); err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
@@ -70,7 +74,7 @@ func planCompanion(ctx context.Context, backup string) ([]companionRestore, erro
 	data, err := os.ReadFile(filepath.Join(dir, companionManifest))
 	if os.IsNotExist(err) {
 		if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
-			return []companionRestore{{name: companion.TagsName}, {name: companion.ImportsName}}, nil
+			return []companionRestore{{name: companion.TagsName}, {name: companion.ImportsName}, {name: companion.ColorsName}}, nil
 		}
 	}
 	if err != nil {
@@ -81,11 +85,12 @@ func planCompanion(ctx context.Context, backup string) ([]companionRestore, erro
 		return nil, companionFailure(errors.New("invalid companion presence manifest"))
 	}
 	importsPresent := presence.Imports != nil && *presence.Imports
+	colorsPresent := presence.Colors != nil && *presence.Colors
 	var plans []companionRestore
 	for _, entry := range []struct {
 		name    string
 		present bool
-	}{{companion.TagsName, *presence.Tags}, {companion.ImportsName, importsPresent}} {
+	}{{companion.TagsName, *presence.Tags}, {companion.ImportsName, importsPresent}, {companion.ColorsName, colorsPresent}} {
 		path, err := planCompanionDatabase(ctx, dir, entry.name, entry.present)
 		if err != nil {
 			return nil, companionFailure(err)
@@ -99,7 +104,9 @@ func validPresence(p companionPresence) bool {
 	if p.Tags == nil {
 		return false
 	}
-	return p.Version == 1 && p.Imports == nil || p.Version == companionVersion && p.Imports != nil
+	return p.Version == 1 && p.Imports == nil && p.Colors == nil ||
+		p.Version == 2 && p.Imports != nil && p.Colors == nil ||
+		p.Version == companionVersion && p.Imports != nil && p.Colors != nil
 }
 
 func companionFailure(err error) error {
@@ -123,6 +130,8 @@ func planCompanionDatabase(ctx context.Context, dir, name string, present bool) 
 	}
 	if name == companion.ImportsName {
 		err = importsource.ValidateDatabase(ctx, path)
+	} else if name == companion.ColorsName {
+		err = colors.ValidateDatabase(ctx, path)
 	} else {
 		err = tags.ValidateDatabase(ctx, path)
 	}
@@ -133,6 +142,9 @@ func planCompanionDatabase(ctx context.Context, dir, name string, present bool) 
 }
 
 func restoreCompanion(ctx context.Context, library string, plans []companionRestore) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if _, err := companion.Databases(library); err != nil {
 		return err
 	}

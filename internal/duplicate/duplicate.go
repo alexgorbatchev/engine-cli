@@ -16,6 +16,7 @@ type Track struct {
 	Ref            string   `json:"ref,omitempty"`
 	ID             int64    `json:"id"`
 	Title          string   `json:"title"`
+	Color          string   `json:"color"`
 	Artist         string   `json:"artist"`
 	Album          string   `json:"album"`
 	Filename       string   `json:"filename"`

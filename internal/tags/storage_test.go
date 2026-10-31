@@ -88,3 +88,34 @@ func TestCancelledReadDoesNotEnrollCompanion(t *testing.T) {
 		t.Fatalf("cancelled read enrolled companion: %v", err)
 	}
 }
+
+func TestIndependentCompanionDoesNotEnrollOrReplaceTags(t *testing.T) {
+	library := t.TempDir()
+	color := companion.ColorsPath(library)
+	if err := os.MkdirAll(filepath.Dir(color), 0700); err != nil {
+		t.Fatal(err)
+	}
+	want := []byte("independent store owned by another domain")
+	if err := os.WriteFile(color, want, 0600); err != nil {
+		t.Fatal(err)
+	}
+	state, err := Read(t.Context(), library)
+	if err != nil || len(state.Categories) != 0 || len(state.Assignments) != 0 {
+		t.Fatalf("absent tags=%+v, error=%v", state, err)
+	}
+	if _, err := os.Stat(companion.TagsPath(library)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("read enrolled tags: %v", err)
+	}
+	result, err := EditCategory(t.Context(), library, Edit{Name: "Mood", Revision: state.Revision()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := Read(t.Context(), library)
+	if err != nil || len(stored.Categories) != 1 || stored.Categories[0].ID != result.ID {
+		t.Fatalf("created taxonomy=%+v, error=%v", stored, err)
+	}
+	got, err := os.ReadFile(color)
+	if err != nil || string(got) != string(want) {
+		t.Fatalf("unrelated companion was changed: %q, error=%v", got, err)
+	}
+}
