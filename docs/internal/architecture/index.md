@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-30 20:27
+last_modified: 2026-10-30 22:08
 status: current
 ---
 
@@ -88,3 +88,11 @@ The overview and collection-write cards cite committed Engine CLI [dc21b3a](http
 ## Library-local custom track colors
 
 The overview and collection-write cards cite committed Engine CLI [f0db5cd](https://github.com/alexgorbatchev/engine-cli/commit/f0db5cd495abc6491bb70a8e0e3857e54932dda7). Independent `.engine-cli/colors.db` assignments use native origin identities and stored-content revisions; collection reads do not enroll or prune storage. Explicit assignment and clearing use checked collection writes, while unavailable-origin reconciliation binds consent to exact revision and reviewed assignments. Shared snapshots, presence-aware restore, Undo, removal, duplicate merging and library synchronization preserve the independent companion lifecycle. Engine and companion publications remain separate; incomplete cross-file publication retains recovery history. These cards add no actor and preserve historical graph/source pins and the separately reviewed F521 ordering evidence. Uncommitted changes and UI completion are outside this evidence.
+
+## Retained-file PCM windows
+
+Overview and collection-write supplemental cards cite committed Engine CLI `067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0`. The root HTTP server owns the shared in-memory generation Store; direct library-scoped PCM creation, metadata, bounded windows and release retain source descriptors without introducing jobs or persistent state. The collection read barrier ends after source opening, before decoding. Exact first-audio EOF determines nullable frame extent; source changes invalidate generations. Release, idle expiry and server shutdown own descriptor and worker teardown. No Desktop write guard, snapshot, history or Undo enrollment is introduced by these non-mutating endpoints. Historical graph/source pins and the separately reviewed F521/F500 cards remain unchanged. Platform qualification and future consumer MessagePort/device-output behavior are outside this implementation evidence.
+
+## Rooted staging manifest publication
+
+The overview adds separately reviewed staging publication evidence at committed Engine CLI `067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0`. A synced temporary manifest is published through retained rooted handles; Unix directory synchronization remains, while Windows uses native relative-handle write-through replacement and rejects source reparse points. NTFS rename-metadata durability is an explicit filesystem-specific guarantee. Staging history scope and scheduling remain unchanged.
