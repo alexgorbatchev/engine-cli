@@ -69,7 +69,7 @@ func TestRejectedDescriptorsAreClosed(t *testing.T) {
 			if got, err := accept(file, nil); err == nil || got != nil {
 				t.Fatalf("accepted %s: %v %v", kind, got, err)
 			}
-			if _, err := file.Stat(); !errors.Is(err, fs.ErrClosed) {
+			if err := file.Close(); !errors.Is(err, fs.ErrClosed) {
 				t.Fatalf("rejected %s descriptor remains open: %v", kind, err)
 			}
 		})
