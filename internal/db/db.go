@@ -590,7 +590,18 @@ func RemoveTrackFromPlaylist(ctx context.Context, database *sql.DB, listID int64
 	if database == nil {
 		return fmt.Errorf("database cannot be nil")
 	}
+	tx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("starting membership removal: %w", err)
+	}
+	defer tx.Rollback()
+	if err := removeTrackFromPlaylist(ctx, tx, listID, trackID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
+func removeTrackFromPlaylist(ctx context.Context, database Executor, listID int64, trackID int64) error {
 	var entityID int64
 	var nextEntityID sql.NullInt64
 	err := database.QueryRowContext(ctx, `SELECT pe.id, pe.nextEntityId FROM PlaylistEntity pe
@@ -608,7 +619,9 @@ func RemoveTrackFromPlaylist(ctx context.Context, database *sql.DB, listID int64
 	if nextEntityID.Valid {
 		targetNext = nextEntityID.Int64
 	}
-	_, _ = database.ExecContext(ctx, "UPDATE PlaylistEntity SET nextEntityId = ? WHERE listId = ? AND nextEntityId = ?", targetNext, listID, entityID)
+	if _, err := database.ExecContext(ctx, "UPDATE PlaylistEntity SET nextEntityId = ? WHERE listId = ? AND nextEntityId = ?", targetNext, listID, entityID); err != nil {
+		return fmt.Errorf("relinking playlist entity %d: %w", entityID, err)
+	}
 
 	// Delete target entity
 	_, err = database.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE id = ?", entityID)
@@ -624,13 +637,21 @@ func MoveTrackInPlaylist(ctx context.Context, database *sql.DB, srcListID int64,
 	if srcListID == dstListID {
 		return nil
 	}
-	if err := RemoveTrackFromPlaylist(ctx, database, srcListID, trackID); err != nil {
+	if database == nil {
+		return fmt.Errorf("database cannot be nil")
+	}
+	tx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("starting membership move: %w", err)
+	}
+	defer tx.Rollback()
+	if err := removeTrackFromPlaylist(ctx, tx, srcListID, trackID); err != nil {
 		return fmt.Errorf("removing from source playlist: %w", err)
 	}
-	if _, err := AddTrackToPlaylist(ctx, database, dstListID, trackID); err != nil {
+	if _, err := AddTrackToPlaylist(ctx, tx, dstListID, trackID); err != nil {
 		return fmt.Errorf("adding to destination playlist: %w", err)
 	}
-	return nil
+	return tx.Commit()
 }
 
 // InsertTrack inserts a new Track record into the Track table and returns its ID.
