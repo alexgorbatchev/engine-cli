@@ -6055,6 +6055,33 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 86e33dbd1cbb1409cee82ab67af1167d10d95df0: internal/db/db.go:529–604; internal/db/membership_add_atomic_test.go:1–163. Existing API/Cobra Desktop protection, snapshots and Undo remain the owners; no multi-track batch atomicity is added. Historical evidence pins and graph topology remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Playlist track ordering — exact native membership review</h3>
+        </div>
+        <ul>
+          <li>playlist.reorder and playlist reorder share native membership ordering. Preview resolves local tracks through the originTrackId/originDatabaseUuid pair and validates the full PlaylistEntity chain. Ambiguous origins, cycles, missing links and multiple heads fail closed; unresolved native memberships remain preserved in the chain.</li>
+          <li>The supplied view must follow native ascending or descending membership order. Selected displayed runs retain their internal order and hidden memberships between their endpoints; the planner translates the displayed drop gap into native links without assigning local track IDs as membership identities.</li>
+          <li>Read-only preview binds the canonical library root, library UUID, target identity/title/parent/edit timestamp, complete membership observations and exact move options to a plan token. Checked apply rejects stale or ineffective consent before safety artifacts and rebuilds the same plan within its write transaction.</li>
+          <li>Application changes only affected nextEntityId links and the target playlist timestamp, checks each affected row and commits once. Failed writes roll back. The result is constructed from the committed plan without a fallible post-commit entity read. Existing collection scheduling, fresh Desktop protection, snapshot and Undo remain the owners; no actor or persistence store is introduced.</li>
+          <li>Reviewed committed evidence dc21b3adb3b874cbc47c618b706e1295299af7ba: internal/db/membership_order.go:9-50; internal/playlist/reorder.go:51-146; internal/playlist/reorder_plan.go:29-187; internal/playlist/reorder_read.go:16-81; internal/playlist/reorder_write.go:10-76; internal/api/playlist_reorder.go:21-39; cmd/engine-cli/playlist_reorder.go:11-37. Historical evidence pins remain unchanged; no new actor or persistence owner is introduced.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Track colors — revision-bound writes and explicit reconciliation</h3>
+        </div>
+        <ul>
+          <li>track.color.update and track color update require the captured stored revision and an explicit color. Empty clears; missing, null or whitespace is not consent to clear. Validation, stale revisions and unchanged values are rejected before safety enrollment. The companion transaction rechecks revision before replacing assignments.</li>
+          <li>track.color.reconcile and track color reconcile preview unavailable origins without writes or enrollment. Apply requires both the stored revision and a token bound to the exact missing assignments, then rechecks inside the companion transaction. The result retains reviewed counts; ordinary reads and unrelated edits do not repair or discard unavailable assignments.</li>
+          <li>The existing collection scheduler, fresh Desktop protection, snapshot and history own writes. Failed first enrollment removes its incomplete companion; cross-file lifecycle or sync publication failures retain explicit recovery history. API producers return an actual nil result on failure, keeping human and JSON output separate from failure diagnostics.</li>
+          <li>Reviewed committed evidence f0db5cd495abc6491bb70a8e0e3857e54932dda7: internal/api/colors.go:16-70; internal/colors/assignment.go:58-109; internal/colors/reconcile.go:27-112; internal/colors/store.go:109-192; internal/history/history.go:213-239; cmd/engine-cli/track_colors.go:10-23. Historical graph and evidence pins remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
