@@ -229,6 +229,53 @@ Overwrites target Engine Library databases and Artwork/ cache with files from sp
 
 - `--help, -h` (bool; default `false`): help for restore.
 
+## `engine-cli library smartlist-repair`
+
+Usage: `engine-cli library smartlist-repair [flags]`.
+
+Review, repair, or recover damaged smart playlists. Each child command accepts no positional arguments and inherits the root library selection and protection flags.
+
+- `--help, -h` (bool; default `false`): display the command subtree.
+
+## `engine-cli library smartlist-repair preview`
+
+Usage: `engine-cli library smartlist-repair preview [flags]`.
+
+Read the native saved Smartlist links and retained history without changing them. The review returns `plan_token`, `reconnected`, `removed`, `amended_deletes`, and `rows`. Each row contains `uuid`, `name`, `action` (`reconnect` or `remove`), and an optional `delete_entry_id`. Human output names each affected Smartlist; agent output uses compact fields. Rules remain opaque and unchanged.
+
+- `--help, -h` (bool; default `false`): help for preview.
+- `--json` (bool; default `false`): print the structured review to stdout; progress remains on stderr.
+- `--state-db` (string; default ``): library-preference state file; empty selects the XDG state default described in the main skill.
+
+## `engine-cli library smartlist-repair apply`
+
+Usage: `engine-cli library smartlist-repair apply [flags]`.
+
+Apply the exact reviewed collection and history state. A missing or changed token fails without applying the repair. Close Desktop first. Publication retains immutable original database/history evidence before changing targets. Reconnected links receive a separate Undo operation; removal attributable to an original deletion updates that deletion's Undo so one Undo restores its folder and saved Smartlists together. Unattributed damaged rows are removed without inventing an Undo operation. Healthy collections have no repair to publish. This operation owns its recovery evidence rather than creating an ordinary safety-backup snapshot; `--no-backup` does not disable that evidence.
+
+Ordinary protected collection edits publish an applied automatic repair before their own backup and mutation. Human and agent modes name the repaired rows on stderr; `--progress-json` emits a `smartlist_repair` event there. The requested command retains its original stdout result. A later failure or cancellation does not undo the completed repair. Treat any `repair_undo_id` as separate from the requested operation’s Undo ID. Healthy collections emit no repair outcome. HTTP jobs retain this outcome in the optional `smartlist_repair` field, independently of their ordinary result and history ID. Native names and UUIDs are quoted in terminal output.
+
+The result adds `applied` and optional `undo_id` to the review fields. A reconnect operation also reports `operation_id` on stderr. A successful removal need not have an Undo ID.
+
+- `--help, -h` (bool; default `false`): help for apply.
+- `--json` (bool; default `false`): print the structured result to stdout.
+- `--plan-token` (string; default ``): required exact token from preview.
+- `--state-db` (string; default ``): library-preference state file; empty selects the XDG state default.
+
+## `engine-cli library smartlist-repair recover`
+
+Usage: `engine-cli library smartlist-repair recover [flags]`.
+
+Close Desktop, then explicitly roll back an interrupted publication. Recovery validates the native library identity, all retained original and staged images, referenced historical databases, and every current target before restoring any target. Changed or missing evidence refuses recovery; retain it for investigation. The result contains `rolled_back` and `restored_targets`. A completed repair or absent pending repair returns false and zero. Recovery retains the original evidence and completion marker.
+
+- `--help, -h` (bool; default `false`): help for recover.
+- `--json` (bool; default `false`): print the structured recovery result to stdout.
+- `--state-db` (string; default ``): library-preference state file; empty selects the XDG state default.
+
+1. Run `engine-cli -l "/music/Engine Library" library smartlist-repair preview --json` and review every named reconnect/removal.
+2. Apply with `engine-cli -l "/music/Engine Library" library smartlist-repair apply --plan-token "<reviewed-token>" --json`. A stale review requires another preview.
+3. For `smartlist_repair_pending`, run `engine-cli -l "/music/Engine Library" library smartlist-repair recover --json` before reviewing again. `smartlist_repair_ambiguous` requires investigating conflicting native history rather than choosing a guessed folder.
+
 ## `engine-cli library sync`
 
 Sync playlists or a whole library to another library

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"path/filepath"
 
 	"github.com/alexgorbatchev/engine-cli/internal/beatgrid"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
@@ -107,35 +106,32 @@ func (s *Server) trackGridEdit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "beatgrid_edit_invalid", "Provide a grid edit as a JSON object.")
 		return
 	}
-	t := s.requestTrack(w, r)
-	if t == nil {
-		return
-	}
-	database, err := db.Open(filepath.Join(s.config.LibraryDir, "Database2", "m.db"), true)
+	grid, err := readRequestTrack(s, r, func(ctx context.Context, database *sql.DB, t *db.Track) (*beatgrid.Grid, error) {
+		data, err := beatgrid.Load(ctx, database, t.ID)
+		if err != nil {
+			return nil, err
+		}
+		if data == nil {
+			return nil, &collectionReadError{http.StatusConflict, "beatgrid_missing", "Analyze this track's beat grid before editing it."}
+		}
+		if locked, err := beatgrid.Locked(ctx, database, t.ID); err != nil {
+			return nil, err
+		} else if locked {
+			return nil, beatgrid.ErrLocked()
+		}
+		grid, err := beatgrid.Apply(beatgrid.SourceOf(*data), request.Anchors, request.Edit)
+		if err != nil {
+			return nil, err
+		}
+		return &grid, nil
+	})
 	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library.")
-		return
-	}
-	defer database.Close()
-	data, err := beatgrid.Load(r.Context(), database, t.ID)
-	if err != nil {
-		writeGridError(w, err)
-		return
-	}
-	if data == nil {
-		writeError(w, http.StatusConflict, "beatgrid_missing", "Analyze this track's beat grid before editing it.")
-		return
-	}
-	if locked, err := beatgrid.Locked(r.Context(), database, t.ID); err != nil {
-		writeGridError(w, err)
-		return
-	} else if locked {
-		writeGridError(w, beatgrid.ErrLocked())
-		return
-	}
-	grid, err := beatgrid.Apply(beatgrid.SourceOf(*data), request.Anchors, request.Edit)
-	if err != nil {
-		writeGridError(w, err)
+		var readErr *collectionReadError
+		if errors.As(err, &readErr) {
+			writeCollectionReadError(w, err)
+		} else {
+			writeGridError(w, err)
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"grid": grid})

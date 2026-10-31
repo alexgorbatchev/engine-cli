@@ -6159,6 +6159,32 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence 5be6ff3feeeee68f0b1ca896ac2b39f6af07a275: internal/verify/verify.go:61-74,129-216; internal/api/verify_test.go:11-48; cmd/engine-cli/library.go:52-85; cmd/engine-cli/library_verify_test.go:12-45; docs/http-api.md:668-672. Historical graph topology and source pins remain unchanged; this adds no actor or persistence owner.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Smartlist coherence</h3>
+        </div>
+        <ul>
+          <li>ReadSmartlistSafe owns a library-local observation lease. Existing history storage shares one SQLite owner across overlapping in-process readers; cross-process publication remains excluded until the last lease closes. Cancelling the first reader does not release another reader&#39;s lease.</li>
+          <li>An unenrolled library is read optimistically without creating history storage. If enrollment appears during the read, the result is discarded and the side-effect-free callback is repeated under the owner. A durable pending repair refuses observation; reads never recover it implicitly.</li>
+          <li>API collection-read metadata and native preparation lookups use this owner. Audio and PCM preparation retain their opened regular file across lookup, close discarded retry handles, and release observation before streaming or decoding. The API&#39;s collection scheduler remains a separate owner.</li>
+          <li>Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_observe.go:1–59; internal/history/smartlist_read_lock.go:1–52; internal/api/browse.go:1–96; internal/api/pcm.go:1–192. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Smartlist repair ownership</h3>
+        </div>
+        <ul>
+          <li>Engine CLI owns native Smartlist detection, temporally proven linkage, historical deletion attribution, staged images, exact plan tokens, publication and recovery. HTTP clients submit catalog operations; Engine database access remains CLI-owned.</li>
+          <li>library.smartlist-repair.preview is a coherent read. apply requires the reviewed plan_token and fresh Desktop protection; recover also requires fresh Desktop protection. Both use the repair publisher&#39;s exclusive history owner and immutable originals rather than generic AutoBackup or history.Run.</li>
+          <li>Reconnection gets a selective repair Undo entry. Proven deletion damage amends that original deletion&#39;s Before/After evidence so its existing one-step Undo remains the owner. An unattributed damaged component is removed without fabricated Undo; unrelated native rows and existing unrelated historical damage remain preserved.</li>
+          <li>Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_publish.go:1–177; internal/history/smartlist_prepare.go:1–203; internal/api/smartlist_repair.go:1–32. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

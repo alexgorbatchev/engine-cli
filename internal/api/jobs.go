@@ -10,17 +10,19 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 type Job struct {
-	ID        string            `json:"id"`
-	Operation string            `json:"operation"`
-	State     string            `json:"state"`
-	Progress  progress.Event    `json:"progress"`
-	Result    any               `json:"result,omitempty"`
-	Error     *progress.Failure `json:"error,omitempty"`
-	HistoryID string            `json:"history_id,omitempty"`
+	ID              string                         `json:"id"`
+	Operation       string                         `json:"operation"`
+	State           string                         `json:"state"`
+	Progress        progress.Event                 `json:"progress"`
+	Result          any                            `json:"result,omitempty"`
+	Error           *progress.Failure              `json:"error,omitempty"`
+	HistoryID       string                         `json:"history_id,omitempty"`
+	SmartlistRepair *history.SmartlistRepairResult `json:"smartlist_repair,omitempty"`
 }
 
 type job struct {
@@ -140,6 +142,12 @@ func (s *Server) record(j *job, e progress.Event) {
 	}
 	if e.Type == "result" && j.reduceResult != nil {
 		j.view.Result = j.reduceResult(j.view.Result, e.Result)
+	}
+	if e.Type == "smartlist_repair" {
+		var repair history.SmartlistRepairResult
+		if err := json.Unmarshal(e.Result, &repair); err == nil && repair.Applied {
+			j.view.SmartlistRepair = &repair
+		}
 	}
 	j.append(e)
 }

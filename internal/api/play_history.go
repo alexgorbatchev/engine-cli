@@ -11,6 +11,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/playhistory"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
@@ -52,10 +53,10 @@ func (s *Server) sessionOperations() []operation {
 		return err
 	}
 	return []operation{
-		define("session.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+		defineCollectionRead("session.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return operationResult(playhistory.List(ctx, s.config.LibraryDir))
 		}),
-		define("session.inspect", false, []string{"session"}, func(ctx context.Context, p sessionParams) (any, error) {
+		defineCollectionRead("session.inspect", []string{"session"}, func(ctx context.Context, p sessionParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				return operationResult(playhistory.Inspect(ctx, s.config.LibraryDir, d, p.Session))
 			})
@@ -80,31 +81,32 @@ func operationResult[T any](value *T, err error) (any, error) {
 }
 
 // openLibrary opens m.db read-only for a history route, reporting a missing library as Engine's other reads do.
-func (s *Server) openLibrary(w http.ResponseWriter) *sql.DB {
+func (s *Server) openLibrary() (*sql.DB, error) {
 	path := filepath.Join(s.config.LibraryDir, "Database2", "m.db")
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			writeError(w, http.StatusNotFound, "library_not_found", "The library database is missing. Check the configured library folder.")
-			return nil
+			return nil, &collectionReadError{http.StatusNotFound, "library_not_found", "The library database is missing. Check the configured library folder."}
 		}
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
-		return nil
+		return nil, &collectionReadError{http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder."}
 	}
 	library, err := db.Open(path, true)
 	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder.")
-		return nil
+		return nil, &collectionReadError{http.StatusServiceUnavailable, "library_unavailable", "Could not open the library. Check the configured library folder."}
 	}
-	return library
+	return library, nil
 }
 
 func (s *Server) playedSessions(w http.ResponseWriter, r *http.Request) {
-	library := s.openLibrary(w)
-	if library == nil {
-		return
-	}
-	library.Close()
-	result, err := playhistory.List(r.Context(), s.config.LibraryDir)
+	result, err := history.ReadSmartlistSafe(r.Context(), s.config.LibraryDir, func(ctx context.Context) (*playhistory.Sessions, error) {
+		library, err := s.openLibrary()
+		if err != nil {
+			return nil, err
+		}
+		if err := library.Close(); err != nil {
+			return nil, err
+		}
+		return playhistory.List(ctx, s.config.LibraryDir)
+	})
 	if err != nil {
 		writeHistoryError(w, err)
 		return
@@ -118,12 +120,14 @@ func (s *Server) playedSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_session", "Use a positive numeric session ID.")
 		return
 	}
-	library := s.openLibrary(w)
-	if library == nil {
-		return
-	}
-	defer library.Close()
-	result, err := playhistory.Inspect(r.Context(), s.config.LibraryDir, library, id)
+	result, err := history.ReadSmartlistSafe(r.Context(), s.config.LibraryDir, func(ctx context.Context) (*playhistory.SessionDetails, error) {
+		library, err := s.openLibrary()
+		if err != nil {
+			return nil, err
+		}
+		defer library.Close()
+		return playhistory.Inspect(ctx, s.config.LibraryDir, library, id)
+	})
 	if err != nil {
 		writeHistoryError(w, err)
 		return
@@ -132,6 +136,15 @@ func (s *Server) playedSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeHistoryError(w http.ResponseWriter, err error) {
+	if progress.ErrorCode(err) == "smartlist_repair_pending" {
+		writeCollectionReadError(w, err)
+		return
+	}
+	var readErr *collectionReadError
+	if errors.As(err, &readErr) {
+		writeCollectionReadError(w, err)
+		return
+	}
 	var coded *progress.Error
 	errors.As(err, &coded)
 	switch {
@@ -145,3 +158,5 @@ func writeHistoryError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read the library.")
 	}
 }
+
+func (p importSessionParams) operationCollectionRead() bool { return p.DryRun }

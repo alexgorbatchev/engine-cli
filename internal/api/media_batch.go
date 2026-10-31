@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
@@ -161,7 +162,13 @@ func (s *Server) tagItem(ctx context.Context, field, item, action string, opts a
 		if err != nil {
 			return nil, err
 		}
-		identifier, err := s.collectionPath(ctx, path)
+		// Applying tag edits already runs under RunPrepared's history owner.
+		// Previews have no exclusive owner and need a coherent observation.
+		lookup := s.collectionPathOwned
+		if opts.DryRun {
+			lookup = s.collectionPath
+		}
+		identifier, err := lookup(ctx, path)
 		if err != nil {
 			return nil, err
 		}
@@ -199,6 +206,13 @@ func mapValue(field, want, value string) string {
 
 // Path aliases (symlinks and hard links) cannot bypass collection protection.
 func (s *Server) collectionPath(ctx context.Context, path string) (string, error) {
+	return history.ReadSmartlistSafe(ctx, s.config.LibraryDir, func(ctx context.Context) (string, error) {
+		return s.collectionPathOwned(ctx, path)
+	})
+}
+
+// collectionPathOwned reads within a coherent observation or exclusive mutation owner.
+func (s *Server) collectionPathOwned(ctx context.Context, path string) (string, error) {
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		return "", nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/importsource"
 )
 
@@ -23,6 +24,12 @@ type destinationObservation struct {
 // The read transaction pins Engine rows; the same barrier protects the separate
 // companion publication. Neither an absent companion nor a dry run enrolls it.
 func observeDestination(ctx context.Context, d *sql.DB, request destinationRequest) (destinationObservation, error) {
+	return history.ReadSmartlistSafe(ctx, request.library, func(ctx context.Context) (destinationObservation, error) {
+		return observeDestinationLocked(ctx, d, request)
+	})
+}
+
+func observeDestinationLocked(ctx context.Context, d *sql.DB, request destinationRequest) (destinationObservation, error) {
 	archive, err := importsource.Read(ctx, request.library)
 	if err != nil {
 		return destinationObservation{}, err

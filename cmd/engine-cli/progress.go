@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -42,6 +43,23 @@ func wrapProgress(cmd *cobra.Command, jsonEvents *bool) {
 			}
 			if *jsonEvents {
 				outputErr = encoder.Encode(e)
+				return
+			}
+			if e.Type == "smartlist_repair" {
+				var repair history.SmartlistRepairResult
+				if outputErr = json.Unmarshal(e.Result, &repair); outputErr != nil {
+					return
+				}
+				_, outputErr = fmt.Fprintf(cmd.ErrOrStderr(), "Smartlist repair: reconnected %d, removed %d, amended deletions %d\n", repair.Reconnected, repair.Removed, repair.AmendedDeletes)
+				for _, row := range repair.Rows {
+					if outputErr != nil {
+						return
+					}
+					_, outputErr = fmt.Fprintf(cmd.ErrOrStderr(), "  %s: %q (%q)\n", row.Action, row.Name, row.UUID)
+				}
+				if outputErr == nil && repair.UndoID != "" {
+					_, outputErr = fmt.Fprintf(cmd.ErrOrStderr(), "repair_undo_id: %s\n", repair.UndoID)
+				}
 				return
 			}
 			if agent.IsAgentMode() {
