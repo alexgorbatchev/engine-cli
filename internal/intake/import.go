@@ -11,6 +11,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
+	"github.com/alexgorbatchev/engine-cli/internal/intakestate"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
@@ -107,6 +108,12 @@ func (s *Store) ApplyImport(ctx context.Context, d *sql.DB, opts ImportOptions) 
 }
 
 func (s *Store) recordImport(ctx context.Context, itemID int64, historyID string, trackID int64) error {
+	return intakestate.With(ctx, s.library, func(ctx context.Context) error {
+		return s.recordImportHeld(ctx, itemID, historyID, trackID)
+	})
+}
+
+func (s *Store) recordImportHeld(ctx context.Context, itemID int64, historyID string, trackID int64) error {
 	result, err := s.database.ExecContext(ctx, `UPDATE ImportIntent SET track_id=? WHERE item_id=? AND history_id=? AND track_id IS NULL`, trackID, itemID, historyID)
 	if err != nil {
 		return err
@@ -122,6 +129,12 @@ func (s *Store) recordImport(ctx context.Context, itemID int64, historyID string
 }
 
 func (s *Store) beginImport(ctx context.Context, item *Item, historyID string, opts ImportOptions) error {
+	return intakestate.With(ctx, s.library, func(ctx context.Context) error {
+		return s.beginImportHeld(ctx, item, historyID, opts)
+	})
+}
+
+func (s *Store) beginImportHeld(ctx context.Context, item *Item, historyID string, opts ImportOptions) error {
 	tx, err := s.database.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -187,13 +200,19 @@ func (s *Store) withReconciledImports(ctx context.Context, complete func(context
 				}
 				return stateChanged()
 			}
-			return errors.Join(&progress.Error{Code: "intake_import_recovery_required", Cause: err}, intakecontrol.Set(ctx, s.database, "history_unavailable"))
+			return errors.Join(&progress.Error{Code: "intake_import_recovery_required", Cause: err}, s.setControl(ctx, "history_unavailable"))
 		})
 	}
 	return err
 }
 
 func (s *Store) reconcileImports(ctx context.Context, entries []history.Entry) error {
+	return intakestate.With(ctx, s.library, func(ctx context.Context) error {
+		return s.reconcileImportsHeld(ctx, entries)
+	})
+}
+
+func (s *Store) reconcileImportsHeld(ctx context.Context, entries []history.Entry) error {
 	byID := make(map[string]history.Entry, len(entries))
 	undone := make(map[string]bool)
 	for _, e := range entries {

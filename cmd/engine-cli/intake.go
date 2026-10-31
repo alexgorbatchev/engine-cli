@@ -17,6 +17,7 @@ import (
 func newIntakeCommand() *cobra.Command {
 	group := &cobra.Command{Use: "intake", Short: "Manage the durable local-file queue without removing source files", Args: cobra.NoArgs}
 	group.AddCommand(
+		newIntakeWatchCommand(),
 		acquisitionCommand("intake.list", "list", "List durable incoming items and suspension or recovery state", "", nil),
 		acquisitionCommand("intake.process", "process", "Prepare queued local files and wait for staging without importing them", "", nil),
 		acquisitionCommand("intake.pause", "pause", "Pause durable preparation and explicit imports", "", nil),
@@ -81,6 +82,9 @@ func newIntakeItemCommand(action string) *cobra.Command {
 }
 
 func printIntake(command *cobra.Command, operation string, result any) (bool, error) {
+	if strings.HasPrefix(operation, "intake.watch.") {
+		return printIntakeWatch(command, result, false)
+	}
 	if !strings.HasPrefix(operation, "intake.") {
 		return false, nil
 	}

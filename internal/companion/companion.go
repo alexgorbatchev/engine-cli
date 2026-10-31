@@ -12,6 +12,7 @@ const (
 	ImportsName = "imports.db"
 	ColorsName  = "colors.db"
 	IntakeName  = "intake.db"
+	WatchName   = "watch.db"
 )
 
 func TagsPath(library string) string {
@@ -28,7 +29,7 @@ func ColorsPath(library string) string { return filepath.Join(library, ".engine-
 // other CLI state must never become recursive snapshot inputs.
 func Databases(library string) ([]string, error) {
 	var paths []string
-	for _, name := range []string{TagsName, ImportsName, ColorsName, IntakeName} {
+	for _, name := range []string{TagsName, ImportsName, ColorsName, IntakeName, WatchName} {
 		path, err := Database(library, name)
 		if err != nil {
 			return nil, err
@@ -43,7 +44,7 @@ func Databases(library string) ([]string, error) {
 // Database observes one enrolled companion without mistaking another database's
 // presence for enrollment. An absent database is returned as an empty path.
 func Database(library, name string) (string, error) {
-	if name != TagsName && name != ImportsName && name != ColorsName && name != IntakeName {
+	if name != TagsName && name != ImportsName && name != ColorsName && name != IntakeName && name != WatchName {
 		return "", fmt.Errorf("unknown CLI companion database %q", name)
 	}
 	path := filepath.Join(library, ".engine-cli", name)

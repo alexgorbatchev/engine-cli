@@ -10,6 +10,83 @@ Usage: `engine-cli intake [flags]`.
 
 - `--help, -h` (bool; default `false`): display queue command help.
 
+## `engine-cli intake watch`
+
+Usage: `engine-cli intake watch [flags]`.
+
+- `--help, -h` (bool; default `false`): display watched-folder commands.
+
+Watch configuration belongs to the selected library. Automatic discovery stages eligible files without importing them into the collection. A standalone command joins its discovery service before exiting; leave an API library open for continuous discovery. Read the latest configuration revision before changing authorization. Root IDs are opaque strings, distinct from queue item IDs.
+
+## `engine-cli intake watch list`
+
+Usage: `engine-cli intake watch list [flags]`.
+
+- `--json` (bool; default `false`): print configuration revision, suspension, manager state and ordered root observations.
+- `--help, -h` (bool; default `false`): display list help.
+
+Listing absent configuration remains observational. Each root includes its canonical path, recursive/enabled flags, phase, latest scan time, observed/pending/linked counts and optional confirmed failure code. Normal state includes an empty `reason`; restored suspension uses `restored`.
+
+## `engine-cli intake watch add`
+
+Usage: `engine-cli intake watch add <path> [flags]`.
+
+- `--revision` (int64; default `0`; required): exact configuration revision returned by list.
+- `--recursive` (bool; default `true`): include nested folders; use `--recursive=false` for immediate children only.
+- `--json` (bool; default `false`): print updated configuration.
+- `--help, -h` (bool; default `false`): display add help.
+
+Authorize a server-local directory. A configured root alias resolves to its canonical directory at enrollment; descendant symbolic links remain excluded. Overlapping roots are supported and share source-version deduplication. Library and operational storage directories are excluded. Configuration pins native directory identity; replacing a path does not silently authorize its replacement.
+
+## `engine-cli intake watch enable`
+
+Usage: `engine-cli intake watch enable <id> [flags]`.
+
+- `--revision` (int64; default `0`; required): exact configuration revision returned by list.
+- `--json` (bool; default `false`): print updated configuration.
+- `--help, -h` (bool; default `false`): display enable help.
+
+Enable the existing root after revalidating its pinned native identity.
+
+## `engine-cli intake watch disable`
+
+Usage: `engine-cli intake watch disable <id> [flags]`.
+
+- `--revision` (int64; default `0`; required): exact configuration revision returned by list.
+- `--json` (bool; default `false`): print updated configuration.
+- `--help, -h` (bool; default `false`): display disable help.
+
+Revoke this root's automatic discovery authorization. Queued items remain retained, and another overlapping enabled root retains its own authorization.
+
+## `engine-cli intake watch remove`
+
+Usage: `engine-cli intake watch remove <id> [flags]`.
+
+- `--revision` (int64; default `0`; required): exact configuration revision returned by list.
+- `--json` (bool; default `false`): print updated configuration.
+- `--help, -h` (bool; default `false`): display remove help.
+
+Remove the root's authorization while preserving queued items, retained handoff evidence and source files.
+
+## `engine-cli intake watch activate`
+
+Usage: `engine-cli intake watch activate [flags]`.
+
+- `--revision` (int64; default `0`; required): exact configuration revision returned by list.
+- `--json` (bool; default `false`): print updated configuration.
+- `--help, -h` (bool; default `false`): display activation help.
+
+Explicitly activate restored watch configuration after reviewing its roots. This is separate from `intake resume`, which controls queue preparation and imports.
+
+## `engine-cli intake watch reconcile`
+
+Usage: `engine-cli intake watch reconcile [flags]`.
+
+- `--json` (bool; default `false`): print scan completion, root/observation/new-queue/association/pending counts and resulting watch state.
+- `--help, -h` (bool; default `false`): display reconciliation help.
+
+Request a full scan through the library's discovery owner. Pending observations still need a quiet interval and fresh authorization; scan completion does not imply that every observed file was queued or prepared. Pausing the queue suppresses automatic enqueue as well as preparation. Watch configuration changes and scans create no collection snapshot or Undo entry.
+
 ## `engine-cli intake list`
 
 Usage: `engine-cli intake list [flags]`.
