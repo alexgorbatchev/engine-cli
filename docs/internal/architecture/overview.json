@@ -738,6 +738,18 @@
         "Reconnection gets a selective repair Undo entry. Proven deletion damage amends that original deletion's Before/After evidence so its existing one-step Undo remains the owner. An unattributed damaged component is removed without fabricated Undo; unrelated native rows and existing unrelated historical damage remain preserved.",
         "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_publish.go:1–177; internal/history/smartlist_prepare.go:1–203; internal/api/smartlist_repair.go:1–32. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
       ]
+    },
+    {
+      "dot": "amber",
+      "title": "Coherent intake observation",
+      "items": [
+        "Existing retained import receipts are observed while holding the native History owner before the intake worker owner, matching import lock order. A live History publisher is waited for cancellably rather than reported as a recovery failure.",
+        "The observer rereads the current ImportIntent tuple (item_id, history_id and persisted track_id receipt) and conditionally updates matching Item state after both owners are held. Resume retains this coherent observation boundary until reconciliation succeeds and suspension is cleared. Engine publication, queue receipts and History completion remain independent commits.",
+        "A queue without retained import intents does not enroll or wait on History merely to prepare sources. Missing History is identified before observation and checked again under the worker owner; unresolved missing or incomplete evidence still requires recovery.",
+        "Service shutdown cancels an initial History wait and joins the worker without publishing successful initial readiness or recording cancellation as a worker failure.",
+        "Import review opens its intake service before entering the shared Smartlist-safe read boundary. Only its database review callback, inside Service.Use, takes that read lease. A live publisher or pending repair refuses review; explicit import remains in the existing Desktop-protected History publication path.",
+        "Committed evidence: 6c8135c64da17554f2ff2aa6dbac05cf6270529c; internal/history/observe_entries.go:20–56; internal/intake/import.go:140–219; internal/intake/control.go:24–30; internal/intake/service.go:129–189; internal/api/intake.go:155–182. Historical diagram pins remain unchanged."
+      ]
     }
   ]
 }

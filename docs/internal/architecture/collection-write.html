@@ -6164,6 +6164,21 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/files.go#L78-L94; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L130-L180; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/control.go#L15-L44; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/backup/companion.go#L153-L189; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intakecontrol/control.go#L62-L76.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Coherent intake observation</h3>
+        </div>
+        <ul>
+          <li>Existing retained import receipts are observed while holding the native History owner before the intake worker owner, matching import lock order. A live History publisher is waited for cancellably rather than reported as a recovery failure.</li>
+          <li>The observer rereads the current ImportIntent tuple (item_id, history_id and persisted track_id receipt) and conditionally updates matching Item state after both owners are held. Resume retains this coherent observation boundary until reconciliation succeeds and suspension is cleared. Engine publication, queue receipts and History completion remain independent commits.</li>
+          <li>A queue without retained import intents does not enroll or wait on History merely to prepare sources. Missing History is identified before observation and checked again under the worker owner; unresolved missing or incomplete evidence still requires recovery.</li>
+          <li>Service shutdown cancels an initial History wait and joins the worker without publishing successful initial readiness or recording cancellation as a worker failure.</li>
+          <li>Import review opens its intake service before entering the shared Smartlist-safe read boundary. Only its database review callback, inside Service.Use, takes that read lease. A live publisher or pending repair refuses review; explicit import remains in the existing Desktop-protected History publication path.</li>
+          <li>Committed evidence: 6c8135c64da17554f2ff2aa6dbac05cf6270529c; internal/history/observe_entries.go:20–56; internal/intake/import.go:140–219; internal/intake/control.go:24–30; internal/intake/service.go:129–189; internal/api/intake.go:155–182. Historical diagram pins remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

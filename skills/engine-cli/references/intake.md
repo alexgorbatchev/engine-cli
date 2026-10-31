@@ -53,7 +53,11 @@ Usage: `engine-cli intake resume [flags]`.
 - `--json` (bool; default `false`): print durable control state as structured data.
 - `--help, -h` (bool; default `false`): display resume help.
 
-Reconcile retained import receipts and explicitly enable preparation for this library. Restored queues remain suspended until this explicit action; unavailable History ownership remains a recovery condition rather than permission to repeat an import.
+Reconcile retained import receipts and explicitly enable preparation for this library. Restored queues remain suspended until this explicit action. Missing or incomplete History evidence remains a recovery condition rather than permission to repeat an import; an active History publisher instead causes a cancellable wait.
+
+Reconciliation acquires the existing History owner before the intake worker owner and rereads the current ImportIntent tuple (item_id, history_id and persisted track_id receipt) and conditionally updates matching Item state while both remain held. Resume clears suspension within that same boundary only after successful reconciliation. Queues without retained import intents do not create or wait on History merely to prepare sources. Closing the service cancels and joins an initial History wait without publishing readiness or a worker failure for cancellation.
+
+Import review refuses while a collection publisher owns History or Smartlist repair remains pending. Resolve that condition, then request a fresh review; review does not repair the library or create a snapshot or Undo entry.
 
 ## `engine-cli intake cancel`
 
