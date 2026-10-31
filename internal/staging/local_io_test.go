@@ -24,6 +24,11 @@ func TestLocalCopyNativeIORefusesClosedDescriptors(t *testing.T) {
 			t.Cleanup(func() { out.Close() })
 			ctx := t.Context()
 			want := os.ErrClosed
+			if name == "source observation" {
+				if err := source.check(in); err != nil {
+					t.Fatalf("open source observation refused: %v", err)
+				}
+			}
 			switch name {
 			case "read", "source observation":
 				if err := in.Close(); err != nil {
@@ -39,6 +44,19 @@ func TestLocalCopyNativeIORefusesClosedDescriptors(t *testing.T) {
 				ctx, want = cancelled, context.Canceled
 			}
 			if name == "source observation" {
+				if in.Fd() != ^uintptr(0) {
+					t.Fatal("closed source retained a valid descriptor")
+				}
+				_, nativeErr := in.Stat()
+				if nativeErr == nil {
+					t.Fatal("native closed-source observation succeeded")
+				}
+				var pathErr *os.PathError
+				if errors.As(nativeErr, &pathErr) {
+					want = pathErr.Err
+				} else {
+					want = nativeErr
+				}
 				err = source.check(in)
 			} else {
 				err = copyLocalBytes(ctx, out, in)
