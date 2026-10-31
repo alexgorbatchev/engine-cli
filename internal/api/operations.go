@@ -34,13 +34,14 @@ type operation struct {
 }
 
 type boundOperation struct {
-	before        func(context.Context) error
-	run           func(context.Context) (any, error)
-	preview       bool
-	library       string
-	effect        string
-	paths         []string
-	installsTools bool
+	before             func(context.Context) error
+	run                func(context.Context) (any, error)
+	preview            bool
+	library            string
+	replacementLibrary string
+	effect             string
+	paths              []string
+	installsTools      bool
 }
 
 type parameterValidator interface{ validate() error }
@@ -137,7 +138,10 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 			if v, ok := any(p).(interface{ operationPreview() bool }); ok {
 				preview = v.operationPreview()
 			}
-			bound := &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, effect: boundEffect, paths: paths}
+			bound := &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, replacementLibrary: sync.Destination, effect: boundEffect, paths: paths}
+			if v, ok := any(p).(interface{ operationReplacementLibrary() string }); ok {
+				bound.replacementLibrary = v.operationReplacementLibrary()
+			}
 			if raw, ok := values["auto_install"]; ok {
 				if err := json.Unmarshal(raw, &bound.installsTools); err != nil {
 					return nil, err
@@ -174,12 +178,29 @@ func (s *Server) database(ctx context.Context, run func(*sql.DB) (any, error)) (
 	return run(database)
 }
 
+// executeOwned keeps acquisition and cleanup inside the sole terminal progress
+// boundary. A committed result and History ID survive a cleanup failure.
+func (s *Server) executeOwned(ctx context.Context, op operation, bound *boundOperation, acquire func(context.Context) (func() error, error)) (result any, historyID string, err error) {
+	err = progress.Run(ctx, op.Name, func(ctx context.Context) (runErr error) {
+		finish, runErr := acquire(ctx)
+		if finish != nil {
+			defer func() { runErr = errors.Join(runErr, finish()) }()
+		}
+		if runErr != nil {
+			return runErr
+		}
+		result, historyID, runErr = s.execute(ctx, op, bound)
+		return runErr
+	})
+	return result, historyID, err
+}
+
 func (s *Server) execute(ctx context.Context, op operation, bound *boundOperation) (result any, historyID string, err error) {
 	effect := bound.effect
 	if effect == "" {
 		effect = op.Effect
 	}
-	err = progress.Run(ctx, op.Name, func(ctx context.Context) error {
+	err = func() error {
 		if bound.before != nil {
 			if err := bound.before(ctx); err != nil {
 				return err
@@ -213,11 +234,6 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 		}
 		// Creation has no pre-existing database to back up. Its before/after
 		// history still records the new databases so creation can be undone.
-		if effect == "collection" && !bound.preview && op.Name != "library.sync" && op.Name != "library.create" {
-			if _, e := backup.AutoBackupIfNeeded(ctx, lib, s.config.NoBackup); e != nil {
-				return e
-			}
-		}
 		if (effect == "collection" || effect == "staging" || effect == "filesystem") && !bound.preview && op.Name != "library.undo" && op.Name != "library.sync" {
 			// Staging and server-file effects never write Engine databases.
 			scope := history.ScopeCollection
@@ -227,7 +243,14 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 					return e
 				}
 			}
-			entry, e := history.Run(ctx, lib, op.Name, scope, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
+			options := history.RunOptions{Operation: op.Name, Scope: scope}
+			if effect == "collection" && op.Name != "library.create" {
+				options.Prepare = func(ctx context.Context) error {
+					_, err := backup.AutoBackupIfNeeded(ctx, lib, s.config.NoBackup)
+					return err
+				}
+			}
+			entry, e := history.RunPrepared(ctx, lib, options, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
 			if entry != nil {
 				historyID = entry.ID
 			}
@@ -241,7 +264,7 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 			historyID = entry.ID
 		}
 		return err
-	})
+	}()
 	return result, historyID, err
 }
 

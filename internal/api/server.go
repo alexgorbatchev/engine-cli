@@ -30,6 +30,7 @@ type Config struct {
 	StatePath      string
 	state          *state.Store
 	pcm            *pcm.Store
+	intake         *intakeLibraries
 	LibraryDir     string
 	LibraryPaths   []string
 	NoBackup       bool
@@ -46,6 +47,8 @@ type Server struct {
 	pcm        *pcm.Store
 	ownsPCM    bool
 	ownsState  bool
+	intake     *intakeLibraries
+	ownsIntake bool
 	config     Config
 	mux        *http.ServeMux
 	operations map[string]operation
@@ -89,6 +92,12 @@ func New(config Config) (*Server, error) {
 		}
 	}
 	s := &Server{config: config, mux: http.NewServeMux(), operations: make(map[string]operation), jobs: make(map[string]*job), gate: make(chan struct{}, 1), collection: semaphore.NewWeighted(collectionCapacity)}
+	s.intake = config.intake
+	if s.intake == nil {
+		s.intake = newIntakeLibraries()
+		s.ownsIntake = true
+		s.config.intake = s.intake
+	}
 	s.state = config.state
 	if s.state == nil {
 		s.state, err = state.Open(config.StatePath)
@@ -120,6 +129,7 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.systemOperations()...)
 	ops = append(ops, s.migrationOperations()...)
 	ops = append(ops, s.stagingOperations()...)
+	ops = append(ops, s.intakeOperations()...)
 	ops = append(ops, s.acquisitionOperations()...)
 	ops = append(ops, s.mediaOperations()...)
 	ops = append(ops, s.toolOperations()...)
@@ -163,6 +173,11 @@ func New(config Config) (*Server, error) {
 	if _, err := s.openLibraryPaths(paths); err != nil {
 		s.Close()
 		return nil, err
+	}
+	for _, lib := range s.libraries {
+		// Queue recovery must remain inspectable without making the Engine
+		// library inaccessible. intake.list retries and exposes a safe code.
+		_, _ = s.intake.open(lib.Path, false)
 	}
 	return s, nil
 }
@@ -219,6 +234,9 @@ func (s *Server) Close() {
 	s.mu.Unlock()
 	for _, child := range children {
 		child.Close()
+	}
+	if s.ownsIntake {
+		_ = s.intake.close() // Close has no error channel; replacements propagate close errors.
 	}
 	if s.ownsPCM {
 		s.pcm.Close()

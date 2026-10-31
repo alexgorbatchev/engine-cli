@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/intakelease"
 	"github.com/alexgorbatchev/engine-cli/internal/state"
 	"github.com/spf13/cobra"
 )
@@ -21,8 +23,15 @@ func installHistory(root *cobra.Command) {
 			return
 		}
 		run := c.RunE
-		c.RunE = func(c *cobra.Command, args []string) error {
+		c.RunE = func(c *cobra.Command, args []string) (err error) {
 			operation := strings.ReplaceAll(strings.TrimPrefix(c.CommandPath(), root.Name()+" "), " ", ".")
+			if operation == "library.restore" {
+				lease, acquireErr := intakelease.Replace(c.Context(), libDirFlag)
+				if acquireErr != nil {
+					return acquireErr
+				}
+				defer func() { err = errors.Join(err, lease.Close()) }()
+			}
 			e, err := history.Run(c.Context(), libDirFlag, operation, history.ScopeCollection, nil, func(ctx context.Context) error {
 				previous := c.Context()
 				c.SetContext(ctx)
@@ -88,11 +97,14 @@ func newUndoCommand() *cobra.Command {
 					return err
 				}
 				defer store.Close()
-				if _, err := backup.AutoBackupIfNeeded(c.Context(), libDirFlag, noBackupFlag); err != nil {
-					return err
-				}
 			}
-			e, err := history.Undo(c.Context(), libDirFlag, id, history.UndoOptions{Force: force, DryRun: dryRun})
+			e, err := history.Undo(c.Context(), libDirFlag, id, history.UndoOptions{
+				Force: force, DryRun: dryRun,
+				Prepare: func(ctx context.Context) error {
+					_, err := backup.AutoBackupIfNeeded(ctx, libDirFlag, noBackupFlag)
+					return err
+				},
+			})
 			if err != nil {
 				return err
 			}

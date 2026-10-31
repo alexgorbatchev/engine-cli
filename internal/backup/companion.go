@@ -12,19 +12,22 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/importsource"
+	"github.com/alexgorbatchev/engine-cli/internal/intake"
+	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
 )
 
 const companionFolder = "Companion"
 const companionManifest = "presence.json"
-const companionVersion = 3
+const companionVersion = 4
 
 type companionPresence struct {
 	Version int   `json:"version"`
 	Tags    *bool `json:"tags"`
 	Imports *bool `json:"imports,omitempty"`
 	Colors  *bool `json:"colors,omitempty"`
+	Intake  *bool `json:"intake,omitempty"`
 }
 
 type companionRestore struct{ name, source string }
@@ -39,7 +42,7 @@ func snapshotCompanion(ctx context.Context, library, staging string) (int, int64
 		return 0, 0, err
 	}
 	var size int64
-	tagsPresent, importsPresent, colorsPresent := false, false, false
+	tagsPresent, importsPresent, colorsPresent, intakePresent := false, false, false, false
 	for _, path := range paths {
 		name := filepath.Base(path)
 		n, err := snapshotDatabase(ctx, path, filepath.Join(dir, name))
@@ -50,8 +53,9 @@ func snapshotCompanion(ctx context.Context, library, staging string) (int, int64
 		tagsPresent = tagsPresent || name == companion.TagsName
 		importsPresent = importsPresent || name == companion.ImportsName
 		colorsPresent = colorsPresent || name == companion.ColorsName
+		intakePresent = intakePresent || name == companion.IntakeName
 	}
-	presence := companionPresence{Version: companionVersion, Tags: &tagsPresent, Imports: &importsPresent, Colors: &colorsPresent}
+	presence := companionPresence{Version: companionVersion, Tags: &tagsPresent, Imports: &importsPresent, Colors: &colorsPresent, Intake: &intakePresent}
 	data, err := json.Marshal(presence)
 	if err != nil {
 		return 0, 0, err
@@ -64,8 +68,8 @@ func snapshotCompanion(ctx context.Context, library, staging string) (int, int64
 
 // A genuinely old backup has no companion section. New snapshots explicitly
 // record independent absence, so a missing required database cannot masquerade
-// as an old snapshot. Versions 1 and 2 predate colors and imply their absence;
-// version 1 also predates source archives.
+// as an old snapshot. Versions 1 and 2 predate colors, version 1 also predates
+// source archives, and versions 1 through 3 predate intake queues.
 func planCompanion(ctx context.Context, backup string) ([]companionRestore, error) {
 	dir := filepath.Join(backup, companionFolder)
 	if info, err := os.Lstat(dir); err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
@@ -74,7 +78,7 @@ func planCompanion(ctx context.Context, backup string) ([]companionRestore, erro
 	data, err := os.ReadFile(filepath.Join(dir, companionManifest))
 	if os.IsNotExist(err) {
 		if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
-			return []companionRestore{{name: companion.TagsName}, {name: companion.ImportsName}, {name: companion.ColorsName}}, nil
+			return []companionRestore{{name: companion.TagsName}, {name: companion.ImportsName}, {name: companion.ColorsName}, {name: companion.IntakeName}}, nil
 		}
 	}
 	if err != nil {
@@ -86,11 +90,12 @@ func planCompanion(ctx context.Context, backup string) ([]companionRestore, erro
 	}
 	importsPresent := presence.Imports != nil && *presence.Imports
 	colorsPresent := presence.Colors != nil && *presence.Colors
+	intakePresent := presence.Intake != nil && *presence.Intake
 	var plans []companionRestore
 	for _, entry := range []struct {
 		name    string
 		present bool
-	}{{companion.TagsName, *presence.Tags}, {companion.ImportsName, importsPresent}, {companion.ColorsName, colorsPresent}} {
+	}{{companion.TagsName, *presence.Tags}, {companion.ImportsName, importsPresent}, {companion.ColorsName, colorsPresent}, {companion.IntakeName, intakePresent}} {
 		path, err := planCompanionDatabase(ctx, dir, entry.name, entry.present)
 		if err != nil {
 			return nil, companionFailure(err)
@@ -104,9 +109,10 @@ func validPresence(p companionPresence) bool {
 	if p.Tags == nil {
 		return false
 	}
-	return p.Version == 1 && p.Imports == nil && p.Colors == nil ||
-		p.Version == 2 && p.Imports != nil && p.Colors == nil ||
-		p.Version == companionVersion && p.Imports != nil && p.Colors != nil
+	return p.Version == 1 && p.Imports == nil && p.Colors == nil && p.Intake == nil ||
+		p.Version == 2 && p.Imports != nil && p.Colors == nil && p.Intake == nil ||
+		p.Version == 3 && p.Imports != nil && p.Colors != nil && p.Intake == nil ||
+		p.Version == companionVersion && p.Imports != nil && p.Colors != nil && p.Intake != nil
 }
 
 func companionFailure(err error) error {
@@ -132,6 +138,8 @@ func planCompanionDatabase(ctx context.Context, dir, name string, present bool) 
 		err = importsource.ValidateDatabase(ctx, path)
 	} else if name == companion.ColorsName {
 		err = colors.ValidateDatabase(ctx, path)
+	} else if name == companion.IntakeName {
+		err = intake.ValidateDatabase(ctx, path)
 	} else {
 		err = tags.ValidateDatabase(ctx, path)
 	}
@@ -153,6 +161,11 @@ func restoreCompanion(ctx context.Context, library string, plans []companionRest
 			return err
 		}
 		path := filepath.Join(library, ".engine-cli", plan.name)
+		if plan.name == companion.IntakeName {
+			if err := history.PreserveDatabase(ctx, path); err != nil {
+				return err
+			}
+		}
 		if plan.source == "" {
 			// The outer collection history owns the WAL-safe before-image.
 			if err := companion.Remove(path); err != nil {
@@ -165,6 +178,11 @@ func restoreCompanion(ctx context.Context, library string, plans []companionRest
 		}
 		if err := restoreDatabase(ctx, plan.source, path); err != nil {
 			return err
+		}
+		if plan.name == companion.IntakeName {
+			if err := intakecontrol.Restored(ctx, library); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
