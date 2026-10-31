@@ -211,16 +211,11 @@ func TestImportRefusesUnreviewedOrOccupiedDestination(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "staged bytes":
-				stage := staging.New(lib)
-				path, err := stage.Directory(t.Context(), item.StageID)
+				path, err := staging.New(lib).Resolve(t.Context(), item.StageID)
 				if err != nil {
 					t.Fatal(err)
 				}
-				staged, err := stage.Inspect(t.Context(), item.StageID)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(filepath.Join(path, filepath.Base(staged.AudioPath)), []byte("different audio"), 0600); err != nil {
+				if err := os.WriteFile(path, []byte("different audio"), 0600); err != nil {
 					t.Fatal(err)
 				}
 				wantCode = "intake_staged_changed"

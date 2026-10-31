@@ -14,6 +14,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
 
 type ImportOptions struct {
@@ -34,7 +35,21 @@ func (s *Store) ReviewImport(ctx context.Context, d *sql.DB, opts ImportOptions)
 	if err != nil {
 		return nil, err
 	}
-	return staging.New(s.library).ReviewImport(ctx, d, staging.ImportOptions{IDs: []string{item.StageID}, ToPlaylist: opts.ToPlaylist})
+	staged := staging.New(s.library)
+	review, err := staged.ReviewImport(ctx, d, staging.ImportOptions{IDs: []string{item.StageID}, ToPlaylist: opts.ToPlaylist})
+	if err != nil {
+		return nil, err
+	}
+	// The queue accepts any server file. Only a reviewed token can reach import,
+	// so refusing here keeps a file without audio out of the collection.
+	path, err := staged.Resolve(ctx, item.StageID)
+	if err != nil {
+		return nil, err
+	}
+	if err := track.RequireAudio(ctx, path, opts.Runner); err != nil {
+		return nil, err
+	}
+	return review, nil
 }
 
 func (s *Store) stagedImport(ctx context.Context, id int64) (*Item, error) {

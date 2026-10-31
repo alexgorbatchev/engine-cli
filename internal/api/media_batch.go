@@ -256,7 +256,7 @@ func (s *Server) collectionPathOwned(ctx context.Context, path string) (string, 
 
 func (s *Server) stagedPath(ctx context.Context, path string) (string, error) {
 	store := staging.New(s.config.LibraryDir)
-	items, err := store.List(ctx)
+	items, err := store.Acquired(ctx)
 	if err != nil {
 		return "", err
 	}

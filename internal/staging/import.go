@@ -58,6 +58,9 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 	if err != nil {
 		return nil, err
 	}
+	if err := refuseQueueOwned(selected); err != nil {
+		return nil, err
+	}
 	report := &ImportReport{Imported: []Imported{}, Failed: []Failure{}}
 	for _, item := range selected {
 		if item.Kind == "mix" {

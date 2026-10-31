@@ -18,6 +18,9 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/regularfile"
 )
 
+// OwnerIntake marks a staged copy whose only import path is its queue item.
+const OwnerIntake = "intake"
+
 // LocalSource binds the source version discovered by the durable intake queue.
 // Its timestamps detect changes; they do not prove a producer has finished.
 type LocalSource struct {
@@ -74,7 +77,7 @@ func (s *Store) CopyLocal(ctx context.Context, id string, source LocalSource) (r
 			return &LocalCopy{Item: item, ContentHash: digest}, nil
 		}
 	} else {
-		item = &Item{ID: id, Kind: "track", Title: filepath.Base(source.Path), Status: "pending", CreatedAt: time.Now().UTC(), Request: request}
+		item = &Item{ID: id, Kind: "track", Title: filepath.Base(source.Path), Status: "pending", CreatedAt: time.Now().UTC(), Request: request, Owner: OwnerIntake}
 		if err := s.write(ctx, *item); err != nil {
 			return nil, err
 		}
@@ -106,7 +109,11 @@ func (s *Store) CopyLocal(ctx context.Context, id string, source LocalSource) (r
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return nil, err
 	}
-	path := filepath.Join(id, "audio-"+hex.EncodeToString(nonce[:])+filepath.Ext(source.Path))
+	// The nonce isolates attempts; the name survives so an untagged track keeps its title.
+	path := filepath.Join(id, hex.EncodeToString(nonce[:]), filepath.Base(source.Path))
+	if err := root.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return nil, err
+	}
 	out, err := root.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, err

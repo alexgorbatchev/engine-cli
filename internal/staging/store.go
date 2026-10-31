@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/regularfile"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
@@ -37,6 +38,7 @@ type Item struct {
 	ErrorCode   string          `json:"error_code,omitempty"`
 	AudioPath   string          `json:"audio_path,omitempty"`
 	ContentHash string          `json:"content_hash,omitempty"`
+	Owner       string          `json:"owner,omitempty"`
 	ArtworkPath string          `json:"artwork_path,omitempty"`
 	CreatedAt   time.Time       `json:"created_at"`
 	Index       int             `json:"index,omitempty"`
@@ -294,6 +296,25 @@ func (s *Store) List(ctx context.Context) ([]Item, error) {
 	return items, nil
 }
 
+// Acquired lists the items people manage in Staging. Copies the incoming queue
+// owns stay with their queue item so their receipts remain the only import path.
+func (s *Store) Acquired(ctx context.Context) ([]Item, error) {
+	items, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(items, func(item Item) bool { return item.Owner == OwnerIntake }), nil
+}
+
+func refuseQueueOwned(items []Item) error {
+	for _, item := range items {
+		if item.Owner == OwnerIntake {
+			return &progress.Error{Code: "staging_queue_owned", Cause: fmt.Errorf("staged item %s belongs to the incoming queue", item.ID)}
+		}
+	}
+	return nil
+}
+
 func (s *Store) Directory(ctx context.Context, id string) (string, error) {
 	if _, err := s.inspect(ctx, id); err != nil {
 		return "", err
@@ -412,6 +433,9 @@ func (s *Store) Remove(ctx context.Context, ids []string) ([]string, error) {
 	defer unlock()
 	selected, err := s.selected(ctx, ids)
 	if err != nil {
+		return nil, err
+	}
+	if err := refuseQueueOwned(selected); err != nil {
 		return nil, err
 	}
 	removed := make([]string, 0, len(selected))

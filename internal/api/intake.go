@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/http"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/intake"
@@ -85,6 +86,17 @@ func (s *Server) intakeOperations() []operation {
 			return s.intakeImport(ctx, p, true)
 		}),
 	}
+}
+
+// intakeList serves polling clients without spending a slot in the bounded job
+// store, where each poll would evict an older job's retained result.
+func (s *Server) intakeList(w http.ResponseWriter, r *http.Request) {
+	view, err := s.intakeView(r.Context())
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, progress.ErrorCode(err), "The incoming queue could not be read.")
+		return
+	}
+	writeJSON(w, http.StatusOK, view)
 }
 
 func (s *Server) intakeView(ctx context.Context) (*IntakeView, error) {

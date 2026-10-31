@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
@@ -37,6 +39,30 @@ func defaultRunner(ctx context.Context, name string, args ...string) ([]byte, er
 		return nil, err
 	}
 	return stdout.Bytes(), nil
+}
+
+// RequireAudio refuses a file ffprobe reports has no audio, because a Track row
+// for it would be unplayable in Engine DJ. A missing ffprobe leaves the decision
+// to the operations that need it.
+func RequireAudio(ctx context.Context, filePath string, runnerOpt ...sync.CommandRunner) error {
+	runner := defaultRunner
+	if len(runnerOpt) > 0 && runnerOpt[0] != nil {
+		runner = runnerOpt[0]
+	}
+	out, err := runner(ctx, "ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "json", filePath)
+	if errors.Is(err, exec.ErrNotFound) {
+		return nil
+	}
+	if contextErr := ctx.Err(); contextErr != nil {
+		return contextErr
+	}
+	var probe struct {
+		Streams *[]struct{} `json:"streams"`
+	}
+	if err == nil && (json.Unmarshal(out, &probe) != nil || probe.Streams == nil || len(*probe.Streams) > 0) {
+		return nil
+	}
+	return &progress.Error{Code: "track_not_audio", Cause: fmt.Errorf("%q has no readable audio", filepath.Base(filePath))}
 }
 
 // AddTrack imports an audio file into the Engine DJ collection.

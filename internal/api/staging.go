@@ -30,7 +30,7 @@ func (p stagedImportParams) validate() error { return p.importAnalysis.validate(
 func (s *Server) stagingOperations() []operation {
 	store := staging.New(s.config.LibraryDir)
 	return []operation{
-		define("staging.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) { return store.List(ctx) }),
+		define("staging.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) { return store.Acquired(ctx) }),
 		define("staging.inspect", false, []string{"id"}, func(ctx context.Context, p stagedIDParams) (any, error) { return store.Inspect(ctx, p.ID) }),
 		defineCollectionRead("staging.duplicates", []string{"id"}, func(ctx context.Context, p stagedIDParams) (any, error) {
 			item, err := store.Inspect(ctx, p.ID)
@@ -69,7 +69,7 @@ func (s *Server) stagingOperations() []operation {
 }
 
 func (s *Server) stagedList(w http.ResponseWriter, r *http.Request) {
-	items, err := staging.New(s.config.LibraryDir).List(r.Context())
+	items, err := staging.New(s.config.LibraryDir).Acquired(r.Context())
 	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, "staging_unavailable", err.Error())
 		return
