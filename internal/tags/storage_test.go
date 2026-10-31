@@ -11,6 +11,36 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
+func TestIndependentImportArchiveDoesNotEnrollOrReplaceTags(t *testing.T) {
+	library := t.TempDir()
+	path := companion.ImportsPath(library)
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	archive := []byte("independent archive contents")
+	if err := os.WriteFile(path, archive, 0600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Read(t.Context(), library)
+	if err != nil || len(s.Categories) != 0 {
+		t.Fatalf("empty tags=%+v error=%v", s, err)
+	}
+	if _, err := os.Stat(companion.TagsPath(library)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("read enrolled tags: %v", err)
+	}
+	if _, err := EditCategory(t.Context(), library, Edit{Name: "Mood", Revision: s.Revision()}); err != nil {
+		t.Fatal(err)
+	}
+	s, err = Read(t.Context(), library)
+	if err != nil || len(s.Categories) != 1 || s.Categories[0].Name != "Mood" {
+		t.Fatalf("stored tags=%+v error=%v", s, err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != string(archive) {
+		t.Fatalf("tag write changed import archive: %q error=%v", got, err)
+	}
+}
+
 func TestCompanionStorageFailuresHaveStableCodes(t *testing.T) {
 	for _, name := range []string{"corrupt", "unsupported schema", "symlink"} {
 		t.Run(name, func(t *testing.T) {

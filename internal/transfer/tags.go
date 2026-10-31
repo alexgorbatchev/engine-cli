@@ -80,7 +80,7 @@ func isTag(e *entity) bool { return strings.HasPrefix(e.Kind, "tag_") }
 // plannedTags applies only accepted entity decisions. Destination-only taxonomy
 // remains unless root mirroring explicitly removes it; playlist mirrors never
 // remove definitions used outside their selected tracks.
-func (p *plan) plannedTagEntities() map[string]*entity {
+func (p *plan) plannedEntities() map[string]*entity {
 	entities := map[string]*entity{}
 	for key, e := range p.destination.Entities {
 		if !p.remove[key] {
@@ -94,7 +94,7 @@ func (p *plan) plannedTagEntities() map[string]*entity {
 }
 
 func (p *plan) plannedTags() tags.State {
-	entities := p.plannedTagEntities()
+	entities := p.plannedEntities()
 	state := tags.State{Categories: []tags.Category{}, Assignments: []tags.Assignment{}}
 	valuesByCategory := map[string][]tags.Value{}
 	for _, key := range orderedKeys(entities) {
@@ -155,7 +155,7 @@ func (p *plan) plannedTags() tags.State {
 }
 
 func (p *plan) checkTagReferences() {
-	entities := p.plannedTagEntities()
+	entities := p.plannedEntities()
 	for key, e := range entities {
 		if e.Kind == "tag_value" && entities["tag_category:"+str(e.Values["category"])] == nil {
 			p.conflict(Change{Entity: e.Kind, ID: key}, "sync_tag_reference_conflict", "retained values require a category removed by this plan")

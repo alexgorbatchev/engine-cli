@@ -55,6 +55,9 @@ func TestJobScheduling(t *testing.T) {
 		parallel      bool
 	}{
 		{"parallel reads", read, read, true},
+		{"Rekordbox preview is a concurrent read", read, schedulingRequest{"migrate.import", `{"path":"rekordbox.xml","name":"Set","dry_run":true}`}, true},
+		{"Rekordbox apply waits for collection reads", read, schedulingRequest{"migrate.import", `{"path":"rekordbox.xml","name":"Set","plan_token":"reviewed"}`}, false},
+		{"collection reads wait for Rekordbox apply", schedulingRequest{"migrate.import", `{"path":"rekordbox.xml","name":"Set","plan_token":"reviewed"}`}, read, false},
 		{"playlist export preview is a concurrent read", write, schedulingRequest{"playlist.export", `{"identifier":"1","path":"set.m3u8","dry_run":true}`}, true},
 		{"playlist export in write queue", write, schedulingRequest{"playlist.export", `{"identifier":"1","path":"set.m3u8","plan_token":"reviewed"}`}, false},
 		{"read during playlist export", schedulingRequest{"playlist.export", `{"identifier":"1","path":"set.m3u8","plan_token":"reviewed"}`}, read, true},

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
@@ -46,6 +47,11 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 	companionSource, err := planCompanion(ctx, backupDir)
 	if err != nil {
 		return err
+	}
+	// Reject unusable live companion destinations before publishing any Engine
+	// database. Late I/O failures still require the existing recovery boundary.
+	if _, err := companion.Databases(engineLibDir); err != nil {
+		return companionFailure(err)
 	}
 	for _, section := range sections {
 		progress.Stage(ctx, section.phase, section.percent)

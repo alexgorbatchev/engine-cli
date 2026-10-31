@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
@@ -29,14 +28,14 @@ CREATE INDEX Assignment_value ON Assignment(valueId);
 // Read never enrolls a companion database merely because a library was browsed.
 func Read(ctx context.Context, library string) (state State, err error) {
 	defer func() { err = storageError(err) }()
-	paths, err := companion.Databases(library)
+	path, err := companion.Database(library, companion.TagsName)
 	if err != nil {
 		return State{}, err
 	}
-	if len(paths) == 0 {
+	if path == "" {
 		return emptyState(), ctx.Err()
 	}
-	d, err := db.Open(paths[0], true)
+	d, err := db.Open(path, true)
 	if err != nil {
 		return State{}, err
 	}
@@ -148,45 +147,6 @@ func readState(ctx context.Context, tx *sql.Tx) (State, error) {
 		s.Assignments = append(s.Assignments, a)
 	}
 	return s, rows.Err()
-}
-
-func openWrite(ctx context.Context, library string) (*sql.DB, bool, error) {
-	paths, err := companion.Databases(library)
-	if err != nil {
-		return nil, false, err
-	}
-	path := companion.TagsPath(library)
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return nil, false, err
-	}
-	created := len(paths) == 0
-	if created {
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if err != nil {
-			return nil, false, err
-		}
-		if err := file.Close(); err != nil {
-			return nil, false, errors.Join(err, removeStore(path))
-		}
-	}
-	d, err := db.Open(path)
-	if err != nil {
-		if created {
-			err = errors.Join(err, removeStore(path))
-		}
-		return nil, false, err
-	}
-	return d, created, nil
-}
-
-func removeStore(path string) error {
-	var result error
-	for _, suffix := range []string{"", "-wal", "-shm", "-journal"} {
-		if err := os.Remove(path + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
-			result = errors.Join(result, err)
-		}
-	}
-	return result
 }
 
 func List(ctx context.Context, library string) (*Taxonomy, error) {

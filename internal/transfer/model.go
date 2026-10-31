@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	libraryidentity "github.com/alexgorbatchev/engine-cli/internal/identity"
+	"github.com/alexgorbatchev/engine-cli/internal/importsource"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
 	"io"
 	"net/url"
@@ -129,6 +130,7 @@ type collection struct {
 	State     state
 	Schema    map[string][]string
 	Tags      tags.State
+	Imports   importsource.State
 }
 type queryer interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)

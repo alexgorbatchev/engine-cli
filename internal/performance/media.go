@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/engine-cli/internal/audiodecode"
+	"github.com/alexgorbatchev/engine-cli/internal/fileidentity"
 	"github.com/nateranda/djtools/engine"
 )
 
@@ -24,7 +25,7 @@ func (m *mediaSource) check() error {
 	if err != nil {
 		return failure("cue_media_changed", err)
 	}
-	identity, identityErr := mediaIdentity(m.path, info)
+	identity, identityErr := fileidentity.Identity(m.path, info)
 	if identityErr != nil {
 		return failure("cue_media_changed", identityErr)
 	}
@@ -74,7 +75,7 @@ func inspectMedia(library, path string) (string, error) {
 	if !info.Mode().IsRegular() {
 		return "not-regular", nil
 	}
-	id, err := mediaIdentity(path, info)
+	id, err := fileidentity.Identity(path, info)
 	if err != nil {
 		return "", failure("cue_media_unavailable", err)
 	}
@@ -104,7 +105,7 @@ func sampleExtent(ctx context.Context, library string, s snapshot) (float64, flo
 	if !info.Mode().IsRegular() {
 		return 0, 0, nil, failure("cue_media_unavailable", errors.New("track audio is not a regular file"))
 	}
-	identity, err := mediaIdentity(path, info)
+	identity, err := fileidentity.Identity(path, info)
 	if err != nil {
 		return 0, 0, nil, failure("cue_media_unavailable", err)
 	}

@@ -58,3 +58,37 @@ jobs:
 
       - name: Test native file identity and saved cue lifecycle
         run: go test -v -count=1 ./internal/performance ./internal/audiodecode
+
+  rekordbox-import:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install Linux audio test dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install macOS audio test dependencies
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+
+      - name: Install Windows audio test dependencies
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg --no-progress -y
+
+      - name: Vet native import and file ownership packages
+        run: go vet ./internal/rekordbox ./internal/fileidentity ./internal/regularfile
+
+      - name: Test native file identity and retained regular files
+        run: go test -v -count=1 ./internal/fileidentity ./internal/regularfile
+
+      - name: Test native import consent, audio, source freshness and undo
+        run: go test -v -count=1 ./internal/rekordbox ./internal/api ./cmd/engine-cli -run 'TestPreparedImport|TestRekordboxImport'

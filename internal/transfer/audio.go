@@ -130,6 +130,9 @@ func (p *plan) remapAudio(old, key string) {
 	}
 	d.State.Tracks[nativeTrackKey(e)] = key
 	for _, other := range d.Entities {
+		if other.Kind == importMapping && str(other.Values["track"]) == old {
+			other.Values["track"] = key
+		}
 		for i, member := range other.Members {
 			if member == old {
 				other.Members[i] = key

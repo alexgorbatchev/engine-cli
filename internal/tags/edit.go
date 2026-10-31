@@ -18,7 +18,7 @@ func mutate(ctx context.Context, library, expected string, run func(*sql.Tx, Sta
 	if err := checkRevision(expected, s); err != nil {
 		return nil, err
 	}
-	d, created, err := openWrite(ctx, library)
+	d, created, err := companion.OpenWrite(library, companion.TagsName)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func mutate(ctx context.Context, library, expected string, run func(*sql.Tx, Sta
 	defer func() {
 		err = errors.Join(err, d.Close())
 		if created && !committed {
-			err = errors.Join(err, removeStore(companion.TagsPath(library)))
+			err = errors.Join(err, companion.Remove(companion.TagsPath(library)))
 		}
 	}()
 	conn, err := d.Conn(ctx)

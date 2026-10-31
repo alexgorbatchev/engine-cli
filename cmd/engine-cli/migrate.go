@@ -11,12 +11,13 @@ import (
 )
 
 func init() {
-	techCatalog["engine-cli migrate"] = cobrahelptree.TechInfo{Summary: "Export libraries to other DJ applications"}
+	techCatalog["engine-cli migrate"] = cobrahelptree.TechInfo{Summary: "Import and export DJ application libraries"}
+	techCatalog["engine-cli migrate import"] = cobrahelptree.TechInfo{Summary: "Review and import Rekordbox XML into a new playlist hierarchy", Args: "<path>", MutatesDB: true, AutoBackup: true}
 	techCatalog["engine-cli migrate export"] = cobrahelptree.TechInfo{Summary: "Copy Engine DJ audio and export Rekordbox XML without changing the source", Description: "Runs unattended; writes Contents/, rekordbox.xml, and .sync_state.json under the target. --source defaults to --lib-dir; --target defaults to ./rekordbox. --json prints the HTTP result format."}
 }
 
 func newMigrateCommand() *cobra.Command {
-	group := &cobra.Command{Use: "migrate", Short: "Export libraries to other DJ applications", Args: cobra.NoArgs, RunE: func(c *cobra.Command, _ []string) error { return c.Help() }}
+	group := &cobra.Command{Use: "migrate", Short: "Import and export DJ application libraries", Args: cobra.NoArgs, RunE: func(c *cobra.Command, _ []string) error { return c.Help() }}
 	var opts migrate.Options
 	var asJSON bool
 	c := &cobra.Command{Use: "export", Short: "Copy Engine DJ audio and export Rekordbox XML", Args: cobra.NoArgs,
@@ -42,7 +43,7 @@ func newMigrateCommand() *cobra.Command {
 	c.Flags().StringVarP(&opts.Source, "source", "s", "", "Source Engine Library directory (empty: --lib-dir)")
 	c.Flags().StringVarP(&opts.Target, "target", "t", "", "Rekordbox output directory (empty: ./rekordbox)")
 	c.Flags().BoolVar(&asJSON, "json", false, "Print the migration result as JSON")
-	group.AddCommand(c)
+	group.AddCommand(c, newRekordboxImportCommand())
 	return group
 }
 

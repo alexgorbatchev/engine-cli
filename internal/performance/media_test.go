@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/audiodecode"
+	"github.com/alexgorbatchev/engine-cli/internal/fileidentity"
 	"github.com/nateranda/djtools/engine"
 )
 
@@ -206,7 +207,7 @@ func TestCapturedMediaDetectsChangesBeforePublication(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			identity, err := mediaIdentity(path, info)
+			identity, err := fileidentity.Identity(path, info)
 			if err != nil {
 				t.Fatalf("capturing native media identity: %v", err)
 			}

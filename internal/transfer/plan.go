@@ -101,9 +101,12 @@ func selection(c *collection, scope Scope) (map[string]bool, map[string]bool, er
 	selected := map[string]bool{}
 	ancestors := map[string]bool{}
 	if scope.Root {
-		for key := range c.Entities {
-			selected[key] = true
+		for key, e := range c.Entities {
+			if !isImport(e) {
+				selected[key] = true
+			}
 		}
+		selectImports(c, selected)
 		return selected, ancestors, nil
 	}
 	for _, id := range scope.PlaylistIDs {
@@ -143,6 +146,7 @@ func selection(c *collection, scope Scope) (map[string]bool, map[string]bool, er
 		}
 	}
 	selectTags(c, selected)
+	selectImports(c, selected)
 	return selected, ancestors, nil
 }
 func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) {
@@ -233,6 +237,10 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 			}
 		}
 		sf, df := fingerprint(src), fingerprint(dst)
+		if src.Kind == importMapping && dst != nil && sf != df {
+			p.conflict(Change{Entity: src.Kind, ID: key}, "sync_import_mapping_conflict", "the same source selector maps to different Engine origins; review the original import evidence")
+			continue
+		}
 		// Empty assignment groups carry a clearing baseline, but adding an
 		// unassigned track does not itself mutate the companion database.
 		if src.Kind == "tag_assignment" && dst == nil && len(tagValues(src)) == 0 {
@@ -352,7 +360,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	tokenOptions.DryRun = false
 	tokenOptions.PlanToken = ""
 	tokenOptions.NoBackup = false
-	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.Tags, d.Tags, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
+	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.Tags, d.Tags, s.Imports, d.Imports, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
 	return p, nil
 }
 
@@ -412,6 +420,9 @@ func (p *plan) planRemovals(o Options) {
 			continue
 		}
 		e := p.destination.Entities[k]
+		if isImport(e) {
+			continue
+		}
 		if e.Kind == "track" {
 			used := false
 			for pk, pl := range p.destination.Entities {

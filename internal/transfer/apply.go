@@ -16,6 +16,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	libraryidentity "github.com/alexgorbatchev/engine-cli/internal/identity"
+	"github.com/alexgorbatchev/engine-cli/internal/importsource"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
 )
@@ -78,6 +79,11 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 	}
 	if err := readTags(ctx, d); err != nil {
 		return nil, err
+	}
+	for _, c := range []*collection{s, d} {
+		if err := readImports(ctx, c); err != nil {
+			return nil, err
+		}
 	}
 	p, err := buildPlan(ctx, o, s, d)
 	if err != nil {
@@ -148,12 +154,22 @@ func Run(ctx context.Context, o Options) (*Report, error) {
 				return &progress.Error{Code: "tag_revision_stale", Cause: fmt.Errorf("custom tags changed while applying the sync plan")}
 			}
 		}
+		for _, c := range []*collection{s, d} {
+			if err := validateImportRevision(ctx, c); err != nil {
+				return err
+			}
+		}
 		if _, err = conn.ExecContext(ctx, "COMMIT"); err != nil {
 			return err
 		}
 		nextTags := p.plannedTags()
 		if nextTags.Revision() != d.Tags.Revision() {
 			if _, err := tags.Replace(ctx, o.Destination, d.Tags.Revision(), nextTags); err != nil {
+				return errors.Join(err, history.RequireRecovery(ctx))
+			}
+		}
+		if next := p.plannedImports(); next.Revision() != d.Imports.Revision() {
+			if err := importsource.Replace(ctx, o.Destination, d.Imports.Revision(), next); err != nil {
 				return errors.Join(err, history.RequireRecovery(ctx))
 			}
 		}

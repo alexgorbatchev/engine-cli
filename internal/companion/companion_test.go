@@ -3,8 +3,33 @@ package companion
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
+
+func TestIndependentCompanionEnrollment(t *testing.T) {
+	for _, names := range [][]string{{"imports.db"}, {TagsName, "imports.db"}} {
+		t.Run(names[0], func(t *testing.T) {
+			library := t.TempDir()
+			dir := filepath.Dir(TagsPath(library))
+			if err := os.Mkdir(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			var want []string
+			for _, name := range names {
+				path := filepath.Join(dir, name)
+				if err := os.WriteFile(path, nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+				want = append(want, path)
+			}
+			got, err := Databases(library)
+			if err != nil || !slices.Equal(got, want) {
+				t.Fatalf("enrolled=%v error=%v, want %v", got, err, want)
+			}
+		})
+	}
+}
 
 func TestExplicitDatabaseEnrollment(t *testing.T) {
 	for _, name := range []string{"absent", "state only", "database", "directory", "database symlink", "parent symlink"} {

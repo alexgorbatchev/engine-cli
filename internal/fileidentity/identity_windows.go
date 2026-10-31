@@ -1,4 +1,4 @@
-package performance
+package fileidentity
 
 import (
 	"encoding/hex"
@@ -9,7 +9,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func mediaIdentity(path string, _ os.FileInfo) (string, error) {
+// Identity eagerly captures the native physical file identity from an observation.
+func Identity(path string, _ os.FileInfo) (string, error) {
 	name, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return "", err

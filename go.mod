@@ -35,4 +35,4 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 )
 
-replace github.com/nateranda/djtools => github.com/alexgorbatchev/djtools v0.2.0
+replace github.com/nateranda/djtools => github.com/alexgorbatchev/djtools v0.4.0

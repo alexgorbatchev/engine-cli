@@ -263,6 +263,11 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `playlist_import_target` | The new name or parent is invalid, or that parent already contains a playlist with this name. |
 | `playlist_import_stale` | The reviewed plan no longer matches the source, selected options, or collection. Review again before applying. |
 | `playlist_import_unresolved` | No tracks match, or unresolved entries remain without explicit skip permission. Resolve them or review with `skip_missing:true`. |
+| `rekordbox_import_invalid` | Choose a server-local Rekordbox XML file, a new root name, and supported omission/reuse policies. |
+| `rekordbox_import_media` | An import source is not a regular audio file. Choose accessible local media. |
+| `rekordbox_import_target` | Choose an unused name for the new import root in a destination library with native identity. Existing roots are never replaced. |
+| `rekordbox_import_stale` | The XML, audio observation, source mappings, destination or reviewed options changed. Review again. |
+| `rekordbox_import_review_required` | Resolve blocked sources or explicitly review the required skip, reuse and source-only policies before applying. |
 | `play_history_unavailable` | The library has no play history database yet. Engine DJ creates it when tracks are played; listing sessions reports `available:false` instead. |
 | `play_history_unreadable` | The play history database exists but cannot be read. Check the library drive and permissions; the history is never repaired or changed. |
 | `invalid_session` | The session ID is not a positive number. |
@@ -720,6 +725,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | Operation | JSON parameters |
 | --- | --- |
 | `migrate.export` | `source?`, `target?`; defaults to configured library and `./rekordbox` |
+| `migrate.import` | `path`, `name`, `missing_media?`, `conflicts?`, `allow_unsupported?`, `dry_run?`, `plan_token?`; see the reviewed Rekordbox import contract below |
 | `library.verify`, `library.refresh`, `library.prune` | `{}` |
 | `library.sync` | `source`, `destination`, `scope`, `playlist_map?`, `dry_run?`, `mirror?`, `conflict?`, `media?`, `plan_token?` |
 | `library.backup`, `library.backups` | `out_dir?` |
@@ -759,6 +765,25 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 Upgrade timing options are mutually exclusive. When saved cues, loops, or beat grids exist, choose whether to keep or clear them. Upgrades retain the original audio and curated metadata; analyze the replacement with `track.analyze` or in Engine DJ.
 
 HTTP validation errors use `{ "error": { "code": "...", "message": "..." } }`. Failures after acceptance appear in job status and terminal events; a successful submission alone does not mean the operation succeeded.
+
+### Reviewed Rekordbox XML import
+
+`migrate.import` reads a server-local Rekordbox XML document and creates a new named playlist root in the selected Engine library. It never replaces an existing root, relocates source audio, or changes reused Engine tracks. Submit `path`, `name` and `dry_run:true` first. The preview remains available while Engine DJ Desktop is running and creates no snapshot, history or import companion.
+
+The preview returns the exact source `document_id`, original-order `entries` with `source_id`, `path`, `status` and optional matched `track_id`; the proposed recursive `playlists`; source-only `warnings`; and `new_count`, `reuse_count`, `retained_count`, `missing_count` and `conflict_count`. `assigned_marker_color` discloses the neutral white used for supported cue/loop records whose supported XML representation has no color. Unsupported fields remain in the exact original XML archive rather than being silently discarded or invented as native data. Preview `can_apply` and `plan_token` describe the current plan; a token alone does not make a blocked plan applicable.
+
+`missing_media` defaults to `"reject"`; `"skip"` explicitly omits reviewed unavailable sources. `conflicts` defaults to `"reject"`; `"reuse"` explicitly retains an existing matching Engine track and its metadata/performance. Source records that ambiguously resolve to the same media remain conflicts. `allow_unsupported:true` explicitly accepts the disclosed source-only warnings. An exact document already completely mapped to extant native origins is blocked. A partial import discloses retained mappings, unavailable sources and its new root/hierarchy; it does not silently create a duplicate tree or treat stale origins as complete.
+
+Apply the same options with `dry_run:false` and the preview's `plan_token`. Before snapshots/history, the server prepares and validates the XML, native destination and actual media extents outside the write transaction, and obtains the fresh Desktop mutation check. It revalidates captured physical file identity, size/time and exact XML bytes at application, including after acquiring the native transaction. Changed observations or consent are refused. Supported new-track metadata and performance data, source order and memberships are written in one transaction. The original XML plus document-local selector to native-origin mappings are enrolled in `Database2/imports.db`, participating in backup, restore, Undo, library transfer and sync. A failure publishing that companion after the Engine commit retains pending recovery history; never interpret it as a successful import or retry blindly.
+
+A successful apply returns only `document_id`, positive `root_id`, `created_count`, `reused_count` (including retained mappings) and `skipped_count`, projected from committed changes. One collection history entry reverses the native changes and source evidence. Preview uses the concurrent collection-read barrier; apply uses the existing serialized collection-write barrier and one automatic safety snapshot unless `--no-backup` was explicitly selected.
+
+```sh
+engine-cli migrate import /Music/rekordbox.xml --name "Reviewed Rekordbox" --dry-run
+engine-cli migrate import /Music/rekordbox.xml --name "Reviewed Rekordbox" --plan-token <reviewed-token>
+```
+
+Both commands support `--json`; human output lists source dispositions, proposed hierarchy and source-only warnings. Request and job failures carry stable codes; diagnostic messages are not browser display text.
 
 ### Reviewed M3U/M3U8 import
 

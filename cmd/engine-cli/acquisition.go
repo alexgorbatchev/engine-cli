@@ -221,6 +221,9 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 		if handled, err := printMetadataTransform(c, result, asJSON); handled {
 			return errors.Join(runErr, err)
 		}
+		if handled, err := printRekordbox(c.OutOrStdout(), result, asJSON); handled {
+			return errors.Join(runErr, err)
+		}
 		if !asJSON {
 			if handled, err := printCues(c, result); handled {
 				return errors.Join(runErr, err)

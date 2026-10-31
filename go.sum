@@ -1,7 +1,7 @@
 github.com/alexgorbatchev/cobra-help-tree v1.1.0 h1:CtKIG6p2S1LptDLRh1ZCcaj1E1XseEvU/1bi822RiAY=
 github.com/alexgorbatchev/cobra-help-tree v1.1.0/go.mod h1:l0Hv9bKEyt8mAucPP76MUarRMb3KbqqbohZsccF2jEY=
-github.com/alexgorbatchev/djtools v0.2.0 h1:iH4mtAKMbP7Mlx/EBpfM2zZS9fMhhQZPuWsVAVUhsdo=
-github.com/alexgorbatchev/djtools v0.2.0/go.mod h1:BHbwo0S5KUWxcMKYw6jQ+XJmYvu+ChfXy6XPvJLax4Q=
+github.com/alexgorbatchev/djtools v0.4.0 h1:bfychGu4PYy34YpWfWsoTBaQRaf/rRCtA5SeVRAh4nM=
+github.com/alexgorbatchev/djtools v0.4.0/go.mod h1:BHbwo0S5KUWxcMKYw6jQ+XJmYvu+ChfXy6XPvJLax4Q=
 github.com/alexgorbatchev/gochromaprint v1.6.1-0.20261018234412-8ac11c575443 h1:axbcL34eyi2I/V9CmxctJWarlVXOtDrk+qeFTVaRLzM=
 github.com/alexgorbatchev/gochromaprint v1.6.1-0.20261018234412-8ac11c575443/go.mod h1:G9j9lh3b5RDefxLJxR/Tvx7MZsmFDEp9B7mlqQy154w=
 github.com/alexgorbatchev/godeps v1.1.0 h1:yLaSXmqiwB50RpNwJusRwHMhnWZJV65aIfHj1a2h8xI=

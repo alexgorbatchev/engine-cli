@@ -634,7 +634,7 @@ func MoveTrackInPlaylist(ctx context.Context, database *sql.DB, srcListID int64,
 }
 
 // InsertTrack inserts a new Track record into the Track table and returns its ID.
-func InsertTrack(ctx context.Context, database *sql.DB, t *Track) (int64, error) {
+func InsertTrack(ctx context.Context, database Executor, t *Track) (int64, error) {
 	if database == nil {
 		return 0, fmt.Errorf("database cannot be nil")
 	}
