@@ -10,13 +10,13 @@ import (
 func TestReservationNamePolicyRefusesClosedNativeRoot(t *testing.T) {
 	for _, closed := range []int{0, 1} {
 		t.Run([]string{"parent", "anchors"}[closed], func(t *testing.T) {
+			parent := t.TempDir()
 			owner := &reservation{}
 			t.Cleanup(func() {
 				if err := owner.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
 					t.Error(err)
 				}
 			})
-			parent := t.TempDir()
 			anchors := filepath.Join(parent, reservationDirectory)
 			if err := os.Mkdir(anchors, 0700); err != nil {
 				t.Fatal(err)
