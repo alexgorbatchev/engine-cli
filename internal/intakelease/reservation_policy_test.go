@@ -3,6 +3,7 @@ package intakelease
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -15,12 +16,20 @@ func TestReservationNamePolicyRefusesClosedNativeRoot(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			for range 2 {
-				root, err := os.OpenRoot(t.TempDir())
+			parent := t.TempDir()
+			anchors := filepath.Join(parent, reservationDirectory)
+			if err := os.Mkdir(anchors, 0700); err != nil {
+				t.Fatal(err)
+			}
+			for _, path := range []string{parent, anchors} {
+				root, err := os.OpenRoot(path)
 				if err != nil {
 					t.Fatal(err)
 				}
 				owner.roots = append(owner.roots, root)
+			}
+			if err := matchingReservationNames(owner.roots[0], owner.roots[1]); err != nil {
+				t.Fatalf("ordinary open native roots refused: %v", err)
 			}
 			if err := owner.roots[closed].Close(); err != nil {
 				t.Fatal(err)
