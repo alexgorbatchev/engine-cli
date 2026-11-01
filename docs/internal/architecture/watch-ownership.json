@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Watched-folder ownership and portable state",
+    "subtitle": "Native discovery ownership, short coherent state transactions and retained-file preparation",
+    "output": "docs/internal/architecture/watch-ownership.html",
+    "quality_profile": "showcase",
+    "visual_preset": "blueprint",
+    "viewBox": [
+      1140,
+      730
+    ]
+  },
+  "components": [
+    {
+      "id": "surface",
+      "type": "frontend",
+      "label": "HTTP / CLI",
+      "sublabel": "GET observes; commands capture revision",
+      "pos": [
+        40,
+        280
+      ],
+      "size": [
+        225,
+        90
+      ]
+    },
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "Intake Service",
+      "sublabel": "one native discovery owner per library",
+      "pos": [
+        340,
+        280
+      ],
+      "size": [
+        240,
+        90
+      ]
+    },
+    {
+      "id": "roots",
+      "type": "external",
+      "label": "Authorized native roots",
+      "sublabel": "fsnotify hints + retained no-follow traversal",
+      "pos": [
+        340,
+        65
+      ],
+      "size": [
+        300,
+        90
+      ]
+    },
+    {
+      "id": "state",
+      "type": "security",
+      "label": "Short native state owner",
+      "sublabel": "rollback-mode shared / exclusive transactions",
+      "pos": [
+        700,
+        280
+      ],
+      "size": [
+        280,
+        90
+      ]
+    },
+    {
+      "id": "pair",
+      "type": "database",
+      "label": "Portable companion pair",
+      "sublabel": "watch.db + intake.db + explicit absence",
+      "pos": [
+        700,
+        520
+      ],
+      "size": [
+        300,
+        90
+      ]
+    },
+    {
+      "id": "staging",
+      "type": "backend",
+      "label": "Preparation worker",
+      "sublabel": "borrow retained FD; preserve original request",
+      "pos": [
+        750,
+        65
+      ],
+      "size": [
+        300,
+        90
+      ]
+    },
+    {
+      "id": "clock",
+      "type": "database",
+      "label": "Native authority clock",
+      "sublabel": "monotonic fence; excluded from images",
+      "pos": [
+        350,
+        520
+      ],
+      "size": [
+        280,
+        90
+      ]
+    },
+    {
+      "id": "replacement",
+      "type": "backend",
+      "label": "Snapshot / restore / Undo",
+      "sublabel": "validate pair; enroll both Before images",
+      "pos": [
+        40,
+        520
+      ],
+      "size": [
+        300,
+        90
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "surface",
+      "to": "service",
+      "label": "captured library owner",
+      "variant": "emphasis"
+    },
+    {
+      "from": "roots",
+      "to": "service",
+      "label": "validated registrations; hints request reconciliation"
+    },
+    {
+      "from": "service",
+      "to": "state",
+      "label": "publish / authorize / revoke"
+    },
+    {
+      "from": "state",
+      "to": "pair",
+      "label": "coherent handoff and receipt state",
+      "variant": "emphasis"
+    },
+    {
+      "from": "service",
+      "to": "staging",
+      "label": "request preparation"
+    },
+    {
+      "from": "staging",
+      "to": "state",
+      "label": "select before copy; authorize after release"
+    },
+    {
+      "from": "state",
+      "to": "clock",
+      "label": "allocate never-reused consent fence",
+      "variant": "security"
+    },
+    {
+      "from": "replacement",
+      "to": "state",
+      "label": "hold through capture or replacement",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Lifetime owners close before replacement",
+      "items": [
+        "Service cancellation joins discovery, native event draining and accepted mutations before Store.Close.",
+        "Library move, sync, restore and Undo stop and join the applicable Service before changing storage; relocated libraries reopen with a fresh owner.",
+        "Pending configuration commands cancel both an existing scan and any scan registered before command acceptance. No mutex spans the blocking send."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "The state owner binds the pair",
+      "items": [
+        "Queue mutation, watch observation, handoff linking and companion capture share the short state owner. A snapshot cannot split a successful publication.",
+        "Ordinary collection History excludes mutable watch and intake journals. Explicit restore and Undo enroll and validate both images before replacement.",
+        "Missing images remain explicitly absent. Interrupted replacement retains recovery evidence instead of presenting a partial pair as healthy."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Authority is native, not portable",
+      "items": [
+        "A committed fence precedes the first live image replacement. Restore, Undo and restored absence require explicit watch activation.",
+        "The authority clock and lifetime coordination are excluded from snapshots and ordinary History. Library moves retain authority; sync destinations keep their own.",
+        "First enrollment publishes only a fully initialized, committed, closed SQLite file with native no-replace semantics. A published generation is never deleted or reused after a flush failure."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Borrowed file ownership does not rebind the queue",
+      "items": [
+        "Completed hash-verified staging can retry without reopening the original source. Otherwise selection happens after staging ownership is released.",
+        "After staging ownership is reacquired, the reservation is revalidated. State-owned checks before selection and at final completion protect the queue attempt; native identity, size and modification time bind the selected descriptor around copy.",
+        "After staging releases ownership, final state-owned authorization rejects revocation during copying before publishing a ready queue receipt."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Native registrations have their own lifetime",
+      "items": [
+        "Each native directory identity has one selected registration path. Same-path identity replacement requires a fresh backend.",
+        "A successor drains events before installing its complete registration set, then rechecks directory identity, native registrations and cancellation before publication. Failed construction closes the candidate and retains the previous owner.",
+        "Closing a registration owner preserves the backend Close error, cancels its child drain and joins that drain before returning.",
+        "Source evidence: 05102c1cc0c4b1db00826dc007753b544162e79b; internal/intake/watch_events.go:23–140; internal/intake/watch_service.go:159–171,206–256,274–295. These ranges cover registration identity, complete successor installation and postvalidation, immediate follow-up scanning, and drain cancellation/join. Native-platform qualification is separate."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Supplemental evidence scope",
+      "items": [
+        "Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification."
+      ]
+    }
+  ]
+}

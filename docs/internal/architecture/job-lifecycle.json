@@ -214,8 +214,34 @@
         "The observer rereads the current ImportIntent tuple (item_id, history_id and persisted track_id receipt) and conditionally updates matching Item state after both owners are held. Resume retains this coherent observation boundary until reconciliation succeeds and suspension is cleared. Engine publication, queue receipts and History completion remain independent commits.",
         "A queue without retained import intents does not enroll or wait on History merely to prepare sources. Missing History is identified before observation and checked again under the worker owner; unresolved missing or incomplete evidence still requires recovery.",
         "Service shutdown cancels an initial History wait and joins the worker without publishing successful initial readiness or recording cancellation as a worker failure.",
-        "Import review opens its intake service before entering the shared Smartlist-safe read boundary. Only its database review callback, inside Service.Use, takes that read lease. A live publisher or pending repair refuses review; explicit import remains in the existing Desktop-protected History publication path.",
+        "Import review opens its intake service before entering the shared Smartlist-safe read boundary. Only its database review callback, inside Service.Use, takes that read lease. At the original 6c8135c evidence revision, a live publisher or pending repair refused review; current reader ownership is described in the Cancellable collection reads supplement below; explicit import remains in the existing Desktop-protected History publication path.",
         "Committed evidence: 6c8135c64da17554f2ff2aa6dbac05cf6270529c; internal/history/observe_entries.go:20–56; internal/intake/import.go:140–219; internal/intake/control.go:24–30; internal/intake/service.go:129–189; internal/api/intake.go:155–182. Historical diagram pins remain unchanged."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Cancellable collection reads",
+      "items": [
+        "Public Smartlist-safe collection reads, including intake import review, wait cancellably for an existing History publisher. Completed import receipt reconciliation therefore does not make an immediate collection refresh fail merely because it briefly retains History.",
+        "A pending per-library read owner is published before native acquisition. The process-global readers mutex is released during the native wait, so unrelated libraries and existing readers can make progress. Overlapping readers share one retained native lease.",
+        "Each waiting reader can cancel independently. A cancelled first acquirer removes its pending owner and wakes surviving waiters to retry. Once acquired, the native lease is detached from that first reader context and remains until its last reader releases it.",
+        "Pending repair detected before acquisition refuses immediately; pending repair is checked again after acquisition before any observation. Reads do not recover or apply repair. Private History List and mutation acquisition retain fail-fast behavior; Desktop protection, snapshots and Undo publication remain unchanged.",
+        "Source evidence: 76d507cd514fc04c15bff17f69eba37bb3b591ce; internal/history/history.go:73–99; internal/history/smartlist_read_lock.go:24–83; internal/history/smartlist_observe.go; internal/history/smartlist_barrier.go:54–58. Behavioral evidence: internal/history/smartlist_read_wait_test.go and internal/api/intake_review_read_test.go; the immediate post-import GET is covered by internal/api/intake_import_test.go. Historical source pins remain unchanged."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Watch registrations belong to the Service",
+      "items": [
+        "Native watch registration and event draining belong to the library Service, independently of individual HTTP jobs. Successor construction owns its drain before registration begins. Retirement preserves Close errors, cancels the drain and joins it; Service shutdown closes registrations before releasing discovery ownership.",
+        "Source evidence: 05102c1cc0c4b1db00826dc007753b544162e79b; internal/intake/watch_events.go:23–140; internal/intake/watch_service.go:159–171,206–256,274–295. These ranges cover registration identity, complete successor installation and postvalidation, immediate follow-up scanning, and drain cancellation/join. Native-platform qualification is separate."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Supplemental evidence scope",
+      "items": [
+        "Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification."
       ]
     }
   ]

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-31 11:24
+last_modified: 2026-10-31 16:50
 status: current
 ---
 
@@ -15,10 +15,13 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 | [Intake preparation and review](intake-preparation-lifecycle.html) | Durable queued/preparing/staged work, cancellation, retry, and preparation recovery |
 | [Intake import and recovery](intake-import-lifecycle.html) | Reviewed import, independent completion evidence, effective Undo and reversed Undo |
 | [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, reviewed intake import, per-track guarded analysis writes, exact-plan M3U import, and the separate read-only-source M3U export boundary |
+| [Watch discovery lifecycle](watch-discovery-lifecycle.html) | Native observation, quiet versions, pause and restored suspension |
+| [Watch handoff lifecycle](watch-handoff-lifecycle.html) | Stable-version authorization, durable queue linkage and interrupted handoff recovery |
+| [Watch ownership](watch-ownership.html) | Service/native owners, coherent companion pair, retained descriptors and authority fences |
 
 The overview specification cites committed engine-cli `6f724a545fa0944deef7d8e260d0d403549d2d42`, retaining its original `b85be4d87dc1045eca6133f6868e0b13f7bceb62` evidence in a separate card; the HTTP job lifecycle cites `c012308d842940a41e2aad703d31f08c14e02d03`. The collection-write topology cites repair commit `9c73c219e66a760ef38d79ce606e3c233bce9079`. Source links and claims describe those committed revisions and the separately pinned supplements below. Uncommitted integration changes are outside this evidence. The overview groups cooperating packages; it is not a complete package inventory. The collection-write drawing identifies its specialized sync, creation, undo, and preview exclusions explicitly.
 
-The five diagram definitions use [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.4` under Node `26.12.0`. Their embedded software notices preserve the Apache 2.0 license and historical MIT grants.
+The five historical diagram definitions use [Archify](https://github.com/alexgorbatchev/archify) `3.2.1-dev.4` under Node `26.12.0`. Their embedded software notices preserve the Apache 2.0 license and historical MIT grants.
 
 ## Viewing
 
@@ -132,3 +135,24 @@ The native alias correction is reviewed at the same source revision: [service id
 The retained-anchor correction is reviewed at committed Engine CLI [a9ba978](https://github.com/alexgorbatchev/engine-cli/commit/a9ba978288c964bccd9bdffb3ccc4953f6483922). [Anchor acquisition](https://github.com/alexgorbatchev/engine-cli/blob/a9ba978288c964bccd9bdffb3ccc4953f6483922/internal/intakelease/reservation.go#L229-L237) separates exclusive creation from opening an existing anchor, preserving the retained-root, regular-file, empty-file, native-identity and locking checks. Only an existing-file result selects the non-creating open; other failures remain refusals. [Concurrent native acquisition](https://github.com/alexgorbatchev/engine-cli/blob/a9ba978288c964bccd9bdffb3ccc4953f6483922/internal/intakelease/reservation_anchor_open_test.go#L12-L82) exercises that production helper with two retained directory handles and verifies both opens refer to the same native file.
 
 [Native qualification run 41213582838](https://github.com/alexgorbatchev/engine-cli/actions/runs/41213582838) passes all eleven jobs on this exact revision, including Linux, macOS and Windows intake behavior, required macOS/Windows case-alias ownership checks, and native PCM coverage. This supersedes the earlier execution limit above; it does not advance those historical source pins or the UI integration revision.
+
+## Collection safety, audio admission and watched-folder ownership
+
+The eight affected diagram definitions retain the historical evidence above and add the source supplements below. The supplemental revisions do not repin the historical diagrams.
+
+| Addition | Supplemental source revision |
+| --- | --- |
+| Refusal-preserving Undo | 494689f197e1afcaaae6ba1090159165b7953c1a |
+| Readable-audio admission | 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4 |
+| Cancellable collection reads | 76d507cd514fc04c15bff17f69eba37bb3b591ce |
+| Watched native folders and paired authority | 05102c1cc0c4b1db00826dc007753b544162e79b |
+
+The collection-write page adds refusal-preserving History and pre-installation decoded-frame audio checks. Its historical blanket failure-retention wording is qualified by actual Before/After comparison, recorded moves, relocation and pending recovery. The import lifecycle distinguishes readable audio from discovery/preparation and preserves cancellation with partial results.
+
+Public collection reads wait cancellably for a live publisher, share a retained lease, and refuse pending repair before and after acquisition. Private History listing and mutation acquisition remain fail-fast. The coherent intake observation supplement retains its historical 6c8135c behavior statement, qualified by the current read-wait addition.
+
+The overview adds Service-owned discovery, portable pair state and nonportable authority. New [Watch discovery lifecycle](watch-discovery-lifecycle.html), [Watch handoff lifecycle](watch-handoff-lifecycle.html) and [Watch ownership](watch-ownership.html) explain native identity, overlap deduplication, pause versus restored activation, crash-safe handoff and retained descriptor preparation. Ordinary collection Undo excludes mutable watch/intake journals; explicit replacement captures and validates their pair and commits an authority fence before live writes.
+
+Watcher registrations are deduplicated by native directory identity. A changed nonempty set is installed on a successor backend, postvalidated and followed by an immediate full scan; unchanged verified coverage does not schedule a repeated immediate scan. Registration retirement preserves Close errors and cancels and joins its owned event drain. Source evidence does not substitute for generated-page, visual or served-body verification. Native coverage provenance is separate from new watcher Windows/macOS behavior qualification.
+
+The discovery and handoff lifecycle views share the quiet-version boundary. Together they preserve all eight states and thirteen transitions, including immediate observation rescan and interrupted handoff self-loops.

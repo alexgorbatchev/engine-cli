@@ -1,0 +1,160 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Watched-folder discovery lifecycle",
+    "output": "docs/internal/architecture/watch-discovery-lifecycle.html",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase"
+  },
+  "mainPath": [
+    "authorized",
+    "observing"
+  ],
+  "states": [
+    {
+      "id": "authorized",
+      "type": "start",
+      "label": "Authorized root",
+      "sublabel": "canonical path + pinned native identity",
+      "step": "01"
+    },
+    {
+      "id": "observing",
+      "type": "active",
+      "label": "Observe native files",
+      "sublabel": "retained directories; no descendant links",
+      "step": "02"
+    },
+    {
+      "id": "quiet",
+      "type": "waiting",
+      "label": "Wait for quiet version",
+      "sublabel": "identity + size + modification time",
+      "step": "03",
+      "href": "watch-handoff-lifecycle.html"
+    },
+    {
+      "id": "paused",
+      "type": "waiting",
+      "label": "Queue paused",
+      "sublabel": "observe without automatic enqueue"
+    },
+    {
+      "id": "suspended",
+      "type": "waiting",
+      "label": "Restored authority",
+      "sublabel": "explicit activation required"
+    },
+    {
+      "id": "degraded",
+      "type": "failure",
+      "label": "Root degraded",
+      "sublabel": "retain receipt; expose safe error code"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "authorized",
+      "to": "observing",
+      "label": "startup / event / reconcile"
+    },
+    {
+      "from": "observing",
+      "to": "quiet",
+      "label": "complete traversal"
+    },
+    {
+      "from": "quiet",
+      "to": "observing",
+      "label": "native version changed",
+      "variant": "dashed"
+    },
+    {
+      "from": "quiet",
+      "to": "paused",
+      "label": "queue pause",
+      "variant": "dashed"
+    },
+    {
+      "from": "paused",
+      "to": "observing",
+      "label": "explicit Resume; revalidate"
+    },
+    {
+      "from": "authorized",
+      "to": "suspended",
+      "label": "restore / Undo fence",
+      "variant": "security"
+    },
+    {
+      "from": "suspended",
+      "to": "authorized",
+      "label": "explicit Activate"
+    },
+    {
+      "from": "observing",
+      "to": "degraded",
+      "label": "identity / traversal / registration failure",
+      "variant": "security"
+    },
+    {
+      "from": "degraded",
+      "to": "observing",
+      "label": "fresh reconciliation"
+    },
+    {
+      "from": "observing",
+      "to": "observing",
+      "label": "published registration change; immediate rescan",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Discovery owns observation, not import",
+      "items": [
+        "fsnotify events request a full scan; periodic reconciliation repairs missed hints.",
+        "Overlapping roots and hard links share a native source version and one queue handoff.",
+        "A linked item continues through the existing preparation and reviewed import lifecycle. Discovery never imports into the collection.",
+        "Native directory identity deduplicates aliases. An eligible existing registration path is retained; otherwise selection is deterministic.",
+        "A changed nonempty registration set is installed on a fresh backend and fully revalidated before publication. Publication requests an immediate full scan, closing the traversal-to-registration gap. An unchanged verified set does not request another immediate scan.",
+        "Source evidence: 05102c1cc0c4b1db00826dc007753b544162e79b; internal/intake/watch_events.go:23–140; internal/intake/watch_service.go:159–171,206–256,274–295. These ranges cover registration identity, complete successor installation and postvalidation, immediate follow-up scanning, and drain cancellation/join. Native-platform qualification is separate."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Pause and restored suspension are separate controls",
+      "items": [
+        "Queue Pause prevents automatic enqueue and preparation; observations may remain pending.",
+        "Portable restore or Undo consumes a native authority fence and suspends discovery, including restored absence.",
+        "Resume does not Activate restored watch authorization; ordinary configuration changes cannot implicitly Activate it."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Crash recovery preserves the original request",
+      "items": [
+        "The short state owner covers pending handoff, queue publication and final link, so a successful companion capture cannot split the pair.",
+        "Death between commits leaves a recoverable intent; provenance remains created, associated or unknown rather than claiming exactly once.",
+        "Renames may supply an authorized retained descriptor for the same native version. They never rewrite the queue source tuple, reset attempts or retry terminal items."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Supplemental evidence scope",
+      "items": [
+        "Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Linked handoff view",
+      "items": [
+        "The quiet native version continues to watch-handoff-lifecycle.html for authorization recheck, durable handoff, pending-intent recovery and the linked queue item. Quiet is the shared boundary state; this observation view retains every observation, pause, restored-suspension and degraded-root transition."
+      ]
+    }
+  ]
+}
