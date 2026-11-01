@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 export const sha256 = (data) => new Bun.CryptoHasher("sha256").update(data).digest("hex");
 export const bound = async (path) => ({ path, sha256: sha256(await Bun.file(path).bytes()) });
@@ -60,5 +60,6 @@ export function owner(root, env) {
 }
 
 export async function fresh(path) {
+  await mkdir(dirname(path), { recursive: true });
   await mkdir(path); // Exclusive ownership: existing and partial namespaces are refused.
 }

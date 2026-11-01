@@ -24,6 +24,9 @@ build:
     go build -o bin/engine-cli ./cmd/engine-cli
 
 # Maintainer-only native macOS synthetic Desktop acceptance bundle
+desktop-repair-handoff-test:
+    bun test scripts/desktop-repair/process.test.mjs
+
 desktop-repair-handoff:
     bun scripts/qualify-desktop-repair-handoff.mjs
 
