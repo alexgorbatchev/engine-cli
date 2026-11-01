@@ -11,7 +11,22 @@ import (
 )
 
 func TestCaptureDesktopWrittenRulesRoundTrip(t *testing.T) {
-	data, err := os.ReadFile("testdata/desktop-5.1.0/cases.json")
+	for _, capture := range []struct {
+		directory string
+		rules     int
+	}{
+		{directory: "desktop-5.1.0", rules: 38},
+		{directory: "desktop-5.1.0-addendum", rules: 9},
+	} {
+		t.Run(capture.directory, func(t *testing.T) {
+			assertDesktopRulesRoundTrip(t, filepath.Join("testdata", capture.directory, "cases.json"), capture.rules)
+		})
+	}
+}
+
+func assertDesktopRulesRoundTrip(t *testing.T, casesPath string, rules int) {
+	t.Helper()
+	data, err := os.ReadFile(casesPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +36,7 @@ func TestCaptureDesktopWrittenRulesRoundTrip(t *testing.T) {
 	if err := json.Unmarshal(data, &golden); err != nil {
 		t.Fatal(err)
 	}
-	if len(golden.Cases) != 38 {
+	if len(golden.Cases) != rules {
 		t.Fatalf("incomplete handover: %d rules", len(golden.Cases))
 	}
 	base := t.TempDir()

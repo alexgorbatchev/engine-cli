@@ -1,0 +1,2033 @@
+{
+  "schemaVersion": 1,
+  "desktop": "5.1.0",
+  "ruleVersion": "2.20.0",
+  "runDates": [
+    "2026-10-31"
+  ],
+  "scope": "Desktop-written rules and observed memberships from the corrected pack; separate from the v1 capture",
+  "sources": {
+    "libraryDatabaseSHA256": "22267bf576069259ad0a4e22a38783e0960ca7ed5147fd97d88382573c30050b",
+    "screenshotsSHA256": "0f303fd43862fc4f43a0040ee3a1552b2ca18e6c27a872b86b49fd59cb525b48"
+  },
+  "trackValueEncoding": "SQLite storage type plus exact string data; TEXT data is base64, NULL has no data",
+  "tracks": [
+    {
+      "fixtureNumber": 1,
+      "fileName": "01-deep-house.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RGVlcCBIb3VzZQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "95.99999999999999"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "11"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 2,
+      "fileName": "02-house-party.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "SG91c2UgUGFydHk="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 3,
+      "fileName": "03-warehouse.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "V2FyZWhvdXNl"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "6"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 4,
+      "fileName": "04-house-upper.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "SE9VU0U="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 5,
+      "fileName": "05-techno.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VGVjaG5v"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "15"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 6,
+      "fileName": "06-techno-upper.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VEVDSE5P"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "6"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 7,
+      "fileName": "07-trance.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VHJhbmNl"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "23"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 8,
+      "fileName": "08-special.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TWlrZSdzICIxMDAlX2FcYiIgTWl4"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "15"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 9,
+      "fileName": "09-special-decoy.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TWlrZSdzICIxMDAgcGVyY2VudC1hXGIiIE1peA=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "95.99999999999999"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "20"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 10,
+      "fileName": "10-unicode.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "Q2Fmw6kg5p2x5Lqs"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "15"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 11,
+      "fileName": "11-unicode-decoy.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "Q2FmZSBUb2t5bw=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "95.99999999999999"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "5"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 12,
+      "fileName": "12-percent.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "MTAwJQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "20"
+        },
+        "key": {
+          "type": "integer",
+          "data": "5"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 13,
+      "fileName": "13-percent-decoy.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "MTAwWA=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "3"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 14,
+      "fileName": "14-field-artist.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgQXJ0aXN0"
+        },
+        "artist": {
+          "type": "text",
+          "data": "WmVicmE="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 15,
+      "fileName": "15-field-album.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgQWxidW0="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "WW9uZGVy"
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 16,
+      "fileName": "16-field-genre.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgR2VucmU="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "WHlsbw=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 17,
+      "fileName": "17-field-comment.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgQ29tbWVudA=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "text",
+          "data": "V29tYmF0"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 18,
+      "fileName": "18-field-label.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgTGFiZWw="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "text",
+          "data": "Vm9ydGV4"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 19,
+      "fileName": "19-field-none.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgTm9uZQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "95.99999999999999"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "14"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 20,
+      "fileName": "20-comment-cleared.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "Q29tbWVudCBDbGVhcmVk"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "9"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 21,
+      "fileName": "21-number-one.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIE9uZQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "89.25106048583984"
+        },
+        "year": {
+          "type": "integer",
+          "data": "1999"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "9"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 22,
+      "fileName": "22-number-two.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIFR3bw=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "120"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2000"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "4"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 23,
+      "fileName": "23-number-three.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIFRocmVl"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "121.00000000000003"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2010"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "60"
+        },
+        "key": {
+          "type": "integer",
+          "data": "23"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 24,
+      "fileName": "24-number-four.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIEZvdXI="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "125.00000000000001"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2020"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "4"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 25,
+      "fileName": "25-number-five.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIEZpdmU="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "126"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2021"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "23"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 26,
+      "fileName": "26-length-59.flac",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TGVuZ3RoIDU5"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "59"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "23"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "ZmxhYw=="
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 27,
+      "fileName": "27-length-60.flac",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TGVuZ3RoIDYw"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "95.99999999999999"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "60"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "13"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "ZmxhYw=="
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 28,
+      "fileName": "28-length-61.flac",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TGVuZ3RoIDYx"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "61"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "18"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "ZmxhYw=="
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 29,
+      "fileName": "29-unanalyzed-one.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VW5hbmFseXplZCBPbmU="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "null"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "-1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "0"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 30,
+      "fileName": "30-unanalyzed-two.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VW5hbmFseXplZCBUd28="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "null"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "-1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "0"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 31,
+      "fileName": "31-no-tags.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "MzEtbm8tdGFncy5tcDM="
+        },
+        "artist": {
+          "type": "null"
+        },
+        "album": {
+          "type": "null"
+        },
+        "genre": {
+          "type": "null"
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "180"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "11"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    }
+  ],
+  "cases": [
+    {
+      "name": "T7",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"comment\",\"con\":\"IS\",\"param\":\"'true'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "5f8c9f700a955f39f3a03c4126333facccfe6938a6adbbcda239408c99ca53e0",
+      "expectedFixtureNumbers": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "displayedCount": 30,
+      "screenshotFiles": [
+        "T7.png",
+        "T7-2.png"
+      ]
+    },
+    {
+      "name": "T8",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"comment\",\"con\":\"IS NOT\",\"param\":\"'false'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "9815c2b091ee3e6d067b1545856123fc6c0904d2ed57ea21809b4147e4733566",
+      "expectedFixtureNumbers": [
+        17
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "T8.png",
+        "T8-2.png"
+      ]
+    },
+    {
+      "name": "C1",
+      "rules": "{\"match\":\"one\",\"rules\":[{\"col\":\"artist\",\"con\":\"LIKE\",\"param\":\"'%Zebra%'\",\"v\":\"2.20.0\"},{\"col\":\"album\",\"con\":\"LIKE\",\"param\":\"'%Yonder%'\",\"v\":\"2.20.0\"},{\"col\":\"genre\",\"con\":\"LIKE\",\"param\":\"'%Xylo%'\",\"v\":\"2.20.0\"},{\"col\":\"comment\",\"con\":\"LIKE\",\"param\":\"'%Wombat%'\",\"v\":\"2.20.0\"},{\"col\":\"label\",\"con\":\"LIKE\",\"param\":\"'%Vortex%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "c912a4c1eb852f7f845e6b67000692a695396497b76e59c0982bf2e0ef0b0e02",
+      "expectedFixtureNumbers": [
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "displayedCount": 5,
+      "screenshotFiles": [
+        "C1.png",
+        "C1-2.png"
+      ]
+    },
+    {
+      "name": "B1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\">\",\"param\":\"120\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "a210e746de061a0eed9e4e8e7d80e41f31349a737f4e13320bcb4a67e0a52808",
+      "expectedFixtureNumbers": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        10,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        20,
+        23,
+        24,
+        25,
+        26,
+        28,
+        31
+      ],
+      "displayedCount": 22,
+      "screenshotFiles": [
+        "B1.png",
+        "B1-2.png"
+      ]
+    },
+    {
+      "name": "B2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"<\",\"param\":\"120\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "56be84ced1e60dd995424d22bcaf3039566d2a9b142ea112c9ad97627b452eaa",
+      "expectedFixtureNumbers": [
+        1,
+        9,
+        11,
+        19,
+        21,
+        27
+      ],
+      "displayedCount": 6,
+      "screenshotFiles": [
+        "B2.png",
+        "B2-2.png"
+      ]
+    },
+    {
+      "name": "B3",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"=\",\"param\":\"120\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "8212ca651814834ccaf192454852993587e96f6cafad7f2b16a823a8ab43df1c",
+      "expectedFixtureNumbers": [
+        22
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "B3.png",
+        "B3-2.png"
+      ]
+    },
+    {
+      "name": "B4",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"BETWEEN\",\"param\":\"120 AND 125\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "61a3941c7cfe5273472fed937841b2338b425ae50526da2d71402ccd4cdf3cfb",
+      "expectedFixtureNumbers": [
+        22,
+        23,
+        24
+      ],
+      "displayedCount": 3,
+      "screenshotFiles": [
+        "B4.png",
+        "B4-2.png"
+      ]
+    },
+    {
+      "name": "M1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\">\",\"param\":\"120\",\"v\":\"2.20.0\"},{\"col\":\"year\",\"con\":\"<\",\"param\":\"2021\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "a13ec5683e5fbb52d64129a0d84608d9aa1656f7f3985ea1f24a213be24af23e",
+      "expectedFixtureNumbers": [
+        23,
+        24
+      ],
+      "displayedCount": 2,
+      "screenshotFiles": [
+        "M1.png",
+        "M1-2.png"
+      ]
+    },
+    {
+      "name": "M2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"BEGINSWITH\",\"param\":\"'Number%'\",\"v\":\"2.20.0\"},{\"col\":\"title\",\"con\":\"ENDSWITH\",\"param\":\"'%Three'\",\"v\":\"2.20.0\"},{\"col\":\"artist\",\"con\":\"LIKE\",\"param\":\"'%Fixture%'\",\"v\":\"2.20.0\"},{\"col\":\"fileType\",\"con\":\"LIKE\",\"param\":\"'mp3'\",\"v\":\"2.20.0\"},{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"BETWEEN\",\"param\":\"120 AND 125\",\"v\":\"2.20.0\"},{\"col\":\"year\",\"con\":\"=\",\"param\":\"2010\",\"v\":\"2.20.0\"},{\"col\":\"IFNULL(rating, 0)\",\"con\":\"=\",\"param\":\"60\",\"v\":\"2.20.0\"},{\"col\":\"key\",\"con\":\"=\",\"param\":\"23\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "90c8790597357755df86db2e15dbcd1ce73058433be8b819f7b994ab5543ecba",
+      "expectedFixtureNumbers": [
+        23
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "M2.png",
+        "M2-2.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Comment Cleared was cleared with Desktop's inline editor. Its stored NULL does not show how Desktop treats an empty string written by other software.",
+    "Six tracks analyzed at exactly 3/4 of their click tempo. Use captured metadata and observed memberships rather than generated predictions.",
+    "Ratings exist only on 12 (one stray star) and 23. Keys are Desktop's analyzed values; none were set by hand."
+  ]
+}
