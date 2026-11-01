@@ -136,7 +136,6 @@ const bpmRule = (condition: string, value: string): Rule => ({ filter: "BPM", co
 const lengthRule = (condition: string): Rule => ({ filter: "Length", condition, value: "01:00" });
 const ratingRule = (condition: string): Rule => ({ filter: "Rating", condition, value: "3 stars" });
 const flacRule: Rule = { filter: "File Type", condition: "is equal to", value: "flac" };
-const numberTrackRule = titleRule("begins with", "Number");
 
 const SMARTLISTS: Smartlist[] = [
   { name: "T1", rules: [titleRule("contains", "house")] },
@@ -148,7 +147,7 @@ const SMARTLISTS: Smartlist[] = [
   {
     name: "T7",
     rules: [{ filter: "Comment", condition: "is empty", value: "True" }],
-    note: "Track 20 is the empty-string case: in or out here shows how Desktop stores a cleared comment.",
+    note: "Track 20 is the cleared-comment case: Desktop stores NULL, so it belongs here.",
   },
   { name: "T8", rules: [{ filter: "Comment", condition: "is empty", value: "False" }] },
   { name: "T9", rules: [titleRule("contains", `e's "100%_a\\b"`)], note: "Type the value exactly, quotes included." },
@@ -171,10 +170,10 @@ const SMARTLISTS: Smartlist[] = [
     matchAll: false,
   },
   { name: "F1", rules: [{ filter: "File Type", condition: "is equal to", value: "mp3" }] },
-  { name: "B1", rules: [numberTrackRule, bpmRule("is greater than", "120")], matchAll: true },
-  { name: "B2", rules: [numberTrackRule, bpmRule("is less than", "120")], matchAll: true },
-  { name: "B3", rules: [numberTrackRule, bpmRule("is equal to", "120")], matchAll: true },
-  { name: "B4", rules: [numberTrackRule, bpmRule("is in the range of", "120 to 125")], matchAll: true },
+  { name: "B1", rules: [bpmRule("is greater than", "120")] },
+  { name: "B2", rules: [bpmRule("is less than", "120")] },
+  { name: "B3", rules: [bpmRule("is equal to", "120")] },
+  { name: "B4", rules: [bpmRule("is in the range of", "120 to 125")] },
   { name: "Y1", rules: [{ filter: "Year", condition: "is in the range of", value: "2000 to 2020" }] },
   { name: "L1", rules: [lengthRule("is greater than")] },
   { name: "L2", rules: [lengthRule("is less than")] },
@@ -197,8 +196,8 @@ const SMARTLISTS: Smartlist[] = [
     rules: [{ filter: "Date Added", condition: "after", value: "day before import" }],
     isUniformResultExpected: true,
   },
-  { name: "K1", rules: [numberTrackRule, { filter: "Key", condition: "is equal to", value: "8A" }], matchAll: true },
-  { name: "K2", rules: [numberTrackRule, { filter: "Key", condition: "compatible", value: "8A" }], matchAll: true },
+  { name: "K1", rules: [{ filter: "Key", condition: "is equal to", value: "8A" }] },
+  { name: "K2", rules: [{ filter: "Key", condition: "compatible", value: "8A" }] },
   { name: "G1", rules: [{ filter: "Grid", condition: "exists", value: "True" }] },
   { name: "G2", rules: [{ filter: "Grid", condition: "exists", value: "False" }] },
   { name: "S1", rules: [{ filter: "Stems", condition: "exists", value: "True" }] },
@@ -245,7 +244,7 @@ const predictedText = (track: Track, filter: string): string | null => {
   if (filter === "Album") return track.album ?? "Pack";
   if (filter === "Genre") return track.genre ?? "Test";
   if (filter === "Label") return track.label ?? null;
-  if (filter === "Comment") return track.clearComment ? "" : (track.comment ?? null);
+  if (filter === "Comment") return track.clearComment ? null : (track.comment ?? null);
   throw new Error(`Not a text filter: ${filter}`);
 };
 

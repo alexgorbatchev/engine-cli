@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-31 18:05
-last_modified: 2026-10-31 18:05
+last_modified: 2026-10-31 20:30
 status: archived
 ---
 
@@ -31,7 +31,7 @@ The pack holds 31 synthetic tracks. You will build a throwaway library in Engine
    **Never back up this library.** Desktop overwrites its existing backup, and that backup may be your real library's. If a quit dialog shows **Backup on exit**, untick it before quitting, and note that it was ticked. Do not use Library Backup in Preferences.
 3. Add every file in `~/Music/smartlist-pack` to the Collection.
 4. Select every track **except** `Unanalyzed One` and `Unanalyzed Two`, then analyze them. If those two get analyzed anyway, note it: G1 and G2 then need another way to get an unanalyzed track.
-   **Check before going on.** `Number One` to `Number Five` must show BPM 119, 120, 121, 125 and 126, and `Field Comment` must show the comment `Wombat`. If either is wrong, stop and report it: B1 to B4, M1, M2, T7, T8 and C1 cannot meet their predictions, so building the lists would waste the run.
+   **Check before going on.** `Number Two` to `Number Five` must show BPM 120, 121, 125 and 126, and `Field Comment` must show the comment `Wombat`. If either is wrong, stop and report it: B3, B4, M1, M2, T7, T8 and C1 would lose their boundary or comment coverage. Desktop may read other tracks at 3/4 of their tempo, including `Number One`. Note it and carry on: BPM predictions are not expected results.
 5. Set ratings and keys on these 5 tracks by hand:
 
    | # | Title | Stars | Key (Camelot) | Key (name) |

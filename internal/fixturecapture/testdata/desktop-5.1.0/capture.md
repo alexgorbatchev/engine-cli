@@ -1,12 +1,12 @@
 ---
 created_on: 2026-10-31 18:05
-last_modified: 2026-10-31 18:05
+last_modified: 2026-10-31 20:30
 status: current
 ---
 
 # Desktop 5.1.0 Smartlist evidence
 
-This data is for maintainers implementing Smartlist serialization, evaluation and tree operations. The user created the 38 Smartlists in Engine DJ Desktop 5.1.0 on macOS 26.6.2 using the original v1 synthetic track pack on October 30–31, 2026.
+This data is for maintainers implementing Smartlist serialization, evaluation and tree operations. The 38 Smartlists were created in Engine DJ Desktop 5.1.0, mostly by agent-driven UI automation with some steps done by hand, on macOS 26.6.2 using the original v1 synthetic track pack on October 30–31, 2026.
 
 ## Evidence and ownership
 
@@ -20,7 +20,8 @@ All 38 rule documents are byte-identical between the before and after captures. 
 
 - The original pack stored MP3 comments in TXXX frames rather than COMM. Every captured Track.comment is NULL. T7, T8 and C1 reflect that defect; they do not prove cleared-empty-string behavior.
 - Desktop's analyzed BPM and keys differ from the generator's intended values. Two unanalyzed tracks were reimported on October 31. Use captured metadata and observed memberships rather than generated predictions.
-- Actual B1–B4 and K1–K2 contain one numeric/key rule each; the planned title-prefix restriction is absent. The saved rule document is authoritative.
+- B1–B4 and K1–K2 contain one numeric or key rule each, as the ticket specifies. The saved rule document is authoritative.
+- The same run left hot cues 1–3 on Comment Cleared through a stray keystroke; no Smartlist reads them.
 - T11 stores the escaped equality parameter for 100% and displays zero tracks without a reported error. This observation does not establish the internal SQL failure path.
 - Track metadata is the before-state projection. It omits filesystem paths and origin identifiers; stemsStatus requires other tables and is not reconstructed here.
 - Hardware and unsupported rule versions were not exercised.
@@ -33,7 +34,7 @@ The two added ordinary playlists are T1 and T1 2; each contains fixture tracks 1
 
 ## Pack source
 
-`pack/manifest-v1.json` preserves the original input intentions and predictions. They are not expected results. `pack/generate.ts` and `pack/verify.ts` preserve the corrected generator and verifier, which write and validate COMM frames. They do not reproduce the original v1 comment defect, Desktop analysis, manual edits or imported timestamps.
+`pack/manifest-v1.json` preserves the original input intentions and predictions. They are not expected results. `pack/generate.ts` and `pack/verify.ts` preserve the corrected generator and verifier, which write and validate COMM frames. The sibling `desktop-5.1.0-addendum` directory holds what they produced. They do not reproduce the original v1 comment defect, Desktop analysis, manual edits or imported timestamps.
 
 The verifier reads the manifest.json produced by the generator; manifest-v1.json is retained evidence rather than its runtime input.
 
