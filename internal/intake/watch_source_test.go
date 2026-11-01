@@ -88,7 +88,8 @@ func TestWatchedSourceRetainsIntermediateDirectoryIdentity(t *testing.T) {
 	if err := errors.Join(err, dir.Close()); err != nil {
 		t.Fatal(err)
 	}
-	selected, err := openWatchedSource(canonical, identity, filepath.Join(canonical, "nested", "source.wav"))
+	selectedPath := filepath.Join(canonical, "nested", "source.wav")
+	selected, err := openWatchedSource(canonical, identity, selectedPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +118,7 @@ func TestWatchedSourceRetainsIntermediateDirectoryIdentity(t *testing.T) {
 		if err := os.Rename(nested, nested+"-original"); err != nil {
 			t.Fatal("released descendant still prevented ancestor rename:", err)
 		}
-		missing, err := openWatchedSource(canonical, identity, path)
+		missing, err := openWatchedSource(canonical, identity, selectedPath)
 		if missing != nil {
 			if err := missing.Close(); err != nil {
 				t.Error(err)
@@ -130,7 +131,7 @@ func TestWatchedSourceRetainsIntermediateDirectoryIdentity(t *testing.T) {
 		if err := os.Rename(nested+"-original", nested); err != nil {
 			t.Fatal(err)
 		}
-		selected, err = openWatchedSource(canonical, identity, path)
+		selected, err = openWatchedSource(canonical, identity, selectedPath)
 		if err != nil {
 			t.Fatal("restored directory could not be selected:", err)
 		}
