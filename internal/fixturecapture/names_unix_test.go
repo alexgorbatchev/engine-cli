@@ -3,9 +3,11 @@
 package fixturecapture
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -19,6 +21,9 @@ func TestCaptureRefusesUnrepresentableNativeFilename(t *testing.T) {
 	}
 	name := filepath.Join(before, "native-"+string([]byte{255}))
 	if err := os.WriteFile(name, []byte("evidence must not be renamed by JSON"), 0o600); err != nil {
+		if errors.Is(err, syscall.EILSEQ) {
+			t.Skipf("native filesystem rejects invalid UTF-8 filenames: %v", err)
+		}
 		t.Fatal(err)
 	}
 	out := filepath.Join(base, "capture")
