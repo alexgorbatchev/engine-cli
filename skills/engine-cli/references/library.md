@@ -2,6 +2,10 @@
 
 All commands inherit the root flags documented in [SKILL.md](../SKILL.md).
 
+`library verify`, `refresh`, `backup` (including `--list`), `restore`, and `prune` write their reports to stdout in both human and agent modes. Progress, safety-backup notices, and errors go to stderr. `verify --json` writes one JSON report to stdout.
+
+A result or `operation_id` output failure can occur after a durable change. Inspect `library history` before retrying a mutation. A partial refresh retains its available report on stdout and returns its mutation error; if publishing that report or operation ID also fails, the command preserves both error causes. Use the recorded operation ID for a reviewed, exact-change Undo.
+
 ## `engine-cli library`
 
 Manage, audit, synchronize, and back up Engine DJ databases

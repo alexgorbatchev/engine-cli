@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -66,7 +67,9 @@ Retry the check; if it still fails, inspect the library in Engine DJ before maki
   engine-cli -l "/Volumes/DJ_USB/Engine Library" library verify
   engine-cli library verify --json`,
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			var result []byte
+			defer func() { err = errors.Join(err, writeLibraryResult(cmd, result)) }()
 			dbPath := filepath.Join(libDirFlag, "Database2", "m.db")
 			database, err := db.Open(dbPath, true)
 			if err != nil {
@@ -94,29 +97,29 @@ Retry the check; if it still fails, inspect the library in Engine DJ before maki
 			}
 
 			if agent.IsAgentMode() {
-				cmd.Printf("total_tracks: %d\n", report.TotalTracks)
-				cmd.Printf("missing_files: %d\n", report.MissingOnDiskCount)
-				cmd.Printf("corrupt_sizes: %d\n", report.BytesMismatchCount)
-				cmd.Printf("broken_entities: %d\n", report.OrphanedCount)
-				cmd.Printf("missing_artwork: %d\n", report.MissingArtCount)
-				cmd.Printf("empty_playlists: %d\n", report.EmptyPlaylistCount)
-				cmd.Printf("status: %s\n", statusStr)
+				result = fmt.Appendf(result, "total_tracks: %d\n", report.TotalTracks)
+				result = fmt.Appendf(result, "missing_files: %d\n", report.MissingOnDiskCount)
+				result = fmt.Appendf(result, "corrupt_sizes: %d\n", report.BytesMismatchCount)
+				result = fmt.Appendf(result, "broken_entities: %d\n", report.OrphanedCount)
+				result = fmt.Appendf(result, "missing_artwork: %d\n", report.MissingArtCount)
+				result = fmt.Appendf(result, "empty_playlists: %d\n", report.EmptyPlaylistCount)
+				result = fmt.Appendf(result, "status: %s\n", statusStr)
 				return nil
 			}
 
-			cmd.Println("Library Verification Report")
-			cmd.Printf("  Total Tracks Audited:   %d\n", report.TotalTracks)
-			cmd.Printf("  Missing Audio Files:    %d\n", report.MissingOnDiskCount)
-			cmd.Printf("  Size Mismatches:        %d\n", report.BytesMismatchCount)
-			cmd.Printf("  Broken Playlist Links:  %d\n", report.OrphanedCount)
-			cmd.Printf("  Missing Album Covers:   %d\n", report.MissingArtCount)
-			cmd.Printf("  Empty Playlists:        %d\n", report.EmptyPlaylistCount)
-			cmd.Printf("  Overall Health Status:  %s\n", statusStr)
+			result = fmt.Appendln(result, "Library Verification Report")
+			result = fmt.Appendf(result, "  Total Tracks Audited:   %d\n", report.TotalTracks)
+			result = fmt.Appendf(result, "  Missing Audio Files:    %d\n", report.MissingOnDiskCount)
+			result = fmt.Appendf(result, "  Size Mismatches:        %d\n", report.BytesMismatchCount)
+			result = fmt.Appendf(result, "  Broken Playlist Links:  %d\n", report.OrphanedCount)
+			result = fmt.Appendf(result, "  Missing Album Covers:   %d\n", report.MissingArtCount)
+			result = fmt.Appendf(result, "  Empty Playlists:        %d\n", report.EmptyPlaylistCount)
+			result = fmt.Appendf(result, "  Overall Health Status:  %s\n", statusStr)
 
 			if len(report.Issues) > 0 {
-				cmd.Println("\nDetected Issues:")
+				result = fmt.Appendln(result, "\nDetected Issues:")
 				for _, iss := range report.Issues {
-					cmd.Printf("  [%s] %s\n", iss.Type, iss.Description)
+					result = fmt.Appendf(result, "  [%s] %s\n", iss.Type, iss.Description)
 				}
 			}
 
@@ -140,16 +143,22 @@ Automatically saves a safety backup of your library before making changes unless
   engine-cli -l "/Volumes/DJ_USB/Engine Library" library refresh
   engine-cli --no-backup library refresh`,
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			var result []byte
+			defer func() { err = errors.Join(err, writeLibraryResult(cmd, result)) }()
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
 			if err != nil {
 				return fmt.Errorf("automatic backup before sync: %w", err)
 			}
 			if bkInfo != nil {
 				if agent.IsAgentMode() {
-					cmd.Printf("backup_snapshot: %s\n", bkInfo.Path)
+					if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "backup_snapshot: %s\n", bkInfo.Path); err != nil {
+						return err
+					}
 				} else {
-					cmd.Printf("Created automated backup snapshot at %s\n", bkInfo.Path)
+					if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Created automated backup snapshot at %s\n", bkInfo.Path); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -161,7 +170,9 @@ Automatically saves a safety backup of your library before making changes unless
 			defer database.Close()
 
 			if !agent.IsAgentMode() {
-				cmd.Println("Scanning on-disk audio files and synchronizing tags with database...")
+				if _, err := fmt.Fprintln(cmd.ErrOrStderr(), "Scanning on-disk audio files and synchronizing tags with database..."); err != nil {
+					return err
+				}
 			}
 			report, refreshErr := sync.SyncLibrary(cmd.Context(), database, libDirFlag)
 			if report == nil {
@@ -170,40 +181,40 @@ Automatically saves a safety backup of your library before making changes unless
 
 			if agent.IsAgentMode() {
 				if refreshErr != nil {
-					cmd.Println("status: incomplete")
-					cmd.Printf("error_code: %s\n", progress.ErrorCode(refreshErr))
+					result = fmt.Appendln(result, "status: incomplete")
+					result = fmt.Appendf(result, "error_code: %s\n", progress.ErrorCode(refreshErr))
 				} else {
-					cmd.Println("status: complete")
+					result = fmt.Appendln(result, "status: complete")
 				}
-				cmd.Printf("total_tracks: %d\n", report.TotalDBTracks)
-				cmd.Printf("updated_records: %d\n", report.UpdatedCount)
-				cmd.Printf("missing_files: %d\n", report.MissingCount)
-				cmd.Printf("unindexed_files: %d\n", report.UnindexedCount)
+				result = fmt.Appendf(result, "total_tracks: %d\n", report.TotalDBTracks)
+				result = fmt.Appendf(result, "updated_records: %d\n", report.UpdatedCount)
+				result = fmt.Appendf(result, "missing_files: %d\n", report.MissingCount)
+				result = fmt.Appendf(result, "unindexed_files: %d\n", report.UnindexedCount)
 				for _, p := range report.UnindexedPaths {
-					cmd.Printf("unindexed: %s\n", p)
+					result = fmt.Appendf(result, "unindexed: %s\n", p)
 				}
 				return refreshErr
 			}
 
 			if refreshErr != nil {
-				cmd.Println("Refresh stopped before completion. Review the partial counts below; use library undo to revert saved updates.")
+				result = fmt.Appendln(result, "Refresh stopped before completion. Review the partial counts below; use library undo to revert saved updates.")
 			} else {
-				cmd.Println("Library Sync Complete!")
+				result = fmt.Appendln(result, "Library Sync Complete!")
 			}
-			cmd.Printf("  Total Tracks in DB:   %d\n", report.TotalDBTracks)
-			cmd.Printf("  Updated Records:      %d\n", report.UpdatedCount)
-			cmd.Printf("  Missing Files:        %d\n", report.MissingCount)
-			cmd.Printf("  Unindexed Disk Files: %d\n", report.UnindexedCount)
+			result = fmt.Appendf(result, "  Total Tracks in DB:   %d\n", report.TotalDBTracks)
+			result = fmt.Appendf(result, "  Updated Records:      %d\n", report.UpdatedCount)
+			result = fmt.Appendf(result, "  Missing Files:        %d\n", report.MissingCount)
+			result = fmt.Appendf(result, "  Unindexed Disk Files: %d\n", report.UnindexedCount)
 
 			if len(report.UnindexedPaths) > 0 {
-				cmd.Println("\nUnindexed audio files found on disk:")
+				result = fmt.Appendln(result, "\nUnindexed audio files found on disk:")
 				for idx, p := range report.UnindexedPaths {
 					if idx < 15 {
-						cmd.Printf("  - %s\n", p)
+						result = fmt.Appendf(result, "  - %s\n", p)
 					}
 				}
 				if len(report.UnindexedPaths) > 15 {
-					cmd.Printf("  ... and %d more files\n", len(report.UnindexedPaths)-15)
+					result = fmt.Appendf(result, "  ... and %d more files\n", len(report.UnindexedPaths)-15)
 				}
 			}
 
@@ -229,7 +240,9 @@ By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optiona
   engine-cli library backup "/Volumes/BackupDrive/EngineBackups"
   engine-cli library backup --list`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			var result []byte
+			defer func() { err = errors.Join(err, writeLibraryResult(cmd, result)) }()
 			destDir := outDirFlag
 			if len(args) > 0 && args[0] != "" {
 				destDir = args[0]
@@ -249,30 +262,32 @@ By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optiona
 				}
 				if len(backups) == 0 {
 					if agent.IsAgentMode() {
-						cmd.Println("count: 0")
+						result = fmt.Appendln(result, "count: 0")
 						return nil
 					}
-					cmd.Printf("No backups found in %s\n", destDir)
+					result = fmt.Appendf(result, "No backups found in %s\n", destDir)
 					return nil
 				}
 
 				if agent.IsAgentMode() {
-					cmd.Printf("count: %d\n", len(backups))
+					result = fmt.Appendf(result, "count: %d\n", len(backups))
 					for _, b := range backups {
-						cmd.Printf("backup: %s | timestamp: %s | size_bytes: %d\n", b.Path, b.Timestamp.Format("2006-01-02T15:04:05Z"), b.SizeBytes)
+						result = fmt.Appendf(result, "backup: %s | timestamp: %s | size_bytes: %d\n", b.Path, b.Timestamp.Format("2006-01-02T15:04:05Z"), b.SizeBytes)
 					}
 					return nil
 				}
 
-				cmd.Printf("Available Backups in %s:\n", destDir)
+				result = fmt.Appendf(result, "Available Backups in %s:\n", destDir)
 				for _, b := range backups {
-					cmd.Printf("  - %s (%s, %d bytes)\n", b.Path, b.Timestamp.Format("2006-01-02 15:04:05"), b.SizeBytes)
+					result = fmt.Appendf(result, "  - %s (%s, %d bytes)\n", b.Path, b.Timestamp.Format("2006-01-02 15:04:05"), b.SizeBytes)
 				}
 				return nil
 			}
 
 			if !agent.IsAgentMode() {
-				cmd.Printf("Creating backup snapshot from %s...\n", libDirFlag)
+				if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Creating backup snapshot from %s...\n", libDirFlag); err != nil {
+					return err
+				}
 			}
 			info, err := backup.CreateBackup(cmd.Context(), libDirFlag, destDir)
 			if err != nil {
@@ -280,19 +295,19 @@ By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optiona
 			}
 
 			if agent.IsAgentMode() {
-				cmd.Println("status: success")
-				cmd.Printf("path: %s\n", info.Path)
-				cmd.Printf("size_bytes: %d\n", info.SizeBytes)
-				cmd.Printf("db_files: %d\n", info.DBFiles)
-				cmd.Printf("art_files: %d\n", info.ArtFiles)
+				result = fmt.Appendln(result, "status: success")
+				result = fmt.Appendf(result, "path: %s\n", info.Path)
+				result = fmt.Appendf(result, "size_bytes: %d\n", info.SizeBytes)
+				result = fmt.Appendf(result, "db_files: %d\n", info.DBFiles)
+				result = fmt.Appendf(result, "art_files: %d\n", info.ArtFiles)
 				return nil
 			}
 
-			cmd.Println("Backup Created Successfully!")
-			cmd.Printf("  Snapshot Location: %s\n", info.Path)
-			cmd.Printf("  Total Size:        %d bytes\n", info.SizeBytes)
-			cmd.Printf("  Database Files:    %d\n", info.DBFiles)
-			cmd.Printf("  Artwork Files:     %d\n", info.ArtFiles)
+			result = fmt.Appendln(result, "Backup Created Successfully!")
+			result = fmt.Appendf(result, "  Snapshot Location: %s\n", info.Path)
+			result = fmt.Appendf(result, "  Total Size:        %d bytes\n", info.SizeBytes)
+			result = fmt.Appendf(result, "  Database Files:    %d\n", info.DBFiles)
+			result = fmt.Appendf(result, "  Artwork Files:     %d\n", info.ArtFiles)
 
 			return nil
 		},
@@ -317,7 +332,9 @@ Arguments:
 		Example: `  engine-cli library restore <lib-dir>/.engine-cli/backups/backup-2026-08-23T20-30-00Z
   engine-cli -l "/Volumes/DJ_USB/Engine Library" library restore "/Backups/backup-2026-08-23T20-30-00Z"`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			var result []byte
+			defer func() { err = errors.Join(err, writeLibraryResult(cmd, result)) }()
 			snapshotPath := args[0]
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
 			if err != nil {
@@ -325,14 +342,20 @@ Arguments:
 			}
 			if bkInfo != nil {
 				if agent.IsAgentMode() {
-					cmd.Printf("safety_backup: %s\n", bkInfo.Path)
+					if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "safety_backup: %s\n", bkInfo.Path); err != nil {
+						return err
+					}
 				} else {
-					cmd.Printf("Saved pre-restore safety backup to %s\n", bkInfo.Path)
+					if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Saved pre-restore safety backup to %s\n", bkInfo.Path); err != nil {
+						return err
+					}
 				}
 			}
 
 			if !agent.IsAgentMode() {
-				cmd.Printf("Restoring library from %s to %s...\n", snapshotPath, libDirFlag)
+				if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Restoring library from %s to %s...\n", snapshotPath, libDirFlag); err != nil {
+					return err
+				}
 			}
 
 			err = backup.RestoreBackup(cmd.Context(), snapshotPath, libDirFlag)
@@ -341,15 +364,15 @@ Arguments:
 			}
 
 			if agent.IsAgentMode() {
-				cmd.Println("status: success")
-				cmd.Printf("restored_from: %s\n", snapshotPath)
-				cmd.Printf("target_dir: %s\n", libDirFlag)
+				result = fmt.Appendln(result, "status: success")
+				result = fmt.Appendf(result, "restored_from: %s\n", snapshotPath)
+				result = fmt.Appendf(result, "target_dir: %s\n", libDirFlag)
 				return nil
 			}
 
-			cmd.Println("Library Restored Successfully!")
-			cmd.Printf("  Restored From: %s\n", snapshotPath)
-			cmd.Printf("  Target Library: %s\n", libDirFlag)
+			result = fmt.Appendln(result, "Library Restored Successfully!")
+			result = fmt.Appendf(result, "  Restored From: %s\n", snapshotPath)
+			result = fmt.Appendf(result, "  Target Library: %s\n", libDirFlag)
 
 			return nil
 		},
@@ -367,16 +390,22 @@ Automatically saves a safety backup of your library before applying changes unle
   engine-cli -l "/Volumes/DJ_USB/Engine Library" library prune
   engine-cli --no-backup library prune`,
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			var result []byte
+			defer func() { err = errors.Join(err, writeLibraryResult(cmd, result)) }()
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
 			if err != nil {
 				return fmt.Errorf("automatic backup before library prune: %w", err)
 			}
 			if bkInfo != nil {
 				if agent.IsAgentMode() {
-					cmd.Printf("backup_snapshot: %s\n", bkInfo.Path)
+					if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "backup_snapshot: %s\n", bkInfo.Path); err != nil {
+						return err
+					}
 				} else {
-					cmd.Printf("Created automated backup snapshot at %s\n", bkInfo.Path)
+					if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Created automated backup snapshot at %s\n", bkInfo.Path); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -390,7 +419,9 @@ Automatically saves a safety backup of your library before applying changes unle
 			artCacheDir := filepath.Join(libDirFlag, "Artwork")
 
 			if !agent.IsAgentMode() {
-				cmd.Println("Pruning orphaned album artwork records and stale cache files...")
+				if _, err := fmt.Fprintln(cmd.ErrOrStderr(), "Pruning orphaned album artwork records and stale cache files..."); err != nil {
+					return err
+				}
 			}
 			report, err := artwork.PruneArtwork(cmd.Context(), database, artCacheDir)
 			if err != nil {
@@ -398,17 +429,28 @@ Automatically saves a safety backup of your library before applying changes unle
 			}
 
 			if agent.IsAgentMode() {
-				cmd.Println("status: complete")
-				cmd.Printf("deleted_db_rows: %d\n", report.DeletedDBRows)
-				cmd.Printf("deleted_disk_files: %d\n", report.DeletedDiskFiles)
+				result = fmt.Appendln(result, "status: complete")
+				result = fmt.Appendf(result, "deleted_db_rows: %d\n", report.DeletedDBRows)
+				result = fmt.Appendf(result, "deleted_disk_files: %d\n", report.DeletedDiskFiles)
 				return nil
 			}
 
-			cmd.Println("Library Prune Complete!")
-			cmd.Printf("  Deleted DB Rows:    %d\n", report.DeletedDBRows)
-			cmd.Printf("  Deleted Disk Files: %d\n", report.DeletedDiskFiles)
+			result = fmt.Appendln(result, "Library Prune Complete!")
+			result = fmt.Appendf(result, "  Deleted DB Rows:    %d\n", report.DeletedDBRows)
+			result = fmt.Appendf(result, "  Deleted Disk Files: %d\n", report.DeletedDiskFiles)
 
 			return nil
 		},
 	}
+}
+
+func writeLibraryResult(cmd *cobra.Command, result []byte) error {
+	if len(result) == 0 {
+		return nil
+	}
+	_, err := cmd.OutOrStdout().Write(result)
+	if err != nil {
+		return fmt.Errorf("writing library result: %w", err)
+	}
+	return nil
 }
