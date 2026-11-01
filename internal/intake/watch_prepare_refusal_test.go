@@ -1,6 +1,7 @@
 package intake
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -104,6 +105,10 @@ func TestWatchPreparationRechecksRestoredAuthorizationAfterSelection(t *testing.
 func TestManualPreparationRechecksOriginalNameAfterSelection(t *testing.T) {
 	s, _ := queueFixture(t)
 	path := sourceFixture(t, "original.wav")
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := s.Enqueue(t.Context(), path); err != nil {
 		t.Fatal(err)
 	}
@@ -116,15 +121,32 @@ func TestManualPreparationRechecksOriginalNameAfterSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := selected.close(); err != nil {
-			t.Error(err)
+		if selected != nil {
+			if err := selected.close(); err != nil {
+				t.Error(err)
+			}
 		}
 	})
-	if err := os.Rename(path, path+"-retained"); err != nil {
-		t.Fatal(err)
+	if retainedRenameWasDenied(t, os.Rename(path, path+"-retained"), false) {
+		if err := selected.local.Check(); err != nil {
+			t.Fatal("native rename refusal invalidated retained source:", err)
+		}
+		current, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(original, current) {
+			t.Fatalf("native rename refusal changed source: %v", err)
+		}
+		if err := selected.close(); err != nil {
+			t.Fatal(err)
+		}
+		selected = nil
+		if err := os.Rename(path, path+"-retained"); err != nil {
+			t.Fatal("released source still prevented rename:", err)
+		}
 	}
-	if err := selected.local.Check(); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("unlinked original name remained authorized: %v", err)
+	if selected != nil {
+		if err := selected.local.Check(); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("unlinked original name remained authorized: %v", err)
+		}
 	}
 	if absent, err := s.selectPreparationSource(t.Context(), claimed); absent != nil || !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing unconfigured source selected: %v %v", absent, err)
@@ -132,8 +154,18 @@ func TestManualPreparationRechecksOriginalNameAfterSelection(t *testing.T) {
 	if err := os.Rename(path+"-retained", path); err != nil {
 		t.Fatal(err)
 	}
+	if selected == nil {
+		selected, err = s.selectPreparationSource(t.Context(), claimed)
+		if err != nil {
+			t.Fatal("released source could not be selected again:", err)
+		}
+	}
 	if err := selected.local.Check(); err != nil {
 		t.Fatal("original name did not recover:", err)
+	}
+	current, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(original, current) {
+		t.Fatalf("rename recovery changed source: %v", err)
 	}
 	if err := s.Pause(t.Context()); err != nil {
 		t.Fatal(err)

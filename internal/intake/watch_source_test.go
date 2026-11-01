@@ -1,6 +1,7 @@
 package intake
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -74,7 +75,8 @@ func TestWatchedSourceRetainsIntermediateDirectoryIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(nested, "source.wav")
-	if err := os.WriteFile(path, []byte("original native audio"), 0600); err != nil {
+	original := []byte("original native audio")
+	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
 	dir, err := watchfs.Open(root)
@@ -90,12 +92,56 @@ func TestWatchedSourceRetainsIntermediateDirectoryIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer selected.Close()
+	t.Cleanup(func() {
+		if selected != nil {
+			if err := selected.Close(); err != nil {
+				t.Error(err)
+			}
+		}
+	})
 	if err := selected.Check(); err != nil {
 		t.Fatal("open retained source refused:", err)
 	}
-	if err := os.Rename(nested, nested+"-original"); err != nil {
-		t.Fatal(err)
+	if retainedRenameWasDenied(t, os.Rename(nested, nested+"-original"), true) {
+		if err := selected.Check(); err != nil {
+			t.Fatal("native ancestor rename refusal invalidated source:", err)
+		}
+		current, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(original, current) {
+			t.Fatalf("native ancestor rename refusal changed source: %v", err)
+		}
+		if err := selected.Close(); err != nil {
+			t.Fatal(err)
+		}
+		selected = nil
+		if err := os.Rename(nested, nested+"-original"); err != nil {
+			t.Fatal("released descendant still prevented ancestor rename:", err)
+		}
+		missing, err := openWatchedSource(canonical, identity, path)
+		if missing != nil {
+			if err := missing.Close(); err != nil {
+				t.Error(err)
+			}
+			t.Fatal("missing original directory selected after rename")
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("missing original directory: %v", err)
+		}
+		if err := os.Rename(nested+"-original", nested); err != nil {
+			t.Fatal(err)
+		}
+		selected, err = openWatchedSource(canonical, identity, path)
+		if err != nil {
+			t.Fatal("restored directory could not be selected:", err)
+		}
+		if err := selected.Check(); err != nil {
+			t.Fatal("restored source refused:", err)
+		}
+		current, err = os.ReadFile(path)
+		if err != nil || !bytes.Equal(original, current) {
+			t.Fatalf("ancestor rename recovery changed source: %v", err)
+		}
+		return
 	}
 	if err := os.Mkdir(nested, 0700); err != nil {
 		t.Fatal(err)
