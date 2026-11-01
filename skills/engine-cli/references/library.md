@@ -360,3 +360,5 @@ Audits Track, Playlist, PlaylistEntity, and AlbumArt tables in Database2/m.db fo
 
 - `--help, -h` (bool; default `false`): help for verify.
 - `--json` (bool; default `false`): Output verification report in JSON format.
+
+With `--json`, stdout contains exactly one JSON report in human and agent modes; progress stays on stderr, including JSON-line events with `--progress-json`. A completed audit exits successfully even when `isHealthy` is false. An incomplete audit returns an error without a report, and an output-write failure also fails the command.

@@ -80,11 +80,11 @@ Retry the check; if it still fails, inspect the library in Engine DJ before maki
 			}
 
 			if jsonOutput {
-				jsonBytes, err := json.MarshalIndent(report, "", "  ")
-				if err != nil {
-					return fmt.Errorf("formatting JSON verification report: %w", err)
+				encoder := json.NewEncoder(cmd.OutOrStdout())
+				encoder.SetIndent("", "  ")
+				if err := encoder.Encode(report); err != nil {
+					return fmt.Errorf("writing JSON verification report: %w", err)
 				}
-				cmd.Println(string(jsonBytes))
 				return nil
 			}
 
