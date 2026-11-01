@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/watchfs"
 )
 
 func TestLocalRetainedCopyResumesOriginalRequestAfterRename(t *testing.T) {
@@ -23,11 +25,24 @@ func TestLocalRetainedCopyResumesOriginalRequestAfterRename(t *testing.T) {
 	if err := os.Rename(source.Path, alias.Path); err != nil {
 		t.Fatal(err)
 	}
-	file, err := os.Open(alias.Path)
+	directory, err := watchfs.Open(filepath.Dir(alias.Path))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	t.Cleanup(func() {
+		if err := directory.Close(); err != nil {
+			t.Error("close selected directory:", err)
+		}
+	})
+	file, err := directory.OpenFile(filepath.Base(alias.Path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil {
+			t.Error("close selected source:", err)
+		}
+	})
 	selectFile := func() (LocalFile, error) {
 		return LocalFile{File: file, Check: func() error { return alias.check(file) }}, nil
 	}
