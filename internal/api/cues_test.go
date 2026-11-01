@@ -157,3 +157,44 @@ func TestCuePreflightRejectsBeforeSafetyArtifacts(t *testing.T) {
 		})
 	}
 }
+
+func TestMissingPerformanceStorageRejectsCueWritesWithoutEnrollment(t *testing.T) {
+	for _, operation := range []string{"track.cue.set", "track.cue.clear"} {
+		t.Run(operation, func(t *testing.T) {
+			s, d, library := cueLibrary(t)
+			if _, err := d.Exec("DROP TABLE PerformanceData"); err != nil {
+				t.Fatal(err)
+			}
+			before := inspectedCue(t, s)
+			values := map[string]any{"identifier": "1", "slot": 8, "revision": before.Revision}
+			if operation == "track.cue.set" {
+				values["position"], values["color"] = 1.0, "#12ABEF"
+			}
+			body, err := json.Marshal(values)
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := awaitAPIJob(t, s, submitAPIJob(t, s, operation, string(body)))
+			if job["state"] != "failed" || job["error"].(map[string]any)["code"] != "saved_performance_storage_unavailable" || job["history_id"] != nil {
+				t.Fatalf("missing storage result=%+v", job)
+			}
+			after := inspectedCue(t, s)
+			if after.Revision != before.Revision || len(after.Cues) != 0 || len(after.Loops) != 0 {
+				t.Fatalf("refusal changed readable performance: before=%+v after=%+v", before, after)
+			}
+			var tables int
+			if err := d.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE name='PerformanceData'").Scan(&tables); err != nil || tables != 0 {
+				t.Fatalf("refusal created native storage: count=%d err=%v", tables, err)
+			}
+			for _, folder := range []string{"backups", "history"} {
+				entries, err := os.ReadDir(filepath.Join(library, ".engine-cli", folder))
+				if err != nil && !os.IsNotExist(err) {
+					t.Fatal(err)
+				}
+				if len(entries) != 0 {
+					t.Fatalf("refusal created %s artifacts", folder)
+				}
+			}
+		})
+	}
+}

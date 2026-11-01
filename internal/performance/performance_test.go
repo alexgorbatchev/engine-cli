@@ -281,7 +281,7 @@ func TestUnavailableNativePerformanceRejectsEditing(t *testing.T) {
 	for _, tt := range []struct {
 		name, statement, code string
 	}{
-		{"missing table", "DROP TABLE PerformanceData", "saved_performance_unavailable"},
+		{"missing table", "DROP TABLE PerformanceData", "saved_performance_storage_unavailable"},
 		{"damaged cues", "UPDATE PerformanceData SET quickCues=x'01' WHERE trackId=1", "invalid_saved_performance"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -4,7 +4,7 @@ description: Use Engine CLI to inspect, edit, analyze, import, synchronize, back
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-30 19:40
-  last_modified: 2026-10-31 20:44
+  last_modified: 2026-11-01 14:19
   status: current
 ---
 
@@ -63,7 +63,7 @@ engine-cli -l "/music/Engine Library" library undo "<history-id>" --dry-run
 
 For custom tags, list taxonomy first, inspect selected assignments, and keep the global revision. Single-track `--values` replaces the entire value set; explicit `--values=` clears it. Batch add/remove preserves untouched values and requires exact reviewed selection/token consent. Category/value deletion and orphan reconciliation have separate previews; never infer deletion consent from an assignment editor.
 
-For hot cues, inspect first, then provide the inspected revision, slot A–H and fractional seconds to set/clear. Preserve other slots and native performance data. Missing native extent may require decoding actual audio; unavailable media is not permission to invent a sample rate or duration. Inspect grid edits and analysis options in the track reference; these are collection writes, not browser playback controls.
+For hot cues, inspect first, then provide the inspected revision, slot A–H and fractional seconds to set/clear. Preserve other slots and native performance data. Missing native extent may require decoding actual audio; unavailable media is not permission to invent a sample rate or duration. `saved_performance_storage_unavailable` refuses editing when the library has no native performance table; use a library with native performance storage, rather than retrying or creating that table. Reading absent storage still returns empty markers. `saved_performance_unavailable` instead reports a failed read: check library access and refresh. `invalid_saved_performance` means saved cues or loops could not be decoded safely for reading or editing; check the track in Engine DJ before trying again. Inspect grid edits and analysis options in the track reference; these are collection writes, not browser playback controls.
 
 ## HTTP jobs, failures and recovery
 

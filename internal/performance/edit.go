@@ -58,7 +58,7 @@ func Prepare(ctx context.Context, d *sql.DB, library string, edit Edit) (*Prepar
 		return nil, err
 	}
 	if !s.Table {
-		return nil, failure("saved_performance_unavailable", errors.New("the library has no native performance table"))
+		return nil, failure("saved_performance_storage_unavailable", errors.New("the library has no native performance table"))
 	}
 	p := &Prepared{before: s, after: s, slot: edit.Slot, library: library}
 	if edit.Clear {
