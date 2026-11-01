@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-10-31 13:17
+last_modified: 2026-10-31 21:53
 status: current
 ---
 
@@ -17,6 +17,7 @@ The test for everything this CLI writes: close the app, open the library in Engi
 ## Commands
 - **Architecture:** [diagram index](docs/internal/architecture/index.md); `just architecture` regenerates the diagrams with `ARCHIFY_CLI` pointing to Archify 3.2.1-dev.4's `bin/archify.mjs`. `just architecture-serve` serves the index through devhost at `https://engine-cli-archify.localhost`; `ENGINE_DEV_HOST_SUFFIX` overrides the hostname suffix.
 - **Build Local Binary:** `just build` (compiles to `bin/engine-cli`)
+- **Maintainer Desktop Fixtures:** [native repair handoff procedure](docs/internal/references/desktop-repair-handoff.md); `just desktop-repair-handoff` requires a clean committed native macOS checkout and explicit reviewed source/golden revisions. It is not a public CLI command or Desktop acceptance result.
 - **Run CLI with Arguments:** `just run [args...]`
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
 - **Setup:** `just setup` (`go mod download`)

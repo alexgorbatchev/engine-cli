@@ -23,6 +23,10 @@ build:
     mkdir -p bin
     go build -o bin/engine-cli ./cmd/engine-cli
 
+# Maintainer-only native macOS synthetic Desktop acceptance bundle
+desktop-repair-handoff:
+    bun scripts/qualify-desktop-repair-handoff.mjs
+
 # Install engine-cli binary to GOPATH bin directory
 install:
     go install ./cmd/engine-cli

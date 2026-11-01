@@ -1,0 +1,78 @@
+name: Desktop repair handoff
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_revision:
+        description: Reviewed full committed source revision containing this harness
+        required: true
+        type: string
+      golden_revision:
+        description: Reviewed full ancestor revision containing the captured Desktop golden
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  native-handoff:
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            arch: arm64
+          - runner: macos-26-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    env:
+      HANDOFF_SOURCE_COMMIT: ${{ inputs.source_revision }}
+      HANDOFF_GOLDEN_COMMIT: ${{ inputs.golden_revision }}
+      HANDOFF_OUTPUT: ${{ github.workspace }}/.tmp/desktop-repair-native
+      HANDOFF_EXPECTED_ARCH: ${{ matrix.arch }}
+      GOMAXPROCS: '2'
+      GOFLAGS: '-p=1 -tags=pcm_native'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_revision }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+      - name: Install native audio test dependency
+        run: |
+          brew install ffmpeg-full just
+          echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
+      - name: Test native safety boundaries
+        run: go test -race -count=1 -timeout=10m ./internal/fixturecapture/handoffcmd
+      - name: Build and qualify fresh repaired-first delivery
+        run: just desktop-repair-handoff
+      - name: Retain separate maintainer native qualification evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-repair-evidence-darwin-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            .tmp/desktop-repair-native/evidence/**/*.json
+            .tmp/desktop-repair-native/evidence/**/*.stdout
+            .tmp/desktop-repair-native/evidence/**/*.stderr
+            .tmp/desktop-repair-native/evidence/**/*.sha256
+            .tmp/desktop-repair-native/terminal.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain only the synthetic delivery archive and sanitized receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-repair-darwin-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            .tmp/desktop-repair-native/desktop-repair-darwin-${{ matrix.arch }}.tar.gz
+            .tmp/desktop-repair-native/artifact.json
+          if-no-files-found: error
+          retention-days: 14
