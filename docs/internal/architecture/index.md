@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-31 19:49
+last_modified: 2026-10-31 22:22
 status: current
 ---
 
@@ -158,3 +158,5 @@ Watcher registrations are deduplicated by native directory identity. A changed n
 The discovery and handoff lifecycle views share the quiet-version boundary. Together they preserve all eight states and thirteen transitions, including immediate observation rescan and interrupted handoff self-loops.
 
 The overview documents shared offline Desktop fixture capture through CLI and HTTP jobs: retained read-only archival inputs, separate working-copy recovery, native SQLite snapshots, typed exports and full-row comparison. HTTP output writes use existing serialization without collection mutation, normal backup, or Undo enrollment. Source evidence is committed at 16980172720ca6644c55cd3272b6a3ce9774f37b; existing diagram pins retain their historical scope.
+
+The overview adds a maintainer handoff supplement pinned to committed Engine CLI [da0162f](https://github.com/alexgorbatchev/engine-cli/commit/da0162f016a99113b5e37362668502aca83dbae6): native arm64/x64 provenance, the complete four-case baseline barrier, repaired/idempotent and relocated-media verification, exact-ID Undo on the qualification seed, and an independently repaired-first delivery archive. Native automation remains separate from actual human Desktop acceptance. Existing offline capture evidence at 16980172720ca6644c55cd3272b6a3ce9774f37b and historical diagram pins retain their scope.

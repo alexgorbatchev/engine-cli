@@ -868,6 +868,17 @@
         "The synchronous CLI command and library.fixture.capture HTTP job delegate to the same capture primitive. API capture retains a catalog read effect and shared collection-read token, while its output writes serialize through the existing write queue. Queued cancellation creates no output; later failures retain private incomplete evidence and stable typed causes. Neither entrypoint opens original databases through SQLite, selects a library, enrolls companions, or creates normal collection backups or Undo history. Raw evidence requires privacy review; captured rule bytes and screenshot memberships do not establish an evaluator.",
         "Committed source evidence at 16980172720ca6644c55cd3272b6a3ce9774f37b. cmd/engine-cli/library_fixture.go:12–46; internal/api/library_fixture.go:9–19; internal/api/scheduling.go:9–41; internal/fixturecapture/archive.go:44–123; internal/fixturecapture/archive.go:126–259; internal/fixturecapture/containment.go:11–51; internal/fixturecapture/snapshot.go:21–114; internal/fixturecapture/snapshot.go:116–212; internal/fixturecapture/compare.go:24–117; internal/fixturecapture/failure.go:1–15; internal/backup/sqlite.go:22–27. Historical source pins and graph topology remain unchanged."
       ]
+    },
+    {
+      "dot": "violet",
+      "title": "Native maintainer handoff — qualification and Desktop acceptance",
+      "items": [
+        "Dispatch with full committed source and ancestor golden revisions. Native macOS arm64 and x64 jobs build a clean complete checkout, bind actual host/Go architecture, golden bytes and CLI/helper hashes, and refuse reused output namespaces. Source inventories must remain unchanged.",
+        "Observe all four baselines before the first repair in each independent seed: healthy, reconnect, unknown-removal and original-deletion. Apply reviewed tokens; verify complete native rows and exact History ownership; require zero-change preview/application without new Undo. Relocate with the old root absent and verify actual CLI track reads and scoped audio bytes against synthetic media.",
+        "Qualification exercises exact-ID reconnect repair Undo and original-deletion Undo with preview and History preservation. A separate delivery seed repeats the baseline barrier and repair checks and stays repaired. Archive only allowlisted synthetic libraries, executable CLI, instructions and delivery-specific Undo script; extract into a fresh namespace and reverify repaired rows and bundled CLI audio. Private full-row provenance remains outside the delivery archive.",
+        "Human Desktop evaluation records actual version/architecture, visible names, rules, memberships, sibling order and playback before Undo. Close Desktop before exact delivery-specific Undo, then reopen to record the two distinct restored states. Automated native qualification produces an acceptance candidate; desktop_accepted remains false until actual observations are reviewed.",
+        "Committed source evidence da0162f016a99113b5e37362668502aca83dbae6: .github/workflows/desktop-repair-handoff.yml:18–78; scripts/qualify-desktop-repair-handoff.mjs:29–44,51–95,98–201; scripts/desktop-repair/delivery.mjs:5–61; docs/internal/references/desktop-repair-handoff.md:9–27. Existing offline capture evidence remains 16980172720ca6644c55cd3272b6a3ce9774f37b. Source inspection proves neither a successful native workflow nor human Desktop acceptance."
+      ]
     }
   ]
 }
