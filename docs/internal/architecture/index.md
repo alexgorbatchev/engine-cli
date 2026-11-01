@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-10-31 16:50
+last_modified: 2026-10-31 19:49
 status: current
 ---
 
@@ -156,3 +156,5 @@ The overview adds Service-owned discovery, portable pair state and nonportable a
 Watcher registrations are deduplicated by native directory identity. A changed nonempty set is installed on a successor backend, postvalidated and followed by an immediate full scan; unchanged verified coverage does not schedule a repeated immediate scan. Registration retirement preserves Close errors and cancels and joins its owned event drain. Source evidence does not substitute for generated-page, visual or served-body verification. Native coverage provenance is separate from new watcher Windows/macOS behavior qualification.
 
 The discovery and handoff lifecycle views share the quiet-version boundary. Together they preserve all eight states and thirteen transitions, including immediate observation rescan and interrupted handoff self-loops.
+
+The overview documents shared offline Desktop fixture capture through CLI and HTTP jobs: retained read-only archival inputs, separate working-copy recovery, native SQLite snapshots, typed exports and full-row comparison. HTTP output writes use existing serialization without collection mutation, normal backup, or Undo enrollment. Source evidence is committed at 16980172720ca6644c55cd3272b6a3ce9774f37b; existing diagram pins retain their historical scope.
