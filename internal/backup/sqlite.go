@@ -19,6 +19,13 @@ type sqliteBackuper interface {
 	NewBackup(string) (*sqlite.Backup, error)
 }
 
+// SnapshotDatabase publishes a new standalone SQLite snapshot. The caller must
+// own the source and destination lifecycle; this does not enroll a library or
+// capture its companion databases. SQLite may access source journal sidecars.
+func SnapshotDatabase(ctx context.Context, src, dst string) (int64, error) {
+	return snapshotDatabase(ctx, src, dst)
+}
+
 func databaseURI(path, mode string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {

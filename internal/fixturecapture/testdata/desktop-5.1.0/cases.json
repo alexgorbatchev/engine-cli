@@ -1,0 +1,2652 @@
+{
+  "schemaVersion": 1,
+  "desktop": "5.1.0",
+  "ruleVersion": "2.20.0",
+  "runDates": [
+    "2026-10-30",
+    "2026-10-31"
+  ],
+  "scope": "Desktop-written rules and screenshot-observed memberships from the original v1 synthetic pack; not generator predictions",
+  "sources": {
+    "beforeExportSHA256": "715ab5f74e0af8bd28b3354364fd640fe5f47bba9fd9aa3b2dae571d396488a0",
+    "afterExportSHA256": "3e95faaae16d57512c49e019c3096c4c3c14a3ce2e86e187197b18b38fcc9943",
+    "screenshotCaptureSHA256": "1a0df3c0c33f0abca9fe0e6981a2d6574021fe0b9c9d65005f15a6d7796e2288"
+  },
+  "trackValueEncoding": "SQLite storage type plus exact string data; TEXT data is base64, NULL has no data",
+  "tracks": [
+    {
+      "fixtureNumber": 1,
+      "fileName": "01-deep-house.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RGVlcCBIb3VzZQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "11"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 2,
+      "fileName": "02-house-party.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "SG91c2UgUGFydHk="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 3,
+      "fileName": "03-warehouse.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "V2FyZWhvdXNl"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 4,
+      "fileName": "04-house-upper.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "SE9VU0U="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 5,
+      "fileName": "05-techno.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VGVjaG5v"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "15"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 6,
+      "fileName": "06-techno-upper.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VEVDSE5P"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 7,
+      "fileName": "07-trance.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VHJhbmNl"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "23"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 8,
+      "fileName": "08-special.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TWlrZSdzICIxMDAlX2FcYiIgTWl4"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "15"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 9,
+      "fileName": "09-special-decoy.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TWlrZSdzICIxMDAgcGVyY2VudC1hXGIiIE1peA=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "15"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 10,
+      "fileName": "10-unicode.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "Q2Fmw6kg5p2x5Lqs"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "15"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 11,
+      "fileName": "11-unicode-decoy.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "Q2FmZSBUb2t5bw=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "5"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 12,
+      "fileName": "12-percent.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "MTAwJQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "5"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 13,
+      "fileName": "13-percent-decoy.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "MTAwWA=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "3"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 14,
+      "fileName": "14-field-artist.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgQXJ0aXN0"
+        },
+        "artist": {
+          "type": "text",
+          "data": "WmVicmE="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 15,
+      "fileName": "15-field-album.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgQWxidW0="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "WW9uZGVy"
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 16,
+      "fileName": "16-field-genre.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgR2VucmU="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "WHlsbw=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 17,
+      "fileName": "17-field-comment.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgQ29tbWVudA=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "19"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 18,
+      "fileName": "18-field-label.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgTGFiZWw="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "text",
+          "data": "Vm9ydGV4"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "9"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 19,
+      "fileName": "19-field-none.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "RmllbGQgTm9uZQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "7"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 20,
+      "fileName": "20-comment-cleared.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "Q29tbWVudCBDbGVhcmVk"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "9"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 21,
+      "fileName": "21-number-one.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIE9uZQ=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "integer",
+          "data": "1999"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "20"
+        },
+        "key": {
+          "type": "integer",
+          "data": "1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 22,
+      "fileName": "22-number-two.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIFR3bw=="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2000"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "40"
+        },
+        "key": {
+          "type": "integer",
+          "data": "0"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 23,
+      "fileName": "23-number-three.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIFRocmVl"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2010"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "60"
+        },
+        "key": {
+          "type": "integer",
+          "data": "23"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 24,
+      "fileName": "24-number-four.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIEZvdXI="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2020"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "80"
+        },
+        "key": {
+          "type": "integer",
+          "data": "3"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 25,
+      "fileName": "25-number-five.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TnVtYmVyIEZpdmU="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "integer",
+          "data": "2021"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "100"
+        },
+        "key": {
+          "type": "integer",
+          "data": "12"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 26,
+      "fileName": "26-length-59.flac",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TGVuZ3RoIDU5"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "59"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "23"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "ZmxhYw=="
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 27,
+      "fileName": "27-length-60.flac",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TGVuZ3RoIDYw"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "95.99999999999999"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "60"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "13"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "ZmxhYw=="
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 28,
+      "fileName": "28-length-61.flac",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "TGVuZ3RoIDYx"
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "128"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "61"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "18"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "ZmxhYw=="
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 29,
+      "fileName": "29-unanalyzed-one.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VW5hbmFseXplZCBPbmU="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "null"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "-1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "0"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 30,
+      "fileName": "30-unanalyzed-two.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "VW5hbmFseXplZCBUd28="
+        },
+        "artist": {
+          "type": "text",
+          "data": "Rml4dHVyZQ=="
+        },
+        "album": {
+          "type": "text",
+          "data": "UGFjaw=="
+        },
+        "genre": {
+          "type": "text",
+          "data": "VGVzdA=="
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "null"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "-1"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "0"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793430000"
+        }
+      }
+    },
+    {
+      "fixtureNumber": 31,
+      "fileName": "31-no-tags.mp3",
+      "values": {
+        "title": {
+          "type": "text",
+          "data": "MzEtbm8tdGFncy5tcDM="
+        },
+        "artist": {
+          "type": "null"
+        },
+        "album": {
+          "type": "null"
+        },
+        "genre": {
+          "type": "null"
+        },
+        "comment": {
+          "type": "null"
+        },
+        "label": {
+          "type": "null"
+        },
+        "bpmAnalyzed": {
+          "type": "real",
+          "data": "117"
+        },
+        "year": {
+          "type": "null"
+        },
+        "length": {
+          "type": "integer",
+          "data": "30"
+        },
+        "rating": {
+          "type": "integer",
+          "data": "0"
+        },
+        "key": {
+          "type": "integer",
+          "data": "11"
+        },
+        "fileType": {
+          "type": "text",
+          "data": "bXAz"
+        },
+        "isAnalyzed": {
+          "type": "integer",
+          "data": "1"
+        },
+        "dateAdded": {
+          "type": "integer",
+          "data": "1793343600"
+        }
+      }
+    }
+  ],
+  "cases": [
+    {
+      "name": "T1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"LIKE\",\"param\":\"'%house%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "bfad8ae66967d796ec84fbda71d48436acdc353d69f52297005472260788e376",
+      "expectedFixtureNumbers": [
+        1,
+        4,
+        2,
+        3
+      ],
+      "displayedCount": 4,
+      "screenshotFiles": [
+        "T1.png"
+      ]
+    },
+    {
+      "name": "T2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"NOT LIKE\",\"param\":\"'%house%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "d3e2bc463a2bb03880c79c58d34ee28ff82bb76ef58c33850c32c1cc4560835b",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        26,
+        27,
+        28,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        6,
+        5,
+        7,
+        29,
+        30
+      ],
+      "displayedCount": 27,
+      "screenshotFiles": [
+        "T2.png",
+        "T2-2.png"
+      ]
+    },
+    {
+      "name": "T3",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"=\",\"param\":\"'Techno'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "3e41a79eb5ce5602ba4fb040a174a3849e011b3065469384c19472fab711a39c",
+      "expectedFixtureNumbers": [
+        5
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "T3.png"
+      ]
+    },
+    {
+      "name": "T4",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"!=\",\"param\":\"'Techno'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "cc254b7b4d927dff2cd9696ae7c6a7c02f47264837dec28ecd435cfc17952b05",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        27,
+        28,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        6,
+        7,
+        29,
+        30,
+        3
+      ],
+      "displayedCount": 30,
+      "screenshotFiles": [
+        "T4.png",
+        "T4-2.png"
+      ]
+    },
+    {
+      "name": "T5",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"BEGINSWITH\",\"param\":\"'House%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "9bad3691cb3e56bd27fdddab1bca1c1d8c837fb0fa65a0df41d528a85d85e5f9",
+      "expectedFixtureNumbers": [
+        4,
+        2
+      ],
+      "displayedCount": 2,
+      "screenshotFiles": [
+        "T5.png"
+      ]
+    },
+    {
+      "name": "T6",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"ENDSWITH\",\"param\":\"'%house'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "8c4c6bf040f8f9f6c978e5f6de94f30359654f9594cc814fde8f4f28bc302da0",
+      "expectedFixtureNumbers": [
+        1,
+        4,
+        3
+      ],
+      "displayedCount": 3,
+      "screenshotFiles": [
+        "T6.png"
+      ]
+    },
+    {
+      "name": "T7",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"comment\",\"con\":\"IS\",\"param\":\"'true'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "5f8c9f700a955f39f3a03c4126333facccfe6938a6adbbcda239408c99ca53e0",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        27,
+        28,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        5,
+        6,
+        7,
+        29,
+        30,
+        3
+      ],
+      "displayedCount": 31,
+      "screenshotFiles": [
+        "T7.png",
+        "T7-2.png"
+      ]
+    },
+    {
+      "name": "T8",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"comment\",\"con\":\"IS NOT\",\"param\":\"'false'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "9815c2b091ee3e6d067b1545856123fc6c0904d2ed57ea21809b4147e4733566",
+      "expectedFixtureNumbers": [],
+      "displayedCount": 0,
+      "screenshotFiles": [
+        "T8.png"
+      ]
+    },
+    {
+      "name": "T9",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"LIKE\",\"param\":\"'%e's \\\"100\\\\%\\\\_a\\\\\\\\b\\\"%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "b557529df0ca6948aabcecb900e3be50396c8fd3b650627b34bd67773848b388",
+      "expectedFixtureNumbers": [
+        8
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "T9.png"
+      ]
+    },
+    {
+      "name": "T10",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"LIKE\",\"param\":\"'%Café 東京%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "457e0e7065741e8c1551eb0f48710f99d6aa566f46d1044bc4953ea91498b383",
+      "expectedFixtureNumbers": [
+        10
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "T10.png"
+      ]
+    },
+    {
+      "name": "T11",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"=\",\"param\":\"'100\\\\%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "7240e01037bbc66b0496aaedc5ee5f671cc9acf54ffe85f77cc31dabf9245260",
+      "expectedFixtureNumbers": [],
+      "displayedCount": 0,
+      "screenshotFiles": [
+        "T11.png"
+      ]
+    },
+    {
+      "name": "C1",
+      "rules": "{\"match\":\"one\",\"rules\":[{\"col\":\"artist\",\"con\":\"LIKE\",\"param\":\"'%Zebra%'\",\"v\":\"2.20.0\"},{\"col\":\"album\",\"con\":\"LIKE\",\"param\":\"'%Yonder%'\",\"v\":\"2.20.0\"},{\"col\":\"genre\",\"con\":\"LIKE\",\"param\":\"'%Xylo%'\",\"v\":\"2.20.0\"},{\"col\":\"comment\",\"con\":\"LIKE\",\"param\":\"'%Wombat%'\",\"v\":\"2.20.0\"},{\"col\":\"label\",\"con\":\"LIKE\",\"param\":\"'%Vortex%'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "c912a4c1eb852f7f845e6b67000692a695396497b76e59c0982bf2e0ef0b0e02",
+      "expectedFixtureNumbers": [
+        15,
+        14,
+        16,
+        18
+      ],
+      "displayedCount": 4,
+      "screenshotFiles": [
+        "C1.png"
+      ]
+    },
+    {
+      "name": "F1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"fileType\",\"con\":\"LIKE\",\"param\":\"'mp3'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "3b4eae1a16ed7083240490fe214f8f5c501221aa777f9d8cba6ea6bfd4e2f6e9",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        5,
+        6,
+        7,
+        29,
+        30,
+        3
+      ],
+      "displayedCount": 28,
+      "screenshotFiles": [
+        "F1.png",
+        "F1-2.png"
+      ]
+    },
+    {
+      "name": "B1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\">\",\"param\":\"120\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "a210e746de061a0eed9e4e8e7d80e41f31349a737f4e13320bcb4a67e0a52808",
+      "expectedFixtureNumbers": [
+        26,
+        28
+      ],
+      "displayedCount": 2,
+      "screenshotFiles": [
+        "B1.png"
+      ]
+    },
+    {
+      "name": "B2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"<\",\"param\":\"120\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "56be84ced1e60dd995424d22bcaf3039566d2a9b142ea112c9ad97627b452eaa",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        27,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        5,
+        6,
+        7,
+        3
+      ],
+      "displayedCount": 27,
+      "screenshotFiles": [
+        "B2.png",
+        "B2-2.png"
+      ]
+    },
+    {
+      "name": "B3",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"=\",\"param\":\"120\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "8212ca651814834ccaf192454852993587e96f6cafad7f2b16a823a8ab43df1c",
+      "expectedFixtureNumbers": [],
+      "displayedCount": 0,
+      "screenshotFiles": [
+        "B3.png"
+      ]
+    },
+    {
+      "name": "B4",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"BETWEEN\",\"param\":\"120 AND 125\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "61a3941c7cfe5273472fed937841b2338b425ae50526da2d71402ccd4cdf3cfb",
+      "expectedFixtureNumbers": [],
+      "displayedCount": 0,
+      "screenshotFiles": [
+        "B4.png"
+      ]
+    },
+    {
+      "name": "Y1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"year\",\"con\":\"BETWEEN\",\"param\":\"2000 AND 2020\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "822cf5060f1814d0d803f74af3f14704e2471afb5a64772b2d7e0dc8132b697b",
+      "expectedFixtureNumbers": [
+        24,
+        23,
+        22
+      ],
+      "displayedCount": 3,
+      "screenshotFiles": [
+        "Y1.png"
+      ]
+    },
+    {
+      "name": "L1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"length\",\"con\":\">\",\"param\":\"60\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "35dd0860e962516d9b6276fd505879d20db4191400a445964ac287be51c3f1d6",
+      "expectedFixtureNumbers": [
+        28
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "L1.png"
+      ]
+    },
+    {
+      "name": "L2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"length\",\"con\":\"<\",\"param\":\"60\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "8b5872d500422e5e8884390a028b29cc0db9e36a12828b6f3cdae903a093cb98",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        5,
+        6,
+        7,
+        29,
+        30,
+        3
+      ],
+      "displayedCount": 29,
+      "screenshotFiles": [
+        "L2.png",
+        "L2-2.png"
+      ]
+    },
+    {
+      "name": "L3",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"length\",\"con\":\"=\",\"param\":\"60\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "eda4de98a49b9367ad1ce71d481dc2ff889b14436118487e41725a3b0262a9e9",
+      "expectedFixtureNumbers": [
+        27
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "L3.png"
+      ]
+    },
+    {
+      "name": "R1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"IFNULL(rating, 0)\",\"con\":\">\",\"param\":\"60\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "ee6c8065222b1a3af90e1ac5b2225694ecf844b6386867279cc061eaf1eba2e8",
+      "expectedFixtureNumbers": [
+        25,
+        24
+      ],
+      "displayedCount": 2,
+      "screenshotFiles": [
+        "R1.png"
+      ]
+    },
+    {
+      "name": "R2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"IFNULL(rating, 0)\",\"con\":\"<\",\"param\":\"60\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "2a8740d49775a1b6c6ea455a7c9800092d91c5d8ce4f3d31503c4c8299e436ae",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        27,
+        28,
+        9,
+        8,
+        21,
+        22,
+        5,
+        6,
+        7,
+        29,
+        30,
+        3
+      ],
+      "displayedCount": 28,
+      "screenshotFiles": [
+        "R2.png",
+        "R2-2.png"
+      ]
+    },
+    {
+      "name": "R3",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"IFNULL(rating, 0)\",\"con\":\"=\",\"param\":\"60\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "80786f8f33ebf691634c61fda7ee94260fab0ac86cb752df53f633552a0876b1",
+      "expectedFixtureNumbers": [
+        23
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "R3.png"
+      ]
+    },
+    {
+      "name": "D1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"dateAdded\",\"con\":\"BETWEEN\",\"param\":\"1793343600 AND 1793429999\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "42dfe24178fd728894f3f0903584815d2c96b193a34802778ccd1a6f5778416e",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        27,
+        28,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        5,
+        6,
+        7,
+        3
+      ],
+      "displayedCount": 29,
+      "screenshotFiles": [
+        "D1.png",
+        "D1-2.png"
+      ]
+    },
+    {
+      "name": "D2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"dateAdded\",\"con\":\"<\",\"param\":\"1793343600\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "bbe84fd37eca6901c08337ac531df57b3ca68eef26fc39f27b3b9df5f461d6e2",
+      "expectedFixtureNumbers": [],
+      "displayedCount": 0,
+      "screenshotFiles": [
+        "D2.png"
+      ]
+    },
+    {
+      "name": "D3",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"dateAdded\",\"con\":\">\",\"param\":\"1793343599\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "5d0e30152d768d4f0f78cf9a95a890fb4e18a6878152f62f13d7d7114038e155",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        27,
+        28,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        5,
+        6,
+        7,
+        29,
+        30,
+        3
+      ],
+      "displayedCount": 31,
+      "screenshotFiles": [
+        "D3.png",
+        "D3-2.png"
+      ]
+    },
+    {
+      "name": "K1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"key\",\"con\":\"=\",\"param\":\"1\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "d8b1c99d65d91377e75be072fc95b217c6437edd23f28a57ead7d07f6aa2b118",
+      "expectedFixtureNumbers": [
+        4,
+        2,
+        21,
+        6,
+        3
+      ],
+      "displayedCount": 5,
+      "screenshotFiles": [
+        "K1.png"
+      ]
+    },
+    {
+      "name": "K2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"key\",\"con\":\"IN\",\"param\":\"(1,0,23,3)\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "682ec1f92eafc100913ffa1c1cbb826dfb5b5a90b7cfa1481cfd2bd03b96aa95",
+      "expectedFixtureNumbers": [
+        13,
+        4,
+        2,
+        26,
+        24,
+        21,
+        23,
+        22,
+        6,
+        7,
+        3
+      ],
+      "displayedCount": 11,
+      "screenshotFiles": [
+        "K2.png"
+      ]
+    },
+    {
+      "name": "G1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"isAnalyzed\",\"con\":\"=\",\"param\":\"true\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "276431d95fc309097d88a260429a6bae7888b8313fa2fc635f029faa619d66d9",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        27,
+        28,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        5,
+        6,
+        7,
+        3
+      ],
+      "displayedCount": 29,
+      "screenshotFiles": [
+        "G1.png",
+        "G1-2.png"
+      ]
+    },
+    {
+      "name": "G2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"isAnalyzed\",\"con\":\"=\",\"param\":\"false\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "35939e1cbaeb4b17b6d3283dc45686612cdcd718d66af41ba68026d2fe1672b9",
+      "expectedFixtureNumbers": [
+        29,
+        30
+      ],
+      "displayedCount": 2,
+      "screenshotFiles": [
+        "G2.png"
+      ]
+    },
+    {
+      "name": "S1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"stemsStatus\",\"con\":\"=\",\"param\":\"true\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "c9a568e682d3a1d248c537ab983e7f816dc056c7920e0acc9976b8a44a9a7b22",
+      "expectedFixtureNumbers": [
+        5
+      ],
+      "displayedCount": 1,
+      "screenshotFiles": [
+        "S1.png"
+      ]
+    },
+    {
+      "name": "S2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"stemsStatus\",\"con\":\"=\",\"param\":\"false\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "0b717925862b4421b383b03543d275488e2cfb3100e0099225017f268ca78aa4",
+      "expectedFixtureNumbers": [
+        12,
+        13,
+        31,
+        11,
+        10,
+        20,
+        1,
+        15,
+        14,
+        17,
+        16,
+        18,
+        19,
+        4,
+        2,
+        26,
+        27,
+        28,
+        9,
+        8,
+        25,
+        24,
+        21,
+        23,
+        22,
+        6,
+        7,
+        29,
+        30,
+        3
+      ],
+      "displayedCount": 30,
+      "screenshotFiles": [
+        "S2.png",
+        "S2-2.png"
+      ]
+    },
+    {
+      "name": "M1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\">\",\"param\":\"120\",\"v\":\"2.20.0\"},{\"col\":\"year\",\"con\":\"<\",\"param\":\"2021\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "a13ec5683e5fbb52d64129a0d84608d9aa1656f7f3985ea1f24a213be24af23e",
+      "expectedFixtureNumbers": [],
+      "displayedCount": 0,
+      "screenshotFiles": [
+        "M1.png"
+      ]
+    },
+    {
+      "name": "M2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"title\",\"con\":\"BEGINSWITH\",\"param\":\"'Number%'\",\"v\":\"2.20.0\"},{\"col\":\"title\",\"con\":\"ENDSWITH\",\"param\":\"'%Three'\",\"v\":\"2.20.0\"},{\"col\":\"artist\",\"con\":\"LIKE\",\"param\":\"'%Fixture%'\",\"v\":\"2.20.0\"},{\"col\":\"fileType\",\"con\":\"LIKE\",\"param\":\"'mp3'\",\"v\":\"2.20.0\"},{\"col\":\"ROUND(bpmAnalyzed)\",\"con\":\"BETWEEN\",\"param\":\"120 AND 125\",\"v\":\"2.20.0\"},{\"col\":\"year\",\"con\":\"=\",\"param\":\"2010\",\"v\":\"2.20.0\"},{\"col\":\"IFNULL(rating, 0)\",\"con\":\"=\",\"param\":\"60\",\"v\":\"2.20.0\"},{\"col\":\"key\",\"con\":\"=\",\"param\":\"23\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "90c8790597357755df86db2e15dbcd1ce73058433be8b819f7b994ab5543ecba",
+      "expectedFixtureNumbers": [],
+      "displayedCount": 0,
+      "screenshotFiles": [
+        "M2.png"
+      ]
+    },
+    {
+      "name": "P1",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"fileType\",\"con\":\"LIKE\",\"param\":\"'flac'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "a4e6e00cc39210227b2893f225cab5fe6dd756459411dec6ace4b07ec4a56b77",
+      "expectedFixtureNumbers": [
+        26,
+        27,
+        28
+      ],
+      "displayedCount": 3,
+      "screenshotFiles": [
+        "P1.png"
+      ]
+    },
+    {
+      "name": "P2",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"fileType\",\"con\":\"LIKE\",\"param\":\"'flac'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "a4e6e00cc39210227b2893f225cab5fe6dd756459411dec6ace4b07ec4a56b77",
+      "expectedFixtureNumbers": [
+        26,
+        27,
+        28
+      ],
+      "displayedCount": 3,
+      "screenshotFiles": [
+        "P2.png"
+      ]
+    },
+    {
+      "name": "P3",
+      "rules": "{\"match\":\"all\",\"rules\":[{\"col\":\"fileType\",\"con\":\"LIKE\",\"param\":\"'flac'\",\"v\":\"2.20.0\"}],\"rv\":2}",
+      "rulesSHA256": "a4e6e00cc39210227b2893f225cab5fe6dd756459411dec6ace4b07ec4a56b77",
+      "expectedFixtureNumbers": [
+        26,
+        27,
+        28
+      ],
+      "displayedCount": 3,
+      "screenshotFiles": [
+        "P3.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Original v1 MP3 comments were TXXX rather than COMM; all captured Track.comment values are NULL. Empty-string behavior remains untested.",
+    "Analyzed BPM/key and actual dateAdded differ from generator intent; use captured values.",
+    "Track values are from the before capture. Original numeric database IDs and source paths/UUIDs are omitted; fixtureNumber refers only to the pack.",
+    "Stems rules and observed membership are retained, but this Track projection does not reconstruct stemsStatus from other database tables.",
+    "No unsupported rule-version or hardware behavior was exercised."
+  ]
+}

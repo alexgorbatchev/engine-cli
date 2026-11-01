@@ -1,0 +1,813 @@
+{
+  "tracks": [
+    {
+      "number": 1,
+      "slug": "deep-house",
+      "title": "Deep House",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "01-deep-house.mp3"
+    },
+    {
+      "number": 2,
+      "slug": "house-party",
+      "title": "House Party",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "02-house-party.mp3"
+    },
+    {
+      "number": 3,
+      "slug": "warehouse",
+      "title": "Warehouse",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "03-warehouse.mp3"
+    },
+    {
+      "number": 4,
+      "slug": "house-upper",
+      "title": "HOUSE",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "04-house-upper.mp3"
+    },
+    {
+      "number": 5,
+      "slug": "techno",
+      "title": "Techno",
+      "generateStems": true,
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "05-techno.mp3"
+    },
+    {
+      "number": 6,
+      "slug": "techno-upper",
+      "title": "TECHNO",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "06-techno-upper.mp3"
+    },
+    {
+      "number": 7,
+      "slug": "trance",
+      "title": "Trance",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "07-trance.mp3"
+    },
+    {
+      "number": 8,
+      "slug": "special",
+      "title": "Mike's \"100%_a\\b\" Mix",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "08-special.mp3"
+    },
+    {
+      "number": 9,
+      "slug": "special-decoy",
+      "title": "Mike's \"100 percent-a\\b\" Mix",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "09-special-decoy.mp3"
+    },
+    {
+      "number": 10,
+      "slug": "unicode",
+      "title": "Café 東京",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "10-unicode.mp3"
+    },
+    {
+      "number": 11,
+      "slug": "unicode-decoy",
+      "title": "Cafe Tokyo",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "11-unicode-decoy.mp3"
+    },
+    {
+      "number": 12,
+      "slug": "percent",
+      "title": "100%",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "12-percent.mp3"
+    },
+    {
+      "number": 13,
+      "slug": "percent-decoy",
+      "title": "100X",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "13-percent-decoy.mp3"
+    },
+    {
+      "number": 14,
+      "slug": "field-artist",
+      "title": "Field Artist",
+      "artist": "Zebra",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "14-field-artist.mp3"
+    },
+    {
+      "number": 15,
+      "slug": "field-album",
+      "title": "Field Album",
+      "album": "Yonder",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "15-field-album.mp3"
+    },
+    {
+      "number": 16,
+      "slug": "field-genre",
+      "title": "Field Genre",
+      "genre": "Xylo",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "16-field-genre.mp3"
+    },
+    {
+      "number": 17,
+      "slug": "field-comment",
+      "title": "Field Comment",
+      "comment": "Wombat",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "17-field-comment.mp3"
+    },
+    {
+      "number": 18,
+      "slug": "field-label",
+      "title": "Field Label",
+      "label": "Vortex",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "18-field-label.mp3"
+    },
+    {
+      "number": 19,
+      "slug": "field-none",
+      "title": "Field None",
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "19-field-none.mp3"
+    },
+    {
+      "number": 20,
+      "slug": "comment-cleared",
+      "title": "Comment Cleared",
+      "comment": "clear me",
+      "clearComment": true,
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "20-comment-cleared.mp3"
+    },
+    {
+      "number": 21,
+      "slug": "number-one",
+      "title": "Number One",
+      "bpm": 119,
+      "year": 1999,
+      "stars": 1,
+      "camelot": "8A",
+      "keyName": "A minor",
+      "keyIndex": 1,
+      "format": "mp3",
+      "seconds": 30,
+      "fileName": "21-number-one.mp3"
+    },
+    {
+      "number": 22,
+      "slug": "number-two",
+      "title": "Number Two",
+      "bpm": 120,
+      "year": 2000,
+      "stars": 2,
+      "camelot": "8B",
+      "keyName": "C major",
+      "keyIndex": 0,
+      "format": "mp3",
+      "seconds": 30,
+      "fileName": "22-number-two.mp3"
+    },
+    {
+      "number": 23,
+      "slug": "number-three",
+      "title": "Number Three",
+      "bpm": 121,
+      "year": 2010,
+      "stars": 3,
+      "camelot": "7A",
+      "keyName": "D minor",
+      "keyIndex": 23,
+      "format": "mp3",
+      "seconds": 30,
+      "fileName": "23-number-three.mp3"
+    },
+    {
+      "number": 24,
+      "slug": "number-four",
+      "title": "Number Four",
+      "bpm": 125,
+      "year": 2020,
+      "stars": 4,
+      "camelot": "9A",
+      "keyName": "E minor",
+      "keyIndex": 3,
+      "format": "mp3",
+      "seconds": 30,
+      "fileName": "24-number-four.mp3"
+    },
+    {
+      "number": 25,
+      "slug": "number-five",
+      "title": "Number Five",
+      "bpm": 126,
+      "year": 2021,
+      "stars": 5,
+      "camelot": "2B",
+      "keyName": "F♯ major",
+      "keyIndex": 12,
+      "format": "mp3",
+      "seconds": 30,
+      "fileName": "25-number-five.mp3"
+    },
+    {
+      "number": 26,
+      "slug": "length-59",
+      "title": "Length 59",
+      "format": "flac",
+      "seconds": 59,
+      "bpm": 128,
+      "fileName": "26-length-59.flac"
+    },
+    {
+      "number": 27,
+      "slug": "length-60",
+      "title": "Length 60",
+      "format": "flac",
+      "seconds": 60,
+      "bpm": 128,
+      "fileName": "27-length-60.flac"
+    },
+    {
+      "number": 28,
+      "slug": "length-61",
+      "title": "Length 61",
+      "format": "flac",
+      "seconds": 61,
+      "bpm": 128,
+      "fileName": "28-length-61.flac"
+    },
+    {
+      "number": 29,
+      "slug": "unanalyzed-one",
+      "title": "Unanalyzed One",
+      "stayUnanalyzed": true,
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "29-unanalyzed-one.mp3"
+    },
+    {
+      "number": 30,
+      "slug": "unanalyzed-two",
+      "title": "Unanalyzed Two",
+      "stayUnanalyzed": true,
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "30-unanalyzed-two.mp3"
+    },
+    {
+      "number": 31,
+      "slug": "no-tags",
+      "hasNoTags": true,
+      "format": "mp3",
+      "bpm": 128,
+      "seconds": 30,
+      "fileName": "31-no-tags.mp3"
+    }
+  ],
+  "smartlists": [
+    {
+      "name": "T1",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "contains",
+          "value": "house"
+        }
+      ],
+      "predicted": "4: 1, 2, 3, 4"
+    },
+    {
+      "name": "T2",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "does not contain",
+          "value": "house"
+        }
+      ],
+      "predicted": "27: all except 1, 2, 3, 4"
+    },
+    {
+      "name": "T3",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "is equal to",
+          "value": "Techno"
+        }
+      ],
+      "predicted": "1: 5"
+    },
+    {
+      "name": "T4",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "is not equal to",
+          "value": "Techno"
+        }
+      ],
+      "predicted": "30: all except 5"
+    },
+    {
+      "name": "T5",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "begins with",
+          "value": "House"
+        }
+      ],
+      "predicted": "2: 2, 4"
+    },
+    {
+      "name": "T6",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "ends with",
+          "value": "house"
+        }
+      ],
+      "predicted": "3: 1, 3, 4"
+    },
+    {
+      "name": "T7",
+      "rules": [
+        {
+          "filter": "Comment",
+          "condition": "is empty",
+          "value": "True"
+        }
+      ],
+      "note": "Track 20 is the empty-string case: in or out here shows how Desktop stores a cleared comment.",
+      "predicted": "29: all except 17, 20"
+    },
+    {
+      "name": "T8",
+      "rules": [
+        {
+          "filter": "Comment",
+          "condition": "is empty",
+          "value": "False"
+        }
+      ],
+      "predicted": "2: 17, 20"
+    },
+    {
+      "name": "T9",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "contains",
+          "value": "e's \"100%_a\\b\""
+        }
+      ],
+      "note": "Type the value exactly, quotes included.",
+      "predicted": "1: 8"
+    },
+    {
+      "name": "T10",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "contains",
+          "value": "Café 東京"
+        }
+      ],
+      "predicted": "1: 10"
+    },
+    {
+      "name": "T11",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "is equal to",
+          "value": "100%"
+        }
+      ],
+      "predictionOverride": "error, 0 or 12",
+      "note": "An error or 0 tracks fits the suspected defect. Screenshot any error.",
+      "predicted": "error, 0 or 12"
+    },
+    {
+      "name": "C1",
+      "rules": [
+        {
+          "filter": "Artist",
+          "condition": "contains",
+          "value": "Zebra"
+        },
+        {
+          "filter": "Album",
+          "condition": "contains",
+          "value": "Yonder"
+        },
+        {
+          "filter": "Genre",
+          "condition": "contains",
+          "value": "Xylo"
+        },
+        {
+          "filter": "Comment",
+          "condition": "contains",
+          "value": "Wombat"
+        },
+        {
+          "filter": "Label",
+          "condition": "contains",
+          "value": "Vortex"
+        }
+      ],
+      "matchAll": false,
+      "predicted": "5: 14, 15, 16, 17, 18"
+    },
+    {
+      "name": "F1",
+      "rules": [
+        {
+          "filter": "File Type",
+          "condition": "is equal to",
+          "value": "mp3"
+        }
+      ],
+      "predicted": "28: all except 26, 27, 28"
+    },
+    {
+      "name": "B1",
+      "rules": [
+        {
+          "filter": "BPM",
+          "condition": "is greater than",
+          "value": "120"
+        }
+      ],
+      "predicted": "27: all except 21, 22, 29, 30"
+    },
+    {
+      "name": "B2",
+      "rules": [
+        {
+          "filter": "BPM",
+          "condition": "is less than",
+          "value": "120"
+        }
+      ],
+      "predicted": "1: 21"
+    },
+    {
+      "name": "B3",
+      "rules": [
+        {
+          "filter": "BPM",
+          "condition": "is equal to",
+          "value": "120"
+        }
+      ],
+      "predicted": "1: 22"
+    },
+    {
+      "name": "B4",
+      "rules": [
+        {
+          "filter": "BPM",
+          "condition": "is in the range of",
+          "value": "120 to 125"
+        }
+      ],
+      "predicted": "3: 22, 23, 24"
+    },
+    {
+      "name": "Y1",
+      "rules": [
+        {
+          "filter": "Year",
+          "condition": "is in the range of",
+          "value": "2000 to 2020"
+        }
+      ],
+      "predicted": "3: 22, 23, 24"
+    },
+    {
+      "name": "L1",
+      "rules": [
+        {
+          "filter": "Length",
+          "condition": "is greater than",
+          "value": "01:00"
+        }
+      ],
+      "predicted": "1: 28"
+    },
+    {
+      "name": "L2",
+      "rules": [
+        {
+          "filter": "Length",
+          "condition": "is less than",
+          "value": "01:00"
+        }
+      ],
+      "predicted": "29: all except 27, 28"
+    },
+    {
+      "name": "L3",
+      "rules": [
+        {
+          "filter": "Length",
+          "condition": "is equal to",
+          "value": "01:00"
+        }
+      ],
+      "predicted": "1: 27"
+    },
+    {
+      "name": "R1",
+      "rules": [
+        {
+          "filter": "Rating",
+          "condition": "is greater than",
+          "value": "3 stars"
+        }
+      ],
+      "predicted": "2: 24, 25"
+    },
+    {
+      "name": "R2",
+      "rules": [
+        {
+          "filter": "Rating",
+          "condition": "is less than",
+          "value": "3 stars"
+        }
+      ],
+      "predicted": "28: all except 23, 24, 25"
+    },
+    {
+      "name": "R3",
+      "rules": [
+        {
+          "filter": "Rating",
+          "condition": "is equal to",
+          "value": "3 stars"
+        }
+      ],
+      "predicted": "1: 23"
+    },
+    {
+      "name": "D1",
+      "rules": [
+        {
+          "filter": "Date Added",
+          "condition": "is equal to",
+          "value": "import day"
+        }
+      ],
+      "isUniformResultExpected": true,
+      "predicted": "all 31"
+    },
+    {
+      "name": "D2",
+      "rules": [
+        {
+          "filter": "Date Added",
+          "condition": "before",
+          "value": "import day"
+        }
+      ],
+      "isUniformResultExpected": true,
+      "predicted": "none"
+    },
+    {
+      "name": "D3",
+      "rules": [
+        {
+          "filter": "Date Added",
+          "condition": "after",
+          "value": "day before import"
+        }
+      ],
+      "isUniformResultExpected": true,
+      "predicted": "all 31"
+    },
+    {
+      "name": "K1",
+      "rules": [
+        {
+          "filter": "Key",
+          "condition": "is equal to",
+          "value": "8A"
+        }
+      ],
+      "predicted": "1: 21"
+    },
+    {
+      "name": "K2",
+      "rules": [
+        {
+          "filter": "Key",
+          "condition": "compatible",
+          "value": "8A"
+        }
+      ],
+      "predicted": "4: 21, 22, 23, 24"
+    },
+    {
+      "name": "G1",
+      "rules": [
+        {
+          "filter": "Grid",
+          "condition": "exists",
+          "value": "True"
+        }
+      ],
+      "predicted": "29: all except 29, 30"
+    },
+    {
+      "name": "G2",
+      "rules": [
+        {
+          "filter": "Grid",
+          "condition": "exists",
+          "value": "False"
+        }
+      ],
+      "predicted": "2: 29, 30"
+    },
+    {
+      "name": "S1",
+      "rules": [
+        {
+          "filter": "Stems",
+          "condition": "exists",
+          "value": "True"
+        }
+      ],
+      "predicted": "1: 5"
+    },
+    {
+      "name": "S2",
+      "rules": [
+        {
+          "filter": "Stems",
+          "condition": "exists",
+          "value": "False"
+        }
+      ],
+      "predictionOverride": "unknown",
+      "note": "Tracks with no stems status may be left out.",
+      "predicted": "unknown"
+    },
+    {
+      "name": "M1",
+      "rules": [
+        {
+          "filter": "BPM",
+          "condition": "is greater than",
+          "value": "120"
+        },
+        {
+          "filter": "Year",
+          "condition": "is less than",
+          "value": "2021"
+        }
+      ],
+      "matchAll": true,
+      "predicted": "2: 23, 24"
+    },
+    {
+      "name": "M2",
+      "rules": [
+        {
+          "filter": "Title",
+          "condition": "begins with",
+          "value": "Number"
+        },
+        {
+          "filter": "Title",
+          "condition": "ends with",
+          "value": "Three"
+        },
+        {
+          "filter": "Artist",
+          "condition": "contains",
+          "value": "Fixture"
+        },
+        {
+          "filter": "File Type",
+          "condition": "is equal to",
+          "value": "mp3"
+        },
+        {
+          "filter": "BPM",
+          "condition": "is in the range of",
+          "value": "120 to 125"
+        },
+        {
+          "filter": "Year",
+          "condition": "is equal to",
+          "value": "2010"
+        },
+        {
+          "filter": "Rating",
+          "condition": "is equal to",
+          "value": "3 stars"
+        },
+        {
+          "filter": "Key",
+          "condition": "is equal to",
+          "value": "7A"
+        }
+      ],
+      "matchAll": true,
+      "predicted": "1: 23"
+    },
+    {
+      "name": "P1",
+      "rules": [
+        {
+          "filter": "File Type",
+          "condition": "is equal to",
+          "value": "flac"
+        }
+      ],
+      "placement": "Library root",
+      "predicted": "3: 26, 27, 28"
+    },
+    {
+      "name": "P2",
+      "rules": [
+        {
+          "filter": "File Type",
+          "condition": "is equal to",
+          "value": "flac"
+        }
+      ],
+      "placement": "Inside Beta > Child",
+      "predicted": "3: 26, 27, 28"
+    },
+    {
+      "name": "P3",
+      "rules": [
+        {
+          "filter": "File Type",
+          "condition": "is equal to",
+          "value": "flac"
+        }
+      ],
+      "placement": "Library root, between Alpha and Beta",
+      "predicted": "3: 26, 27, 28"
+    }
+  ]
+}

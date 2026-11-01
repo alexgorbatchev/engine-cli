@@ -1,0 +1,488 @@
+{
+  "schemaVersion": 1,
+  "before": [
+    {
+      "name": "T1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T2"
+    },
+    {
+      "name": "T2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T3"
+    },
+    {
+      "name": "T3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T4"
+    },
+    {
+      "name": "T4",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T5"
+    },
+    {
+      "name": "T5",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T6"
+    },
+    {
+      "name": "T6",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T7"
+    },
+    {
+      "name": "T7",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T8"
+    },
+    {
+      "name": "T8",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T9"
+    },
+    {
+      "name": "T9",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T10"
+    },
+    {
+      "name": "T10",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T11"
+    },
+    {
+      "name": "T11",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "C1"
+    },
+    {
+      "name": "C1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "F1"
+    },
+    {
+      "name": "F1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B1"
+    },
+    {
+      "name": "B1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B2"
+    },
+    {
+      "name": "B2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B3"
+    },
+    {
+      "name": "B3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B4"
+    },
+    {
+      "name": "B4",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "Y1"
+    },
+    {
+      "name": "Y1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "L1"
+    },
+    {
+      "name": "L1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "L2"
+    },
+    {
+      "name": "L2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "L3"
+    },
+    {
+      "name": "L3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "R1"
+    },
+    {
+      "name": "R1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "R2"
+    },
+    {
+      "name": "R2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "R3"
+    },
+    {
+      "name": "R3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "D1"
+    },
+    {
+      "name": "D1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "D2"
+    },
+    {
+      "name": "D2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "D3"
+    },
+    {
+      "name": "D3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "K1"
+    },
+    {
+      "name": "K1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "K2"
+    },
+    {
+      "name": "K2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "G1"
+    },
+    {
+      "name": "G1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "G2"
+    },
+    {
+      "name": "G2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "S1"
+    },
+    {
+      "name": "S1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "S2"
+    },
+    {
+      "name": "S2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "M1"
+    },
+    {
+      "name": "M1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "M2"
+    },
+    {
+      "name": "M2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "P1"
+    },
+    {
+      "name": "P1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": null
+    },
+    {
+      "name": "P2",
+      "parentPlaylistPath": "Beta;Child;",
+      "nextPlaylistPath": "",
+      "nextSmartlist": null
+    },
+    {
+      "name": "P3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "Beta;",
+      "nextSmartlist": null
+    }
+  ],
+  "after": [
+    {
+      "name": "T1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T2"
+    },
+    {
+      "name": "T2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T3"
+    },
+    {
+      "name": "T3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T4"
+    },
+    {
+      "name": "T4",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T5"
+    },
+    {
+      "name": "T5",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T6"
+    },
+    {
+      "name": "T6",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T7"
+    },
+    {
+      "name": "T7",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T8"
+    },
+    {
+      "name": "T8",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T9"
+    },
+    {
+      "name": "T9",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T10"
+    },
+    {
+      "name": "T10",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T11"
+    },
+    {
+      "name": "T11",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "C1"
+    },
+    {
+      "name": "C1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "F1"
+    },
+    {
+      "name": "F1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B1"
+    },
+    {
+      "name": "B1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B2"
+    },
+    {
+      "name": "B2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B3"
+    },
+    {
+      "name": "B3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "B4"
+    },
+    {
+      "name": "B4",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "Y1"
+    },
+    {
+      "name": "Y1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "L1"
+    },
+    {
+      "name": "L1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "L2"
+    },
+    {
+      "name": "L2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "L3"
+    },
+    {
+      "name": "L3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "R1"
+    },
+    {
+      "name": "R1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "R2"
+    },
+    {
+      "name": "R2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "R3"
+    },
+    {
+      "name": "R3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "D1"
+    },
+    {
+      "name": "D1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "D2"
+    },
+    {
+      "name": "D2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "D3"
+    },
+    {
+      "name": "D3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "K1"
+    },
+    {
+      "name": "K1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "K2"
+    },
+    {
+      "name": "K2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "G1"
+    },
+    {
+      "name": "G1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "G2"
+    },
+    {
+      "name": "G2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "S1"
+    },
+    {
+      "name": "S1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "S2"
+    },
+    {
+      "name": "S2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "M1"
+    },
+    {
+      "name": "M1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "M2"
+    },
+    {
+      "name": "M2",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "P1"
+    },
+    {
+      "name": "P1",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "T1;",
+      "nextSmartlist": null
+    },
+    {
+      "name": "P2",
+      "parentPlaylistPath": "Gamma;Beta;Child;",
+      "nextPlaylistPath": "",
+      "nextSmartlist": null
+    },
+    {
+      "name": "P3",
+      "parentPlaylistPath": "",
+      "nextPlaylistPath": "",
+      "nextSmartlist": "T1"
+    }
+  ],
+  "scope": "Native UUID references resolved to captured synthetic Smartlist titles; missing next smartlist represented as null",
+  "conversion": {
+    "originalSmartlistSurvives": true,
+    "playlists": [
+      {
+        "playlistTitle": "T1",
+        "members": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "playlistTitle": "T1 2",
+        "members": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    ],
+    "scope": "Native captured membership rows; screenshot of converted playlist selection was not provided."
+  }
+}

@@ -22,6 +22,31 @@ Command group for auditing integrity, synchronizing tags, creating snapshots, re
 
 - `--help, -h` (bool; default `false`): help for library.
 
+## `engine-cli library fixture`
+
+Capture offline Desktop evidence for private review. This command group does not open the selected live library.
+
+- `--help, -h` (bool; default `false`): help for fixture.
+
+## `engine-cli library fixture capture`
+
+Usage: `engine-cli library fixture capture --before <offline-folder> --after <offline-folder> --out-dir <new-directory> [--json]`.
+
+1. Quit Desktop and finish copying the offline handover, retaining every database and sidecar. Do not use active library directories.
+2. Run capture with separate before/after folders and a new output directory outside both inputs. It archives regular files through retained read-only handles, refuses descendant links and unknown database sidecar names, and checks complete input identities and hashes before and after inspection.
+3. Inspect the private archive, recovered standalone snapshots, typed table exports and `row-changes.json`. SQLite recovery runs only on distinct working copies. Raw text/blob values use base64 with their original SQL storage types; NULL and empty values remain distinct. Invalid UTF-8 filenames or schema metadata are refused rather than replaced during JSON encoding. Row comparisons cover native Smartlist, Playlist and PlaylistEntity identities without evaluating Smartlist rules.
+4. Review privacy before publishing extracted golden fixtures. Output is private raw evidence, not sanitized data. Screenshot evaluation and expected memberships require separate review. A failed capture retains incomplete output; preserve it and use a different new directory after resolving the failure.
+
+This observes an explicitly offline handover; matching observations do not guarantee a coherent live copy. It never registers inputs, enrolls companions, creates normal library backups or records Undo. No source database is opened by SQLite.
+
+The HTTP equivalent is `POST /v1/operations/library.fixture.capture` with required string parameters `before`, `after`, and `out_dir`. It uses the same capture primitive without a selected library. Its catalog effect is `read`; output writes serialize through the API write queue while source access retains a shared read token. Monitor and cancel it through ordinary job endpoints. Queued cancellation creates no output; later cancellation or failure retains incomplete private output. Handle `fixture_capture_invalid_input`, `fixture_capture_input_changed`, `fixture_capture_output_exists`, and `fixture_capture_failed` with the safe guidance in the HTTP reference; native cancellation, permission, timeout, and missing-file causes keep their existing codes.
+
+- `--before` (string; default ``; required): offline folder before Desktop edits.
+- `--after` (string; default ``; required): offline folder after Desktop edits.
+- `--out-dir` (string; default ``; required): new private output directory; existing paths are refused.
+- `--json` (bool; default `false`): print the private file inventory as JSON.
+- `--help, -h` (bool; default `false`): help for capture.
+
 ## `engine-cli library backup`
 
 Create a safety backup snapshot of your Engine DJ library

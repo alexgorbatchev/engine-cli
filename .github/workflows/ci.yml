@@ -53,6 +53,13 @@ jobs:
         run: go test -count=1 -timeout=10m -v ./internal/api -run '^TestAPI(Intake|Watch|QueueOwned)'
       - name: Test native public queue commands
         run: go test -count=1 -timeout=10m -v ./cmd/engine-cli -run '^TestIntake(CLI|WatchCLI)'
+      - name: Test native offline fixture capture and public jobs
+        run: go test -count=1 -timeout=10m -v ./internal/fixturecapture ./internal/api ./cmd/engine-cli -run 'TestCapture|TestAPIFixtureCapture|TestLibraryFixtureCapture'
+      - name: Require native fixture case-alias containment
+        if: runner.os != 'Linux'
+        env:
+          ENGINE_FIXTURE_REQUIRE_CASE_ALIAS: '1'
+        run: go test -count=1 -timeout=5m -v ./internal/fixturecapture -run '^TestCaptureNativeCaseContainment$'
       - name: Retain native watcher and paired companion coverage
         if: always()
         uses: actions/upload-artifact@v7

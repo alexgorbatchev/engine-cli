@@ -205,7 +205,7 @@ curl -sS -X POST "http://127.0.0.1:8787/v1/jobs/$job_id/cancel"
 
 Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`. Read jobs run concurrently with each other and with non-collection writes, such as staging fetches and tool installs.
 
-All writes run one at a time across opened libraries, including `library.backup`, `migrate.export`, and requests with `auto_install:true`. Backup and export retain their catalog `read` effect because they leave the source collection unchanged and create no source-library undo history.
+All writes run one at a time across opened libraries, including `library.backup`, `migrate.export`, `library.fixture.capture`, and requests with `auto_install:true`. Backup, export, and fixture capture retain their catalog `read` effect because they leave the source collection unchanged and create no source-library undo history.
 
 Collection writes, restore, sync, and filesystem writes whose collection involvement is not yet resolved exclude read jobs. Bound parameters determine scheduling: a fetch with `import:true` excludes reads, while fetching only into Staging permits them. A pending collection writer blocks new reads until it finishes; jobs waiting for access remain `queued` and can be cancelled.
 
@@ -315,6 +315,10 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
 | `operation_failed` | Unclassified failure. Inspect current state before retrying. |
+| `fixture_capture_invalid_input` | The offline input layout, database family, or metadata is unsupported or unsafe. Correct the handover and choose a new output directory. |
+| `fixture_capture_input_changed` | An input identity, path inventory, or file content changed during capture. Stop writers and prepare a complete offline handover before retrying. |
+| `fixture_capture_output_exists` | The output path already exists. Preserve it and choose a different new directory. |
+| `fixture_capture_failed` | Recovery, export, or comparison failed. Preserve incomplete private output for investigation before retrying into a new directory. |
 | `invalid_response` | Engine could not encode a response. Refresh or update Engine. |
 | `no_beat` | Analysis found no steady beat, as in ambient or spoken audio. Set the grid with tap tempo instead. |
 | `no_key` | Analysis found no musical key, as in silent or percussion-only audio. Set the key manually. |
@@ -330,6 +334,14 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `beatgrid_locked` | Engine DJ has locked this beat grid. Unlock it in Engine DJ before editing. |
 
 Existing request validation, origin protection, missing-entity, media, and desktop-check codes keep their meanings. Job status and its terminal progress event report the same failure code. Error classification follows wrapped Go error causes, not diagnostic message strings.
+
+## Offline Desktop fixture capture
+
+Submit `POST /v1/operations/library.fixture.capture` with required server-side string paths `before`, `after`, and `out_dir`. The equivalent CLI command is `engine-cli library fixture capture --before <folder> --after <folder> --out-dir <new-directory> --json`. Inputs must be an explicitly offline handover after Desktop has quit; the output directory must be new and outside both inputs. Matching observations do not guarantee a coherent live copy.
+
+The shared capture primitive archives both complete input file inventories through retained read-only handles before opening SQLite on separate working copies. It preserves observed database, WAL, SHM, and journal files, recovers only the working copies, and exports standalone snapshots, typed table values, and native Smartlist/Playlist/PlaylistEntity row changes. Original inputs are never opened by SQLite. Text/blob values retain base64 bytes and SQL storage types; unsupported invalid UTF-8 schema metadata is refused. Capture does not evaluate Smartlist rules or infer screenshot memberships.
+
+The result contains the before/after file inventories, offline scope, and privacy warning; output is written to the requested `out_dir`. Use ordinary job status, SSE, and cancellation endpoints; queued cancellation creates no output. Cancellation or failure after output creation retains incomplete evidence. Output contains unsanitized private data and must be reviewed before publication. This operation needs no selected library, registers no input library, enrolls no companions, and creates no normal backup or Undo record. Its output writes use the native write queue while its source access retains the shared read token. Native cancellation, timeout, permission, and missing-file codes remain intact alongside the fixture-specific codes above.
 
 ## Library sync previews
 
@@ -918,6 +930,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `library.verify`, `library.refresh`, `library.prune` | `{}` |
 | `library.sync` | `source`, `destination`, `scope`, `playlist_map?`, `dry_run?`, `mirror?`, `conflict?`, `media?`, `plan_token?` |
 | `library.backup`, `library.backups` | `out_dir?` |
+| `library.fixture.capture` | `before`, `after`, `out_dir` |
 | `library.discover` | `paths?` (array; omitted or empty uses automatic locations) |
 | `library.restore` | `path` |
 | `library.history` | `library?`; defaults to the server's configured library |

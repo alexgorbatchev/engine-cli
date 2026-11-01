@@ -17,6 +17,7 @@ import (
 
 func (s *Server) libraryOperations() []operation {
 	return []operation{
+		fixtureCaptureOperation(),
 		define("library.create", true, []string{"path"}, func(ctx context.Context, p createLibraryParams) (any, error) { return createLibrary(ctx, p) }),
 		define("library.register", true, nil, func(ctx context.Context, p registerParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
