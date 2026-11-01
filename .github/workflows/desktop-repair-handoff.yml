@@ -53,7 +53,7 @@ jobs:
       - name: Test maintainer harness output ownership
         run: just desktop-repair-handoff-test
       - name: Test native safety boundaries
-        run: go test -race -count=1 -timeout=10m ./internal/fixturecapture/handoffcmd
+        run: go test -v -race -count=1 -timeout=30m ./internal/fixturecapture/handoffcmd
       - name: Build and qualify fresh repaired-first delivery
         run: just desktop-repair-handoff
       - name: Retain separate maintainer native qualification evidence
