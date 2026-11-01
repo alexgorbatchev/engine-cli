@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/engine-cli/internal/fixturecapture"
 	"github.com/spf13/cobra"
 )
