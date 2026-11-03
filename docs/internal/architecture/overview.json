@@ -879,6 +879,15 @@
         "Human Desktop evaluation records actual version/architecture, visible names, rules, memberships, sibling order and playback before Undo. Close Desktop before exact delivery-specific Undo, then reopen to record the two distinct restored states. Automated native qualification produces an acceptance candidate; desktop_accepted remains false until actual observations are reviewed.",
         "Committed source evidence da0162f016a99113b5e37362668502aca83dbae6: .github/workflows/desktop-repair-handoff.yml:18–78; scripts/qualify-desktop-repair-handoff.mjs:29–44,51–95,98–201; scripts/desktop-repair/delivery.mjs:5–61; docs/internal/references/desktop-repair-handoff.md:9–27. Existing offline capture evidence remains 16980172720ca6644c55cd3272b6a3ce9774f37b. Source inspection proves neither a successful native workflow nor human Desktop acceptance."
       ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Shared dependency inspection and changes",
+      "items": [
+        "tools.inspect reads each managed tool once and combines requirements with godeps version semantics. Each dependency has one highest minimum and observations for every requiring context, including Engine-managed tools. Missing, invalid or failed observations cannot establish readiness. Child processes receive their own managed dependency directory before the inherited PATH without mutating Engine's environment.",
+        "tools.dependencies.install and tools.dependencies.update each run as one serialized system operation across every known requiring context. Separately managed copies remain explicit internally. Existing native installers and verification retain ownership; the aggregate operation records successes and failures without adding a post-write inspection. The consumer requests a separate fresh tools.inspect read before reporting readiness.",
+        "Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependencies.go:42–180; internal/acquire/shared_dependency_actions.go:31–122; internal/acquire/client.go:173–190; internal/api/tools.go:27–40. Historical source pins and graph topology remain unchanged."
+      ]
     }
   ]
 }

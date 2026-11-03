@@ -5886,6 +5886,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot amber"></div>
+          <h3>Shared dependency changes retain partial receipts</h3>
+        </div>
+        <ul>
+          <li>Shared dependency install/update uses the existing system-effect write owner and job lifecycle. One accepted job inspects known contexts, then installs missing copies or updates installed copies. An incomplete inventory remains an explicit dependency_check_incomplete outcome even when known contexts can be repaired.</li>
+          <li>Successful receipts survive later installer failures or cancellation. A child&#39;s explicit changed receipt remains successful when verification fails only for another dependency. A separate consumer read refreshes installed versions; a failed read cannot erase completed changes or trigger automatic replay.</li>
+          <li>Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependency_actions.go:31–122; internal/api/tools.go:27–40; internal/api/shared_dependencies_test.go:60–101. No new scheduler, durable queue or job state is introduced.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
           <h3>Supplemental evidence scope</h3>
         </div>
         <ul>

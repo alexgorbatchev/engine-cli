@@ -239,6 +239,15 @@
     },
     {
       "dot": "amber",
+      "title": "Shared dependency changes retain partial receipts",
+      "items": [
+        "Shared dependency install/update uses the existing system-effect write owner and job lifecycle. One accepted job inspects known contexts, then installs missing copies or updates installed copies. An incomplete inventory remains an explicit dependency_check_incomplete outcome even when known contexts can be repaired.",
+        "Successful receipts survive later installer failures or cancellation. A child's explicit changed receipt remains successful when verification fails only for another dependency. A separate consumer read refreshes installed versions; a failed read cannot erase completed changes or trigger automatic replay.",
+        "Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependency_actions.go:31–122; internal/api/tools.go:27–40; internal/api/shared_dependencies_test.go:60–101. No new scheduler, durable queue or job state is introduced."
+      ]
+    },
+    {
+      "dot": "amber",
       "title": "Supplemental evidence scope",
       "items": [
         "Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification."

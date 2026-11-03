@@ -6468,6 +6468,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Committed source evidence da0162f016a99113b5e37362668502aca83dbae6: .github/workflows/desktop-repair-handoff.yml:18–78; scripts/qualify-desktop-repair-handoff.mjs:29–44,51–95,98–201; scripts/desktop-repair/delivery.mjs:5–61; docs/internal/references/desktop-repair-handoff.md:9–27. Existing offline capture evidence remains 16980172720ca6644c55cd3272b6a3ce9774f37b. Source inspection proves neither a successful native workflow nor human Desktop acceptance.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Shared dependency inspection and changes</h3>
+        </div>
+        <ul>
+          <li>tools.inspect reads each managed tool once and combines requirements with godeps version semantics. Each dependency has one highest minimum and observations for every requiring context, including Engine-managed tools. Missing, invalid or failed observations cannot establish readiness. Child processes receive their own managed dependency directory before the inherited PATH without mutating Engine&#39;s environment.</li>
+          <li>tools.dependencies.install and tools.dependencies.update each run as one serialized system operation across every known requiring context. Separately managed copies remain explicit internally. Existing native installers and verification retain ownership; the aggregate operation records successes and failures without adding a post-write inspection. The consumer requests a separate fresh tools.inspect read before reporting readiness.</li>
+          <li>Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependencies.go:42–180; internal/acquire/shared_dependency_actions.go:31–122; internal/acquire/client.go:173–190; internal/api/tools.go:27–40. Historical source pins and graph topology remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
