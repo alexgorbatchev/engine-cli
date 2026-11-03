@@ -12,6 +12,9 @@ type dependencyParams struct {
 	Tool         string   `json:"tool"`
 	Dependencies []string `json:"dependencies"`
 }
+type sharedDependencyParams struct {
+	Dependencies []string `json:"dependencies"`
+}
 type providerParams struct {
 	Provider string `json:"provider"`
 }
@@ -24,6 +27,13 @@ func (s *Server) toolClient() acquire.Client {
 func (s *Server) toolOperations() []operation {
 	client := s.toolClient()
 	return []operation{
+		defineEffect("tools.inspect", "read", nil, func(ctx context.Context, _ emptyParams) (any, error) { return client.InspectTools(ctx) }),
+		defineEffect("tools.dependencies.install", "system", []string{"dependencies"}, func(ctx context.Context, p sharedDependencyParams) (any, error) {
+			return client.ChangeDependencies(ctx, "install", p.Dependencies)
+		}),
+		defineEffect("tools.dependencies.update", "system", []string{"dependencies"}, func(ctx context.Context, p sharedDependencyParams) (any, error) {
+			return client.ChangeDependencies(ctx, "update", p.Dependencies)
+		}),
 		defineEffect("tool.inspect", "read", []string{"tool"}, func(ctx context.Context, p toolParams) (any, error) { return client.InspectTool(ctx, p.Tool) }),
 		defineEffect("tool.upgrade", "system", []string{"tool"}, func(ctx context.Context, p toolParams) (any, error) { return client.Upgrade(ctx, p.Tool) }),
 		defineEffect("tool.dependencies.inspect", "read", []string{"tool"}, func(ctx context.Context, p dependencyParams) (any, error) {

@@ -173,6 +173,16 @@ func (c Client) execute(ctx context.Context, tool string, args []string, result 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = append(os.Environ(), "AGENT=1")
+	if _, managed := requirements[name]; managed && name != "agent-ask-cli" {
+		binDir, err := godeps.GetManagedBinDir(name)
+		if err != nil {
+			return nil, fmt.Errorf("resolving %s dependency directory: %w", name, err)
+		}
+		// Match the child's normal dependency execution context even for read
+		// commands. Set only this process's environment; concurrent tool reads
+		// must not race through changes to Engine's own PATH.
+		cmd.Env = append(cmd.Env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

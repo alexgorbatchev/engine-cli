@@ -93,6 +93,18 @@ func addAcquisitionCommands(root *cobra.Command) {
 	}
 	tool.AddCommand(deps)
 	root.AddCommand(tool)
+	tools := &cobra.Command{Use: "tools", Short: "Manage shared dependencies across all tools", Args: cobra.NoArgs}
+	tools.AddCommand(acquisitionCommand("tools.inspect", "inspect", "Inspect all tools and their shared requirements", "", nil))
+	shared := &cobra.Command{Use: "dependencies", Short: "Install or update every known copy of a dependency", Args: cobra.NoArgs}
+	for _, action := range []string{"install", "update"} {
+		command := acquisitionCommand("tools.dependencies."+action, action, "Manage selected dependencies across all requiring tools", "", []acquisitionFlag{{"dependencies", "strings", "Required dependency names; repeat or use commas"}})
+		if err := command.MarkFlagRequired("dependencies"); err != nil {
+			panic(err)
+		}
+		shared.AddCommand(command)
+	}
+	tools.AddCommand(shared)
+	root.AddCommand(tools)
 	staged, _, _ := root.Find([]string{"staging"})
 	staged.AddCommand(acquisitionCommand("staging.retry", "retry <id>", "Retry a staged acquisition or its failed mix tracks", "id", nil))
 }

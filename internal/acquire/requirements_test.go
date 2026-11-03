@@ -22,7 +22,8 @@ func TestToolsRunOnlyWhenSupported(t *testing.T) {
 		{name: "missing", tool: "fetch-track", code: "tool_unavailable"},
 		{name: "outdated", tool: "fetch-track", version: "1.5.0", code: "tool_outdated"},
 		{name: "unreadable version", tool: "tag-track", version: "unknown", code: "tool_outdated"},
-		{name: "supported", tool: "fetch-mix", version: "2.1.1"},
+		{name: "cached dependency release", tool: "fetch-mix", version: "2.1.3", code: "tool_outdated"},
+		{name: "supported", tool: "fetch-mix", version: "2.1.4"},
 		{name: "development build", tool: "fetch-track", version: "dev"},
 		{name: "unmanaged helper", tool: "helper", version: "0.0.1"},
 	}

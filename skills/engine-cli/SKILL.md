@@ -4,7 +4,7 @@ description: Use Engine CLI to inspect, edit, analyze, import, synchronize, back
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-30 19:40
-  last_modified: 2026-11-01 14:19
+  last_modified: 2026-11-03 12:00
   status: current
 ---
 
@@ -22,7 +22,7 @@ Use the installed `engine-cli` executable. Prefer structured output when a comma
 | Import/export a DJ application's library | [Migration](references/migrate.md) |
 | Acquire, inspect and import staged media | [Staging](references/staging.md), [Mixes](references/mix.md) |
 | Watch local folders, queue files, prepare staged copies and review incoming imports | [Incoming local files](references/intake.md) |
-| Use a local API, runtime checks, managed tools or AI providers | [HTTP API](references/api.md), [System](references/system.md), [Tools](references/tool.md), [AI](references/ai.md) |
+| Use a local API, runtime checks, managed tools or AI providers | [HTTP API](references/api.md), [System](references/system.md), [Tools](references/tool.md), [Shared dependencies](references/tools.md), [AI](references/ai.md) |
 | Install this skill, inspect help or configure shell completion | [Skill](references/skill.md), [Help](references/help.md), [Completion](references/completion.md) |
 
 Each reference lists full command paths, aliases, positional arguments and local flags with their pflag types and defaults. Root flags below apply to every command. `<argument>` is required, `[argument]` is optional, and `...` accepts multiple values. Quote each path/name containing spaces. `stringSlice` accepts comma-separated or repeated flags; `stringArray` accepts repeated flags without splitting commas. Explicit `--flag=false` preserves false; an explicitly supplied empty string can mean clearing a value, while omission preserves it.

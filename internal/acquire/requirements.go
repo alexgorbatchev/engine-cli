@@ -23,7 +23,7 @@ type requirement struct {
 var requirements = map[string]requirement{
 	"agent-ask-cli": {minVersion: "1.0.0", repo: "agent-ask-cli"},
 	"fetch-track":   {minVersion: "1.10.1", repo: "fetch-track-cli"},
-	"fetch-mix":     {minVersion: "2.1.1", repo: "fetch-mix-cli"},
+	"fetch-mix":     {minVersion: "2.1.4", repo: "fetch-mix-cli"},
 	"tag-track":     {minVersion: "1.1.1", repo: "tag-track-cli"},
 }
 
