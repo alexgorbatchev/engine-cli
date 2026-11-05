@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
-	"github.com/alexgorbatchev/godeps"
+	"github.com/alexgorbatchev/godeps/v2"
 )
 
 func TestToolsRunOnlyWhenSupported(t *testing.T) {
@@ -148,23 +148,6 @@ func TestUpgradeInstallsManagedRelease(t *testing.T) {
 	}
 	if _, err := (Client{}).Upgrade(context.Background(), "unknown"); err == nil {
 		t.Fatal("upgraded an unknown tool")
-	}
-}
-
-func TestUseManagedToolsPrecedesPath(t *testing.T) {
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-	t.Setenv("PATH", "/usr/bin")
-	managed, err := godeps.GetManagedBinDir("engine-cli")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for range 2 {
-		if err := UseManagedTools(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if got := os.Getenv("PATH"); got != managed+string(os.PathListSeparator)+"/usr/bin" {
-		t.Fatalf("PATH=%q", got)
 	}
 }
 

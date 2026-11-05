@@ -14,7 +14,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
-	"github.com/alexgorbatchev/godeps"
+	"github.com/alexgorbatchev/godeps/v2"
 )
 
 type Client struct {

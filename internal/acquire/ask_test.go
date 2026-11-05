@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
-	"github.com/alexgorbatchev/godeps"
+	"github.com/alexgorbatchev/godeps/v2"
 )
 
 func askProcess(t *testing.T, body string) string {

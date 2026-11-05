@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
-	"github.com/alexgorbatchev/godeps"
+	"github.com/alexgorbatchev/godeps/v2"
 )
 
-// autoInstallFixture puts an optional preinstalled fetch-track on PATH behind
-// the managed directory, where the installer places its release.
+// autoInstallFixture puts an optional preinstalled tool on PATH; installation
+// selects the managed release only when the external copy is unsatisfied.
 type autoInstallFixture struct {
 	installer *recordingInstaller
 	marker    string
@@ -23,7 +23,7 @@ func newAutoInstallFixture(t *testing.T, tool, before, after string, installErr 
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	system := t.TempDir()
 	t.Setenv("PATH", system)
-	if err := UseManagedTools(); err != nil {
+	if err := UseManagedTools(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	managed, err := godeps.GetManagedBinDir(managedApp)

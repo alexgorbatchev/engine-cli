@@ -3,9 +3,11 @@ package acquire
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
-	"github.com/alexgorbatchev/godeps"
+	"github.com/alexgorbatchev/godeps/v2"
 )
 
 // managedApp names the godeps-managed tool directory ($XDG_DATA_HOME/engine-cli/bin).
@@ -27,32 +29,41 @@ var requirements = map[string]requirement{
 	"tag-track":     {minVersion: "1.1.1", repo: "tag-track-cli"},
 }
 
-// UseManagedTools puts the managed tool directory ahead of PATH so releases
-// installed by tool upgrades take precedence over other copies.
-func UseManagedTools() error {
-	return godeps.InitManagedPath(managedApp)
+// UseManagedTools selects satisfying external or managed releases at startup.
+func UseManagedTools(ctx context.Context) error {
+	return (Client{}).managedTools().InitManagedPath(ctx)
 }
 
-func (c Client) toolManager(tool string) *godeps.Manager {
-	req := requirements[tool]
-	installer := c.Installer
-	if installer == nil {
-		installer = godeps.GitHubReleaseGoBinary(releaseOwner, req.repo, tool)
+// Every installation refreshes PATH using all requirements: managed executables
+// share a directory, so selecting one alone can hide another required release.
+func (c Client) managedTools() *godeps.Manager {
+	return c.toolManager(slices.Sorted(maps.Keys(requirements))...)
+}
+
+func (c Client) toolManager(tools ...string) *godeps.Manager {
+	deps := make([]godeps.Dependency, 0, len(tools))
+	for _, tool := range tools {
+		req := requirements[tool]
+		installer := c.Installer
+		if installer == nil {
+			installer = godeps.GitHubReleaseGoBinary(releaseOwner, req.repo, tool)
+		}
+		deps = append(deps, godeps.Dependency{
+			Name:       tool,
+			MinVersion: req.minVersion,
+			InstallURL: "https://github.com/" + releaseOwner + "/" + req.repo,
+			Installer:  installer,
+		})
 	}
 	runner := godeps.DefaultRunner
 	if c.Runner != nil {
 		runner = godeps.CommandRunner(c.Runner)
 	}
-	return godeps.New(godeps.Config{AppName: managedApp, Runner: runner, Dependencies: []godeps.Dependency{{
-		Name:       tool,
-		MinVersion: req.minVersion,
-		InstallURL: "https://github.com/" + releaseOwner + "/" + req.repo,
-		Installer:  installer,
-	}}})
+	return godeps.New(godeps.Config{AppName: managedApp, Runner: runner, Dependencies: deps})
 }
 
-// requirementReport describes the installed tool; Verify's error only repeats
-// the report's unsatisfied state.
+// requirementReport accepts a manager for exactly one tool; Verify's error
+// only repeats that report's unsatisfied state.
 func requirementReport(ctx context.Context, m *godeps.Manager) godeps.DependencyReport {
 	reports, _ := m.Verify(ctx)
 	return reports[0]
@@ -88,8 +99,12 @@ func (c Client) requireTool(ctx context.Context, name string) error {
 		return requirementError(r)
 	}
 	progress.Stage(ctx, "installing "+name, 0)
-	_, err := m.InstallUnsatisfied(ctx)
-	_, err = verifyInstalled(ctx, m, name, err)
+	installer := c.managedTools()
+	install := installer.Install
+	if r.Installed {
+		install = installer.Update
+	}
+	_, err := verifyInstalled(ctx, m, name, install(ctx, name))
 	return err
 }
 

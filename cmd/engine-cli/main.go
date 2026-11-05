@@ -18,7 +18,7 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := acquire.UseManagedTools(); err != nil {
+	if err := acquire.UseManagedTools(ctx); err != nil {
 		// Tools installed elsewhere on PATH remain usable without the managed directory.
 		fmt.Fprintf(os.Stderr, "[WARN] managed tool directory unavailable: %v\n", err)
 	}

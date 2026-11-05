@@ -5,7 +5,7 @@ go 1.27.2
 require (
 	github.com/alexgorbatchev/cobra-help-tree/v4 v4.0.0
 	github.com/alexgorbatchev/gochromaprint v1.6.1-0.20261018234412-8ac11c575443
-	github.com/alexgorbatchev/godeps v1.1.0
+	github.com/alexgorbatchev/godeps/v2 v2.0.1
 	github.com/cabbagekobe/mixedkey v0.1.0
 	github.com/cabbagekobe/tactus v0.1.0
 	github.com/fsnotify/fsnotify v1.10.1

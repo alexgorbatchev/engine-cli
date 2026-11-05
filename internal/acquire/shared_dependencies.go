@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
-	"github.com/alexgorbatchev/godeps"
+	"github.com/alexgorbatchev/godeps/v2"
 )
 
 const dependencyCheckIncomplete = "dependency_check_incomplete"

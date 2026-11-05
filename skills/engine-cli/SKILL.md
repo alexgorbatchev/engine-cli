@@ -4,7 +4,7 @@ description: Use Engine CLI to inspect, edit, analyze, import, synchronize, back
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-30 19:40
-  last_modified: 2026-11-03 12:00
+  last_modified: 2026-11-04 23:01
   status: current
 ---
 
@@ -39,7 +39,7 @@ Each reference lists full command paths, aliases, positional arguments and local
 
 `AGENT=1`, `AGENT=true` or `AGENT=yes` enables structured agent-oriented help/progress; normal help remains available with `AGENT=0` or unset. Agent help starts with an instruction to read `AGENT=1 engine-cli skill`; that command prints installation instructions, not an embedded copy of this skill. It needs no local skill file and performs no network installation itself.
 
-`HOME` (or the platform home directory) supplies the default library and fallback state/data locations. `XDG_STATE_HOME` selects the root of the separate UI/library-preference state directory; the default state file is `$XDG_STATE_HOME/engine-cli/state.db` or `$HOME/.local/state/engine-cli/state.db`. A command's `--state-db` overrides it. `XDG_DATA_HOME` selects managed dependency installation storage; fallback is `$HOME/.local/share/engine-cli/bin`. `PATH` must expose FFmpeg/FFprobe for audio operations; startup prepends managed dependency binaries. `ENGINE_LIBRARY_PATHS` is a semicolon-separated startup list for `api serve`; repeated `--library` overrides it. Empty entries are ignored. `COLUMNS` influences terminal help width. OS temporary-directory variables control disposable processing workspaces; they do not select a library.
+`HOME` (or the platform home directory) supplies the default library and fallback state/data locations. `XDG_STATE_HOME` selects the root of the separate UI/library-preference state directory; the default state file is `$XDG_STATE_HOME/engine-cli/state.db` or `$HOME/.local/state/engine-cli/state.db`. A command's `--state-db` overrides it. `XDG_DATA_HOME` selects managed dependency installation storage; fallback is `$HOME/.local/share/engine-cli/bin`. `PATH` must expose FFmpeg/FFprobe for audio operations; startup preserves satisfying external tool copies and selects managed copies when the external version is missing, outdated, or unreadable. Managed executables share a directory, so promoting it for one tool promotes the others too. `ENGINE_LIBRARY_PATHS` is a semicolon-separated startup list for `api serve`; repeated `--library` overrides it. Empty entries are ignored. `COLUMNS` influences terminal help width. OS temporary-directory variables control disposable processing workspaces; they do not select a library.
 
 Empty path flags generally select the documented library/state/output default or mean no selection; they are not literal filesystem paths. Numeric zero defaults for metadata do not overwrite fields unless their flag is explicitly supplied. For `track update`, `--rating=0` means unrated and `--year=0` clears the year. For `api serve`, `--port=0` requests an available port. Sentinel defaults and accepted values specific to an operation are described alongside its flags.
 

@@ -93,9 +93,10 @@ func (c Client) Upgrade(ctx context.Context, tool string) (*Upgrade, error) {
 	}
 	m := c.toolManager(tool)
 	before := requirementReport(ctx, m)
-	install := m.Update
+	installer := c.managedTools()
+	install := installer.Update
 	if !before.Installed {
-		install = m.Install
+		install = installer.Install
 	}
 	after, err := verifyInstalled(ctx, m, tool, install(ctx, tool))
 	if ctx.Err() != nil {
