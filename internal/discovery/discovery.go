@@ -145,8 +145,15 @@ func inspect(candidate string) (string, os.FileInfo, error) {
 	if err != nil {
 		return "", nil, err
 	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", nil, err
+	}
+	if !info.IsDir() {
+		return "", nil, fmt.Errorf("search path is not a directory")
+	}
 	database := filepath.Join(path, "Database2", "m.db")
-	info, err := os.Stat(database)
+	info, err = os.Stat(database)
 	if err != nil {
 		return "", nil, err
 	}

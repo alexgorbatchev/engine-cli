@@ -118,6 +118,37 @@ func TestDiscoveryErrorsAndCancellation(t *testing.T) {
 	}
 }
 
+func TestDiscoverFileCandidates(t *testing.T) {
+	for _, relative := range []string{".", libraryName, filepath.Join("Music", libraryName)} {
+		t.Run(relative, func(t *testing.T) {
+			root := filepath.Join(t.TempDir(), "root")
+			candidate := filepath.Join(root, relative)
+			if err := os.MkdirAll(filepath.Dir(candidate), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(candidate, []byte("not a directory"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			report, err := Discover(context.Background(), []string{root, root})
+			if err != nil || len(report.Libraries) != 0 {
+				t.Fatalf("file candidate report %+v: %v", report, err)
+			}
+			matches := 0
+			for _, warning := range report.Warnings {
+				if warning.Path == candidate {
+					matches++
+					if warning.Message != "search path is not a directory" {
+						t.Fatalf("file candidate warning %+v", warning)
+					}
+				}
+			}
+			if matches != 1 {
+				t.Fatalf("expected one warning for %s, got %+v", candidate, report.Warnings)
+			}
+		})
+	}
+}
+
 func TestDiscoverySameDatabaseAliases(t *testing.T) {
 	root := t.TempDir()
 	first := libraryFixture(t, filepath.Join(root, "first"), false)
