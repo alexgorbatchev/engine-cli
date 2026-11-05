@@ -11,182 +11,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  intake-native:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-      - name: Install FFmpeg (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - name: Install FFmpeg (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install ffmpeg-full
-          echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
-      - name: Install FFmpeg (Windows)
-        if: runner.os == 'Windows'
-        run: choco install ffmpeg --no-progress -y
-      - name: Diagnose native macOS concurrent anchor creation
-        if: runner.os == 'macOS'
-        run: go test -count=50 -timeout=5m -v ./internal/intakelease -run '^(TestReservationNativeConcurrentAnchorCreation|TestReservationReverseAcquisitionDoesNotLeakPartialOwner)$'
-      - name: Test native queue, process death and parent reservations
-        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intake-watch-native.cover' '-coverpkg=./internal/intake,./internal/intakecontrol,./internal/intakestate,./internal/watchclock,./internal/watchfs,./internal/watchcontrol' ./internal/intake ./internal/intakecontrol ./internal/intakelease ./internal/intakestate ./internal/watchclock ./internal/watchfs ./internal/watchcontrol
-      - name: Cover native parent reservations
-        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-native.cover' ./internal/intakelease
-      - name: Require native case-insensitive alias ownership
-        if: runner.os != 'Linux'
-        env:
-          ENGINE_INTAKE_REQUIRE_CASE_ALIAS: '1'
-        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-casealias.cover' ./internal/intakelease -run TestReservationNativeCaseAlias
-      - name: Test native retained staging and reviewed import
-        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intake-watch-staging.cover' ./internal/staging -run 'TestLocal|TestImport|TestRetainedImport|TestCancelledImport'
-      - name: Test native queue backup, replacement and Undo
-        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intake-watch-pair.cover' '-coverpkg=./internal/backup,./internal/history,./internal/watchcontrol,./internal/watchclock,./internal/intakestate' ./internal/backup ./internal/history -run 'TestIntake|TestInvalidIntake|TestCollectionUndoRetainsIntake|TestExplicitIntake|TestUndoReplacement|TestUndoRefusesForeignQueue|TestUndoRelocation|TestWatch'
-      - name: Test native API queue lifecycle and committed cleanup failures
-        run: go test -count=1 -timeout=10m -v ./internal/api -run '^TestAPI(Intake|Watch|QueueOwned)'
-      - name: Test native public queue commands
-        run: go test -count=1 -timeout=10m -v ./cmd/engine-cli -run '^TestIntake(CLI|WatchCLI)'
-      - name: Test native offline fixture capture and public jobs
-        run: go test -count=1 -timeout=10m -v ./internal/fixturecapture ./internal/api ./cmd/engine-cli -run 'TestCapture|TestAPIFixtureCapture|TestLibraryFixtureCapture'
-      - name: Require native fixture case-alias containment
-        if: runner.os != 'Linux'
-        env:
-          ENGINE_FIXTURE_REQUIRE_CASE_ALIAS: '1'
-        run: go test -count=1 -timeout=5m -v ./internal/fixturecapture -run '^TestCaptureNativeCaseContainment$'
-      - name: Retain native watcher and paired companion coverage
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: intake-watch-${{ matrix.os }}
-          path: intake-watch-*.cover
-          if-no-files-found: error
-      - name: Retain native reservation coverage
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: intakelease-${{ matrix.os }}
-          path: intakelease-*.cover
-          if-no-files-found: error
-
-  pcm-native:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-      - name: Install FFmpeg (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - name: Install FFmpeg (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install ffmpeg-full
-          echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
-      - name: Install FFmpeg (Windows)
-        if: runner.os == 'Windows'
-        run: choco install ffmpeg --no-progress -y
-      - name: Test native staging manifest publication
-        run: go test -count=1 -v ./internal/staging -run 'TestManifestPublication|TestStorePersistenceAndContainment'
-      - name: Test retained-file PCM decoding
-        run: go test -tags pcm_native -count=1 -v ./internal/regularfile ./internal/pcm
-      - name: Test native PCM HTTP handoff
-        run: go test -tags pcm_native -count=1 -v -run PCM ./internal/api
+  coverage:
+    uses: ./.github/workflows/coverage.yml
 
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
-
+          go-version-file: go.mod
       - name: Check module hygiene
         run: go mod tidy -diff
-
       - uses: extractions/setup-just@v4
-
       - name: Check formatting
         run: sh scripts/check-gofmt.sh
-
       - name: Build
         run: go build ./...
-
       - name: Vet
         run: go vet ./...
-
-      - name: Install audio test dependencies
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Test
-        run: go test -v ./...
 
   windows-hot-cues:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
-
-      - name: Install native audio test dependencies
-        run: choco install ffmpeg --no-progress -y
-
+          go-version-file: go.mod
+      - uses: ./.github/actions/setup-audio
       - name: Build native CLI
         run: go build ./cmd/engine-cli
-
       - name: Vet native cue and decoder packages
         run: go vet ./internal/performance ./internal/audiodecode
-
       - name: Test native file identity and saved cue lifecycle
         run: go test -v -count=1 ./internal/performance ./internal/audiodecode
-
-  rekordbox-import:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-2022]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Install Linux audio test dependencies
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Install macOS audio test dependencies
-        if: runner.os == 'macOS'
-        run: brew install ffmpeg
-
-      - name: Install Windows audio test dependencies
-        if: runner.os == 'Windows'
-        run: choco install ffmpeg --no-progress -y
-
-      - name: Vet native import and file ownership packages
-        run: go vet ./internal/rekordbox ./internal/fileidentity ./internal/regularfile
-
-      - name: Test native file identity and retained regular files
-        run: go test -v -count=1 ./internal/fileidentity ./internal/regularfile
-
-      - name: Test native history publication and undo
-        run: go test -v -count=1 ./internal/history -run 'TestHistoryEntryPublication|TestUndoPreservesLaterChangesAndForce'
-
-      - name: Test native import consent, audio, source freshness and undo
-        run: go test -v -count=1 ./internal/rekordbox ./internal/api ./cmd/engine-cli -run 'TestPreparedImport|TestRekordboxImport'

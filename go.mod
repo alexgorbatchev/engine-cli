@@ -13,9 +13,10 @@ require (
 	github.com/nateranda/djtools v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
-	golang.org/x/sync v0.23.0
-	golang.org/x/sys v0.48.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.42.0
+	golang.org/x/tools v0.52.0
 	gonum.org/v1/gonum v0.17.0
 	modernc.org/sqlite v1.57.0
 	zombiezen.com/go/sqlite v1.4.2

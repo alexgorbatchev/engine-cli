@@ -21,8 +21,9 @@ The test for everything this CLI writes: close the app, open the library in Engi
 - **Run CLI with Arguments:** `just run [args...]`
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
 - **Setup:** `just setup` (`go mod download`)
-- **Run Tests:** `just test` (`go test -v ./...`)
-- **Run Static Analysis & Tests:** `just check` (`just fmt-check`, `go vet ./...`, `go test -v ./...`)
+- **Run Tests:** `just test [new-output-directory]` collects uncached host tests with `pcm_native` and `-coverpkg=./...`, reports every package, and requires at least 90% aggregate statement coverage. Collections default to unique ignored `.tmp/coverage-*` directories. Host results alone do not certify native package coverage.
+- **Run Static Analysis & Tests:** `just check [collection-directory...]` runs formatting, module hygiene, vet, and host tests. Supplying collection directories also invokes the strict native coverage gate.
+- **Certify Native Coverage:** `just coverage-check <linux-directory> <macos-directory> <windows-directory>` requires successful matching-source collections from all three native platforms, then enforces at least 90% statement coverage for every package and the aggregate using exact integer comparisons. CI and release share this mandatory gate. Collect with `go run ./scripts/coverage collect --output <new-directory>` on each platform; the collector runs the complete Linux suite and native macOS/Windows qualification suites, including native PCM, and instruments all platform-buildable source. Missing producers, changed source, incomplete inventories, altered profiles, and incompatible block layouts fail. No first-party package or source file is excluded; type/constant-only files contain no instrumentable statements. Preserve complete collection directories when transferring artifacts.
 - **Check Formatting:** `just fmt-check` fails on any tracked or new Go file that `gofmt` would change
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)

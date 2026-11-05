@@ -9,6 +9,9 @@ permissions:
   contents: write
 
 jobs:
+  coverage:
+    uses: ./.github/workflows/coverage.yml
+
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -31,14 +34,11 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Install audio test dependencies
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Test
-        run: go test ./...
+      - name: Check formatting
+        run: sh scripts/check-gofmt.sh
 
   release:
-    needs: verify
+    needs: [verify, coverage]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

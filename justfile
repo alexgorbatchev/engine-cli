@@ -14,9 +14,15 @@ run *args:
 run-ai *args:
     AGENT=1 go run ./cmd/engine-cli {{ args }}
 
-# Run test suite
-test:
-    go test -v ./...
+# Run host tests with native PCM and report aggregate coverage; retain a new collection
+[positional-arguments]
+test output="":
+    go run ./scripts/coverage collect --host-check --output "$1"
+
+# Require matching Linux, macOS and Windows collections: >=90% per package and aggregate
+[positional-arguments]
+coverage-check +directories:
+    go run ./scripts/coverage check "$@"
 
 # Build binary into bin/
 build:
@@ -36,6 +42,7 @@ install:
 
 # Run static analysis and vet
 lint:
+    go mod tidy -diff
     go vet ./...
 
 # Alias for lint
@@ -49,10 +56,10 @@ fmt:
 fmt-check:
     sh scripts/check-gofmt.sh
 
-# Check formatting, then run static analysis, test suite, in sequence
-check: fmt-check
-    go vet ./...
-    go test -v ./...
+# Check the host; optional collection directories additionally require full native certification
+[positional-arguments]
+check *directories: fmt-check lint test
+    @if [ "$#" -gt 0 ]; then go run ./scripts/coverage check "$@"; fi
 
 # Clean build outputs while preserving session-owned scratch
 clean:

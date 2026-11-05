@@ -1,0 +1,61 @@
+name: Native coverage
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+          - os: macos-latest
+            goos: darwin
+          - os: windows-latest
+            goos: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Preserve source bytes on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@v4
+      - uses: ./.github/actions/setup-audio
+      - name: Vet native ownership and audio packages
+        run: go vet ./internal/rekordbox ./internal/fileidentity ./internal/regularfile ./internal/performance ./internal/audiodecode
+      - name: Diagnose native macOS concurrent anchor creation
+        if: runner.os == 'macOS'
+        run: go test -count=50 -timeout=5m -v ./internal/intakelease -run '^(TestReservationNativeConcurrentAnchorCreation|TestReservationReverseAcquisitionDoesNotLeakPartialOwner)$'
+      - name: Collect complete host coverage and native qualification
+        run: go run ./scripts/coverage collect --output .tmp/coverage-native
+      - name: Retain profiles and producer manifest
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.goos }}
+          path: .tmp/coverage-native
+          if-no-files-found: error
+
+  check:
+    needs: collect
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          path: .tmp/coverage-artifacts
+      - name: Enforce exact per-package and aggregate native coverage
+        run: go run ./scripts/coverage check .tmp/coverage-artifacts/coverage-linux .tmp/coverage-artifacts/coverage-darwin .tmp/coverage-artifacts/coverage-windows
