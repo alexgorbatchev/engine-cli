@@ -128,9 +128,17 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 		UNIQUE(title,parentPlaylistPath), UNIQUE(parentPlaylistPath,nextPlaylistPath,nextListUuid)
 	);
 	`
-	_, err := database.ExecContext(ctx, schema)
+	tx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("starting schema initialization: %w", err)
+	}
+	defer tx.Rollback() // A committed transaction is already closed.
+	_, err = tx.ExecContext(ctx, schema)
 	if err != nil {
 		return fmt.Errorf("initializing schema: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing schema initialization: %w", err)
 	}
 	return nil
 }
