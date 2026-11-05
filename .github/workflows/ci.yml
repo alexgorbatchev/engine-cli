@@ -116,6 +116,8 @@ jobs:
       - name: Check module hygiene
         run: go mod tidy -diff
 
+      - uses: extractions/setup-just@v4
+
       - name: Check formatting
         run: sh scripts/check-gofmt.sh
 

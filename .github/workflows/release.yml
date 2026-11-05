@@ -23,6 +23,8 @@ jobs:
       - name: Check module hygiene
         run: go mod tidy -diff
 
+      - uses: extractions/setup-just@v4
+
       - name: Build
         run: go build ./...
 

@@ -54,9 +54,9 @@ check: fmt-check
     go vet ./...
     go test -v ./...
 
-# Clean up build binaries and temporary files
+# Clean build outputs while preserving session-owned scratch
 clean:
-    rm -rf bin coverage.out .tmp dist
+    rm -rf bin coverage.out dist
 
 # Download project dependencies
 setup:
