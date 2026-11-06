@@ -215,6 +215,13 @@ Backup restoration enumerates every database and artwork folder before changing 
 
 A disconnected client does not cancel its job. Cancellation is cooperative and can leave completed changes; use library history to inspect and undo changes. Shutdown requests cancellation and waits for workers.
 
+A failed or cancelled collection or file operation that leaves its captured state
+unchanged, with no recorded moves, relocation, or pending recovery, creates no
+undo record and does not replace the latest undo target.
+This includes stale import reviews and queue-owned staging refusals. Failures
+with partial database or file changes, recorded file moves, library relocation, or pending recovery keep
+their history record; inspect that record before retrying or undoing.
+
 The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. Collection tracks include `hasArtwork`: true when inline artwork bytes or a nonempty regular cache file exists, false when absent (including dangling artwork IDs), and null when availability cannot be determined. Collection lists, single/batch inspection, and playlist tracks share this field. Collection tracks also include `playlistIds`, described under [Library, playlist, and track operations](#library-playlist-and-track-operations), which also lists mutation results; those report changed IDs and paths rather than track objects. Availability checks read artwork catalogue metadata in one batch and reuse filesystem observations for shared covers; they do not load image bytes. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
 
 ## Metadata refresh outcomes
