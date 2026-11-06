@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/alexgorbatchev/engine-cli/internal/intakelease"
+	"context"
+	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"github.com/alexgorbatchev/engine-cli/internal/transfer"
 	"github.com/spf13/cobra"
 )
@@ -17,7 +17,7 @@ func newLibraryTransferCommand() *cobra.Command {
 	var asJSON bool
 	var mappings []string
 	c := &cobra.Command{Use: "sync", Short: "Sync playlists or a whole library to another library", Args: cobra.NoArgs,
-		Long: "Sync from an explicit source library to a destination library. Select source playlist IDs or --root. Use --dry-run to preview without writing anything. Destination-only content is retained unless --mirror is set. Close Engine DJ before applying changes.",
+		Long: "Sync from an explicit source library to a destination library. Select source playlist IDs or --root. Use --dry-run to preview without changing library data. Destination-only content is retained unless --mirror is set. Close Engine DJ before applying changes.",
 		RunE: func(c *cobra.Command, _ []string) (err error) {
 			for _, mapping := range mappings {
 				a, b, ok := strings.Cut(mapping, ":")
@@ -33,12 +33,12 @@ func newLibraryTransferCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !o.DryRun {
-				lease, acquireErr := intakelease.Replace(c.Context(), o.Destination)
-				if acquireErr != nil {
-					return acquireErr
+			o.CheckMutation = func(ctx context.Context) error {
+				r, err := querySystem(ctx, nil)
+				if err != nil {
+					return err
 				}
-				defer func() { err = errors.Join(err, lease.Close()) }()
+				return systemcheck.AllowMutation(r)
 			}
 			r, err := transfer.Run(c.Context(), o)
 			if r != nil {
@@ -50,8 +50,14 @@ func newLibraryTransferCommand() *cobra.Command {
 					if _, e := fmt.Fprintf(c.OutOrStdout(), "applicable: %t\ndry_run: %t\nplan_token: %s\nfiles_to_copy: %d\nbytes_to_copy: %d\nconflicts: %d\n", r.Applicable, o.DryRun, r.PlanToken, r.Summary.FilesCopied, r.Summary.BytesToCopy, len(r.Conflicts)); e != nil {
 						return e
 					}
+					if _, e := fmt.Fprintf(c.OutOrStdout(), "smartlists_added: %d\nsmartlists_updated: %d\nsmartlists_removed: %d\nsource_smartlists_reconnected: %d\nsource_smartlists_omitted: %d\n", r.Summary.SmartlistsAdded, r.Summary.SmartlistsUpdated, r.Summary.SmartlistsRemoved, r.Summary.SourceSmartlistsReconnected, r.Summary.SourceSmartlistsOmitted); e != nil {
+						return e
+					}
+					if _, e := fmt.Fprintf(c.OutOrStdout(), "destination_smartlists_reconnected: %d\ndestination_smartlists_removed: %d\n", r.Summary.DestinationSmartlistsReconnected, r.Summary.DestinationSmartlistsRemoved); e != nil {
+						return e
+					}
 					for _, change := range append(r.Changes, r.Conflicts...) {
-						if _, e := fmt.Fprintf(c.OutOrStdout(), "%s: %s id: %s source_id: %d destination_id: %d reason: %s\n", change.Action, change.Entity, change.ID, change.SourceID, change.DestinationID, change.Reason); e != nil {
+						if _, e := fmt.Fprintf(c.OutOrStdout(), "%s: %s id: %s label: %q source_id: %d destination_id: %d reason: %s\n", change.Action, change.Entity, change.ID, change.Label, change.SourceID, change.DestinationID, change.Reason); e != nil {
 							return e
 						}
 					}
@@ -70,7 +76,7 @@ func newLibraryTransferCommand() *cobra.Command {
 	f.Int64SliceVar(&o.Scope.PlaylistIDs, "playlist-id", nil, "Source playlist IDs, including descendants (repeatable)")
 	f.StringSliceVar(&o.Scope.PlaylistRefs, "playlist-ref", nil, "Stable source playlist references, including descendants")
 	f.BoolVar(&o.Scope.Root, "root", false, "Sync the whole library, including tracks outside playlists")
-	f.BoolVar(&o.DryRun, "dry-run", false, "Preview changes and conflicts without writing to either library")
+	f.BoolVar(&o.DryRun, "dry-run", false, "Preview changes and conflicts without changing library data")
 	f.BoolVar(&o.Mirror, "mirror", false, "Remove destination entries absent from the selected source scope")
 	f.StringVar(&o.Conflict, "conflict", "error", "Resolve conflicting edits: error, source, or destination")
 	f.StringVar(&o.Media, "media", "changed", "Audio copying: changed or none")

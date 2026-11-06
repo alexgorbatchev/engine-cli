@@ -44,7 +44,7 @@ func playlistPaths(rows []playlistRow) (map[int64]string, error) {
 	return paths, nil
 }
 
-func hasSmartlistTable(ctx context.Context, tx *sql.Tx) (bool, error) {
+func hasSmartlistTable(ctx context.Context, tx Reader) (bool, error) {
 	var objectType string
 	err := tx.QueryRowContext(ctx, `SELECT type FROM sqlite_schema WHERE name='Smartlist'`).Scan(&objectType)
 	if errors.Is(err, sql.ErrNoRows) {

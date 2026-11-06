@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/db/dbtest"
+	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"io"
 	"os"
 	"path/filepath"
@@ -60,5 +62,43 @@ func TestSyncCLI(t *testing.T) {
 		if _, err = executeCommand(args...); err == nil {
 			t.Fatalf("accepted %v", extra)
 		}
+	}
+}
+
+func TestSyncCLIRechecksDesktopAfterSourceObservation(t *testing.T) {
+	source, destination := transferLibrary(t, "source"), transferLibrary(t, "destination")
+	original := querySystem
+	t.Cleanup(func() { querySystem = original })
+	checks := 0
+	querySystem = func(context.Context, []string) (*systemcheck.Report, error) {
+		checks++
+		return &systemcheck.Report{Checks: map[string]systemcheck.Result{systemcheck.EngineDesktop: {Status: "ok", Running: new(checks > 1)}}}, nil
+	}
+	_, err := executeCommand("library", "sync", "--from", source, "--to", destination, "--root", "--map-playlist", "1:1", "--no-backup")
+	if err == nil || !strings.Contains(err.Error(), "close it") || checks != 2 {
+		t.Fatalf("mutation used stale Desktop observation: checks=%d error=%v", checks, err)
+	}
+	if _, err := os.Stat(filepath.Join(destination, ".engine-cli")); !os.IsNotExist(err) {
+		t.Fatalf("Desktop rejection enrolled destination history: %v", err)
+	}
+}
+
+func TestSyncCLIExplainsSourceSmartlistOmission(t *testing.T) {
+	source, destination := transferLibrary(t, "source"), transferLibrary(t, "destination")
+	database, err := db.Open(filepath.Join(source, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	if _, err := database.Exec(`INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('missing','Saved selection','Missing;','','','opaque')`); err != nil {
+		t.Fatal(err)
+	}
+	out, err := executeCommand("library", "sync", "--from", source, "--to", destination, "--root", "--map-playlist", "1:1", "--dry-run")
+	if err != nil || !strings.Contains(out, "source_smartlists_omitted: 1") || !strings.Contains(out, `label: "Saved selection"`) || !strings.Contains(out, "omit: smartlist") {
+		t.Fatalf("missing readable omission: %s %v", out, err)
+	}
+	var count int
+	if err := database.QueryRow(`SELECT count(*) FROM Smartlist WHERE listUuid='missing'`).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("preview removed source row: %d %v", count, err)
 	}
 }

@@ -311,12 +311,18 @@ Sync playlists or a whole library to another library
 
 Usage: `engine-cli library sync [flags]`.
 
-Sync from an explicit source library to a destination library. Select source playlist IDs or --root. Use --dry-run to preview without writing anything. Destination-only content is retained unless --mirror is set. Close Engine DJ before applying changes.
+Sync from an explicit source library to a destination library. Select source playlist IDs or --root. Use --dry-run to preview without changing library data. Destination-only content is retained unless --mirror is set. Close Engine DJ before applying changes.
 
 Directional sync with read-only dry runs, conflict detection, reversible destination changes, and explicit mirroring.
 
+Root previews resolve source Smartlist links from retained native history and report unresolved rows as source omissions. They never repair the source. Playlist-only scope does not copy source Smartlists. Both scopes validate retained destination Smartlists against the final mapped playlist layout and sibling order. Unresolved links or collisions refuse application. Preview also checks the final saved rows against the destination's declared Smartlist table constraints in isolated memory; duplicate names whose stored name and parent path are both non-NULL are structural conflicts, regardless of the conflict winner option. Rules remain opaque and unchanged.
+
+Source reads leave database rows, history, and media unchanged. SQLite may create WAL/SHM coordination files beside a database; if the source does not permit the required coordination access, observation fails without repairing it. Application validates an initial preview before destination history enrollment, then revalidates under destination ownership before repair or backup.
+
+Plain and JSON summaries separate ordinary Smartlist additions/updates/removals, source reconnections/omissions, and prerequisite destination reconnections/removals. Read each change's label and action before applying. Source-only interpretation does not create an Undo entry. Destination repair occurs before the sync snapshot, so Undo of sync retains that preceding repair. A changed source row or history evidence invalidates the preview token before destination repair or backup. Native trigger changes to the reviewed final Smartlist rows or graph roll back the sync transaction.
+
 - `--conflict` (string; default `error`): Resolve conflicting edits: error, source, or destination.
-- `--dry-run` (bool; default `false`): Preview changes and conflicts without writing to either library.
+- `--dry-run` (bool; default `false`): Preview changes and conflicts without changing library data.
 - `--from` (string; default ``): Source Engine Library path.
 - `--help, -h` (bool; default `false`): help for sync.
 - `--json` (bool; default `false`): Print the preview or result as JSON.

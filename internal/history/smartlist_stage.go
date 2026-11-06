@@ -3,7 +3,6 @@ package history
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -222,7 +221,7 @@ func validateSmartlistOnlyChanges(ctx context.Context, source, destination strin
 	}
 }
 
-func readCompleteSmartlistRows(ctx context.Context, database *sql.DB) ([]string, map[string][]any, error) {
+func readCompleteSmartlistRows(ctx context.Context, database db.Querier) ([]string, map[string][]any, error) {
 	rows, err := database.QueryContext(ctx, `SELECT * FROM Smartlist ORDER BY listUuid`)
 	if err != nil {
 		return nil, nil, err

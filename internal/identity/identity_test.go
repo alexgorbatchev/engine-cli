@@ -27,6 +27,40 @@ func fixture(t *testing.T) (*sql.DB, string) {
 	return d, lib
 }
 
+func TestReferenceResolutionUsesCallerTransaction(t *testing.T) {
+	d, lib := fixture(t)
+	if _, err := Register(t.Context(), d, lib, false); err != nil {
+		t.Fatal(err)
+	}
+	items, err := List(t.Context(), d, lib)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ref string
+	for _, item := range items {
+		if item.Kind == "playlist" {
+			ref = item.Ref
+		}
+	}
+	tx, err := d.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(t.Context(), "DELETE FROM Playlist WHERE id=1"); err != nil {
+		t.Fatal(err)
+	}
+	if ids, err := ResolveBatch(t.Context(), tx, lib, "playlist", []string{ref}); err == nil || ids != nil {
+		t.Fatalf("reference reader escaped caller transaction: %v %v", ids, err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if ids, err := ResolveBatch(t.Context(), d, lib, "playlist", []string{ref}); err != nil || !reflect.DeepEqual(ids, []int64{1}) {
+		t.Fatalf("rollback lost reference: %v %v", ids, err)
+	}
+}
+
 func TestRegisterExistingSyncLineage(t *testing.T) {
 	d, lib := fixture(t)
 	ctx := context.Background()
