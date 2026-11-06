@@ -308,6 +308,12 @@ Usage: `engine-cli library undo [id] [flags]`.
 
 Undo the latest operation, or an operation ID from library history. Conflicts are refused unless --force is given. Use --dry-run to check first. Close Engine DJ before modifying the library. Forced undo also retains recovery history.
 
+Failed or cancelled operations that leave their captured state unchanged, with no
+recorded moves, relocation, or pending recovery, do not replace the latest undo
+target. Partial database or file changes, recorded file moves, library relocation,
+and pending recovery retain their history records; inspect history before
+retrying or undoing a failed operation.
+
 - `--dry-run` (bool; default `false`): Check undo conflicts without changing the library.
 - `--force` (bool; default `false`): Restore prior values even when affected records or files have changed.
 - `--help, -h` (bool; default `false`): help for undo.

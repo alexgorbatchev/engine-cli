@@ -5,12 +5,14 @@ import (
 	"encoding/binary"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/analysis"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
 // analysisCLILibrary creates a native library with one 125 BPM track whose fake decoder streams a PCM sidecar.
@@ -18,11 +20,16 @@ func analysisCLILibrary(t *testing.T) (string, string) {
 	t.Helper()
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	probe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NATIVE_FFPROBE", probe)
 	bin := t.TempDir()
 	if err := os.WriteFile(filepath.Join(bin, "ffmpeg"), []byte("#!/bin/sh\nwhile [ \"$1\" != \"-i\" ]; do shift; done\n[ -f \"${2#file:}.pcm\" ] || exit 1\ncat \"${2#file:}.pcm\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(bin, "ffprobe"), []byte("#!/bin/sh\necho '{\"streams\":[{\"sample_rate\":\"44100\"}]}'\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(bin, "ffprobe"), []byte("#!/bin/sh\nfor arg do\nif [ \"$arg\" = '-show_frames' ]; then exec \"$NATIVE_FFPROBE\" \"$@\"; fi\ndone\necho '{\"streams\":[{\"sample_rate\":\"44100\"}]}'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -38,10 +45,9 @@ func analysisCLILibrary(t *testing.T) (string, string) {
 		v := 0.6*math.Exp(-since*18)*math.Sin(2*math.Pi*(50+90*math.Exp(-since*30))*since) + 0.03*(math.Sin(2*math.Pi*220*x)+math.Sin(2*math.Pi*261.63*x)+math.Sin(2*math.Pi*329.63*x))
 		binary.LittleEndian.PutUint32(pcm[4*i:], math.Float32bits(float32(v)))
 	}
-	for path, data := range map[string][]byte{source: []byte("audio"), source + ".pcm": pcm} {
-		if err := os.WriteFile(path, data, 0o644); err != nil {
-			t.Fatal(err)
-		}
+	testaudio.Write(t, source)
+	if err := os.WriteFile(source+".pcm", pcm, 0o644); err != nil {
+		t.Fatal(err)
 	}
 	return lib, source
 }

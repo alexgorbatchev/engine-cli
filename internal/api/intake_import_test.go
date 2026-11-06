@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -74,6 +75,9 @@ func testAPIIntakeReviewedImportAndUndo(t *testing.T, s *Server, lib string) {
 	if !ok || historyID == "" {
 		t.Fatalf("import lost Undo receipt: %+v", job)
 	}
+	// Read immediately, before queue polling can wait out receipt reconciliation.
+	trackID := int64(job["result"].(map[string]any)["track_id"].(float64))
+	assertAPICollectionAfterIntakeImport(t, s, trackID)
 	waitIntakeItem(t, service, id, "imported")
 	view = readAPIIntake(t, s)
 	if view.Items[0].HistoryID != historyID || view.WorkerErrorCode != "" {
@@ -99,6 +103,25 @@ func testAPIIntakeReviewedImportAndUndo(t *testing.T, s *Server, lib string) {
 	}
 	if data, err := os.ReadFile(source); err != nil || len(data) != 96044 {
 		t.Fatalf("import/Undo changed source: %d %v", len(data), err)
+	}
+}
+
+func assertAPICollectionAfterIntakeImport(t *testing.T, s *Server, trackID int64) {
+	t.Helper()
+	response := requestAPI(t, s, http.MethodGet, "/v1/tracks/"+strconv.FormatInt(trackID, 10), "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("immediate imported-track read failed: %d %s", response.Code, response.Body)
+	}
+	var track struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &track); err != nil || track.ID != trackID {
+		t.Fatalf("immediate read lost imported track: %+v %v", track, err)
+	}
+	for _, operation := range []string{"track.list", "playlist.list"} {
+		if job := runAPIJob(t, s, operation, "{}"); job["state"] != "succeeded" {
+			t.Fatalf("immediate collection refresh failed: %+v", job)
+		}
 	}
 }
 

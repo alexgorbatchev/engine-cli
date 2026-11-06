@@ -29,6 +29,8 @@ Usage: `engine-cli track add <path...> [flags]`.
 
 Import one or more audio files into your Engine DJ collection.
 
+Requires FFprobe to decode an audio frame before moving the source or writing its collection record. Empty, malformed, unreadable, and non-audio files return `track_not_audio`; an unavailable FFprobe returns `tool_unavailable`. Valid silent audio is accepted. Admission checks the first second of selected audio and does not verify the entire recording.
+
 Extracts metadata tags (title, artist, album, genre, year, BPM, duration, bitrate) using ffprobe.
 Optionally moves the audio file to your Engine Library storage and/or assigns it to a playlist.
 

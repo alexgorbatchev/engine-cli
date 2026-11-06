@@ -10,7 +10,9 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/intakestate"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/watchcontrol"
 )
 
 type restoreSection struct {
@@ -53,6 +55,41 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 	if _, err := companion.Databases(engineLibDir); err != nil {
 		return companionFailure(err)
 	}
+	return intakestate.With(ctx, engineLibDir, func(ctx context.Context) error {
+		return restoreHeld(ctx, backupDir, engineLibDir, sections, companionSource)
+	})
+}
+
+func restoreHeld(ctx context.Context, backupDir, library string, sections []restoreSection, companions []companionRestore) error {
+	// Waiting for a concurrent state owner must not turn the earlier selected
+	// image validation into permission to publish a now-damaged pair.
+	if err := validateCompanionPair(ctx, companions); err != nil {
+		return companionFailure(err)
+	}
+	// Enroll the complete operational pair before any live replacement. An
+	// error between writes then retains both original images for recovery.
+	for _, name := range []string{companion.IntakeName, companion.WatchName} {
+		if err := history.PreserveDatabase(ctx, filepath.Join(library, ".engine-cli", name)); err != nil {
+			return err
+		}
+	}
+	revision, err := watchcontrol.Fence(ctx, library, companionImage(companions, companion.WatchName))
+	if err != nil {
+		return err
+	}
+	if err := restoreSections(ctx, backupDir, sections); err != nil {
+		return errors.Join(err, history.RequireRecovery(ctx))
+	}
+	if err := restoreCompanion(ctx, library, companions); err != nil {
+		return errors.Join(err, history.RequireRecovery(ctx))
+	}
+	if err := watchcontrol.Restored(ctx, library, revision); err != nil {
+		return errors.Join(err, history.RequireRecovery(ctx))
+	}
+	return nil
+}
+
+func restoreSections(ctx context.Context, backupDir string, sections []restoreSection) error {
 	for _, section := range sections {
 		progress.Stage(ctx, section.phase, section.percent)
 		for _, entry := range section.entries {
@@ -82,9 +119,6 @@ func RestoreBackup(ctx context.Context, backupDir, engineLibDir string) error {
 				return fmt.Errorf("restoring %s: %w", source, err)
 			}
 		}
-	}
-	if err := restoreCompanion(ctx, engineLibDir, companionSource); err != nil {
-		return errors.Join(err, history.RequireRecovery(ctx))
 	}
 	return nil
 }

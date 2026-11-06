@@ -58,12 +58,8 @@ func TestPlaylistImportFailuresHaveNoResult(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if dryRun {
-				if id != "" || len(entries) != 0 {
-					t.Fatalf("failed preview created undo history: %v %q", entries, id)
-				}
-			} else if len(entries) != 1 || entries[0].ID != id || entries[0].State != "failed" {
-				t.Fatalf("failed apply lost its recovery history: %v %q", entries, id)
+			if id != "" || len(entries) != 0 {
+				t.Fatalf("unchanged failed import created undo history: %v %q", entries, id)
 			}
 			job := awaitAPIJob(t, s, submitAPIJob(t, s, "playlist.import", string(raw)))
 			if job["state"] != "failed" || job["result"] != nil || job["history_id"] != nil {
@@ -73,6 +69,7 @@ func TestPlaylistImportFailuresHaveNoResult(t *testing.T) {
 			if failure["code"] != "playlist_import_unavailable" {
 				t.Fatalf("lost import failure code: %v", job)
 			}
+			assertUndoPlaylist(t, root, opts.Name, false)
 		})
 	}
 }

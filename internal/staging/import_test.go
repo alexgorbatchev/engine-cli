@@ -1,9 +1,12 @@
 package staging
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
 func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {
@@ -37,9 +41,7 @@ func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	item.AudioPath = item.ID + "/song.mp3"
-	if err := os.WriteFile(filepath.Join(dir, "song.mp3"), []byte("original audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	original := testaudio.Write(t, filepath.Join(dir, "song.mp3"))
 	if err := s.Update(ctx, *item); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +53,7 @@ func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {
 	if err := os.Symlink(outside, link); err != nil {
 		t.Fatal(err)
 	}
-	opts := ImportOptions{IDs: []string{item.ID}, Runner: func(context.Context, string, ...string) ([]byte, error) { return []byte(`{}`), nil }}
+	opts := ImportOptions{IDs: []string{item.ID}, Runner: testaudio.Metadata(`{}`)}
 	report, err := s.Import(ctx, database, opts)
 	if err != nil || len(report.Imported) != 1 || len(report.Failed) != 1 {
 		t.Fatalf("installed track must survive cleanup failure in report: %+v %v", report, err)
@@ -72,7 +74,7 @@ func TestImportCleanupFailureReportsInstalledTrackAndRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed := filepath.Join(lib, "Music", "staging", item.ID, "song.mp3")
-	if data, err := os.ReadFile(installed); err != nil || string(data) != "original audio" {
+	if data, err := os.ReadFile(installed); err != nil || !bytes.Equal(data, original) {
 		t.Fatalf("installed audio %q %v", data, err)
 	}
 	if err := os.Remove(link); err != nil {
@@ -122,9 +124,7 @@ func TestImportAndUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(s.root(), child.ID, "song.mp3")
-	if err := os.WriteFile(path, []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, path)
 	child.AudioPath = child.ID + "/song.mp3"
 	if err := s.Update(ctx, *child); err != nil {
 		t.Fatal(err)
@@ -135,9 +135,7 @@ func TestImportAndUndo(t *testing.T) {
 	var report *ImportReport
 	entry, err := history.Run(ctx, lib, "staging.import", history.ScopeCollection, nil, func(ctx context.Context) error {
 		var err error
-		report, err = s.Import(ctx, database, ImportOptions{IDs: []string{mix.ID}, ToPlaylist: "7", Runner: func(context.Context, string, ...string) ([]byte, error) {
-			return []byte(`{"format":{"tags":{"title":"Tagged"}}}`), nil
-		}})
+		report, err = s.Import(ctx, database, ImportOptions{IDs: []string{mix.ID}, ToPlaylist: "7", Runner: testaudio.Metadata(`{"format":{"tags":{"title":"Tagged"}}}`)})
 		return err
 	})
 	if err != nil {
@@ -227,13 +225,11 @@ func TestImportDoesNotReadPlaylistMemberships(t *testing.T) {
 		t.Fatal(err)
 	}
 	item.AudioPath = item.ID + "/song.mp3"
-	if err := os.WriteFile(filepath.Join(dir, "song.mp3"), []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, filepath.Join(dir, "song.mp3"))
 	if err := s.Update(ctx, *item); err != nil {
 		t.Fatal(err)
 	}
-	report, err := s.Import(ctx, database, ImportOptions{IDs: []string{item.ID}, Runner: func(context.Context, string, ...string) ([]byte, error) { return []byte(`{}`), nil }})
+	report, err := s.Import(ctx, database, ImportOptions{IDs: []string{item.ID}, Runner: testaudio.Metadata(`{}`)})
 	if err != nil || len(report.Imported) != 1 || report.Imported[0].ID != item.ID || len(report.Failed) != 0 {
 		t.Fatalf("import must succeed without reading memberships: %+v %v", report, err)
 	}
@@ -262,7 +258,7 @@ func TestImportRetriesAndMixCompletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opts := ImportOptions{IDs: []string{item.ID}, Runner: func(context.Context, string, ...string) ([]byte, error) { return []byte(`{}`), nil }}
+	opts := ImportOptions{IDs: []string{item.ID}, Runner: testaudio.Metadata(`{}`)}
 	report, err := s.Import(ctx, database, opts)
 	if err != nil || len(report.Failed) != 1 {
 		t.Fatalf("missing audio %+v %v", report, err)
@@ -279,9 +275,7 @@ func TestImportRetriesAndMixCompletion(t *testing.T) {
 	if err != nil || len(report.Failed) != 1 {
 		t.Fatalf("missing file %+v %v", report, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "audio.mp3"), []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, filepath.Join(dir, "audio.mp3"))
 	opts.ToPlaylist = "999"
 	report, err = s.Import(ctx, database, opts)
 	if err != nil || len(report.Failed) != 1 {
@@ -320,9 +314,7 @@ func TestImportInstallationFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "audio.mp3"), []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, filepath.Join(dir, "audio.mp3"))
 	item.AudioPath = item.ID + "/audio.mp3"
 	if err := s.Update(ctx, *item); err != nil {
 		t.Fatal(err)
@@ -341,5 +333,71 @@ func TestImportInstallationFailure(t *testing.T) {
 	cancel()
 	if _, err := s.Import(cancelled, d, ImportOptions{IDs: []string{item.ID}}); err == nil {
 		t.Fatal("ignored cancellation")
+	}
+}
+
+func TestImportRejectsNonAudioBeforeInstallation(t *testing.T) {
+	for _, cancelProbe := range []bool{false, true} {
+		t.Run(map[bool]string{false: "invalid audio", true: "cancelled probe"}[cancelProbe], func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			lib := t.TempDir()
+			database, err := db.Open(filepath.Join(lib, "collection.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer database.Close()
+			if err := db.InitSchema(ctx, database); err != nil {
+				t.Fatal(err)
+			}
+			s := New(lib)
+			item, err := s.Create(ctx, Item{Kind: "track", Status: "ready"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir, err := s.Directory(ctx, item.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "not-a-song.wav")
+			original := []byte("not readable audio")
+			if cancelProbe {
+				original = testaudio.Write(t, path)
+			} else if err := os.WriteFile(path, original, 0600); err != nil {
+				t.Fatal(err)
+			}
+			item.AudioPath = item.ID + "/not-a-song.wav"
+			if err := s.Update(ctx, *item); err != nil {
+				t.Fatal(err)
+			}
+			opts := ImportOptions{IDs: []string{item.ID}}
+			if cancelProbe {
+				opts.Runner = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+					cancel()
+					return exec.CommandContext(ctx, name, args...).Output()
+				}
+			}
+			report, err := s.Import(ctx, database, opts)
+			if cancelProbe {
+				if !errors.Is(err, context.Canceled) || report == nil || len(report.Imported) != 0 || len(report.Failed) != 0 {
+					t.Fatalf("probe cancellation swallowed: %+v %v", report, err)
+				}
+			} else if err != nil || len(report.Imported) != 0 || len(report.Failed) != 1 || report.Failed[0].ErrorCode != "track_not_audio" {
+				t.Fatalf("non-audio import: %+v %v", report, err)
+			}
+			if data, err := os.ReadFile(path); err != nil || !bytes.Equal(data, original) {
+				t.Fatalf("refusal changed staged source: %q %v", data, err)
+			}
+			if current, err := s.Inspect(t.Context(), item.ID); err != nil || current.AudioPath != item.AudioPath || current.Status != "ready" {
+				t.Fatalf("refusal changed staged item: %+v %v", current, err)
+			}
+			var count int
+			if err := database.QueryRowContext(t.Context(), "SELECT count(*) FROM Track").Scan(&count); err != nil || count != 0 {
+				t.Fatalf("refusal changed collection: %d %v", count, err)
+			}
+			if _, err := os.Stat(filepath.Join(lib, "Music")); !os.IsNotExist(err) {
+				t.Fatalf("non-audio installed into library: %v", err)
+			}
+		})
 	}
 }

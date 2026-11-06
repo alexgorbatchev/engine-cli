@@ -26,6 +26,7 @@ type Service struct {
 	statusMu  sync.RWMutex
 	errorCode string
 	pending   *preparationRound
+	watch     *watchManager
 }
 
 type preparationRound struct {
@@ -41,8 +42,9 @@ func OpenService(parent context.Context, library string, quiet time.Duration) (*
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(parent)
-	s := &Service{store: store, cancel: cancel, done: make(chan struct{}), ready: make(chan struct{}), wake: make(chan struct{}, 1)}
+	s := &Service{store: store, cancel: cancel, done: make(chan struct{}), ready: make(chan struct{}), wake: make(chan struct{}, 1), watch: newWatchManager()}
 	go s.run(ctx, quiet)
+	go s.runWatch(ctx, quiet)
 	s.Wake()
 	return s, nil
 }
@@ -86,6 +88,10 @@ func (s *Service) Use(ctx context.Context, run func(*Store) error) error {
 
 func (s *Service) Wake() {
 	s.requestPreparation()
+	select {
+	case s.watch.wake <- struct{}{}:
+	default:
+	}
 }
 
 func (s *Service) requestPreparation() *preparationRound {
@@ -180,11 +186,12 @@ func (s *Service) Close() error {
 	// awaiting preparation, and joining a worker must not hold its queue lock.
 	s.cancel()
 	<-s.done
+	<-s.watch.done
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.closed {
 		s.closed = true
-		s.closeErr = s.store.Close()
+		s.closeErr = errors.Join(s.watch.closeErr, s.store.Close())
 	}
 	return s.closeErr
 }

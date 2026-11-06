@@ -10,8 +10,13 @@ import (
 // pending repair. Read must have no side effects: when the first publisher
 // enrolls history during an optimistic read, its result is discarded and read
 // runs again under the publisher lock. Read leases may nest; mutation and Undo
-// operations must not run inside the callback.
+// operations must not run inside the callback. Existing publishers are waited
+// out cancellably; a pending repair remains an immediate refusal.
 func ReadSmartlistSafe[T any](ctx context.Context, lib string, read func(context.Context) (T, error)) (result T, err error) {
+	return readSmartlistSafe(ctx, lib, true, read)
+}
+
+func readSmartlistSafe[T any](ctx context.Context, lib string, wait bool, read func(context.Context) (T, error)) (result T, err error) {
 	dir, err := storeDir(lib)
 	if err != nil {
 		return result, err
@@ -33,7 +38,7 @@ func ReadSmartlistSafe[T any](ctx context.Context, lib string, read func(context
 			return observed, readErr
 		}
 	}
-	release, err := acquireSmartlistRead(ctx, dir)
+	release, err := acquireSmartlistRead(ctx, dir, wait)
 	if err != nil {
 		return result, err
 	}

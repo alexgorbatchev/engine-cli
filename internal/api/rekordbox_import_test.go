@@ -140,7 +140,7 @@ func TestRekordboxImportFailedProducersReturnTrueNil(t *testing.T) {
 				t.Fatalf("failed operation boxed a result: %#v history=%q error=%v", result, id, err)
 			}
 			entries, err := history.List(root)
-			if err != nil || dryRun && len(entries) != 0 || !dryRun && (len(entries) != 1 || entries[0].ID != id || entries[0].State != "failed") {
+			if err != nil || id != "" || len(entries) != 0 {
 				t.Fatalf("failure history=%+v id=%q error=%v", entries, id, err)
 			}
 			raw, err := json.Marshal(opts)
@@ -148,13 +148,14 @@ func TestRekordboxImportFailedProducersReturnTrueNil(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := awaitAPIJob(t, s, submitAPIJob(t, s, "migrate.import", string(raw)))
-			if job["state"] != "failed" || job["result"] != nil {
+			if job["state"] != "failed" || job["result"] != nil || job["history_id"] != nil {
 				t.Fatalf("failed HTTP job has result: %+v", job)
 			}
 			data, err := json.Marshal(job)
 			if err != nil || strings.Contains(string(data), opts.Path) {
 				t.Fatalf("raw source diagnostics escaped failure boundary: %s %v", data, err)
 			}
+			assertUndoPlaylist(t, root, opts.Name, false)
 		})
 	}
 }
