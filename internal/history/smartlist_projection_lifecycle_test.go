@@ -27,7 +27,7 @@ func TestSmartlistProjectionPendingRepairDoesNotReadOrRecover(t *testing.T) {
 		t.Fatalf("pending repair observation callback=%v error=%v", called, err)
 	}
 	if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-		t.Fatal("pending repair observation created lock storage or recovered evidence")
+		t.Fatalf("pending repair observation created lock storage or recovered evidence:\n%s", historyLeaseTreeDiff(before, after))
 	}
 }
 

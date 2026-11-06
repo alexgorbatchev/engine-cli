@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"zombiezen.com/go/sqlite"
@@ -60,6 +62,31 @@ func historyLeaseTree(t *testing.T, root string) map[string]string {
 	return result
 }
 
+func historyLeaseTreeDiff(before, after map[string]string) string {
+	var changes []string
+	for path, want := range before {
+		if got, ok := after[path]; !ok || got != want {
+			changes = append(changes, fmt.Sprintf("%s: before=%q after=%q present=%t", path, want, got, ok))
+		}
+	}
+	for path, got := range after {
+		if _, ok := before[path]; !ok {
+			changes = append(changes, fmt.Sprintf("%s: added=%q", path, got))
+		}
+	}
+	slices.Sort(changes)
+	return "mode:size:mtime_ns:sha256\n" + strings.Join(changes, "\n")
+}
+
+func TestSmartlistProjectionSnapshotWithoutOperation(t *testing.T) {
+	lib, _ := smartlistHistoryLibrary(t)
+	before := historyLeaseTree(t, lib)
+	after := historyLeaseTree(t, lib)
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("source snapshot changed without a product operation:\n%s", historyLeaseTreeDiff(before, after))
+	}
+}
+
 func TestSmartlistReadLeaseUsesReadOnlyStorage(t *testing.T) {
 	lib, dir := historyLeaseLibrary(t)
 	path := filepath.Join(dir, "lock.db")
@@ -74,7 +101,7 @@ func TestSmartlistReadLeaseUsesReadOnlyStorage(t *testing.T) {
 		t.Fatalf("read-only source refused: %q %v", got, err)
 	}
 	if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-		t.Fatal("read changed history files, permissions, or modification times")
+		t.Fatalf("read changed history files, permissions, or modification times:\n%s", historyLeaseTreeDiff(before, after))
 	}
 }
 
@@ -128,7 +155,7 @@ func TestSmartlistReadLeaseRefusesUnsafeStorageWithoutWrites(t *testing.T) {
 				t.Fatalf("unsafe storage reached callback: called=%t err=%v", called, err)
 			}
 			if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-				t.Fatal("refusal changed history or recovery evidence")
+				t.Fatalf("refusal changed history or recovery evidence:\n%s", historyLeaseTreeDiff(before, after))
 			}
 			if kind == "WAL" || kind == "rollback database" {
 				if owner, err := lock(t.Context(), dir); err == nil {
@@ -141,7 +168,7 @@ func TestSmartlistReadLeaseRefusesUnsafeStorageWithoutWrites(t *testing.T) {
 					t.Fatal("receipt owner accepted initialized lock storage")
 				}
 				if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-					t.Fatal("exclusive-owner refusal created WAL coordination files")
+					t.Fatalf("exclusive-owner refusal created WAL coordination files:\n%s", historyLeaseTreeDiff(before, after))
 				}
 			}
 		})

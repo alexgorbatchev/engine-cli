@@ -63,7 +63,7 @@ func TestSmartlistProjectionDormantWALPreservesSourceContent(t *testing.T) {
 		delete(after, path+suffix)
 	}
 	if !reflect.DeepEqual(before, after) {
-		t.Fatal("read-only projection changed native database, history, media, or unrelated files")
+		t.Fatalf("read-only projection changed native database, history, media, or unrelated files:\n%s", historyLeaseTreeDiff(before, after))
 	}
 }
 
@@ -86,6 +86,6 @@ func TestSmartlistProjectionDormantWALRefusesMissingCoordinationStorage(t *testi
 	}
 	t.Logf("native read refusal: %v", err)
 	if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-		t.Fatal("failed read created or changed source storage")
+		t.Fatalf("failed read created or changed source storage:\n%s", historyLeaseTreeDiff(before, after))
 	}
 }
