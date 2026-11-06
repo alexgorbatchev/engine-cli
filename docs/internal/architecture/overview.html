@@ -5580,7 +5580,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="445" y="319" class="t-muted" font-size="9" text-anchor="middle">bind / schedule / guard</text>
         </g>
 
-        <g id="node-services" data-node-id="services" data-node-label="Collection services" tabindex="0" role="button" aria-label="Focus Collection services, metadata / playlists / media, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="metadata / playlists / media" data-node-context="Architecture component">
+<a class="archify-drilldown-link" data-archify-drilldown="1" href="library-sync.html" aria-label="Library sync safeguards">
+                <g id="node-services" data-node-id="services" data-node-label="Collection services" tabindex="0" role="button" aria-label="Focus Collection services, metadata / playlists / media, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="metadata / playlists / media" data-node-context="Architecture component" data-node-drilldowns="[{&quot;href&quot;:&quot;library-sync.html&quot;,&quot;label&quot;:&quot;Library sync safeguards&quot;,&quot;diagram_type&quot;:&quot;workflow&quot;}]">
           <title>Collection services · metadata / playlists / media · Architecture component</title>
           <rect x="690" y="270" width="190" height="70" rx="8" class="c-mask"/>
           <rect x="690" y="270" width="190" height="70" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
@@ -5589,7 +5590,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           </g>
           <text data-node-label="" data-detail-anchor="" x="785" y="303" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Collection services</text>
         <text data-detail="context" x="785" y="319" class="t-muted" font-size="9" text-anchor="middle">metadata / playlists / media</text>
+          <g class="archify-drilldown-mark" data-detail="fine" transform="translate(869 329)" aria-hidden="true">
+          <circle r="6" class="archify-drilldown-mark-disc"/>
+          <path d="M-1.8 -1.6 L2.4 0 L-1.8 1.6" fill="none" class="archify-drilldown-mark-arrow"/>
         </g>
+        </g>
+        </a>
 
         <g id="node-library" data-node-id="library" data-node-label="Engine library" tabindex="0" role="button" aria-label="Focus Engine library, SQLite / audio / artwork, Architecture component" aria-pressed="false" data-node-kind="database" data-node-sublabel="SQLite / audio / artwork" data-node-context="Architecture component">
           <title>Engine library · SQLite / audio / artwork · Architecture component</title>
@@ -6478,6 +6484,32 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>tools.inspect reads each managed tool once and combines requirements with godeps version semantics. Each dependency has one highest minimum and observations for every requiring context, including Engine-managed tools. Missing, invalid or failed observations cannot establish readiness. Child processes receive their own managed dependency directory before the inherited PATH without mutating Engine&#39;s environment.</li>
           <li>tools.dependencies.install and tools.dependencies.update each run as one serialized system operation across every known requiring context. Separately managed copies remain explicit internally. Existing native installers and verification retain ownership; the aggregate operation records successes and failures without adding a post-write inspection. The consumer requests a separate fresh tools.inspect read before reporting readiness.</li>
           <li>Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependencies.go:42–180; internal/acquire/shared_dependency_actions.go:31–122; internal/acquire/client.go:173–190; internal/api/tools.go:27–40. Historical source pins and graph topology remain unchanged.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Native shared readers and exclusive publishers</h3>
+        </div>
+        <ul>
+          <li>ReadSmartlistSafe and ReadSmartlistProjection retain a native shared History lease for an enrolled library. Readers in separate processes can overlap; readers in one process share a reference-counted owner. The last reader releases that owner, independently of the first reader’s cancellation.</li>
+          <li>History publication takes an exclusive lease on the same empty lock database. The lock database must be an empty regular file using a rollback journal. Native acquisition remains cancellable where the caller requests waiting; mutating History operations keep their fail-fast policy.</li>
+          <li>ObserveEntries retains exclusive ownership while handing History entries to intake reconciliation. It is not the shared read lease. Intake preparation/import states and their recovery transitions do not change.</li>
+          <li>Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/history/smartlist_read_lock.go:26–113; internal/history/history.go:73–101; internal/history/history_lock.go:13–58; internal/history/observe_entries.go:18–58. Historical source pins and existing graph topology remain unchanged.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Smartlist sync observes source, then owns destination</h3>
+        </div>
+        <ul>
+          <li>Sync captures the source native rows and projected Smartlist recovery evidence together, then releases source observation before inspecting or acquiring the destination. Preview computes the final destination graph without repairing either library.</li>
+          <li>Apply repeats the comparison under destination publication ownership before repair, backup or an ordinary History entry. Selected source rows, retained destination rows, conflict choices, mirror removals and native playlist identities determine one final graph. The final saved rows are also rehearsed against the destination’s declared Smartlist table constraints in isolated memory. Raw rule values and unchanged NULL cells are preserved.</li>
+          <li>The dedicated Library sync workflow describes this specialized path. It does not replace the ordinary collection-write safeguards.</li>
+          <li>Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:17–65; internal/transfer/smartlist_plan.go:11–80; internal/transfer/smartlist_validate.go:11–75; internal/history/smartlist_projection.go:29–100; internal/transfer/smartlist_constraints.go:14–64. Historical source pins and existing graph topology remain unchanged.</li>
         </ul>
       </div>
     </div>
