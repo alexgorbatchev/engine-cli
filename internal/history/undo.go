@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,11 +14,14 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
+	"github.com/alexgorbatchev/engine-cli/internal/intakestate"
+	"github.com/alexgorbatchev/engine-cli/internal/watchcontrol"
 
 	"zombiezen.com/go/sqlite"
 )
 
 type undoPlan struct {
+	paired        bool
 	library       string
 	moves         []fileMove
 	databases     map[string]string
@@ -61,9 +65,16 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 	for path := range e.After.Databases {
 		paths[path] = true
 	}
+	queue := filepath.Join(lib, ".engine-cli", companion.IntakeName)
+	watch := filepath.Join(lib, ".engine-cli", companion.WatchName)
+	p.paired = paths[queue] || paths[watch]
+	if p.paired {
+		paths[queue], paths[watch] = true, true
+	}
 	for path := range paths {
 		before, after := e.Before.Databases[path], e.After.Databases[path]
-		if before.Hash == after.Hash {
+		paired := p.paired && (path == queue || path == watch)
+		if before.Hash == after.Hash && !paired {
 			continue
 		}
 		for _, saved := range []databaseState{before, after} {
@@ -93,7 +104,7 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 			continue
 		}
 		image := filepath.Join(work, hashText(path)+".db")
-		if current == "" || after.Hash == "" {
+		if paired || current == "" || after.Hash == "" {
 			if current != after.Hash && !force {
 				return fail(fmt.Errorf("undo conflict: database %s was replaced or removed", path))
 			}
@@ -114,6 +125,15 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 }
 
 func (p *undoPlan) apply(ctx context.Context, objects string) error {
+	if p.paired {
+		return intakestate.With(ctx, p.library, func(ctx context.Context) error {
+			return p.applyHeld(ctx, objects)
+		})
+	}
+	return p.applyHeld(ctx, objects)
+}
+
+func (p *undoPlan) applyHeld(ctx context.Context, objects string) (err error) {
 	// Recheck all inputs before the first write; --force applies to known
 	// conflicts, never to changes racing with preparation of this undo.
 	for path, want := range p.expectedFiles {
@@ -138,6 +158,34 @@ func (p *undoPlan) apply(ctx context.Context, objects string) error {
 		if got != want {
 			return fmt.Errorf("database changed while preparing undo: %s", path)
 		}
+	}
+	var fence int64
+	if p.paired {
+		queue := filepath.Join(p.library, ".engine-cli", companion.IntakeName)
+		watch := filepath.Join(p.library, ".engine-cli", companion.WatchName)
+		if image := p.databases[watch]; image != "" {
+			if err := watchcontrol.ValidateDatabase(ctx, image, p.databases[queue]); err != nil {
+				return err
+			}
+		}
+		// Capture the complete current pair before any live file/database write.
+		// Undo of this replacement must retain presence as well as absence.
+		for _, path := range []string{queue, watch} {
+			if err := PreserveDatabase(ctx, path); err != nil {
+				return err
+			}
+		}
+		fence, err = watchcontrol.Fence(ctx, p.library, p.databases[watch])
+		if err != nil {
+			return err
+		}
+		// The authority fence is durable and subsequent writes span independent
+		// images. A later failure must retain the complete pending Before pair.
+		defer func() {
+			if err != nil {
+				err = errors.Join(err, RequireRecovery(ctx))
+			}
+		}()
 	}
 	beforeMove := make(map[string]bool)
 	for _, move := range p.moves {
@@ -185,6 +233,9 @@ func (p *undoPlan) apply(ctx context.Context, objects string) error {
 				}
 			}
 		}
+	}
+	if p.paired {
+		return watchcontrol.Restored(ctx, p.library, fence)
 	}
 	return nil
 }

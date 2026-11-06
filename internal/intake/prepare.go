@@ -2,9 +2,11 @@ package intake
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
+	"github.com/alexgorbatchev/engine-cli/internal/intakestate"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
@@ -14,7 +16,7 @@ import (
 // writing. Native identity/size/mtime are checked around the retained-file copy.
 func (s *Store) PrepareNext(ctx context.Context, quiet time.Duration) (*Item, error) {
 	var result *Item
-	err := s.withWorker(ctx, func(ctx context.Context) error {
+	err := s.withWorker(ctx, func(ctx context.Context) (err error) {
 		state, err := intakecontrol.Read(ctx, s.database)
 		if err != nil || state.Paused {
 			return err
@@ -22,12 +24,14 @@ func (s *Store) PrepareNext(ctx context.Context, quiet time.Duration) (*Item, er
 		// Only the worker owner may resume abandoned preparation. Import intent
 		// is deliberately excluded: its collection/history receipt needs a
 		// separate reconciliation before any new import can be attempted.
-		if _, err := s.database.ExecContext(ctx, `UPDATE Item SET
+		item, err := s.change(ctx, func(ctx context.Context) (*Item, error) {
+			if _, err := s.database.ExecContext(ctx, `UPDATE Item SET
  status=CASE WHEN cancel_requested=1 THEN 'cancelled' ELSE 'queued' END
  WHERE status='preparing'`); err != nil {
-			return err
-		}
-		item, err := s.Claim(ctx)
+				return nil, err
+			}
+			return s.claim(ctx)
+		})
 		if err != nil || item == nil {
 			return err
 		}
@@ -45,12 +49,27 @@ func (s *Store) PrepareNext(ctx context.Context, quiet time.Duration) (*Item, er
 			return err
 		}
 		completion := StageResult{ID: item.ID, Attempt: item.Attempt}
+		var selected *preparationSource
 		if current.CancelRequested {
 			completion.ErrorCode = "cancelled"
 		} else {
-			copy, copyErr := staging.New(s.library).CopyLocal(ctx, item.StageID, staging.LocalSource{
-				Path: item.SourcePath, Identity: item.SourceIdentity, Size: item.SourceSize, Modified: item.SourceModified,
+			copy, copyErr := staging.New(s.library).CopyLocalFile(ctx, item.StageID, itemSource(item), func() (staging.LocalFile, error) {
+				var err error
+				selected, err = s.selectPreparationSource(ctx, item)
+				if err != nil {
+					return staging.LocalFile{}, err
+				}
+				return selected.local, nil
 			})
+			// Borrowed native ownership survives until staging releases its lock.
+			// Keep it through the final state-owned authorization check below.
+			if selected != nil {
+				defer func() {
+					if selected != nil {
+						err = errors.Join(err, selected.close())
+					}
+				}()
+			}
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
@@ -60,7 +79,23 @@ func (s *Store) PrepareNext(ctx context.Context, quiet time.Duration) (*Item, er
 				completion.StageID, completion.ContentHash = copy.Item.ID, copy.ContentHash
 			}
 		}
-		result, err = s.CompleteStage(ctx, completion)
+		err = intakestate.With(ctx, s.library, func(ctx context.Context) error {
+			if selected != nil && selected.authorize != nil && completion.ErrorCode == "" {
+				if err := selected.authorize(ctx); err != nil {
+					completion.StageID, completion.ContentHash = "", ""
+					completion.ErrorCode = progress.ErrorCode(err)
+				}
+			}
+			if selected != nil {
+				closeErr := selected.close()
+				selected = nil
+				if closeErr != nil {
+					return closeErr
+				}
+			}
+			result, err = s.completeStage(ctx, completion)
+			return err
+		})
 		return err
 	})
 	if err != nil {

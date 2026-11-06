@@ -17,7 +17,7 @@ func (s *Store) Control(ctx context.Context) (intakecontrol.State, error) {
 // an interactive pause or a storage replacement.
 func (s *Store) Pause(ctx context.Context) error {
 	return s.withWorker(ctx, func(ctx context.Context) error {
-		return intakecontrol.Set(ctx, s.database, "manual")
+		return s.setControl(ctx, "manual")
 	})
 }
 
@@ -26,7 +26,7 @@ func (s *Store) Pause(ctx context.Context) error {
 // remain quarantined until their actual collection ownership is recovered.
 func (s *Store) Resume(ctx context.Context) error {
 	return s.withReconciledImports(ctx, func(ctx context.Context) error {
-		return intakecontrol.Set(ctx, s.database, "")
+		return s.setControl(ctx, "")
 	})
 }
 

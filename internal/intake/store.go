@@ -11,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
 	"github.com/alexgorbatchev/engine-cli/internal/intakelease"
+	"github.com/alexgorbatchev/engine-cli/internal/intakestate"
 )
 
 const applicationID = 0x454E4749
@@ -30,9 +31,25 @@ func Open(ctx context.Context, library string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	var d *sql.DB
+	err = intakestate.With(ctx, library, func(ctx context.Context) error {
+		var err error
+		d, err = openDatabase(ctx, library)
+		return err
+	})
+	if err != nil {
+		if d != nil {
+			err = errors.Join(err, d.Close())
+		}
+		return nil, errors.Join(err, lease.Close())
+	}
+	return &Store{database: d, library: library, lease: lease}, nil
+}
+
+func openDatabase(ctx context.Context, library string) (*sql.DB, error) {
 	d, created, err := companion.OpenWrite(ctx, library, companion.IntakeName)
 	if err != nil {
-		return nil, errors.Join(err, lease.Close())
+		return nil, err
 	}
 	d.SetMaxOpenConns(1)
 	if err := initialize(ctx, d); err != nil {
@@ -40,9 +57,9 @@ func Open(ctx context.Context, library string) (*Store, error) {
 		if created {
 			err = errors.Join(err, companion.Remove(filepath.Join(library, ".engine-cli", companion.IntakeName)))
 		}
-		return nil, errors.Join(err, lease.Close())
+		return nil, err
 	}
-	return &Store{database: d, library: library, lease: lease}, nil
+	return d, nil
 }
 
 func (s *Store) Close() error { return errors.Join(s.database.Close(), s.lease.Close()) }

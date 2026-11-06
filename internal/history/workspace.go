@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-// onlyWorkspaceChanges reports whether an entry captured nothing but changes to
-// files inside the operation's declared workspaces.
+// onlyWorkspaceChanges also accepts no changes: a refused operation has nothing
+// to undo, even when it never allocated a retryable workspace.
 func onlyWorkspaceChanges(e *Entry, workspaces []string) bool {
-	if len(workspaces) == 0 || len(e.Moves) > 0 || len(e.Before.Databases) != len(e.After.Databases) {
+	if e.RelocationFrom != "" || len(e.Moves) > 0 || len(e.Before.Databases) != len(e.After.Databases) {
 		return false
 	}
 	for path, before := range e.Before.Databases {

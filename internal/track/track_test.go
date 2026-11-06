@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
 func createTestDB(t *testing.T) (*sql.DB, string, string) {
@@ -36,21 +37,17 @@ func createTestDB(t *testing.T) (*sql.DB, string, string) {
 }
 
 func fakeRunner(tagsJSON string) func(ctx context.Context, name string, args ...string) ([]byte, error) {
-	return func(ctx context.Context, name string, args ...string) ([]byte, error) {
-		return []byte(tagsJSON), nil
-	}
+	return testaudio.Metadata(tagsJSON)
 }
 
 func TestAddTrack_Success(t *testing.T) {
 	database, libDir, _ := createTestDB(t)
 	ctx := context.Background()
 
-	// Create a dummy audio file outside libDir
+	// Create real audio outside libDir
 	srcDir := t.TempDir()
 	srcAudio := filepath.Join(srcDir, "sample.mp3")
-	if err := os.WriteFile(srcAudio, []byte("fake mp3 audio contents 12345"), 0o644); err != nil {
-		t.Fatalf("writing fake audio: %v", err)
-	}
+	testaudio.Write(t, srcAudio)
 
 	tagsJSON := `{
 		"format": {
@@ -140,7 +137,7 @@ func TestAddTrack_NoTagsFallback(t *testing.T) {
 	ctx := context.Background()
 
 	audioPath := filepath.Join(libDir, "track_without_tags.wav")
-	_ = os.WriteFile(audioPath, []byte("wav data"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	res, err := AddTrack(ctx, database, libDir, audioPath, "", false, nil)
 	if err != nil {
@@ -160,7 +157,7 @@ func TestMoveTrackFile(t *testing.T) {
 
 	audioPath := filepath.Join(libDir, "Music", "orig.mp3")
 	_ = os.MkdirAll(filepath.Dir(audioPath), 0o755)
-	_ = os.WriteFile(audioPath, []byte("orig data 1234"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	_, _ = AddTrack(ctx, database, libDir, audioPath, "", false, nil)
 
@@ -186,7 +183,7 @@ func TestRemoveTrack(t *testing.T) {
 
 	audioPath := filepath.Join(libDir, "Music", "delete_me.mp3")
 	_ = os.MkdirAll(filepath.Dir(audioPath), 0o755)
-	_ = os.WriteFile(audioPath, []byte("data"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	if _, err := AddTrack(ctx, database, libDir, audioPath, "", false, nil); err != nil {
 		t.Fatal(err)
@@ -243,7 +240,7 @@ func TestTrack_ClosedDBErrors(t *testing.T) {
 	ctx := context.Background()
 
 	audioPath := filepath.Join(libDir, "closed_db_track.mp3")
-	_ = os.WriteFile(audioPath, []byte("data"), 0o644)
+	testaudio.Write(t, audioPath)
 	_, _ = AddTrack(ctx, database, libDir, audioPath, "", false, nil)
 
 	_ = database.Close()
@@ -304,7 +301,7 @@ func TestAddTrack_ExistingPlaylistAndAlternateTags(t *testing.T) {
 	_ = pID
 
 	audioPath := filepath.Join(libDir, "tbpm_track.mp3")
-	_ = os.WriteFile(audioPath, []byte("audio-bytes"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	tagsJSON := `{
 		"format": {
@@ -339,7 +336,7 @@ func TestMoveTrackFile_TrailingSlashAndSameDest(t *testing.T) {
 
 	audioPath := filepath.Join(libDir, "Music", "song.mp3")
 	_ = os.MkdirAll(filepath.Dir(audioPath), 0o755)
-	_ = os.WriteFile(audioPath, []byte("data"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	_, _ = AddTrack(ctx, database, libDir, audioPath, "", false, nil)
 
@@ -370,7 +367,7 @@ func TestRemoveTrack_KeepFile(t *testing.T) {
 
 	audioPath := filepath.Join(libDir, "Music", "keep_me.mp3")
 	_ = os.MkdirAll(filepath.Dir(audioPath), 0o755)
-	_ = os.WriteFile(audioPath, []byte("data"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	_, _ = AddTrack(ctx, database, libDir, audioPath, "", false, nil)
 
@@ -409,7 +406,7 @@ func TestAddTrack_EmptyTitleTagInJSON(t *testing.T) {
 	ctx := context.Background()
 
 	audioPath := filepath.Join(libDir, "empty_title_tag.mp3")
-	_ = os.WriteFile(audioPath, []byte("data"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	tagsJSON := `{
 		"format": {
@@ -435,7 +432,7 @@ func TestMoveTrackFile_SamePath(t *testing.T) {
 
 	audioPath := filepath.Join(libDir, "Music", "samesong.mp3")
 	_ = os.MkdirAll(filepath.Dir(audioPath), 0o755)
-	_ = os.WriteFile(audioPath, []byte("data"), 0o644)
+	testaudio.Write(t, audioPath)
 
 	_, _ = AddTrack(ctx, database, libDir, audioPath, "", false, nil)
 

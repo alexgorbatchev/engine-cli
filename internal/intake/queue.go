@@ -12,6 +12,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/fileidentity"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/regularfile"
+	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
 type Item struct {
@@ -60,10 +61,25 @@ func (s *Store) Enqueue(ctx context.Context, path string) (*Item, error) {
 	if err := errors.Join(err, file.Close(), ctx.Err()); err != nil {
 		return nil, err
 	}
-	return scanItem(s.database.QueryRowContext(ctx, `INSERT INTO Item
+	return s.change(ctx, func(ctx context.Context) (*Item, error) {
+		item, _, err := s.enqueueVersion(ctx, staging.LocalSource{Path: path, Identity: identity, Size: info.Size(), Modified: info.ModTime().UnixNano()})
+		return item, err
+	})
+}
+
+// enqueueVersion runs under the paired state owner. Only the fresh INSERT
+// result proves creation; finding an existing version must preserve its state.
+func (s *Store) enqueueVersion(ctx context.Context, source staging.LocalSource) (*Item, bool, error) {
+	item, err := scanItem(s.database.QueryRowContext(ctx, `INSERT INTO Item
  (source_path,source_identity,source_size,source_modified,status) VALUES(?,?,?,?,'queued')
- ON CONFLICT(source_path,source_identity,source_size,source_modified) DO UPDATE SET source_path=excluded.source_path
- RETURNING `+itemColumns, path, identity, info.Size(), info.ModTime().UnixNano()))
+ ON CONFLICT(source_path,source_identity,source_size,source_modified) DO NOTHING
+ RETURNING `+itemColumns, source.Path, source.Identity, source.Size, source.Modified))
+	if !errors.Is(err, sql.ErrNoRows) {
+		return item, err == nil, err
+	}
+	item, err = scanItem(s.database.QueryRowContext(ctx, "SELECT "+itemColumns+" FROM Item WHERE source_path=? AND source_identity=? AND source_size=? AND source_modified=?",
+		source.Path, source.Identity, source.Size, source.Modified))
+	return item, false, err
 }
 
 func (s *Store) List(ctx context.Context) ([]Item, error) {
@@ -86,6 +102,10 @@ func (s *Store) List(ctx context.Context) ([]Item, error) {
 // Claim serializes preparation in durable FIFO order. It does not hold a
 // database transaction during I/O. Attempt is the completion fencing token.
 func (s *Store) Claim(ctx context.Context) (*Item, error) {
+	return s.change(ctx, s.claim)
+}
+
+func (s *Store) claim(ctx context.Context) (*Item, error) {
 	state, err := s.Control(ctx)
 	if err != nil || state.Paused {
 		return nil, err
@@ -118,6 +138,13 @@ func (s *Store) CompleteStage(ctx context.Context, result StageResult) (*Item, e
 		result.ErrorCode != "" && (result.StageID != "" || result.ContentHash != "") {
 		return nil, fmt.Errorf("stage completion requires either staged content or an error code")
 	}
+	return s.change(ctx, func(ctx context.Context) (*Item, error) {
+		return s.completeStage(ctx, result)
+	})
+}
+
+// completeStage requires state ownership, including any final alias check.
+func (s *Store) completeStage(ctx context.Context, result StageResult) (*Item, error) {
 	return transition(s.database.QueryRowContext(ctx, `UPDATE Item SET
  status=CASE WHEN cancel_requested=1 THEN 'cancelled' WHEN ?<>'' THEN 'failed' ELSE 'staged' END,
  content_hash=?,error_code=?
@@ -126,15 +153,19 @@ func (s *Store) CompleteStage(ctx context.Context, result StageResult) (*Item, e
 }
 
 func (s *Store) Cancel(ctx context.Context, id int64) (*Item, error) {
-	return transition(s.database.QueryRowContext(ctx, `UPDATE Item SET cancel_requested=1,
+	return s.change(ctx, func(ctx context.Context) (*Item, error) {
+		return transition(s.database.QueryRowContext(ctx, `UPDATE Item SET cancel_requested=1,
  status=CASE WHEN status='preparing' THEN status ELSE 'cancelled' END
  WHERE id=? AND status IN ('queued','preparing','staged','failed','cancelled') RETURNING `+itemColumns, id))
+	})
 }
 
 func (s *Store) Retry(ctx context.Context, id int64) (*Item, error) {
-	return transition(s.database.QueryRowContext(ctx, `UPDATE Item SET cancel_requested=0,error_code='',
+	return s.change(ctx, func(ctx context.Context) (*Item, error) {
+		return transition(s.database.QueryRowContext(ctx, `UPDATE Item SET cancel_requested=0,error_code='',
  status=CASE WHEN content_hash<>'' THEN 'staged' ELSE 'queued' END
  WHERE id=? AND history_id='' AND status IN ('failed','cancelled') RETURNING `+itemColumns, id))
+	})
 }
 
 func transition(row *sql.Row) (*Item, error) {

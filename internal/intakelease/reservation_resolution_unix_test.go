@@ -10,7 +10,7 @@ import (
 )
 
 func TestReservationRefusesUnresolvableLibraryWithoutEnrollment(t *testing.T) {
-	for _, kind := range []string{"symlink-loop", "unsearchable-parent", "unreadable-parent", "unreadable-library"} {
+	for _, kind := range []string{"symlink-loop", "unsearchable-parent", "unreadable-parent", "unreadable-library", "unsearchable-library"} {
 		t.Run(kind, func(t *testing.T) {
 			base := t.TempDir()
 			parent := filepath.Join(base, "parent")
@@ -29,6 +29,8 @@ func TestReservationRefusesUnresolvableLibraryWithoutEnrollment(t *testing.T) {
 				mode = 0111
 			case "unreadable-library":
 				blocked, mode = library, 0111
+			case "unsearchable-library":
+				blocked, mode = library, 0400
 			}
 			if kind != "symlink-loop" {
 				if err := os.Chmod(blocked, mode); err != nil {
