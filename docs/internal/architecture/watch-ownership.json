@@ -225,6 +225,15 @@
       "items": [
         "Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Sync joins local intake before reserving destination storage",
+      "items": [
+        "The API stops and joins the applicable local destination intake service before scheduler acquisition. For sync, that outer step does not take the native replacement lease: transfer first completes source observation and only then reserves the destination.",
+        "Transfer retains the destination replacement lease through Desktop checking, History ownership, reviewed planning and publication. API cleanup releases scheduler access before resuming the local intake service. Watch discovery and handoff state transitions remain unchanged.",
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/api/intake_lifecycle.go:161–209; internal/api/jobs.go:176–209; internal/transfer/run.go:17–39; internal/transfer/run.go:68–155. Historical source pins and existing graph topology remain unchanged."
+      ]
     }
   ]
 }

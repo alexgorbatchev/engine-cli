@@ -5921,6 +5921,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Sync joins local intake before reserving destination storage</h3>
+        </div>
+        <ul>
+          <li>The API stops and joins the applicable local destination intake service before scheduler acquisition. For sync, that outer step does not take the native replacement lease: transfer first completes source observation and only then reserves the destination.</li>
+          <li>Transfer retains the destination replacement lease through Desktop checking, History ownership, reviewed planning and publication. API cleanup releases scheduler access before resuming the local intake service. Watch discovery and handoff state transitions remain unchanged.</li>
+          <li>Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/api/intake_lifecycle.go:161–209; internal/api/jobs.go:176–209; internal/transfer/run.go:17–39; internal/transfer/run.go:68–155. Historical source pins and existing graph topology remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

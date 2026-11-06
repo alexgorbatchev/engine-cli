@@ -130,6 +130,13 @@
           "line": 111,
           "end_line": 161
         }
+      ],
+      "drilldowns": [
+        {
+          "label": "Library sync safeguards",
+          "href": "library-sync.html",
+          "diagram_type": "workflow"
+        }
       ]
     },
     {
@@ -887,6 +894,26 @@
         "tools.inspect reads each managed tool once and combines requirements with godeps version semantics. Each dependency has one highest minimum and observations for every requiring context, including Engine-managed tools. Missing, invalid or failed observations cannot establish readiness. Child processes receive their own managed dependency directory before the inherited PATH without mutating Engine's environment.",
         "tools.dependencies.install and tools.dependencies.update each run as one serialized system operation across every known requiring context. Separately managed copies remain explicit internally. Existing native installers and verification retain ownership; the aggregate operation records successes and failures without adding a post-write inspection. The consumer requests a separate fresh tools.inspect read before reporting readiness.",
         "Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependencies.go:42–180; internal/acquire/shared_dependency_actions.go:31–122; internal/acquire/client.go:173–190; internal/api/tools.go:27–40. Historical source pins and graph topology remain unchanged."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Native shared readers and exclusive publishers",
+      "items": [
+        "ReadSmartlistSafe and ReadSmartlistProjection retain a native shared History lease for an enrolled library. Readers in separate processes can overlap; readers in one process share a reference-counted owner. The last reader releases that owner, independently of the first reader’s cancellation.",
+        "History publication takes an exclusive lease on the same empty lock database. The lock database must be an empty regular file using a rollback journal. Native acquisition remains cancellable where the caller requests waiting; mutating History operations keep their fail-fast policy.",
+        "ObserveEntries retains exclusive ownership while handing History entries to intake reconciliation. It is not the shared read lease. Intake preparation/import states and their recovery transitions do not change.",
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/history/smartlist_read_lock.go:26–113; internal/history/history.go:73–101; internal/history/history_lock.go:13–58; internal/history/observe_entries.go:18–58. Historical source pins and existing graph topology remain unchanged."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Smartlist sync observes source, then owns destination",
+      "items": [
+        "Sync captures the source native rows and projected Smartlist recovery evidence together, then releases source observation before inspecting or acquiring the destination. Preview computes the final destination graph without repairing either library.",
+        "Apply repeats the comparison under destination publication ownership before repair, backup or an ordinary History entry. Selected source rows, retained destination rows, conflict choices, mirror removals and native playlist identities determine one final graph. The final saved rows are also rehearsed against the destination’s declared Smartlist table constraints in isolated memory. Raw rule values and unchanged NULL cells are preserved.",
+        "The dedicated Library sync workflow describes this specialized path. It does not replace the ordinary collection-write safeguards.",
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:17–65; internal/transfer/smartlist_plan.go:11–80; internal/transfer/smartlist_validate.go:11–75; internal/history/smartlist_projection.go:29–100; internal/transfer/smartlist_constraints.go:14–64. Historical source pins and existing graph topology remain unchanged."
       ]
     }
   ]

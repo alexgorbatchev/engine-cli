@@ -6240,6 +6240,32 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Native shared readers and exclusive publishers</h3>
+        </div>
+        <ul>
+          <li>ReadSmartlistSafe and ReadSmartlistProjection retain a native shared History lease for an enrolled library. Readers in separate processes can overlap; readers in one process share a reference-counted owner. The last reader releases that owner, independently of the first reader’s cancellation.</li>
+          <li>History publication takes an exclusive lease on the same empty lock database. The lock database must be an empty regular file using a rollback journal. Native acquisition remains cancellable where the caller requests waiting; mutating History operations keep their fail-fast policy.</li>
+          <li>ObserveEntries retains exclusive ownership while handing History entries to intake reconciliation. It is not the shared read lease. Intake preparation/import states and their recovery transitions do not change.</li>
+          <li>Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/history/smartlist_read_lock.go:26–113; internal/history/history.go:73–101; internal/history/history_lock.go:13–58; internal/history/observe_entries.go:18–58. Historical source pins and existing graph topology remain unchanged.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Library sync has its own observation and publication path</h3>
+        </div>
+        <ul>
+          <li>This workflow continues to cover ordinary API collection writes. Library sync performs a source observation and read-only destination preview first, then acquires destination intake exclusion, checks Desktop safety and acquires destination History publication ownership.</li>
+          <li>Within a native sql.Tx using immediate locking, sync rebuilds the reviewed plan and refuses stale evidence or unresolved conflicts before automatic repair, backup and the ordinary Before snapshot. A protected no-op skips those stages and has no new operation ID.</li>
+          <li>Accepted repair remains bound to the observed evidence. The repaired destination, including its Smartlist table definition, is checked again before backup and before mutation. The final native Smartlist graph and complete saved rows are validated before native commit; companion/state publication follows. Media changes made during application remain History-owned filesystem effects, not part of native database rollback.</li>
+          <li>Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:68–155; internal/history/history.go:174–244; internal/history/smartlist_mutation_observation.go:12–55; internal/transfer/apply.go:21–101; internal/transfer/observation.go:69–95; internal/transfer/model.go:186–215; internal/transfer/mutation.go:16–110. Historical source pins and existing graph topology remain unchanged.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
