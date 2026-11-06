@@ -81,6 +81,11 @@ func captureDatabases(ctx context.Context, lib, dir string, databases map[string
 		return err
 	}
 	for _, path := range paths {
+		// Intake is a live operational journal. Ordinary collection Undo must
+		// retain its receipts even after the worker finalizes an import.
+		if filepath.Base(path) == companion.IntakeName {
+			continue
+		}
 		if err := captureDatabase(ctx, path, dir, databases); err != nil {
 			return err
 		}
@@ -89,6 +94,9 @@ func captureDatabases(ctx context.Context, lib, dir string, databases map[string
 }
 
 func captureDatabase(ctx context.Context, path, dir string, databases map[string]databaseState) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
 	target := filepath.Join(dir, hashText(path)+".db")
 	if err := copyDatabase(ctx, path, target); err != nil {
 		return err
@@ -105,6 +113,26 @@ func captureAfter(ctx context.Context, lib string, scope Scope, dir string, befo
 	s, err := capture(ctx, lib, scope, dir, "", nil)
 	if err != nil {
 		return nil, err
+	}
+	// Whole-library replacement can explicitly enroll databases excluded from
+	// ordinary collection snapshots. Their After image is still required.
+	for path := range before.Databases {
+		if _, ok := s.Databases[path]; ok {
+			continue
+		}
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("cannot capture non-regular database %s", path)
+		}
+		if err := captureDatabase(ctx, path, dir, s.Databases); err != nil {
+			return nil, err
+		}
 	}
 	for path := range before.Files {
 		state, err := fileHash(path)

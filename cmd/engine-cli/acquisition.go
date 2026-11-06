@@ -233,6 +233,9 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 			return errors.Join(runErr, err)
 		}
 		if !asJSON {
+			if handled, err := printIntake(c, operation, result); handled {
+				return errors.Join(runErr, err)
+			}
 			if handled, err := printSmartlistRepair(c, result); handled {
 				return errors.Join(runErr, err)
 			}

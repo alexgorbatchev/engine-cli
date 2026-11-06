@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/alexgorbatchev/engine-cli/internal/intakelease"
 	"github.com/alexgorbatchev/engine-cli/internal/transfer"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +18,7 @@ func newLibraryTransferCommand() *cobra.Command {
 	var mappings []string
 	c := &cobra.Command{Use: "sync", Short: "Sync playlists or a whole library to another library", Args: cobra.NoArgs,
 		Long: "Sync from an explicit source library to a destination library. Select source playlist IDs or --root. Use --dry-run to preview without writing anything. Destination-only content is retained unless --mirror is set. Close Engine DJ before applying changes.",
-		RunE: func(c *cobra.Command, _ []string) error {
+		RunE: func(c *cobra.Command, _ []string) (err error) {
 			for _, mapping := range mappings {
 				a, b, ok := strings.Cut(mapping, ":")
 				source, e1 := strconv.ParseInt(a, 10, 64)
@@ -27,6 +29,17 @@ func newLibraryTransferCommand() *cobra.Command {
 				o.PlaylistMap = append(o.PlaylistMap, transfer.PlaylistMapping{SourceID: source, DestinationID: dest})
 			}
 			o.NoBackup = noBackupFlag
+			o, err = transfer.Normalize(o)
+			if err != nil {
+				return err
+			}
+			if !o.DryRun {
+				lease, acquireErr := intakelease.Replace(c.Context(), o.Destination)
+				if acquireErr != nil {
+					return acquireErr
+				}
+				defer func() { err = errors.Join(err, lease.Close()) }()
+			}
 			r, err := transfer.Run(c.Context(), o)
 			if r != nil {
 				if asJSON {

@@ -519,6 +519,16 @@
         "Windows retains the confined parent and opens the temporary source relative to its directory handle. It rejects source reparse points and replaces the manifest through a native relative-handle rename opened with WRITE_THROUGH. The documented rename-metadata durability guarantee is NTFS-specific; this does not promise identical physical durability across Windows filesystems.",
         "Reviewed committed evidence 067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0: internal/staging/store.go:128-164; internal/staging/publication_unix.go:11-20; internal/staging/publication_windows.go:14-75; internal/staging/publication_test.go:1-105; internal/staging/publication_windows_test.go:1-46. Existing staging history scope and API scheduling remain unchanged; platform qualification is recorded separately."
       ]
+    },
+    {
+      "dot": "amber",
+      "title": "Library health checks — incomplete reads fail closed",
+      "items": [
+        "library.verify and library verify share the read-only VerifyLibrary audit. Required track, playlist, artwork and membership reads must succeed before a report is returned; unreadable membership rows or invalid saved playlist chains stop the check instead of silently omitting them.",
+        "Orphan detection resolves PlaylistEntity references through the native originTrackId/originDatabaseUuid pair rather than the local Track ID. Membership query, Scan, iteration and Close errors propagate. Cancellation and deadline errors retain their original classifications.",
+        "Incomplete reads use library_verify_incomplete with no report. HTTP jobs fail without a result, while human, agent and JSON CLI modes do not print success reports. Verification does not repair the collection or enroll snapshots and Undo; existing collection-read and job ownership remains unchanged.",
+        "Reviewed committed evidence 5be6ff3feeeee68f0b1ca896ac2b39f6af07a275: internal/verify/verify.go:61-74,129-216; internal/api/verify_test.go:11-48; cmd/engine-cli/library.go:52-85; cmd/engine-cli/library_verify_test.go:12-45; docs/http-api.md:668-672. Historical graph topology and source pins remain unchanged; this adds no actor or persistence owner."
+      ]
     }
   ]
 }

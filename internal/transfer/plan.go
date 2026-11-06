@@ -25,7 +25,9 @@ type plan struct {
 	reused      map[string]bool
 }
 
-func normalize(o Options) (Options, error) {
+// Normalize validates transfer inputs without opening writable storage. Callers
+// that acquire replacement ownership first must use these canonical paths.
+func Normalize(o Options) (Options, error) {
 	if o.Source == "" || o.Destination == "" {
 		return o, fmt.Errorf("source and destination library paths are required")
 	}

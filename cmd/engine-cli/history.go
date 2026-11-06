@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/intakelease"
 	"github.com/alexgorbatchev/engine-cli/internal/state"
 	"github.com/spf13/cobra"
 )
@@ -22,8 +23,15 @@ func installHistory(root *cobra.Command) {
 			return
 		}
 		run := c.RunE
-		c.RunE = func(c *cobra.Command, args []string) error {
+		c.RunE = func(c *cobra.Command, args []string) (err error) {
 			operation := strings.ReplaceAll(strings.TrimPrefix(c.CommandPath(), root.Name()+" "), " ", ".")
+			if operation == "library.restore" {
+				lease, acquireErr := intakelease.Replace(c.Context(), libDirFlag)
+				if acquireErr != nil {
+					return acquireErr
+				}
+				defer func() { err = errors.Join(err, lease.Close()) }()
+			}
 			options := history.RunOptions{Operation: operation, Scope: history.ScopeCollection,
 				RepairSmartlists: operation != "library.create" && operation != "library.restore"}
 			e, err := history.RunPrepared(c.Context(), libDirFlag, options, func(ctx context.Context) error {

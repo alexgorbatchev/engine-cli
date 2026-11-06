@@ -61,6 +61,39 @@ func Preserve(ctx context.Context, paths ...string) error {
 	return r.preserve(ctx, paths...)
 }
 
+// PreserveDatabase enrolls a database before whole-library replacement or
+// removal. It captures committed WAL content through SQLite's online backup;
+// callers must stop and join operational owners before replacing storage.
+func PreserveDatabase(ctx context.Context, path string) error {
+	r, _ := ctx.Value(recorderKey{}).(*recorder)
+	if r == nil {
+		return ctx.Err()
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	if _, ok := r.entry.Before.Databases[abs]; ok {
+		return nil
+	}
+	info, err := os.Lstat(abs)
+	if os.IsNotExist(err) {
+		r.entry.Before.Databases[abs] = databaseState{}
+	} else if err != nil {
+		return err
+	} else {
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("cannot preserve non-regular database %s", abs)
+		}
+		if err := captureDatabase(ctx, abs, filepath.Join(r.dir, "before"), r.entry.Before.Databases); err != nil {
+			return fmt.Errorf("preserving affected database: %w", err)
+		}
+	}
+	return writeEntry(r.dir, r.entry)
+}
+
 // preserve requires the recorder lock, including while a move is published.
 func (r *recorder) preserve(ctx context.Context, paths ...string) error {
 	for _, path := range paths {

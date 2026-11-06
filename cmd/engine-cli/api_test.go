@@ -72,6 +72,9 @@ func TestAPICatalogCoversCLI(t *testing.T) {
 			return
 		}
 		name := strings.ReplaceAll(strings.TrimPrefix(cmd.CommandPath(), root.Name()+" "), " ", ".")
+		if name == "intake.import-review" {
+			name = "intake.import.review"
+		}
 		if !names[name] {
 			t.Errorf("CLI operation %s missing from HTTP catalog", name)
 		}

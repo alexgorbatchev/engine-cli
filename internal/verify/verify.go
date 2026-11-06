@@ -3,6 +3,7 @@ package verify
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -59,17 +60,17 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 
 	tracks, err := db.GetAllTracks(ctx, database)
 	if err != nil {
-		return nil, fmt.Errorf("fetching tracks for verification: %w", err)
+		return nil, incompleteVerification(fmt.Errorf("fetching tracks for verification: %w", err))
 	}
 
 	playlists, err := db.GetAllPlaylists(ctx, database)
 	if err != nil {
-		return nil, fmt.Errorf("fetching playlists for verification: %w", err)
+		return nil, incompleteVerification(fmt.Errorf("fetching playlists for verification: %w", err))
 	}
 
 	albumArtRecords, err := db.GetAllAlbumArt(ctx, database)
 	if err != nil {
-		return nil, fmt.Errorf("fetching album art for verification: %w", err)
+		return nil, incompleteVerification(fmt.Errorf("fetching album art for verification: %w", err))
 	}
 
 	artMap := make(map[int64]bool)
@@ -127,30 +128,11 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 
 	// Check orphaned playlist entities
 	progress.Stage(ctx, "verify.memberships", 70)
-	orphanedCount := 0
-	trackIDMap := make(map[int64]bool)
-	for _, t := range tracks {
-		trackIDMap[t.ID] = true
+	orphans, err := orphanedMemberships(ctx, database)
+	if err != nil {
+		return nil, incompleteVerification(err)
 	}
-
-	playlistRows, err := database.QueryContext(ctx, "SELECT id, listId, trackId FROM PlaylistEntity;")
-	if err == nil {
-		defer playlistRows.Close()
-		for playlistRows.Next() {
-			var peID, listID, trackID int64
-			if errScan := playlistRows.Scan(&peID, &listID, &trackID); errScan == nil {
-				if !trackIDMap[trackID] {
-					orphanedCount++
-					issues = append(issues, Issue{
-						Type:        IssueOrphanedEntity,
-						PlaylistID:  listID,
-						TrackID:     trackID,
-						Description: fmt.Sprintf("PlaylistEntity %d in playlist %d references non-existent track ID %d", peID, listID, trackID),
-					})
-				}
-			}
-		}
-	}
+	issues = append(issues, orphans...)
 
 	// Check empty playlists
 	emptyPlaylistCount := 0
@@ -160,7 +142,10 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 			return nil, err
 		}
 		plTracks, errPL := db.GetPlaylistTracks(ctx, database, p.ID)
-		if errPL == nil && len(plTracks) == 0 {
+		if errPL != nil {
+			return nil, incompleteVerification(fmt.Errorf("verifying playlist %d: %w", p.ID, errPL))
+		}
+		if len(plTracks) == 0 {
 			emptyPlaylistCount++
 			issues = append(issues, Issue{
 				Type:        IssueEmptyPlaylist,
@@ -176,11 +161,57 @@ func VerifyLibrary(ctx context.Context, database *sql.DB, musicBaseDir string) (
 		MissingOnDiskCount: missingDisk,
 		BytesMismatchCount: bytesMismatch,
 		MissingArtCount:    missingArt,
-		OrphanedCount:      orphanedCount,
+		OrphanedCount:      len(orphans),
 		EmptyPlaylistCount: emptyPlaylistCount,
 		Issues:             issues,
 		IsHealthy:          len(issues) == 0,
 	}
 
-	return report, ctx.Err()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return report, nil
+}
+
+func incompleteVerification(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return &progress.Error{Code: "library_verify_incomplete", Cause: err}
+}
+
+func orphanedMemberships(ctx context.Context, database *sql.DB) (issues []Issue, err error) {
+	rows, err := database.QueryContext(ctx, `
+		SELECT pe.id, pe.listId, pe.trackId, NOT EXISTS (
+			SELECT 1 FROM Track t
+			WHERE t.originTrackId = pe.trackId AND t.originDatabaseUuid = pe.databaseUuid
+		)
+		FROM PlaylistEntity pe`)
+	if err != nil {
+		return nil, fmt.Errorf("querying playlist memberships for verification: %w", err)
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("closing playlist memberships: %w", closeErr))
+		}
+	}()
+	for rows.Next() {
+		var entityID, listID, trackID int64
+		var orphaned bool
+		if err := rows.Scan(&entityID, &listID, &trackID, &orphaned); err != nil {
+			return nil, fmt.Errorf("scanning playlist membership for verification: %w", err)
+		}
+		if orphaned {
+			issues = append(issues, Issue{
+				Type:        IssueOrphanedEntity,
+				PlaylistID:  listID,
+				TrackID:     trackID,
+				Description: fmt.Sprintf("PlaylistEntity %d in playlist %d references an unresolved track origin (ID %d)", entityID, listID, trackID),
+			})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating playlist memberships for verification: %w", err)
+	}
+	return issues, nil
 }

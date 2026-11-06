@@ -11,8 +11,9 @@ import (
 
 type manageLibraryParams libraryops.Options
 
-func (p manageLibraryParams) operationLibrary() string { return p.Path }
-func (p manageLibraryParams) operationPreview() bool   { return p.DryRun }
+func (p manageLibraryParams) operationLibrary() string            { return p.Path }
+func (p manageLibraryParams) operationPreview() bool              { return p.DryRun }
+func (p manageLibraryParams) operationReplacementLibrary() string { return p.Destination }
 
 func (s *Server) knownLibraries(ctx context.Context) ([]libraryops.Library, error) {
 	entries, err := s.state.List(ctx)

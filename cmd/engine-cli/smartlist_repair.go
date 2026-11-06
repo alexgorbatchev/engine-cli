@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/spf13/cobra"
