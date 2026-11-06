@@ -19,10 +19,16 @@ type Querier interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
-// Executor supports the same statements on a connection and inside an atomic write.
-type Executor interface {
+// Reader observes rows through a transaction or a connection whose caller owns
+// the transaction. It does not grant mutation or transaction lifecycle ownership.
+type Reader interface {
 	Querier
 	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+// Executor supports the same statements on a connection and inside an atomic write.
+type Executor interface {
+	Reader
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 

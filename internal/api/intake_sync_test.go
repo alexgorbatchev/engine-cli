@@ -11,6 +11,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db/dbtest"
 	"github.com/alexgorbatchev/engine-cli/internal/intake"
+	"github.com/alexgorbatchev/engine-cli/internal/intakelease"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
@@ -122,5 +123,31 @@ func TestAPIIntakeSyncKeepsQueuesLibraryLocal(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestSyncIntakePreambleDefersNativeReplacementOwnership(t *testing.T) {
+	s, _ := testAPI(t)
+	destination := dbtest.Library(t, "destination")
+	resume, err := s.replacementIntake(t.Context(), operation{Name: "library.sync"}, &boundOperation{replacementLibrary: destination})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := resume(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if _, err := s.intake.open(destination, false); progress.ErrorCode(err) != "intake_replacing" {
+		t.Fatalf("local worker can reopen before sync: %v", err)
+	}
+	// Source observation has not run yet. Cross-process replacement ownership
+	// belongs to transfer.Run after that observation, not this scheduler preamble.
+	observer, err := intakelease.Observe(t.Context(), destination)
+	if err != nil {
+		t.Fatalf("preamble acquired destination native ownership: %v", err)
+	}
+	if err := observer.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

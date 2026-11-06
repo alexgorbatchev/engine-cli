@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/colors"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	libraryidentity "github.com/alexgorbatchev/engine-cli/internal/identity"
 	"github.com/alexgorbatchev/engine-cli/internal/importsource"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
@@ -42,21 +43,31 @@ type Options struct {
 	Media       string            `json:"media"`
 	PlanToken   string            `json:"plan_token"`
 	NoBackup    bool              `json:"-"`
+	// CheckMutation supplies the CLI or HTTP process observation at the mutation
+	// boundary. Direct callers use the same native system check by default.
+	CheckMutation func(context.Context) error `json:"-"`
 }
 type Summary struct {
-	BytesRequiredEstimate int64  `json:"bytes_required_estimate"`
-	BytesAvailable        uint64 `json:"bytes_available"`
-	TracksAdded           int    `json:"tracks_added"`
-	TracksReused          int    `json:"tracks_reused"`
-	TracksUpdated         int    `json:"tracks_updated"`
-	TracksRemoved         int    `json:"tracks_removed"`
-	PlaylistsAdded        int    `json:"playlists_added"`
-	PlaylistsUpdated      int    `json:"playlists_updated"`
-	PlaylistsRemoved      int    `json:"playlists_removed"`
-	FilesCopied           int    `json:"files_copied"`
-	BytesToCopy           int64  `json:"bytes_to_copy"`
-	BytesToPreserve       int64  `json:"bytes_to_preserve"`
-	Conflicts             int    `json:"conflicts"`
+	BytesRequiredEstimate            int64  `json:"bytes_required_estimate"`
+	BytesAvailable                   uint64 `json:"bytes_available"`
+	TracksAdded                      int    `json:"tracks_added"`
+	TracksReused                     int    `json:"tracks_reused"`
+	TracksUpdated                    int    `json:"tracks_updated"`
+	TracksRemoved                    int    `json:"tracks_removed"`
+	PlaylistsAdded                   int    `json:"playlists_added"`
+	PlaylistsUpdated                 int    `json:"playlists_updated"`
+	PlaylistsRemoved                 int    `json:"playlists_removed"`
+	SmartlistsAdded                  int    `json:"smartlists_added"`
+	SmartlistsUpdated                int    `json:"smartlists_updated"`
+	SmartlistsRemoved                int    `json:"smartlists_removed"`
+	SourceSmartlistsReconnected      int    `json:"source_smartlists_reconnected"`
+	SourceSmartlistsOmitted          int    `json:"source_smartlists_omitted"`
+	DestinationSmartlistsReconnected int    `json:"destination_smartlists_reconnected"`
+	DestinationSmartlistsRemoved     int    `json:"destination_smartlists_removed"`
+	FilesCopied                      int    `json:"files_copied"`
+	BytesToCopy                      int64  `json:"bytes_to_copy"`
+	BytesToPreserve                  int64  `json:"bytes_to_preserve"`
+	Conflicts                        int    `json:"conflicts"`
 }
 type Change struct {
 	Entity        string `json:"entity"`
@@ -123,17 +134,19 @@ func (st state) revision(c *collection) uint64 {
 }
 
 type collection struct {
-	Path      string
-	UUID      string
-	Instance  string
-	Registry  *libraryidentity.Registry
-	Entities  map[string]*entity
-	Playlists map[int64]string
-	State     state
-	Schema    map[string][]string
-	Tags      tags.State
-	Imports   importsource.State
-	Colors    colors.State
+	Path            string
+	UUID            string
+	Instance        string
+	Registry        *libraryidentity.Registry
+	Entities        map[string]*entity
+	Playlists       map[int64]string
+	State           state
+	Schema          map[string][]string
+	SmartlistSchema string
+	Tags            tags.State
+	Imports         importsource.State
+	Colors          colors.State
+	Smartlists      *history.SmartlistProjection
 }
 type queryer interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
@@ -185,8 +198,21 @@ func openLibrary(path string, write bool) (*sql.DB, error) {
 	if !strings.HasPrefix(uriPath, "/") {
 		uriPath = "/" + uriPath
 	}
-	u := url.URL{Scheme: "file", Path: uriPath, RawQuery: "mode=" + mode}
-	return sql.Open("sqlite", u.String())
+	query := url.Values{"mode": {mode}, "_pragma": {"busy_timeout(5000)"}}
+	if write {
+		query.Set("_txlock", "immediate")
+	}
+	u := url.URL{Scheme: "file", Path: uriPath, RawQuery: query.Encode()}
+	database, err := sql.Open("sqlite", u.String())
+	if err != nil {
+		return nil, err
+	}
+	if write {
+		// Close each native connection after its owner releases it, including
+		// when a failed commit could not complete its rollback.
+		database.SetMaxIdleConns(0)
+	}
+	return database, nil
 }
 func rows(ctx context.Context, q queryer, table string) ([]row, []string, error) {
 	r, err := q.QueryContext(ctx, "SELECT * FROM "+quoted(table))

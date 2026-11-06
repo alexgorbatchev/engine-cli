@@ -252,6 +252,26 @@
       "items": [
         "Supplemental source revisions: refusal-preserving Undo 494689f197e1afcaaae6ba1090159165b7953c1a; readable-audio admission 6d1b89aec69fef14dfbd76a43c890d5fa9ded0c4; cancellable collection reads 76d507cd514fc04c15bff17f69eba37bb3b591ce; watched-folder ownership 05102c1cc0c4b1db00826dc007753b544162e79b. Historical repository pins and cards retain their original scope. Source evidence does not establish renderer checks, whole-file audio integrity or native-platform qualification."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Native shared readers and exclusive publishers",
+      "items": [
+        "ReadSmartlistSafe and ReadSmartlistProjection retain a native shared History lease for an enrolled library. Readers in separate processes can overlap; readers in one process share a reference-counted owner. The last reader releases that owner, independently of the first reader’s cancellation.",
+        "History publication takes an exclusive lease on the same empty lock database. The lock database must be an empty regular file using a rollback journal. Native acquisition remains cancellable where the caller requests waiting; mutating History operations keep their fail-fast policy.",
+        "ObserveEntries retains exclusive ownership while handing History entries to intake reconciliation. It is not the shared read lease. Intake preparation/import states and their recovery transitions do not change.",
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/history/smartlist_read_lock.go:26–113; internal/history/history.go:73–101; internal/history/history_lock.go:13–58; internal/history/observe_entries.go:18–58. Historical source pins and existing graph topology remain unchanged."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Sync jobs keep destination ownership through publication",
+      "items": [
+        "For a non-preview sync, the API stops and joins the local destination intake service before acquiring scheduler access. Transfer captures and releases the source observation before acquiring the native destination replacement lease. On return, API scheduler access is released before the local intake service resumes.",
+        "A successful sync returns the comparison report and its destination History operation ID when an entry was created. Preview and protected no-op have no new operation ID. Errors retain an available report and History ID; cancellation still selects the existing cancelled terminal state.",
+        "The current generic API collection precheck also checks pending Smartlist repair in the configured library before transfer runs. That separate guard can reject sync between other libraries; destination ownership inside transfer does not remove this existing API limitation.",
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/api/intake_lifecycle.go:161–209; internal/api/jobs.go:155–209; internal/api/operations.go:230–283; internal/transfer/run.go:17–39; internal/transfer/run.go:151–155. Historical source pins and existing graph topology remain unchanged."
+      ]
     }
   ]
 }

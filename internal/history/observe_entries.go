@@ -34,15 +34,18 @@ func ObserveEntries(ctx context.Context, lib string, observe func(context.Contex
 		}
 		return err
 	}
-	owner, err := open(ctx, path, sqlite.OpenReadWrite)
+	owner, err := openHistoryLock(ctx, dir, sqlite.OpenReadWrite, true)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, owner.Close()) }()
-	if err := sqlitex.ExecuteTransient(owner, "BEGIN IMMEDIATE", nil); err != nil {
+	if err := sqlitex.ExecuteTransient(owner, "BEGIN EXCLUSIVE", nil); err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		return err
+	}
+	if err := checkHistoryJournal(owner); err != nil {
 		return err
 	}
 	if err := checkSmartlistRepair(dir); err != nil {

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-11-03 07:25
+last_modified: 2026-11-06 08:34
 status: current
 ---
 
@@ -15,6 +15,7 @@ These diagrams explain collection management, asynchronous jobs, and mutation re
 | [Intake preparation and review](intake-preparation-lifecycle.html) | Durable queued/preparing/staged work, cancellation, retry, and preparation recovery |
 | [Intake import and recovery](intake-import-lifecycle.html) | Reviewed import, independent completion evidence, effective Undo and reversed Undo |
 | [Collection write safeguards](collection-write.html) | The ordinary API collection-write path, reviewed intake import, per-track guarded analysis writes, exact-plan M3U import, and the separate read-only-source M3U export boundary |
+| [Library sync safeguards](library-sync.html) | Source observation, reviewed destination graph, exclusive publication and recovery boundaries |
 | [Watch discovery lifecycle](watch-discovery-lifecycle.html) | Native observation, quiet versions, pause and restored suspension |
 | [Watch handoff lifecycle](watch-handoff-lifecycle.html) | Stable-version authorization, durable queue linkage and interrupted handoff recovery |
 | [Watch ownership](watch-ownership.html) | Service/native owners, coherent companion pair, retained descriptors and authority fences |
@@ -166,3 +167,13 @@ The overview adds a maintainer handoff supplement pinned to committed Engine CLI
 The overview and HTTP job lifecycle supplement committed Engine CLI [1272143](https://github.com/alexgorbatchev/engine-cli/commit/127214327ddd656b8ffe05de234fa13db639568b). [Aggregate inspection](https://github.com/alexgorbatchev/engine-cli/blob/127214327ddd656b8ffe05de234fa13db639568b/internal/acquire/shared_dependencies.go#L42-L180) combines managed-tool and child requirements using godeps version semantics, retaining the highest minimum and evidence from every known execution context. Incomplete or invalid observations cannot establish readiness. Child dependency directories precede the inherited PATH only in the child process environment; concurrent reads do not mutate Engine's environment.
 
 [Shared install/update](https://github.com/alexgorbatchev/engine-cli/blob/127214327ddd656b8ffe05de234fa13db639568b/internal/acquire/shared_dependency_actions.go#L31-L122) remains one serialized system operation across known contexts. Separate tool copies keep their native installer ownership. Successful receipts survive later failures and cancellation, while incomplete inventory remains explicit. Existing installer verification is preserved; fresh aggregate inspection is a separate consumer read and never replays a write. [API job regressions](https://github.com/alexgorbatchev/engine-cli/blob/127214327ddd656b8ffe05de234fa13db639568b/internal/api/shared_dependencies_test.go#L60-L101) exercise partial failure and cancellation through terminal HTTP results. Fetch Mix 2.1.4 supplies uncached dependency observations. No scheduler, actor, persistent store, collection mutation or Undo behavior is added; historical source pins and diagram topology retain their scope.
+
+## Smartlist sync and native History lease supplement
+
+Library sync has a dedicated workflow because source observation, destination comparison and protected publication differ from ordinary collection writes. Source observation closes before destination access. Preview binds the final mapped graph and rehearses declared Smartlist table constraints in isolated memory. Apply verifies that plan in an immediate native transaction under destination History ownership before repair, backup and Before. A later native transaction validates the actual graph before native commit; filesystem effects and companion/state publication retain their separate History and recovery boundaries.
+
+The related diagrams add the native shared-reader/exclusive-publisher contract without changing their historical topology or repository pins. ObserveEntries remains exclusive for intake reconciliation. Existing watch discovery/handoff states and HTTP job terminal states are unchanged.
+
+The generic API pending-repair precheck currently also examines the configured library before library.sync enters transfer. This existing limitation is tracked separately; the new destination-owned transfer flow does not remove it.
+
+The dedicated workflow cites committed Engine CLI `d3de75b98ba479484d49b0779087f080cb641820`. The [sync entry and protected application](https://github.com/alexgorbatchev/engine-cli/blob/d3de75b98ba479484d49b0779087f080cb641820/internal/transfer/run.go#L17-L155), [declared-table constraint rehearsal](https://github.com/alexgorbatchev/engine-cli/blob/d3de75b98ba479484d49b0779087f080cb641820/internal/transfer/smartlist_constraints.go#L14-L64), [native transaction ownership](https://github.com/alexgorbatchev/engine-cli/blob/d3de75b98ba479484d49b0779087f080cb641820/internal/history/smartlist_mutation_observation.go#L12-L55), and [separate publication boundaries](https://github.com/alexgorbatchev/engine-cli/blob/d3de75b98ba479484d49b0779087f080cb641820/internal/transfer/apply.go#L21-L101) support this supplement. Media copies/removals can precede native commit and remain History-owned filesystem effects. Native database rollback does not roll back those file operations. The previous diagram pins and topology retain their original evidence.

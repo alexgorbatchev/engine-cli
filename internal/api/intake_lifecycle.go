@@ -192,9 +192,10 @@ func (s *Server) replacementIntake(ctx context.Context, op operation, bound *bou
 	if err != nil {
 		return nil, err
 	}
-	// Control changes reopen themselves. Undo selects and reserves both relocation
-	// paths in History before acquiring its exclusive mutation owner.
-	if op.Name == "intake.pause" || op.Name == "intake.resume" || op.Name == "library.undo" {
+	// Control changes reopen themselves. Undo selects its relocation paths in
+	// History. Sync captures the complete source before reserving its destination.
+	// Stop the local worker here so joining it never waits on our API scheduler.
+	if op.Name == "intake.pause" || op.Name == "intake.resume" || op.Name == "library.undo" || op.Name == "library.sync" {
 		return func() error { return resume(true) }, nil
 	}
 	lease, err := intakelease.Replace(ctx, paths...)

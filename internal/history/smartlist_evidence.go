@@ -44,14 +44,25 @@ func readSmartlistEvidence(ctx context.Context, lib string) (*smartlistEvidence,
 	if err != nil {
 		return nil, err
 	}
-	evidence := &smartlistEvidence{current: current, hash: hash, pathIDs: make(map[string]map[int64]bool)}
+	var previous []Entry
+	if len(current.Issues) != 0 {
+		previous, err = entries(dir)
+		if err != nil {
+			return nil, err
+		}
+	}
+	evidence, err := resolveSmartlistEvidence(ctx, path, current, previous)
+	if evidence != nil {
+		evidence.hash = hash
+	}
+	return evidence, err
+}
+
+func resolveSmartlistEvidence(ctx context.Context, path string, current *db.SmartlistInventory, previous []Entry) (*smartlistEvidence, error) {
+	evidence := &smartlistEvidence{current: current, pathIDs: make(map[string]map[int64]bool)}
 	evidence.live = evidence.index(current)
 	if len(current.Issues) == 0 {
 		return evidence, nil
-	}
-	previous, err := entries(dir)
-	if err != nil {
-		return nil, err
 	}
 	// entries is newest-first; identity disappearance must be evaluated in
 	// chronological order, including both sides of each native mutation.
@@ -76,10 +87,11 @@ func readSmartlistEvidence(ctx context.Context, lib string) (*smartlistEvidence,
 			}
 			version := smartlistVersion{entryID: entry.ID, operation: entry.Operation, after: side.after}
 			if state.Hash != "" {
-				version.inventory, _, err = readSmartlistVersion(ctx, state.Path, state.Hash)
+				inventory, _, err := readSmartlistVersion(ctx, state.Path, state.Hash)
 				if err != nil {
 					return nil, fmt.Errorf("validating Smartlist history %s: %w", entry.ID, err)
 				}
+				version.inventory = inventory
 				if version.inventory.EngineUUID != current.EngineUUID {
 					return nil, smartlistAmbiguous("history belongs to a different Engine library identity")
 				}

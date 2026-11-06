@@ -1,0 +1,712 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Library sync: observation, review and publication",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": "docs/internal/architecture/library-sync.html",
+    "parentHref": "overview.html",
+    "repository": {
+      "url": "git@github.com:alexgorbatchev/engine-cli.git",
+      "revision": "d3de75b98ba479484d49b0779087f080cb641820",
+      "link_mode": "local-only"
+    }
+  },
+  "lanes": [
+    {
+      "id": "observe",
+      "label": "Source closed before read-only destination preview"
+    },
+    {
+      "id": "early",
+      "label": "Preview and pre-ownership outcomes",
+      "variant": "exception"
+    },
+    {
+      "id": "destination",
+      "label": "Destination intake replacement lease begins"
+    },
+    {
+      "id": "ownership-errors",
+      "label": "Destination safety and protected review refusal",
+      "variant": "exception"
+    },
+    {
+      "id": "history",
+      "label": "Exclusive History owner: review and preparation"
+    },
+    {
+      "id": "review-errors",
+      "label": "Protected refusal and preparation outcomes",
+      "variant": "exception"
+    },
+    {
+      "id": "native",
+      "label": "History owner: native transaction, files and publication"
+    },
+    {
+      "id": "publication-errors",
+      "label": "Native and cross-file failure outcomes",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "source",
+    "preview",
+    "guard",
+    "owner",
+    "review",
+    "repair",
+    "before",
+    "write",
+    "commit",
+    "publish",
+    "finish"
+  ],
+  "nodes": [
+    {
+      "id": "source",
+      "lane": "observe",
+      "col": 1,
+      "type": "backend",
+      "label": "Observe source",
+      "sublabel": "release source before destination",
+      "explanation": "source read lease and native read transaction. close source observation before destination access.",
+      "sources": [
+        {
+          "path": "internal/transfer/observation.go",
+          "line": 51,
+          "end_line": 66
+        },
+        {
+          "path": "internal/history/smartlist_projection.go",
+          "line": 29,
+          "end_line": 52
+        }
+      ],
+      "yOffset": -70
+    },
+    {
+      "id": "preview",
+      "lane": "observe",
+      "col": 1,
+      "type": "backend",
+      "label": "Plan destination",
+      "sublabel": "graph + table constraints; bind token",
+      "explanation": "destination read lease and native read transaction, released on return. read only; bind exact plan token.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 46,
+          "end_line": 65
+        },
+        {
+          "path": "internal/transfer/plan.go",
+          "line": 324,
+          "end_line": 374
+        },
+        {
+          "path": "internal/transfer/smartlist_constraints.go",
+          "line": 14,
+          "end_line": 64
+        }
+      ],
+      "yOffset": 70
+    },
+    {
+      "id": "guard",
+      "lane": "destination",
+      "col": 1,
+      "type": "security",
+      "label": "Reserve destination",
+      "sublabel": "intake exclusion; fresh Desktop check",
+      "explanation": "destination intake replacement lease begins. apply only; fresh safety observation.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 68,
+          "end_line": 90
+        }
+      ]
+    },
+    {
+      "id": "owner",
+      "lane": "destination",
+      "col": 2,
+      "type": "security",
+      "label": "Own History publication",
+      "sublabel": "refuse pending or incomplete recovery",
+      "explanation": "exclusive destination History lease begins inside intake replacement lease. refuse pending or incomplete recovery.",
+      "sources": [
+        {
+          "path": "internal/history/history.go",
+          "line": 174,
+          "end_line": 208
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "lane": "history",
+      "col": 2,
+      "type": "security",
+      "label": "Recheck reviewed plan",
+      "sublabel": "immediate transaction; no row changes",
+      "explanation": "native sql.Tx immediate reservation inside exclusive destination History ownership. immediate sql.Tx; no live row changes.",
+      "sources": [
+        {
+          "path": "internal/history/smartlist_mutation_observation.go",
+          "line": 12,
+          "end_line": 55
+        },
+        {
+          "path": "internal/transfer/run.go",
+          "line": 93,
+          "end_line": 116
+        },
+        {
+          "path": "internal/transfer/smartlist_constraints.go",
+          "line": 14,
+          "end_line": 64
+        }
+      ],
+      "yOffset": -70
+    },
+    {
+      "id": "repair",
+      "lane": "history",
+      "col": 3,
+      "type": "backend",
+      "label": "Apply accepted repair",
+      "sublabel": "review reservation released",
+      "explanation": "exclusive History owner remains; review reservation has ended. repair token binds the reviewed evidence.",
+      "sources": [
+        {
+          "path": "internal/history/history.go",
+          "line": 209,
+          "end_line": 238
+        }
+      ],
+      "yOffset": -70
+    },
+    {
+      "id": "before",
+      "lane": "history",
+      "col": 3,
+      "type": "backend",
+      "label": "Verify → backup → Before",
+      "sublabel": "recheck rows and table definition",
+      "explanation": "exclusive History owner and destination intake replacement lease remain. recheck rows and table definition; backup unless disabled.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 117,
+          "end_line": 130
+        },
+        {
+          "path": "internal/transfer/observation.go",
+          "line": 69,
+          "end_line": 95
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 239,
+          "end_line": 271
+        }
+      ],
+      "yOffset": 70
+    },
+    {
+      "id": "write",
+      "lane": "native",
+      "col": 3,
+      "type": "backend",
+      "label": "Apply files + native rows",
+      "sublabel": "recheck; validate final graph",
+      "explanation": "native sql.Tx and retained sql.Conn inside History ownership; filesystem effects are separately recorded. immediate sql.Tx; History records filesystem effects.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 131,
+          "end_line": 150
+        },
+        {
+          "path": "internal/transfer/mutation.go",
+          "line": 16,
+          "end_line": 110
+        },
+        {
+          "path": "internal/transfer/apply.go",
+          "line": 21,
+          "end_line": 41
+        }
+      ],
+      "yOffset": -70
+    },
+    {
+      "id": "commit",
+      "lane": "native",
+      "col": 3,
+      "type": "backend",
+      "label": "Commit native rows",
+      "sublabel": "validate companion revisions first",
+      "explanation": "native write transaction ends at commit; History owner remains. native commit precedes companion/state publication.",
+      "sources": [
+        {
+          "path": "internal/transfer/apply.go",
+          "line": 63,
+          "end_line": 81
+        }
+      ],
+      "yOffset": 70
+    },
+    {
+      "id": "publish",
+      "lane": "native",
+      "col": 4,
+      "type": "backend",
+      "label": "Publish companions + state",
+      "sublabel": "separate publication boundaries",
+      "explanation": "exclusive History owner remains. separate commits; retain recovery on failure.",
+      "sources": [
+        {
+          "path": "internal/transfer/apply.go",
+          "line": 82,
+          "end_line": 101
+        }
+      ],
+      "yOffset": -70
+    },
+    {
+      "id": "finish",
+      "lane": "native",
+      "col": 4,
+      "type": "backend",
+      "label": "Capture After + report",
+      "sublabel": "close owners; retain ID and errors",
+      "explanation": "History owner closes before outer destination replacement lease. preserve available operation ID and errors.",
+      "sources": [
+        {
+          "path": "internal/history/history.go",
+          "line": 271,
+          "end_line": 319
+        },
+        {
+          "path": "internal/transfer/run.go",
+          "line": 68,
+          "end_line": 94
+        },
+        {
+          "path": "internal/transfer/run.go",
+          "line": 151,
+          "end_line": 155
+        }
+      ],
+      "yOffset": 70
+    },
+    {
+      "id": "preview-result",
+      "lane": "early",
+      "col": 0,
+      "type": "backend",
+      "label": "Return preview",
+      "sublabel": "no apply operation entry",
+      "explanation": "no retained source/destination observation. no destination publication or ordinary entry.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 17,
+          "end_line": 39
+        }
+      ],
+      "yOffset": 70
+    },
+    {
+      "id": "refused",
+      "lane": "early",
+      "col": 0,
+      "type": "security",
+      "label": "Refuse before ownership",
+      "sublabel": "invalid, stale or unresolved preview",
+      "explanation": "no apply History enrollment, repair, backup or Before. invalid/stale preview or unresolved conflicts.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 17,
+          "end_line": 65
+        }
+      ],
+      "yOffset": -70
+    },
+    {
+      "id": "review-refused",
+      "lane": "ownership-errors",
+      "col": 1,
+      "type": "security",
+      "label": "Refuse owned review",
+      "sublabel": "no repair, backup or Before",
+      "explanation": "History lock storage may exist; no repair, backup or ordinary Before from rejected review. protected stale/conflict/safety refusal.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 68,
+          "end_line": 115
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 174,
+          "end_line": 222
+        }
+      ]
+    },
+    {
+      "id": "no-op",
+      "lane": "review-errors",
+      "col": 2,
+      "type": "security",
+      "label": "Return protected no-op",
+      "sublabel": "no new operation entry",
+      "explanation": "no repair, backup or ordinary Before. release owners; no operation entry.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 112,
+          "end_line": 115
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 209,
+          "end_line": 222
+        }
+      ]
+    },
+    {
+      "id": "native-failed",
+      "lane": "publication-errors",
+      "col": 3,
+      "type": "security",
+      "label": "Return native failure",
+      "sublabel": "retain actual filesystem outcome",
+      "explanation": "History records actual outcome; no false native success. roll back native rows; retain actual filesystem outcome.",
+      "sources": [
+        {
+          "path": "internal/transfer/run.go",
+          "line": 131,
+          "end_line": 150
+        },
+        {
+          "path": "internal/transfer/apply.go",
+          "line": 21,
+          "end_line": 40
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 271,
+          "end_line": 319
+        }
+      ]
+    },
+    {
+      "id": "pending",
+      "lane": "publication-errors",
+      "col": 4,
+      "type": "security",
+      "label": "Retain recovery evidence",
+      "sublabel": "cross-file publication incomplete",
+      "explanation": "Ordinary History retains the incomplete publication or capture outcome. incomplete cross-file publication.",
+      "sources": [
+        {
+          "path": "internal/transfer/apply.go",
+          "line": 63,
+          "end_line": 101
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 271,
+          "end_line": 297
+        }
+      ]
+    },
+    {
+      "id": "prepare-failed",
+      "lane": "review-errors",
+      "col": 4,
+      "type": "security",
+      "label": "Return preparation failure",
+      "sublabel": "retain actual repair outcome",
+      "explanation": "Repair rolls back a failed publication; failed rollback retains originals and intent. A successful repair can remain when later preparation fails. no ordinary Before; retain repair outcome.",
+      "sources": [
+        {
+          "path": "internal/history/smartlist_publish.go",
+          "line": 44,
+          "end_line": 83
+        },
+        {
+          "path": "internal/history/history.go",
+          "line": 223,
+          "end_line": 244
+        },
+        {
+          "path": "internal/transfer/run.go",
+          "line": 117,
+          "end_line": 129
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "preview",
+      "label": "source closed",
+      "id": "source-preview",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "preview",
+      "to": "guard",
+      "label": "apply; applicable",
+      "id": "preview-guard",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "guard",
+      "to": "owner",
+      "label": "Desktop safe",
+      "id": "guard-owner",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "owner",
+      "to": "review",
+      "label": "owner held",
+      "id": "owner-review",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "review",
+      "to": "repair",
+      "label": "accepted; tx closed",
+      "id": "review-repair",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "repair",
+      "to": "before",
+      "label": "repair complete",
+      "id": "repair-before",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "before",
+      "to": "write",
+      "label": "Before durable",
+      "id": "before-write",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "write",
+      "to": "commit",
+      "label": "graph verified",
+      "id": "write-commit",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "commit",
+      "to": "publish",
+      "label": "committed",
+      "id": "commit-publish",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "publish",
+      "to": "finish",
+      "label": "published",
+      "id": "publish-finish",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "from": "preview",
+      "to": "preview-result",
+      "label": "preview only",
+      "id": "preview-preview-result",
+      "variant": "default",
+      "role": "branch"
+    },
+    {
+      "from": "source",
+      "to": "refused",
+      "label": "observation fails",
+      "id": "source-refused",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "preview",
+      "to": "refused",
+      "label": "stale or conflicts",
+      "id": "preview-refused",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "guard",
+      "to": "review-refused",
+      "label": "unsafe / failed owner",
+      "id": "guard-review-refused",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "owner",
+      "to": "review-refused",
+      "label": "recovery / busy",
+      "id": "owner-review-refused",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "review",
+      "to": "review-refused",
+      "label": "stale or conflicts",
+      "id": "review-review-refused",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "review",
+      "to": "no-op",
+      "label": "no change",
+      "id": "review-no-op",
+      "variant": "default",
+      "role": "branch"
+    },
+    {
+      "from": "write",
+      "to": "native-failed",
+      "label": "write / validation fails",
+      "id": "write-native-failed",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "commit",
+      "to": "native-failed",
+      "label": "check / commit fails",
+      "id": "commit-native-failed",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "publish",
+      "to": "pending",
+      "label": "publication fails",
+      "id": "publish-pending",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "finish",
+      "to": "pending",
+      "label": "After capture fails",
+      "id": "finish-pending",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "repair",
+      "to": "prepare-failed",
+      "label": "repair fails",
+      "id": "repair-prepare-failed",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "before",
+      "to": "prepare-failed",
+      "label": "check / backup fails",
+      "id": "before-prepare-failed",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Workflow scope",
+      "items": [
+        "This workflow starts at transfer.Run, shared by CLI and API. API service joining, scheduler ownership and the existing configured-library pending-repair precheck precede this flow. The job and watch ownership diagrams describe that outer boundary.",
+        "The source is never repaired or published by sync. Reported source omissions and reconnections describe the read-only recovery projection. Destination preparatory repair effects are reported separately from synchronized row changes.",
+        "Native rows, filesystem effects and companion/state publication do not share one atomic commit. Files may be copied or removed during application before native commit. The final native graph is checked before native commit; ordinary History records actual partial outcomes, while incomplete cross-file publication retains recovery evidence."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Declared table constraints are checked before publication",
+      "items": [
+        "Preview and protected review insert the final planned Smartlist rows into an isolated in-memory SQLite table created from the observed destination table declaration. This preserves the declaration’s affinity, collation and NULL behavior without modifying either library or replaying destination triggers.",
+        "INSERT OR ABORT prevents a declared IGNORE or REPLACE policy from hiding a colliding planned row. Constraint violations are structural conflicts regardless of the source/destination conflict winner. A duplicate name is a collision only when its stored name and folder path compare equal under the declared constraints; native NULL behavior remains intact.",
+        "This rehearsal covers the declared Smartlist table. It does not claim to replay destination triggers or separate indexes. The actual destination write still executes native behavior, then validates the complete final Smartlist rows and graph before commit.",
+        "The destination table declaration is read from the same native snapshot as the rows and included in the observation digest rechecked after repair and inside the final write transaction.",
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/read.go:32–41; internal/transfer/smartlist_constraints.go:14–64; internal/transfer/observation.go:69–95; internal/transfer/smartlist_validate.go:11–75. Historical source pins and existing graph topology remain unchanged."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Native transaction ownership",
+      "items": [
+        "Protected review and final mutation use native sql.Tx values with the driver’s immediate transaction mode. Review rolls back its reservation before accepted repair. Final mutation commits through sql.Tx; retained connections close after transaction cleanup.",
+        "Dedicated writable database handles retain no idle connections. Cleanup errors join the operation error. History ownership remains distinct from the native database transaction and from the outer destination intake replacement lease.",
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/history/smartlist_mutation_observation.go:12–55; internal/transfer/model.go:186–215; internal/transfer/run.go:131–155. Historical source pins and existing graph topology remain unchanged."
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Scope and committed evidence",
+      "items": [
+        "Runtime evidence is pinned to d3de75b98ba479484d49b0779087f080cb641820. This workflow begins at transfer.Run; CLI/API entry ownership is summarized in the linked overview and job diagrams. Source observations end before destination access. No automatic source repair occurs.",
+        "Rule bytes remain opaque. Unchanged native NULL cells are preserved. Shared native graph validation covers the planned result and actual rows after triggers.",
+        "Planning evidence: internal/transfer/smartlist_plan.go:11–80; internal/transfer/smartlist_validate.go:11–75. Filesystem effects: internal/transfer/mutation.go:16–110. Ordinary History outcome: internal/history/history.go:271–319."
+      ]
+    }
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "source"
+    ],
+    "allowedTerminals": [
+      "preview-result",
+      "refused",
+      "review-refused",
+      "no-op",
+      "native-failed",
+      "pending",
+      "prepare-failed"
+    ],
+    "requiredPaths": [
+      {
+        "from": "source",
+        "to": "review"
+      },
+      {
+        "from": "review",
+        "to": "write"
+      },
+      {
+        "from": "write",
+        "to": "finish"
+      }
+    ]
+  }
+}

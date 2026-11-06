@@ -2,9 +2,11 @@ package history
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 type smartlistReadOwner struct {
@@ -55,7 +57,7 @@ func acquireSmartlistRead(ctx context.Context, dir string, wait bool) (func() er
 func startSmartlistRead(ctx context.Context, dir string, wait bool, owner *smartlistReadOwner) (func() error, error) {
 	// Native waits must not hold the global map mutex: unrelated libraries and
 	// existing readers need it to make progress and release their own leases.
-	conn, err := lockHistory(ctx, dir, wait)
+	conn, err := lockSmartlistRead(ctx, dir, wait)
 	smartlistReaders.Lock()
 	defer smartlistReaders.Unlock()
 	defer close(owner.ready)
@@ -68,6 +70,33 @@ func startSmartlistRead(ctx context.Context, dir string, wait bool, owner *smart
 	conn.SetInterrupt(nil)
 	owner.conn, owner.refs = conn, 1
 	return releaseSmartlistRead(dir, owner), nil
+}
+
+func lockSmartlistRead(ctx context.Context, dir string, wait bool) (_ *sqlite.Conn, err error) {
+	c, err := openHistoryLock(ctx, dir, sqlite.OpenReadOnly, wait)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			if ctx.Err() != nil {
+				err = ctx.Err()
+			}
+			err = errors.Join(err, c.Close())
+		}
+	}()
+	if err = sqlitex.ExecuteTransient(c, "BEGIN", nil); err != nil {
+		return nil, err
+	}
+	// BEGIN is deferred. Reading the schema acquires SHARED ownership even
+	// when lock.db is empty, and the explicit transaction retains it.
+	if err = sqlitex.ExecuteTransient(c, "SELECT count(*) FROM sqlite_schema", nil); err != nil {
+		return nil, err
+	}
+	if err = checkHistoryJournal(c); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func releaseSmartlistRead(dir string, owner *smartlistReadOwner) func() error {

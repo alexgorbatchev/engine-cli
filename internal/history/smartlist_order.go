@@ -25,6 +25,10 @@ func readSmartlistOrderEvidence(ctx context.Context, lib string, evidence *smart
 	if err != nil {
 		return nil, err
 	}
+	return smartlistOrderFromEntries(ctx, lib, evidence, previous)
+}
+
+func smartlistOrderFromEntries(ctx context.Context, lib string, evidence *smartlistEvidence, previous []Entry) (smartlistOrderEvidence, error) {
 	byID := make(map[string]Entry, len(previous))
 	for _, entry := range previous {
 		byID[entry.ID] = entry
