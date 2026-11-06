@@ -1,5 +1,5 @@
 name: Set up cached native audio tools
-description: Restore prebuilt FFmpeg binaries or native macOS Homebrew bottles.
+description: Restore prebuilt FFmpeg binaries, with pinned and verified native macOS archives.
 runs:
   using: composite
   steps:
@@ -21,30 +21,24 @@ runs:
       with:
         path: ${{ runner.tool_cache }}/ffmpeg
         key: ffmpeg-v3-${{ runner.os }}-${{ runner.arch }}-${{ steps.ffmpeg.outputs.ffmpeg-version }}
-    - name: Identify native macOS bottles
+    - name: Identify pinned native macOS audio tools
       if: runner.os == 'macOS'
-      id: homebrew
+      id: macos-audio
       shell: bash
-      env:
-        HOMEBREW_NO_AUTO_UPDATE: '1'
-      run: |
-        echo "path=$(brew --cache)/downloads" >> "$GITHUB_OUTPUT"
-        echo "version=$(brew info --json=v2 ffmpeg-full | jq -r '.formulae[0].versions.stable')" >> "$GITHUB_OUTPUT"
-    - name: Cache native macOS bottle downloads
+      run: exec bash scripts/audio-setup/macos.sh identify
+    - name: Cache pinned native macOS audio archives
       if: runner.os == 'macOS'
+      id: macos-audio-cache
       uses: actions/cache@v6
       with:
-        path: ${{ steps.homebrew.outputs.path }}
-        key: homebrew-ffmpeg-full-${{ runner.arch }}-${{ steps.homebrew.outputs.version }}
-        restore-keys: homebrew-ffmpeg-full-${{ runner.arch }}-
-    - name: Install native macOS audio tools
+        path: ${{ steps.macos-audio.outputs.path }}
+        key: ${{ steps.macos-audio.outputs.key }}
+    - name: Verify and install native macOS audio tools
       if: runner.os == 'macOS'
       shell: bash
       env:
-        HOMEBREW_NO_AUTO_UPDATE: '1'
-      run: |
-        brew install --force-bottle ffmpeg-full
-        echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
+        MACOS_AUDIO_CACHE_HIT: ${{ steps.macos-audio-cache.outputs.cache-hit }}
+      run: exec bash scripts/audio-setup/macos.sh install
     - name: Verify audio tools
       shell: bash
       run: |
