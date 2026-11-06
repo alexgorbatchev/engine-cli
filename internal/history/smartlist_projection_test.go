@@ -76,7 +76,7 @@ func TestSmartlistProjectionNativeDamageAndReadOnlySource(t *testing.T) {
 			before := historyLeaseTree(t, lib)
 			projection := projectionForTest(t, lib, readOnly)
 			if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-				t.Fatal("projection changed source files, metadata, or enrolled storage")
+				t.Fatalf("projection changed source files, metadata, or enrolled storage:\n%s", historyLeaseTreeDiff(before, after))
 			}
 			if projection.EvidenceDigest == "" || len(projection.Actions) != max(1, tc.omitted) {
 				t.Fatalf("missing reviewed evidence/actions: %+v", projection)
@@ -116,7 +116,7 @@ func TestSmartlistProjectionNativeDamageAndReadOnlySource(t *testing.T) {
 				}
 			}
 			if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-				t.Fatal("editing returned values changed source storage")
+				t.Fatalf("editing returned values changed source storage:\n%s", historyLeaseTreeDiff(before, after))
 			}
 		})
 	}
@@ -149,7 +149,7 @@ func TestSmartlistProjectionHealthyNullableAndAbsentTable(t *testing.T) {
 				t.Fatalf("healthy projection enrolled source: %v", err)
 			}
 			if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-				t.Fatal("healthy projection changed source")
+				t.Fatalf("healthy projection changed source:\n%s", historyLeaseTreeDiff(before, after))
 			}
 		})
 	}

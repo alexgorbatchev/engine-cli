@@ -101,7 +101,7 @@ func TestSmartlistProjectionRefusesDamagedHistory(t *testing.T) {
 				t.Fatalf("accepted %s: callback=%v err=%v", damage, called, err)
 			}
 			if after := historyLeaseTree(t, lib); !reflect.DeepEqual(before, after) {
-				t.Fatal("refusal changed or recovered source evidence")
+				t.Fatalf("refusal changed or recovered source evidence:\n%s", historyLeaseTreeDiff(before, after))
 			}
 		})
 	}
