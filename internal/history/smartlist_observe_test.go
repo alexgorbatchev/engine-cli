@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
@@ -95,7 +96,7 @@ func TestSmartlistCoherentReadRetriesFirstPublication(t *testing.T) {
 	}
 }
 
-func TestSmartlistCoherentReadRefusesActiveOwnerAndCancellation(t *testing.T) {
+func TestSmartlistCoherentReadCancellationAndCallbackError(t *testing.T) {
 	lib := t.TempDir()
 	dir, err := storeDir(lib)
 	if err != nil {
@@ -109,13 +110,15 @@ func TestSmartlistCoherentReadRefusesActiveOwnerAndCancellation(t *testing.T) {
 		t.Error("reader ran while publisher owned lock or context was cancelled")
 		return "unsafe", nil
 	}
-	if _, err := ReadSmartlistSafe(t.Context(), lib, read); err == nil {
-		t.Error("read bypassed active publisher")
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
+	defer cancel()
+	if _, err := ReadSmartlistSafe(ctx, lib, read); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("read did not cancel while waiting for publisher: %v", err)
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel = context.WithCancel(t.Context())
 	cancel()
 	if _, err := ReadSmartlistSafe(ctx, lib, read); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled read: %v", err)

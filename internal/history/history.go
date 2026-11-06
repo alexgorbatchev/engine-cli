@@ -71,6 +71,10 @@ func storeDir(lib string) (string, error) {
 }
 
 func lock(ctx context.Context, dir string) (*sqlite.Conn, error) {
+	return lockHistory(ctx, dir, false)
+}
+
+func lockHistory(ctx context.Context, dir string, wait bool) (*sqlite.Conn, error) {
 	// Publish new ancestors before a pending repair can rely on their entries.
 	if err := createSmartlistDirectory(filepath.Dir(dir)); err != nil {
 		return nil, err
@@ -82,10 +86,15 @@ func lock(ctx context.Context, dir string) (*sqlite.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.SetBusyTimeout(0)
+	if !wait {
+		c.SetBusyTimeout(0)
+	}
 	if err = sqlitex.ExecuteTransient(c, "BEGIN IMMEDIATE", nil); err != nil {
-		c.Close()
-		return nil, fmt.Errorf("another engine-cli operation is using this library: %w", err)
+		closeErr := c.Close()
+		if ctx.Err() != nil {
+			return nil, errors.Join(ctx.Err(), closeErr)
+		}
+		return nil, errors.Join(fmt.Errorf("another engine-cli operation is using this library: %w", err), closeErr)
 	}
 	return c, nil
 }
@@ -274,7 +283,7 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 	r.mu.Lock()
 	workspaces := r.workspaces
 	r.mu.Unlock()
-	// A failure that only touched its own retryable workspace is not a library change to undo.
+	// Refusals and failures confined to retryable workspaces have no library change to undo.
 	if runErr != nil && onlyWorkspaceChanges(e, workspaces) {
 		if err = discard(dir, e); err != nil {
 			return nil, errors.Join(runErr, fmt.Errorf("discarding history of a failed operation: %w", err))

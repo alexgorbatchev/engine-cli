@@ -215,6 +215,13 @@ Backup restoration enumerates every database and artwork folder before changing 
 
 A disconnected client does not cancel its job. Cancellation is cooperative and can leave completed changes; use library history to inspect and undo changes. Shutdown requests cancellation and waits for workers.
 
+A failed or cancelled collection or file operation that leaves its captured state
+unchanged, with no recorded moves, relocation, or pending recovery, creates no
+undo record and does not replace the latest undo target.
+This includes stale import reviews and queue-owned staging refusals. Failures
+with partial database or file changes, recorded file moves, library relocation, or pending recovery keep
+their history record; inspect that record before retrying or undoing.
+
 The job's `result` depends on the operation. Track fields use JSON values and `null` for missing metadata. Collection tracks include `hasArtwork`: true when inline artwork bytes or a nonempty regular cache file exists, false when absent (including dangling artwork IDs), and null when availability cannot be determined. Collection lists, single/batch inspection, and playlist tracks share this field. Collection tracks also include `playlistIds`, described under [Library, playlist, and track operations](#library-playlist-and-track-operations), which also lists mutation results; those report changed IDs and paths rather than track objects. Availability checks read artwork catalogue metadata in one batch and reuse filesystem observations for shared covers; they do not load image bytes. A mutation can return a `history_id` identifying its undo record. When a terminal event becomes visible, the final job result and state are also available.
 
 ## Metadata refresh outcomes
@@ -709,7 +716,7 @@ The durable import intent precedes installation, and the exact imported track re
 
 Retained-receipt reconciliation observes retained import receipts under the existing History owner, then the intake worker owner, matching import ownership order. It rereads the current ImportIntent tuple (item_id, history_id and persisted track_id receipt) and conditionally updates matching Item state while both are held; Resume retains that boundary until successful reconciliation clears suspension. An empty intent set does not create or wait on History merely to prepare sources. Missing History is checked again under the worker owner before pausing recovery. Closing the service cancels an initial History wait and joins it without publishing initial readiness or treating cancellation as a worker failure. These semantics do not combine the independent publications into one transaction.
 
-Import review observes collection state through the shared Smartlist-safe read boundary. A live History publisher or pending Smartlist repair refuses review instead of issuing a plan token from unpublished collection state. After the publisher finishes or pending repair is resolved, request a fresh review. This read boundary does not recover or apply repair, create a snapshot or Undo entry, or change import application ownership.
+Collection reads and import review wait cancellably for an existing History publisher or receipt-reconciliation observer through the shared Smartlist-safe read boundary. Overlapping readers share the library's native observation lease; a reader waiting in one library does not block reads or lease releases in another. A pending Smartlist repair still refuses observation immediately. History listing and publication retain their fail-fast ownership policy. This read boundary does not recover or apply repair, create a snapshot or Undo entry, or change import application ownership.
 
 A staged copy belongs to its queue item. Prepared copies keep their source filename, stay out of `GET /v1/staging` and `staging.list`, and `staging.import` and `staging.rm` refuse them with `staging_queue_owned`, so the queue's receipts remain the only import path. Review refuses a prepared file without readable audio with `track_not_audio`.
 

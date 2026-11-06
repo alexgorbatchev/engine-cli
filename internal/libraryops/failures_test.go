@@ -89,12 +89,44 @@ func TestMediaInstallerRejectsUnsafeDestinations(t *testing.T) {
 			if err == nil {
 				t.Fatal("unsafe installation succeeded")
 			}
-			if entry == nil {
-				t.Fatal("failure lacks recovery record")
+			entries, listErr := history.List(root)
+			if listErr != nil {
+				t.Fatal(listErr)
+			}
+			createdDestination := kind == "cancelled" || kind == "missing-source"
+			if createdDestination {
+				if entry == nil || len(entries) != 1 || entries[0].ID != entry.ID {
+					t.Fatalf("created destination lacks recovery: entry=%+v entries=%+v", entry, entries)
+				}
+				if data, readErr := os.ReadFile(destination); readErr != nil || len(data) != 0 {
+					t.Fatalf("failed copy did not retain its empty destination: %q %v", data, readErr)
+				}
+				if _, undoErr := history.Undo(ctx, root, "", history.UndoOptions{}); undoErr != nil {
+					t.Fatal(undoErr)
+				}
+				if _, statErr := os.Stat(destination); !os.IsNotExist(statErr) {
+					t.Fatalf("undo retained failed copy: %v", statErr)
+				}
+			} else if entry != nil || len(entries) != 0 {
+				t.Fatalf("prechange refusal created recovery work: entry=%+v entries=%+v", entry, entries)
+			}
+			switch kind {
+			case "different-content":
+				if data, readErr := os.ReadFile(destination); readErr != nil || string(data) != "other song" {
+					t.Fatalf("existing destination changed: %q %v", data, readErr)
+				}
+			case "directory":
+				if info, statErr := os.Stat(destination); statErr != nil || !info.IsDir() {
+					t.Fatalf("destination directory changed: %v", statErr)
+				}
+			case "blocked-parent":
+				if data, readErr := os.ReadFile(filepath.Dir(destination)); readErr != nil || string(data) != "unchanged audio packets" {
+					t.Fatalf("blocking parent changed: %q %v", data, readErr)
+				}
 			}
 			if kind != "missing-source" {
-				if _, err = os.Stat(media); err != nil {
-					t.Fatal("original audio lost", err)
+				if data, readErr := os.ReadFile(media); readErr != nil || string(data) != "unchanged audio packets" {
+					t.Fatalf("original audio changed: %q %v", data, readErr)
 				}
 			}
 		})
