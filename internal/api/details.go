@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -49,7 +50,7 @@ func (s *Server) batchDetails(kind string) http.HandlerFunc {
 		}
 		result, err := s.readSelectedDetails(r.Context(), kind, p)
 		if err != nil {
-			writeError(w, http.StatusServiceUnavailable, "library_unavailable", "Could not read details from the selected library.")
+			writeCollectionReadError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, result)
@@ -73,6 +74,12 @@ func (s *Server) detailOperation(kind string) operation {
 }
 
 func (s *Server) readSelectedDetails(ctx context.Context, kind string, p detailParams) (*details.Report, error) {
+	return history.ReadSmartlistSafe(ctx, s.config.LibraryDir, func(ctx context.Context) (*details.Report, error) {
+		return s.readSelectedDetailsLocked(ctx, kind, p)
+	})
+}
+
+func (s *Server) readSelectedDetailsLocked(ctx context.Context, kind string, p detailParams) (*details.Report, error) {
 	if len(p.Refs) == 0 {
 		return s.readDetails(ctx, kind, p.IDs)
 	}

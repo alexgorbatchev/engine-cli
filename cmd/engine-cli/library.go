@@ -45,6 +45,7 @@ func newLibraryCommand() *cobra.Command {
 	libCmd.AddCommand(newLibraryPruneCommand())
 	libCmd.AddCommand(newHistoryCommand())
 	libCmd.AddCommand(newUndoCommand())
+	libCmd.AddCommand(newSmartlistRepairCommand())
 
 	return libCmd
 }

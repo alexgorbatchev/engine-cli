@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 )
 
 type mediaParams struct {
@@ -116,24 +117,26 @@ func (s *Server) mediaPath(ctx context.Context, p mediaParams) (string, error) {
 	if p.StagingID != "" {
 		return s.acquisitionService().ResolveStaged(ctx, p.StagingID)
 	}
-	value, err := s.database(ctx, func(d *sql.DB) (any, error) {
-		t, err := db.FindTrack(ctx, d, p.Identifier)
+	return history.ReadSmartlistSafe(ctx, s.config.LibraryDir, func(ctx context.Context) (string, error) {
+		value, err := s.database(ctx, func(d *sql.DB) (any, error) {
+			t, err := db.FindTrack(ctx, d, p.Identifier)
+			if err != nil {
+				return nil, err
+			}
+			if t == nil {
+				return nil, fmt.Errorf("track not found")
+			}
+			path := t.PathString()
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(s.config.LibraryDir, path)
+			}
+			return path, nil
+		})
 		if err != nil {
-			return nil, err
+			return "", err
 		}
-		if t == nil {
-			return nil, fmt.Errorf("track not found")
-		}
-		path := t.PathString()
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(s.config.LibraryDir, path)
-		}
-		return path, nil
+		return value.(string), nil
 	})
-	if err != nil {
-		return "", err
-	}
-	return value.(string), nil
 }
 func (s *Server) mediaOperations() []operation {
 	client := s.toolClient()

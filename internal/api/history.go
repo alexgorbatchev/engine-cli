@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"database/sql"
+
+	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 )
@@ -43,7 +45,13 @@ func (s *Server) historyOperations() []operation {
 			if lib == "" {
 				lib = s.config.LibraryDir
 			}
-			entry, err := history.Undo(ctx, lib, p.ID, history.UndoOptions{Force: p.Force, DryRun: p.DryRun})
+			entry, err := history.Undo(ctx, lib, p.ID, history.UndoOptions{
+				Force: p.Force, DryRun: p.DryRun,
+				Prepare: func(ctx context.Context) error {
+					_, err := backup.AutoBackupIfNeeded(ctx, lib, s.config.NoBackup)
+					return err
+				},
+			})
 			if err == nil && !p.DryRun && entry != nil {
 				err = s.state.RecordUndo(ctx, entry)
 			}

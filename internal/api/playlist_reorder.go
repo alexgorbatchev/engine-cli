@@ -37,3 +37,5 @@ func (s *Server) reorderPlaylistOperation() operation {
 		})
 	})
 }
+
+func (p reorderPlaylistParams) operationCollectionRead() bool { return p.DryRun }

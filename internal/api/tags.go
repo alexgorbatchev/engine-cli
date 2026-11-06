@@ -106,7 +106,7 @@ func (s *Server) tagDeleteOperation(category bool) operation {
 
 func (s *Server) tagOperations() []operation {
 	return []operation{
-		define("tag.category.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+		defineCollectionRead("tag.category.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return tags.List(ctx, s.config.LibraryDir)
 		}),
 		defineChecked("tag.reconcile", "collection", []string{"revision"}, func(ctx context.Context, p tagReconcileParams, _ *boundOperation) error {
@@ -120,10 +120,10 @@ func (s *Server) tagOperations() []operation {
 		tagEditOperation[tagValueCreateParams](s, "tag.value.create", []string{"category", "name", "revision"}, false),
 		tagEditOperation[tagValueUpdateParams](s, "tag.value.update", []string{"id", "name", "revision"}, false),
 		s.tagDeleteOperation(false),
-		define("track.custom-tags.inspect", false, []string{"track"}, func(ctx context.Context, p trackCustomTagsParams) (any, error) {
+		defineCollectionRead("track.custom-tags.inspect", []string{"track"}, func(ctx context.Context, p trackCustomTagsParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return tags.InspectTrack(ctx, d, s.config.LibraryDir, p.Track) })
 		}),
-		define("track.custom-tags.batch-inspect", false, []string{"tracks"}, func(ctx context.Context, p batchCustomTagsParams) (any, error) {
+		defineCollectionRead("track.custom-tags.batch-inspect", []string{"tracks"}, func(ctx context.Context, p batchCustomTagsParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return tags.InspectBatch(ctx, d, s.config.LibraryDir, p.Tracks) })
 		}),
 		defineChecked("track.custom-tags.batch-update", "collection", []string{"tracks", "revision", "add", "remove"}, func(ctx context.Context, p batchAssignCustomTagsParams, _ *boundOperation) error {
@@ -146,3 +146,9 @@ func (s *Server) tagOperations() []operation {
 		}),
 	}
 }
+
+func (p tagDeleteParams) operationCollectionRead() bool { return p.DryRun }
+
+func (p batchAssignCustomTagsParams) operationCollectionRead() bool { return p.DryRun }
+
+func (p tagReconcileParams) operationCollectionRead() bool { return p.DryRun }

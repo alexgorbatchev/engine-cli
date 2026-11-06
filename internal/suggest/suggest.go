@@ -8,6 +8,8 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/details"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
@@ -31,20 +33,26 @@ func Run(ctx context.Context, library string, selection Selection, options acqui
 	if err := options.Validate(); err != nil {
 		return nil, &progress.Error{Code: "invalid_request", Cause: err}
 	}
-	d, err := db.Open(filepath.Join(library, "Database2", "m.db"), true)
-	if err != nil {
-		return nil, &progress.Error{Code: "library_unavailable", Cause: err}
-	}
-	selected, readErr := selectTracks(ctx, d, selection)
-	closeErr := d.Close()
-	if readErr != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
+	selected, err := history.ReadSmartlistSafe(ctx, library, func(ctx context.Context) (*details.Report, error) {
+		d, err := db.Open(filepath.Join(library, "Database2", "m.db"), true)
+		if err != nil {
+			return nil, &progress.Error{Code: "library_unavailable", Cause: err}
 		}
-		return nil, &progress.Error{Code: "suggestion_selection_failed", Cause: readErr}
-	}
-	if closeErr != nil {
-		return nil, closeErr
+		selected, readErr := selectTracks(ctx, d, selection)
+		closeErr := d.Close()
+		if readErr != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			return nil, &progress.Error{Code: "suggestion_selection_failed", Cause: readErr}
+		}
+		if closeErr != nil {
+			return nil, closeErr
+		}
+		return selected, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	tracks, err := inputs(selected)
 	if err != nil {

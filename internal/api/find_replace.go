@@ -43,3 +43,5 @@ func (s *Server) findReplaceOperation() operation {
 		})
 	})
 }
+
+func (p findReplaceParams) operationCollectionRead() bool { return p.DryRun }

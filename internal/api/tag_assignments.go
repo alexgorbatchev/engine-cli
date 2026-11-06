@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Server) tagAssignmentsOperation() operation {
-	return define("track.custom-tags.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+	return defineCollectionRead("track.custom-tags.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 		result, err := s.database(ctx, func(d *sql.DB) (any, error) {
 			return tags.ListTracks(ctx, d, s.config.LibraryDir)
 		})

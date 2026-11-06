@@ -31,16 +31,18 @@ type operation struct {
 	Required          []string          `json:"required"`
 	bind              func(json.RawMessage) (*boundOperation, error)
 	reduceResult      func(any, json.RawMessage) any
+	collectionRead    bool
 }
 
 type boundOperation struct {
-	before        func(context.Context) error
-	run           func(context.Context) (any, error)
-	preview       bool
-	library       string
-	effect        string
-	paths         []string
-	installsTools bool
+	before         func(context.Context) error
+	run            func(context.Context) (any, error)
+	preview        bool
+	library        string
+	effect         string
+	paths          []string
+	installsTools  bool
+	collectionRead bool
 }
 
 type parameterValidator interface{ validate() error }
@@ -138,6 +140,9 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 				preview = v.operationPreview()
 			}
 			bound := &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, effect: boundEffect, paths: paths}
+			if v, ok := any(p).(interface{ operationCollectionRead() bool }); ok {
+				bound.collectionRead = v.operationCollectionRead()
+			}
 			if raw, ok := values["auto_install"]; ok {
 				if err := json.Unmarshal(raw, &bound.installsTools); err != nil {
 					return nil, err
@@ -213,12 +218,14 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 		}
 		// Creation has no pre-existing database to back up. Its before/after
 		// history still records the new databases so creation can be undone.
-		if effect == "collection" && !bound.preview && op.Name != "library.sync" && op.Name != "library.create" {
-			if _, e := backup.AutoBackupIfNeeded(ctx, lib, s.config.NoBackup); e != nil {
-				return e
+		prepare := func(ctx context.Context) error {
+			if effect != "collection" || op.Name == "library.sync" || op.Name == "library.create" || op.Name == "library.undo" {
+				return nil
 			}
+			_, e := backup.AutoBackupIfNeeded(ctx, lib, s.config.NoBackup)
+			return e
 		}
-		if (effect == "collection" || effect == "staging" || effect == "filesystem") && !bound.preview && op.Name != "library.undo" && op.Name != "library.sync" {
+		if (effect == "collection" || effect == "staging" || effect == "filesystem") && !bound.preview && op.Name != "library.undo" && op.Name != "library.sync" && !ownsSmartlistRepairPublication(op.Name) {
 			// Staging and server-file effects never write Engine databases.
 			scope := history.ScopeCollection
 			if effect == "staging" || effect == "filesystem" {
@@ -227,18 +234,38 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 					return e
 				}
 			}
-			entry, e := history.Run(ctx, lib, op.Name, scope, nil, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
+			entry, e := history.RunPrepared(ctx, lib, history.RunOptions{
+				Operation:        op.Name,
+				Scope:            scope,
+				Prepare:          prepare,
+				RepairSmartlists: effect == "collection" && op.Name != "library.create" && op.Name != "library.restore",
+			}, func(ctx context.Context) error { var runErr error; result, runErr = bound.run(ctx); return runErr })
 			if entry != nil {
 				historyID = entry.ID
 			}
 			return e
 		}
-		result, err = bound.run(ctx)
+		if effect == "collection" && !bound.preview && !ownsSmartlistRepairPublication(op.Name) {
+			if e := history.CheckSmartlistRepair(ctx, lib); e != nil {
+				return e
+			}
+			if e := prepare(ctx); e != nil {
+				return e
+			}
+		}
+		if op.collectionRead || bound.collectionRead {
+			result, err = history.ReadSmartlistSafe(ctx, lib, bound.run)
+		} else {
+			result, err = bound.run(ctx)
+		}
 		if r, ok := result.(*transfer.Report); ok && r != nil {
 			historyID = r.OperationID
 		}
 		if entry, ok := result.(*history.Entry); ok && entry != nil && !bound.preview {
 			historyID = entry.ID
+		}
+		if repair, ok := result.(*history.SmartlistRepairResult); ok && repair != nil {
+			historyID = repair.UndoID
 		}
 		return err
 	})

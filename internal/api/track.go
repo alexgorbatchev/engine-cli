@@ -124,7 +124,7 @@ func (s *Server) trackOperations() []operation {
 				return changedTrack{TrackID: id}, nil
 			})
 		}),
-		define("track.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+		defineCollectionRead("track.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				tracks, err := db.GetAllTracks(ctx, d)
 				if err != nil {

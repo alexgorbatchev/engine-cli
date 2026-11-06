@@ -26,7 +26,7 @@ func (s *Server) libraryOperations() []operation {
 				return identity.Register(ctx, d, s.config.LibraryDir, p.NewCopy)
 			})
 		}),
-		define("library.entity.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+		defineCollectionRead("library.entity.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return identity.List(ctx, d, s.config.LibraryDir) })
 		}),
 		define("library.discover", false, nil, func(ctx context.Context, p discoverParams) (any, error) {
@@ -41,7 +41,7 @@ func (s *Server) libraryOperations() []operation {
 			}
 			return r, nil
 		}),
-		define("library.verify", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+		defineCollectionRead("library.verify", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return verify.VerifyLibrary(ctx, d, s.config.LibraryDir) })
 		}),
 		define("library.refresh", true, nil, func(ctx context.Context, _ emptyParams) (any, error) {

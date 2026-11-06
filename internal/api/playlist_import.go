@@ -45,3 +45,5 @@ func (s *Server) importPlaylistOperation() operation {
 		})
 	})
 }
+
+func (p importPlaylistParams) operationCollectionRead() bool { return p.DryRun }

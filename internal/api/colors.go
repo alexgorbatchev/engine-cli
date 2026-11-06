@@ -36,7 +36,7 @@ func (s *Server) colorOperations() []operation {
 			}
 			return result, nil
 		}),
-		define("track.color.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
+		defineCollectionRead("track.color.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				result, err := colors.ListTracks(ctx, d, s.config.LibraryDir)
 				if err != nil {
@@ -45,7 +45,7 @@ func (s *Server) colorOperations() []operation {
 				return result, nil
 			})
 		}),
-		define("track.color.inspect", false, []string{"track"}, func(ctx context.Context, p trackColorParams) (any, error) {
+		defineCollectionRead("track.color.inspect", []string{"track"}, func(ctx context.Context, p trackColorParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				result, err := colors.InspectTrack(ctx, d, s.config.LibraryDir, p.Track)
 				if err != nil {
@@ -70,3 +70,5 @@ func (s *Server) colorOperations() []operation {
 		}),
 	}
 }
+
+func (p colorReconcileParams) operationCollectionRead() bool { return p.DryRun }

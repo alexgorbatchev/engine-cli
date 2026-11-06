@@ -48,7 +48,7 @@ func (s *Server) duplicateOperations() []operation {
 				return duplicate.AudioGroups(ctx, d, s.config.LibraryDir, duplicate.AudioOptions{IDs: p.IDs, Refs: p.Refs, Generate: true})
 			})
 		}),
-		define("track.duplicate.list", false, nil, func(ctx context.Context, p duplicateListParams) (any, error) {
+		defineCollectionRead("track.duplicate.list", nil, func(ctx context.Context, p duplicateListParams) (any, error) {
 			if p.Type == "" {
 				p.Type = "all"
 			}
@@ -59,7 +59,7 @@ func (s *Server) duplicateOperations() []operation {
 				return duplicate.List(ctx, d, p.Type)
 			})
 		}),
-		define("track.duplicate.inspect", false, nil, func(ctx context.Context, p duplicateInspectParams) (any, error) {
+		defineCollectionRead("track.duplicate.inspect", nil, func(ctx context.Context, p duplicateInspectParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				if len(p.Refs) > 0 {
 					ids, err := identity.ResolveBatch(ctx, d, s.config.LibraryDir, "track", p.Refs)

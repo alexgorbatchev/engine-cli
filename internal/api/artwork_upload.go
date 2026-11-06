@@ -12,14 +12,18 @@ import (
 	"strconv"
 
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/track"
 )
 
 var errArtworkUploadTooLarge = errors.New("choose an image smaller than 8 MB")
 
 func (s *Server) editTrackUpload(w http.ResponseWriter, r *http.Request) {
-	t := s.requestTrack(w, r)
-	if t == nil {
+	id, err := readRequestTrack(s, r, func(_ context.Context, _ *sql.DB, track *db.Track) (int64, error) {
+		return track.ID, nil
+	})
+	if err != nil {
+		writeCollectionReadError(w, err)
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, artwork.MaxUploadBytes+maxRequestBytes)
@@ -33,11 +37,11 @@ func (s *Server) editTrackUpload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, status, "invalid_artwork", err.Error())
 		return
 	}
-	if p.Identifier != "" && p.Identifier != r.PathValue("id") && p.Identifier != strconv.FormatInt(t.ID, 10) {
+	if p.Identifier != "" && p.Identifier != r.PathValue("id") && p.Identifier != strconv.FormatInt(id, 10) {
 		writeError(w, http.StatusBadRequest, "invalid_track", "The uploaded edit identifies a different track.")
 		return
 	}
-	p.Identifier = strconv.FormatInt(t.ID, 10)
+	p.Identifier = strconv.FormatInt(id, 10)
 	if err := p.Validate(); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_parameters", err.Error())
 		return

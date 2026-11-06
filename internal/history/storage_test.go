@@ -135,6 +135,12 @@ func TestHistoryStorageFailures(t *testing.T) {
 	if _, err = Undo(ctx, lib, "", UndoOptions{}); err == nil {
 		t.Fatal("accepted corrupt lock")
 	}
+	if _, err = List(lib); err == nil {
+		t.Fatal("history read bypassed corrupt publisher lock")
+	}
+	if err = os.Remove(filepath.Join(dir, "lock.db")); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("XDG_DATA_HOME", "")
 	t.Setenv("HOME", "")
 	if _, err = List(lib); err != nil {

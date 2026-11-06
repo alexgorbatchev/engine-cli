@@ -13,6 +13,9 @@ import (
 // directory of an operation that stopped before recording its entry. It requires
 // the history lock, which excludes every writer, and the complete entry list.
 func collect(dir string, all []Entry) error {
+	if err := checkSmartlistRepair(dir); err != nil {
+		return err
+	}
 	ids := make(map[string]bool, len(all))
 	referenced := make(map[string]bool)
 	for _, e := range all {
