@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"zombiezen.com/go/sqlite"
 )
 
 // RelocateLibrary moves a complete library and rebases its portable journal.
@@ -38,15 +40,24 @@ func RelocateLibrary(ctx context.Context, from, to string) error {
 	}
 	err = os.Rename(from, to)
 	copied := false
+	var destinationOwner *sqlite.Conn
 	if errors.Is(err, syscall.EXDEV) || errors.Is(err, fs.ErrPermission) {
 		if err = os.Mkdir(to, 0700); err != nil {
 			return err
 		}
 		copied = true
-		err = copyLibraryTree(ctx, from, to, lockPath)
+		// The source's active lock cannot be copied. Own the destination before
+		// its first copied file, through the recorder's final publication.
+		destinationOwner, err = lock(ctx, filepath.Join(to, ".engine-cli", "history"))
+		if err == nil {
+			err = copyLibraryTree(ctx, from, to, lockPath)
+		}
 	}
 	if err != nil {
 		if copied {
+			if destinationOwner != nil {
+				err = errors.Join(err, destinationOwner.Close())
+			}
 			return errors.Join(err, os.RemoveAll(to))
 		}
 		return err
@@ -56,10 +67,11 @@ func RelocateLibrary(ctx context.Context, from, to string) error {
 	relocateEntry(r.entry, to)
 	r.dir = filepath.Join(to, ".engine-cli", "history")
 	err = writeEntry(r.dir, r.entry)
-	r.entry.cleanup = func() error {
+	r.entry.cleanup = func() (err error) {
 		if !copied {
 			return nil
 		}
+		defer func() { err = errors.Join(err, destinationOwner.Close()) }()
 		current, e := os.Stat(lockPath)
 		if e == nil && os.SameFile(lockInfo, current) {
 			if e = os.Remove(lockPath); e != nil {
