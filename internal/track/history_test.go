@@ -1,12 +1,14 @@
 package track
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
 func TestTrackFileHistory(t *testing.T) {
@@ -17,9 +19,7 @@ func TestTrackFileHistory(t *testing.T) {
 			ctx := context.Background()
 			original := filepath.Join(lib, "song.mp3")
 			dest := filepath.Join(lib, "moved.mp3")
-			if err := os.WriteFile(original, []byte("original"), 0600); err != nil {
-				t.Fatal(err)
-			}
+			originalBytes := testaudio.Write(t, original)
 			if _, err := d.Exec("INSERT INTO Track(id,path,title) VALUES(1,'song.mp3','Song')"); err != nil {
 				t.Fatal(err)
 			}
@@ -62,7 +62,7 @@ func TestTrackFileHistory(t *testing.T) {
 				t.Fatal(err)
 			}
 			data, err := os.ReadFile(original)
-			if err != nil || string(data) != "original" {
+			if err != nil || !bytes.Equal(data, originalBytes) {
 				t.Fatalf("undo original %q %v", data, err)
 			}
 			if operation == "move" || operation == "import" || operation == "upgrade install" {

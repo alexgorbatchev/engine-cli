@@ -2,10 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
 // decodeJSON normalizes an expected result the way job results are decoded.
@@ -20,15 +21,11 @@ func decodeJSON(t *testing.T, value string) any {
 
 func TestMutationsReportOperationResults(t *testing.T) {
 	s, lib := testPlaylistIDsAPI(t)
-	if err := os.WriteFile(filepath.Join(lib, "imported.mp3"), []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, filepath.Join(lib, "imported.mp3"))
 	added := filepath.Join(lib, "added.mp3")
 	outside := filepath.Join(t.TempDir(), "outside.mp3")
 	for _, path := range []string{added, outside} {
-		if err := os.WriteFile(path, []byte("audio"), 0600); err != nil {
-			t.Fatal(err)
-		}
+		testaudio.Write(t, path)
 	}
 	for _, tt := range []struct {
 		operation, body, want string
@@ -55,9 +52,7 @@ func TestMutationsReportOperationResults(t *testing.T) {
 // longer be read, because mutation results never read the changed tracks back.
 func TestMutationsDoNotReadChangedTracks(t *testing.T) {
 	s, lib := testPlaylistIDsAPI(t)
-	if err := os.WriteFile(filepath.Join(lib, "imported.mp3"), []byte("audio"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	testaudio.Write(t, filepath.Join(lib, "imported.mp3"))
 	execAPIFixture(t, lib, "DROP TABLE PlaylistEntity")
 	for _, tt := range []struct {
 		operation, body, want string
