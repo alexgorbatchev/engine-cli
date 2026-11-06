@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/api"
 	"github.com/alexgorbatchev/engine-cli/internal/intake"
