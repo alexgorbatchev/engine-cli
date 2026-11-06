@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func (p *plan) apply(ctx context.Context, c *sql.Conn) error {
+func (p *plan) apply(ctx context.Context, c *sql.Tx) error {
 	for path, e := range p.artwork {
 		if err := copyMedia(ctx, e, path); err != nil {
 			return err
@@ -42,6 +42,17 @@ func (p *plan) apply(ctx context.Context, c *sql.Conn) error {
 		e := p.destination.Entities[key]
 		if e.Kind == "smartlist" {
 			if _, err := c.ExecContext(ctx, "DELETE FROM Smartlist WHERE listUuid=?", e.Values["listUuid"]); err != nil {
+				return err
+			}
+		}
+	}
+	// Release native nullable linkage slots before assigning the final graph.
+	// This permits valid successor swaps without transient UNIQUE collisions.
+	// Every affected row receives its complete reviewed values below.
+	for _, key := range orderedKeys(p.desired) {
+		e := p.desired[key]
+		if e.Kind == "smartlist" && p.destination.Entities[key] != nil {
+			if _, err := c.ExecContext(ctx, "UPDATE Smartlist SET parentPlaylistPath=NULL,nextPlaylistPath=NULL,nextListUuid=NULL WHERE listUuid=?", e.Values["listUuid"]); err != nil {
 				return err
 			}
 		}
@@ -98,7 +109,7 @@ func (p *plan) apply(ctx context.Context, c *sql.Conn) error {
 	progress.Stage(ctx, "sync.finalize", 90)
 	return nil
 }
-func (p *plan) applyPreparelist(ctx context.Context, c *sql.Conn) error {
+func (p *plan) applyPreparelist(ctx context.Context, c *sql.Tx) error {
 	e := p.desired["preparelist"]
 	if e == nil && !p.remove["preparelist"] {
 		return nil
@@ -129,7 +140,7 @@ func (p *plan) membershipTrack(key string) *entity {
 	}
 	return tr
 }
-func (p *plan) removePlaylists(ctx context.Context, c *sql.Conn) error {
+func (p *plan) removePlaylists(ctx context.Context, c *sql.Tx) error {
 	keys := []string{}
 	for k := range p.remove {
 		if p.destination.Entities[k].Kind == "playlist" {
@@ -160,7 +171,7 @@ func (p *plan) depth(k string) int {
 	}
 	return n
 }
-func (p *plan) applyTrack(ctx context.Context, c *sql.Conn, e *entity) error {
+func (p *plan) applyTrack(ctx context.Context, c *sql.Tx, e *entity) error {
 	v := clone(e.Values)
 	old := p.destination.Entities[e.Key]
 	var id any

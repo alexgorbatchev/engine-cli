@@ -31,6 +31,12 @@ type Entity struct {
 	EntityID string `json:"entity_id"`
 }
 
+// Reader allows reference resolution to share its caller's native snapshot.
+type Reader interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
 func Path(lib string) string { return filepath.Join(lib, ".engine-cli", "identity.json") }
 
 func Load(lib string) (*Registry, error) {
@@ -162,7 +168,7 @@ func PlaylistID(r *Registry, id int64) string {
 	return trackID(r.ID+"\x00playlist", id)
 }
 
-func List(ctx context.Context, d *sql.DB, lib string) ([]Entity, error) {
+func List(ctx context.Context, d Reader, lib string) ([]Entity, error) {
 	r, err := Load(lib)
 	if err != nil {
 		return nil, err
@@ -233,7 +239,7 @@ func Resolve(ctx context.Context, d *sql.DB, lib, kind, ref string) (int64, erro
 }
 
 // ResolveBatch resolves an ordered selection with one library read.
-func ResolveBatch(ctx context.Context, d *sql.DB, lib, kind string, refs []string) ([]int64, error) {
+func ResolveBatch(ctx context.Context, d Reader, lib, kind string, refs []string) ([]int64, error) {
 	for _, ref := range refs {
 		parts := strings.Split(ref, ":")
 		if len(parts) != 4 || parts[0] != "eng" || parts[2] != kind || parts[3] == "" {

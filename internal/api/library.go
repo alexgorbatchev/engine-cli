@@ -11,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
 	enginesync "github.com/alexgorbatchev/engine-cli/internal/sync"
+	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"github.com/alexgorbatchev/engine-cli/internal/transfer"
 	"github.com/alexgorbatchev/engine-cli/internal/verify"
 )
@@ -50,6 +51,13 @@ func (s *Server) libraryOperations() []operation {
 		}),
 		define("library.sync", true, []string{"source", "destination", "scope"}, func(ctx context.Context, p transfer.Options) (any, error) {
 			p.NoBackup = s.config.NoBackup
+			p.CheckMutation = func(ctx context.Context) error {
+				r, err := s.checkSystem(ctx, nil)
+				if err != nil {
+					return err
+				}
+				return systemcheck.AllowMutation(r)
+			}
 			return transfer.Run(ctx, p)
 		}),
 		define("library.backup", false, nil, func(ctx context.Context, p directoryParams) (any, error) {

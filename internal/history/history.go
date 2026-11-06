@@ -82,14 +82,16 @@ func lockHistory(ctx context.Context, dir string, wait bool) (*sqlite.Conn, erro
 	if err := createSmartlistDirectory(dir); err != nil {
 		return nil, err
 	}
-	c, err := open(ctx, filepath.Join(dir, "lock.db"), sqlite.OpenReadWrite|sqlite.OpenCreate)
+	c, err := openHistoryLock(ctx, dir, sqlite.OpenReadWrite|sqlite.OpenCreate, wait)
 	if err != nil {
 		return nil, err
 	}
-	if !wait {
-		c.SetBusyTimeout(0)
+	// Shared read leases exclude publication only in rollback-journal mode.
+	err = sqlitex.ExecuteTransient(c, "BEGIN EXCLUSIVE", nil)
+	if err == nil {
+		err = checkHistoryJournal(c)
 	}
-	if err = sqlitex.ExecuteTransient(c, "BEGIN IMMEDIATE", nil); err != nil {
+	if err != nil {
 		closeErr := c.Close()
 		if ctx.Err() != nil {
 			return nil, errors.Join(ctx.Err(), closeErr)
@@ -204,11 +206,25 @@ func RunPrepared(ctx context.Context, lib string, options RunOptions, run func(c
 			return nil, &progress.Error{Code: "history_recovery_required", Cause: fmt.Errorf("operation %s was interrupted; inspect it and use library undo %s --force to recover", e.ID, e.ID)}
 		}
 	}
+	repairToken := ""
+	if options.ObserveSmartlists != nil {
+		if !options.RepairSmartlists || !options.Scope.capturesDatabases() {
+			return nil, errors.New("Smartlist observation requires collection repair ownership")
+		}
+		var proceed bool
+		repairToken, proceed, err = observeSmartlistMutation(ctx, abs, options.ObserveSmartlists)
+		if err != nil {
+			return nil, err
+		}
+		if !proceed {
+			return nil, nil
+		}
+	}
 	if err = collect(dir, previous); err != nil {
 		return nil, fmt.Errorf("removing unreferenced operation history: %w", err)
 	}
 	if options.RepairSmartlists && options.Scope.capturesDatabases() {
-		repair, err := applySmartlistRepairLocked(ctx, abs, dir, "")
+		repair, err := applySmartlistRepairLocked(ctx, abs, dir, repairToken)
 		if err != nil {
 			return nil, err
 		}

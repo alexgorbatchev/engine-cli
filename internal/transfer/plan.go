@@ -13,16 +13,19 @@ import (
 )
 
 type plan struct {
-	report      *Report
-	source      *collection
-	destination *collection
-	desired     map[string]*entity
-	selected    map[string]bool
-	remove      map[string]bool
-	copy        map[string]string
-	artwork     map[string]*entity
-	baseline    map[string]baseline
-	reused      map[string]bool
+	report             *Report
+	source             *collection
+	destination        *collection
+	desired            map[string]*entity
+	selected           map[string]bool
+	remove             map[string]bool
+	copy               map[string]string
+	artwork            map[string]*entity
+	baseline           map[string]baseline
+	reused             map[string]bool
+	playlistOrders     map[string][]string
+	finalEntities      map[string]*entity
+	expectedSmartlists map[string]*entity
 }
 
 // Normalize validates transfer inputs without opening writable storage. Callers
@@ -265,7 +268,8 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 				p.conflict(change, "sync_diverged", "source and destination differ without an uncontested baseline")
 				continue
 			}
-			if (conflict && o.Conflict == "destination") || (!conflict && known && sf == b.Source && df != b.Destination) {
+			// A recorded destination choice persists until its source changes.
+			if (conflict && o.Conflict == "destination") || (!conflict && known && sf == b.Source) {
 				p.baseline[key] = baseline{Source: sf, Destination: df}
 				continue
 			}
@@ -320,6 +324,9 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	if o.Mirror {
 		p.planRemovals(o)
 	}
+	if err := p.planSmartlists(ctx, o); err != nil {
+		return nil, err
+	}
 	for _, e := range p.desired {
 		for _, key := range e.Members {
 			if s.Entities[key] == nil && d.Entities[key] == nil {
@@ -363,7 +370,7 @@ func buildPlan(ctx context.Context, o Options, s, d *collection) (*plan, error) 
 	tokenOptions.DryRun = false
 	tokenOptions.PlanToken = ""
 	tokenOptions.NoBackup = false
-	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.Tags, d.Tags, s.Imports, d.Imports, s.Colors, d.Colors, s.State, d.State, p.artwork, p.report.Changes, p.report.Conflicts})
+	p.report.PlanToken = digest([]any{tokenOptions, s.Entities, d.Entities, s.Tags, d.Tags, s.Imports, d.Imports, s.Colors, d.Colors, s.State, d.State, s.Smartlists, d.Smartlists, p.playlistOrders, p.expectedSmartlists, p.artwork, p.report.Changes, p.report.Conflicts})
 	return p, nil
 }
 
@@ -389,6 +396,12 @@ func (p *plan) count(c Change) {
 		s.PlaylistsUpdated++
 	case "playlist:remove":
 		s.PlaylistsRemoved++
+	case "smartlist:add":
+		s.SmartlistsAdded++
+	case "smartlist:update":
+		s.SmartlistsUpdated++
+	case "smartlist:remove":
+		s.SmartlistsRemoved++
 	}
 }
 func (p *plan) planRemovals(o Options) {

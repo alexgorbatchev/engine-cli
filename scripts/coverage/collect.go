@@ -37,13 +37,13 @@ func testBatches(goos string) [][]string {
 	}
 	return [][]string{
 		{"-run", "^$", "./..."},
-		{"-run", "^TestRelocate", "./internal/db"},
+		{"-run", "^TestRelocate|TestSmartlistInventoryFrom|TestValidateSmartlistInventory", "./internal/db"},
 		{"./internal/discovery", "./internal/systemcheck", "./internal/fileidentity", "./internal/regularfile", "./internal/intakelease", "./internal/intake", "./internal/intakecontrol", "./internal/intakestate", "./internal/watchclock", "./internal/watchfs", "./internal/watchcontrol", "./internal/pcm", "./internal/performance", "./internal/audiodecode"},
 		{"-run", "TestLocal|TestImport|TestRetainedImport|TestCancelledImport|TestManifestPublication|TestStorePersistenceAndContainment", "./internal/staging"},
-		{"-run", "TestIntake|TestInvalidIntake|TestCollectionUndoRetainsIntake|TestExplicitIntake|TestUndoReplacement|TestUndoRefusesForeignQueue|TestUndoRelocation|TestWatch|TestHistoryEntryPublication|TestUndoPreservesLaterChangesAndForce", "./internal/backup", "./internal/history"},
+		{"-run", "TestIntake|TestInvalidIntake|TestCollectionUndoRetainsIntake|TestExplicitIntake|TestUndoReplacement|TestUndoRefusesForeignQueue|TestUndoRelocation|TestWatch|TestHistoryEntryPublication|TestUndoPreservesLaterChangesAndForce|TestHistoryOwnersPreserveEmpty|TestSmartlist(ReadLease|Projection|Observation)", "./internal/backup", "./internal/history"},
 		{"-run", "^TestAPI(Intake|Watch|QueueOwned)|PCM|TestCapture|TestAPIFixtureCapture|TestLibraryFixtureCapture|TestPreparedImport|TestRekordboxImport", "./internal/api", "./internal/fixturecapture", "./internal/rekordbox"},
-		{"-run", "^TestIntake(CLI|WatchCLI)|TestLibraryFixtureCapture|TestRekordboxImport", "./cmd/engine-cli"},
-		{"-run", "^TestSyncPreviewApplyUndo$", "./internal/transfer"},
+		{"-run", "^TestIntake(CLI|WatchCLI)|TestLibraryFixtureCapture|TestRekordboxImport|TestSyncCLI(Rechecks|Explains)", "./cmd/engine-cli"},
+		{"-run", "^TestSyncPreviewApplyUndo$|TestSmartlist|TestSyncSourceRecoveryCheckedBeforeDestinationOwner|TestSyncFailedNativeTransaction", "./internal/transfer"},
 	}
 }
 

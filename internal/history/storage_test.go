@@ -141,6 +141,21 @@ func TestHistoryStorageFailures(t *testing.T) {
 	if err = os.Remove(filepath.Join(dir, "lock.db")); err != nil {
 		t.Fatal(err)
 	}
+	// Nonempty history requires its existing lease file; a read cannot repair
+	// missing coordination storage by recreating it.
+	if _, err = List(lib); !os.IsNotExist(err) {
+		t.Fatalf("history read accepted missing publisher lock: %v", err)
+	}
+	if _, err = os.Stat(filepath.Join(dir, "lock.db")); !os.IsNotExist(err) {
+		t.Fatalf("history read recreated missing publisher lock: %v", err)
+	}
+	owner, err := lock(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("XDG_DATA_HOME", "")
 	t.Setenv("HOME", "")
 	if _, err = List(lib); err != nil {

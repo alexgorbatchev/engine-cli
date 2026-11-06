@@ -36,6 +36,9 @@ func readCollection(ctx context.Context, q queryer, path string, current *state)
 			return nil, err
 		}
 	}
+	if err := q.QueryRowContext(ctx, `SELECT sql FROM sqlite_schema WHERE type='table' AND name='Smartlist'`).Scan(&c.SmartlistSchema); err != nil {
+		return nil, err
+	}
 	arts := map[int64]row{}
 	for _, v := range tables["AlbumArt"] {
 		arts[number(v["id"])] = without(v, "id")

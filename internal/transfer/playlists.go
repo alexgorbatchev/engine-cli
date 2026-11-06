@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 )
 
-func (p *plan) applyPlaylists(ctx context.Context, c *sql.Conn) error {
+func (p *plan) applyPlaylists(ctx context.Context, c *sql.Tx) error {
 	ids := map[string]int64{}
 	for id, k := range p.destination.Playlists {
 		ids[k] = id
@@ -63,53 +65,9 @@ func (p *plan) applyPlaylists(ctx context.Context, c *sql.Conn) error {
 			return fmt.Errorf("playlist hierarchy contains a cycle or missing parent")
 		}
 	}
-	// Rebuild each affected sibling chain, retaining destination-only siblings.
-	parents := map[string]bool{}
-	for _, e := range p.desired {
-		if e.Kind == "playlist" {
-			parents[e.Parent] = true
-			if old := p.destination.Entities[e.Key]; old != nil {
-				parents[old.Parent] = true
-			}
-		}
-	}
-	for parent := range parents {
-		siblings := map[string]*entity{}
-		for k, e := range p.destination.Entities {
-			if e.Kind == "playlist" && e.Parent == parent && !p.remove[k] {
-				siblings[k] = e
-			}
-		}
-		for k, e := range p.desired {
-			if e.Kind == "playlist" {
-				delete(siblings, k)
-				if e.Parent == parent {
-					siblings[k] = e
-				}
-			}
-		}
-		order := []string{}
-		seen := map[string]bool{}
-		var appendChain func(string)
-		appendChain = func(k string) {
-			for e := siblings[k]; e != nil && !seen[k]; e = siblings[k] {
-				seen[k] = true
-				order = append(order, k)
-				k = e.Next
-			}
-		}
-		pointed := map[string]bool{}
-		for _, e := range siblings {
-			pointed[e.Next] = true
-		}
-		for _, k := range orderedKeys(siblings) {
-			if !pointed[k] {
-				appendChain(k)
-			}
-		}
-		for _, k := range orderedKeys(siblings) {
-			appendChain(k)
-		}
+	// Publish the exact ordinary order reviewed by the planner.
+	for _, parent := range slices.Sorted(maps.Keys(p.playlistOrders)) {
+		order := p.playlistOrders[parent]
 		if _, err := c.ExecContext(ctx, "UPDATE Playlist SET nextListId=NULL WHERE parentListId=?", ids[parent]); err != nil {
 			return err
 		}

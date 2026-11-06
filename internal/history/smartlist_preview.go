@@ -86,30 +86,37 @@ func smartlistPlanToken(ctx context.Context, lib, current string, review Smartli
 	if err := encoder.Encode([]any{filepath.Dir(filepath.Dir(dir)), current, review}); err != nil {
 		return "", err
 	}
+	if err := hashSmartlistEntries(ctx, dir, encoder); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func hashSmartlistEntries(ctx context.Context, dir string, encoder *json.Encoder) error {
 	// Bind the actual portable entry bytes, not a re-encoded projection that
 	// would silently ignore future fields. Evidence reading validated every
 	// relevant native image against the references in these entries.
 	files, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
-		return hex.EncodeToString(hash.Sum(nil)), nil
+		return nil
 	}
 	if err != nil {
-		return "", err
+		return err
 	}
 	for _, file := range files {
 		if err := ctx.Err(); err != nil {
-			return "", err
+			return err
 		}
 		if file.IsDir() || filepath.Ext(file.Name()) != ".json" {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(dir, file.Name()))
 		if err != nil {
-			return "", err
+			return err
 		}
 		if err := encoder.Encode([]any{file.Name(), data}); err != nil {
-			return "", err
+			return err
 		}
 	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
+	return nil
 }
