@@ -2,6 +2,22 @@
 set -eu
 name=${0##*/}
 case "$name" in
+  jq)
+    # Native jq.exe translates stdout LF to CRLF unless binary mode is requested.
+    # Keep real parsing and its exit status; model only that output translation.
+    set -o pipefail
+    for arg in "$@"; do
+      case "$arg" in --binary|-b) exec "$AUDIO_TEST_JQ" "$@" ;; esac
+    done
+    "$AUDIO_TEST_JQ" "$@" | while true; do
+      if IFS= read -r line; then
+        printf '%s\r\n' "$line"
+      else
+        printf '%s' "$line"
+        break
+      fi
+    done
+    ;;
   uname)
     case "$1" in
       -s) printf '%s\n' "${AUDIO_TEST_OS:-Darwin}" ;;

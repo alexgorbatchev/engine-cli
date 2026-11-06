@@ -4,9 +4,9 @@ fail() { printf '%s\n' "$*" >&2; exit 1; }
 
 sha256() {
   if command -v sha256sum >/dev/null; then
-    sha256sum "$@"
+    sha256sum --binary "$@"
   else
-    shasum -a 256 "$@"
+    shasum -a 256 --binary "$@"
   fi
 }
 
@@ -60,7 +60,8 @@ restore_audio_archive() {
 
 verify_audio_archive() {
   local archive=$1 expected=$2 actual
-  actual="$(sha256 "$archive" | awk '{print $1}')"
+  # Hash stdin so filename escape markers cannot become part of the digest.
+  actual="$(sha256 < "$archive" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || fail "Audio archive checksum mismatch: ${archive##*/}"
   printf '%s  %s\n' "$actual" "${archive##*/}"
 }

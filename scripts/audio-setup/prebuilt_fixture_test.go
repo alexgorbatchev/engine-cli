@@ -59,6 +59,16 @@ func (f *prebuiltFixture) pair() []archiveEntry {
 	}
 }
 
+func (f *prebuiltFixture) nativeJQ(t *testing.T) {
+	t.Helper()
+	path, err := exec.LookPath("jq")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.env["AUDIO_TEST_JQ"] = path
+	writeTestFile(t, filepath.Join(f.commands, "jq"), readTestFile(t, "testdata/command.sh"), 0700)
+}
+
 func (f *prebuiltFixture) archive(t *testing.T, entries []archiveEntry) {
 	t.Helper()
 	var data []byte

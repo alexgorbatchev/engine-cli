@@ -20,31 +20,46 @@ func TestPrebuiltColdAndWarm(t *testing.T) {
 				entries := append(f.pair(), archiveEntry{f.archiveRoot + "/doc/extra", []byte("not selected"), 0600},
 					archiveEntry{f.archiveRoot + "/bin/ffplay" + f.suffix, f.tool, 0755})
 				f.archive(t, entries)
-				if cached {
-					f.cached(t)
-				}
-				if out, err := f.run(t, "install"); err != nil {
-					t.Fatalf("install: %v\n%s", err, out)
-				}
-				installed := strings.TrimSpace(string(readTestFile(t, f.pathOutput)))
-				if platform == "Windows" {
-					if installed != f.env["AUDIO_TEST_WINDOWS_PATH"] {
-						t.Fatalf("PATH did not use cygpath result: %q", installed)
-					}
-					installed = strings.TrimSpace(string(readTestFile(t, filepath.Join(f.state, "cygpath-input"))))
-				}
-				if filepath.Dir(filepath.Dir(filepath.Dir(installed))) != f.scratch {
-					t.Fatalf("installation escaped runner scratch: %q", installed)
-				}
-				downloads := 1
-				if cached {
-					downloads = 0
-				}
-				f.installed(t, installed, f.suffix, downloads)
-				assertSelectedPairOnly(t, f, installed)
+				f.install(t, cached)
 			})
 		}
 	}
+}
+
+func TestPrebuiltWindowsCacheBackslashes(t *testing.T) {
+	for _, cached := range []bool{false, true} {
+		t.Run("Windows-emulated/"+strconv.FormatBool(cached), func(t *testing.T) {
+			f := newPrebuiltFixture(t, "Windows")
+			// A real POSIX filename containing backslashes reproduces GNU checksum
+			// filename escaping without faking the hasher's output.
+			f.env["RUNNER_TOOL_CACHE"] = filepath.Join(f.root, `D:\hostedtoolcache\windows`)
+			f.install(t, cached)
+		})
+	}
+}
+
+func (f *prebuiltFixture) install(t *testing.T, cached bool) {
+	t.Helper()
+	downloads := 1
+	if cached {
+		f.cached(t)
+		downloads = 0
+	}
+	if out, err := f.run(t, "install"); err != nil {
+		t.Fatalf("install: %v\n%s", err, out)
+	}
+	installed := strings.TrimSpace(string(readTestFile(t, f.pathOutput)))
+	if f.platform == "Windows" {
+		if installed != f.env["AUDIO_TEST_WINDOWS_PATH"] {
+			t.Fatalf("PATH did not use cygpath result: %q", installed)
+		}
+		installed = strings.TrimSpace(string(readTestFile(t, filepath.Join(f.state, "cygpath-input"))))
+	}
+	if filepath.Dir(filepath.Dir(filepath.Dir(installed))) != f.scratch {
+		t.Fatalf("installation escaped runner scratch: %q", installed)
+	}
+	f.installed(t, installed, f.suffix, downloads)
+	assertSelectedPairOnly(t, f, installed)
 }
 
 func assertSelectedPairOnly(t *testing.T, f *prebuiltFixture, installed string) {

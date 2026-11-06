@@ -10,12 +10,12 @@ case "$(uname -s)" in
   *) fail 'Native Linux or Windows x64 is required.' ;;
 esac
 manifest="$script_dir/prebuilt.json"
-build="$(jq -er '.build' "$manifest")"
-version="$(jq -er '.version' "$manifest")"
-asset="$(jq -er --arg platform "$platform" '.assets[$platform]' "$manifest")"
-url="$(jq -er '.url' <<< "$asset")"
-expected="$(jq -er '.sha256' <<< "$asset")"
-root="$(jq -er '.root' <<< "$asset")"
+build="$(jq --binary -er '.build' "$manifest")"
+version="$(jq --binary -er '.version' "$manifest")"
+asset="$(jq --binary -er --arg platform "$platform" '.assets[$platform]' "$manifest")"
+url="$(jq --binary -er '.url' <<< "$asset")"
+expected="$(jq --binary -er '.sha256' <<< "$asset")"
+root="$(jq --binary -er '.root' <<< "$asset")"
 [[ "$root" =~ ^ffmpeg-[A-Za-z0-9._-]+$ ]] || fail 'Invalid audio archive root.'
 identity="$(audio_identity "$manifest" "$script_dir/prebuilt.sh")"
 key="audio-btbn-$build-$platform-X64-$identity"

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-11-06 04:54
-last_modified: 2026-11-06 04:54
+last_modified: 2026-11-06 05:26
 status: current
 ---
 
@@ -8,7 +8,7 @@ status: current
 
 The shared [audio setup action](../../../.github/actions/setup-audio/action.yml) installs pinned BtbN FFmpeg/FFprobe builds for native Linux and Windows x64 CI and release coverage. This reference is for maintainers updating that distribution. Developer installation is separate; [macOS setup](macos-ci-audio.md) uses its own native signed distribution.
 
-[prebuilt.json](../../../scripts/audio-setup/prebuilt.json) pins a month-end release, fixed HTTPS asset URLs, archive roots, SHA-256 digests, and the full reported version. [prebuilt.sh](../../../scripts/audio-setup/prebuilt.sh) selects the host platform and extracts only the two expected executable entries. It uses existing runner Bash, curl, jq, hash and archive tools; Windows paths are converted with Git Bash's `cygpath` before publication.
+[prebuilt.json](../../../scripts/audio-setup/prebuilt.json) pins a month-end release, fixed HTTPS asset URLs, archive roots, SHA-256 digests, and the full reported version. [prebuilt.sh](../../../scripts/audio-setup/prebuilt.sh) selects the host platform and extracts only the two expected executable entries. It uses existing runner Bash, curl, jq, hash and archive tools; Windows paths are converted with Git Bash's `cygpath` before publication. Manifest reads use jq's binary output mode to preserve LF under native Windows jq. Archive verification hashes binary stdin so Windows path escaping cannot alter the parsed digest.
 
 The cache contains the original archive, keyed by build, platform, architecture, and all manifest and helper bytes. An exact hit avoids downloading; it does not bypass integrity checks. Every run verifies the archive digest before extraction, requires both regular executable files, and verifies both versions and the required codecs, containers, filters, protocols, and `lavfi` input device before adding the directory to PATH. Failed downloads, incomplete caches, changed bytes, invalid executables, or failed validation stop setup. There is no latest-version discovery, mutable README parsing, or system-tool fallback.
 
