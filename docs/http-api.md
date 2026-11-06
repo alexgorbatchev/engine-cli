@@ -713,6 +713,28 @@ Import review observes collection state through the shared Smartlist-safe read b
 
 Render stable codes through the client's safe message catalog. `intake_replacing` means a competing library replacement owner must finish; `intake_paused` requires inspecting control state and explicit resume. `intake_import_recovery_required` and `intake_recovery_required` require retained History/storage recovery. `intake_source_changed`, `intake_staged_changed` and `intake_state_changed` refuse stale observations. Worker and recovery codes describe confirmed failures; pending refreshes do not establish a new failure. The CLI equivalents and flags are documented in the [incoming-file command reference](../skills/engine-cli/references/intake.md).
 
+### Watched local folders
+
+Poll `GET /v1/intake/watch` for the selected library's watch state. Its library-scoped form is `GET /v1/libraries/{library}/intake/watch`. These synchronous reads create no jobs, so polling preserves retained job results. The `intake.watch.list` operation returns the same state for command clients.
+
+The selected library owns durable watch configuration in `.engine-cli/watch.db`. Watch operations use server-local paths and stage eligible sources through the incoming-file queue; they never import into the collection. An open library owns discovery, and closing or replacing it cancels and joins discovery before storage closes. A standalone CLI invocation joins its service before exiting.
+
+| Operation | Parameters | Result |
+| --- | --- | --- |
+| `intake.watch.list` | none | watch state |
+| `intake.watch.add` | required `path: string`, `revision: int64`; optional `recursive: bool` (default `true`) | updated watch state |
+| `intake.watch.enable`, `intake.watch.disable`, `intake.watch.remove` | required opaque `id: string`, `revision: int64` | updated watch state |
+| `intake.watch.activate` | required `revision: int64` | updated watch state |
+| `intake.watch.reconcile` | none | watch scan |
+
+List has a `read` effect and does not enroll absent storage. All other watch operations have `system` effects without collection snapshots, collection Undo entries or Desktop write checks. Configuration changes require the exact listed revision; `watch_revision_changed` requires a fresh list before another change. Explicit `recursive:false` restricts discovery to immediate children.
+
+Watch state contains `revision`, `suspended`, required `reason` (`""` or `"restored"`), `manager` (`inactive`, `starting`, `running` or `degraded`), optional safe `error_code`, and ordered `roots`. Each root contains opaque `id`, canonical `path`, `recursive`, `enabled`, `phase`, nullable `last_scan_at`, `observed`, `pending`, `linked` and optional safe `error_code`. A watch scan contains `completed`, `roots`, `observed`, `queued`, `associated`, `pending` and resulting `state`. `queued` reports new queue insertions; association with an existing queue version does not claim that discovery created it. Scan completion does not imply every pending observation is ready for staging.
+
+A configured root alias resolves once at enrollment and retains the canonical path and native directory identity. Replacing that directory requires new authorization; discovery never silently repins it. Descendant symbolic links and library/operational storage are excluded. Overlapping enabled roots remain independently authorized and share source-version deduplication. Disabling or removing one root preserves queued items and retained handoff evidence.
+
+Filesystem notifications are discovery hints. Full scans and fresh source identity/size/modification observations reconcile changes, and quiet time remains a readiness heuristic. Queue pause suppresses automatic enqueue as well as preparation. Restored watch configuration remains suspended until explicit `intake.watch.activate`; activating watch configuration and resuming the queue are separate actions. Neither action bypasses the reviewed, protected collection import sequence.
+
 ### Staged music
 
 Staged acquisitions live under `<lib-dir>/.engine-cli/staging/`, independently of collection rows. Each item has a stable opaque `id`, `kind` (`track` or `mix`), `title`, `status` (`pending`, `ready`, or `failed`), and UTC `created_at`. Optional fields include `artist`, `album`, `source_url`, `query`, `error`, `audio_path`, `artwork_path`, `parent_id`, and `index`. Paths are relative to staging storage so moving the library preserves acquisitions. A track's `parent_id` identifies its mix; `index` preserves mix order. Failed or missing acquisitions remain available for retry after restarting the server. A failed `track.fetch`, `mix.fetch`, or `staging.retry` whose changes stay inside its own staged items records no undo history, and its job has no `history_id`; discard the failed item with `staging.rm` instead. A failure that changed the collection or files outside those items keeps its undo record.

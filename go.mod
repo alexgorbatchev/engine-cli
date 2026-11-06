@@ -23,6 +23,7 @@ require (
 require (
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

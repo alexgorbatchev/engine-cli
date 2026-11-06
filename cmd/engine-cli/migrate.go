@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/engine-cli/internal/migrate"
 	"github.com/spf13/cobra"
 )

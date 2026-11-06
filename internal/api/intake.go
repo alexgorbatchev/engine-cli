@@ -33,7 +33,7 @@ type intakeImport struct {
 }
 
 func (s *Server) intakeOperations() []operation {
-	return []operation{
+	ops := []operation{
 		define("intake.list", false, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.intakeView(ctx)
 		}),
@@ -85,6 +85,7 @@ func (s *Server) intakeOperations() []operation {
 			return s.intakeImport(ctx, p, true)
 		}),
 	}
+	return append(ops, s.intakeWatchOperations()...)
 }
 
 func (s *Server) intakeView(ctx context.Context) (*IntakeView, error) {
