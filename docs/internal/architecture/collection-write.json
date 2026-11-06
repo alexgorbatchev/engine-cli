@@ -452,6 +452,27 @@
         "Creation, reads and explicit release do not mutate Engine databases or companion stores and do not enroll Desktop write checks, snapshots, history or Undo. Library ownership, request bounds, source-change detection and generation teardown remain enforced. This separate streaming path does not weaken the safeguards of collection-writing operations.",
         "Reviewed committed evidence 067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0: internal/api/pcm.go:21-139; internal/api/server.go:137-152,206-228; internal/pcm/store.go:33-150; internal/pcm/lifecycle.go:5-65. Historical workflow topology and reviewed source pins remain unchanged."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Intake import — ordinary protected collection ownership",
+      "items": [
+        "intake.import.review reads the active staged item and returns the existing staging import review. intake.import requires the item ID and exact plan token, and is classified as a collection mutation. Queue processing, enqueue, retry and preparation are system effects and never import by themselves.",
+        "Apply retains the API collection owner, establishes fresh Desktop absence and enters RunPrepared with the ordinary safety-backup callback. History captures Before, runs the import and captures actual After, including partial changes on failure. ApplyImport verifies that its context belongs to the matching intake.import collection History operation; it checks current active staged state and revalidates the plan under retained staging import ownership.",
+        "The staged source remains available after import. Completion is not inferred from the HTTP job alone: intent, Engine publication, exact Track receipt and completed History are separate evidence. A missing receipt after Engine publication keeps History pending for recovery; reconciliation does not retry the import.",
+        "Reviewed supplemental evidence 6f724a545fa0944deef7d8e260d0d403549d2d42: https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake.go#L34-L87; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/intake.go#L154-L172; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/api/operations.go#L217-L257; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/history.go#L161-L279; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L52-L127. Historical workflow topology and source pin remain unchanged.",
+        "The History context matches the actual library directory through os.Stat and os.SameFile, plus the exact operation and collection scope; a symlink alias does not invent another operation identity. https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/operation_id.go#L9-L34."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Intake recovery — live journal is outside ordinary Undo",
+      "items": [
+        "Ordinary collection snapshots deliberately omit intake.db; undoing the imported Engine changes does not erase the queue intent or Track receipt. Reconciliation classifies an effective complete Undo as cancelled even if the original import evidence is incomplete. If that Undo is reversed, imported status requires the original complete History entry and positive persisted Track ID. No reconciliation branch submits another import.",
+        "Without an effective Undo, missing, pending or failed original History or a missing positive Track receipt requires recovery and pauses the queue with history_unavailable. Manual and restored pauses require explicit Resume, which must reconcile successfully before clearing suspension.",
+        "Explicit backup captures intake separately. Restore and other supported replacement paths stop/join the service and reserve native replacement ownership before collection/History access. Restored queue data is paused; ordinary Undo remains distinct from explicitly restoring a backed-up journal.",
+        "https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/history/files.go#L78-L94; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/import.go#L130-L180; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intake/control.go#L15-L44; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/backup/companion.go#L153-L189; https://github.com/alexgorbatchev/engine-cli/blob/6f724a545fa0944deef7d8e260d0d403549d2d42/internal/intakecontrol/control.go#L62-L76."
+      ]
     }
   ]
 }
