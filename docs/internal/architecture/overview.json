@@ -462,6 +462,17 @@
         "A caller-owned *sql.Tx remains caller-owned: Add participates without beginning or committing another transaction. Deduplication and native originTrackId plus originDatabaseUuid identity remain unchanged, including equal origin IDs from different libraries.",
         "Reviewed committed evidence 86e33dbd1cbb1409cee82ab67af1167d10d95df0: internal/db/db.go:529–604; internal/db/membership_add_atomic_test.go:1–163. Existing API/Cobra Desktop protection, snapshots and Undo remain the owners; no multi-track batch atomicity is added. Historical evidence pins and graph topology remain unchanged."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Playlist track ordering — exact native membership review",
+      "items": [
+        "playlist.reorder and playlist reorder share native membership ordering. Preview resolves local tracks through the originTrackId/originDatabaseUuid pair and validates the full PlaylistEntity chain. Ambiguous origins, cycles, missing links and multiple heads fail closed; unresolved native memberships remain preserved in the chain.",
+        "The supplied view must follow native ascending or descending membership order. Selected displayed runs retain their internal order and hidden memberships between their endpoints; the planner translates the displayed drop gap into native links without assigning local track IDs as membership identities.",
+        "Read-only preview binds the canonical library root, library UUID, target identity/title/parent/edit timestamp, complete membership observations and exact move options to a plan token. Checked apply rejects stale or ineffective consent before safety artifacts and rebuilds the same plan within its write transaction.",
+        "Application changes only affected nextEntityId links and the target playlist timestamp, checks each affected row and commits once. Failed writes roll back. The result is constructed from the committed plan without a fallible post-commit entity read. Existing collection scheduling, fresh Desktop protection, snapshot and Undo remain the owners; no actor or persistence store is introduced.",
+        "Reviewed committed evidence dc21b3adb3b874cbc47c618b706e1295299af7ba: internal/db/membership_order.go:9-50; internal/playlist/reorder.go:51-146; internal/playlist/reorder_plan.go:29-187; internal/playlist/reorder_read.go:16-81; internal/playlist/reorder_write.go:10-76; internal/api/playlist_reorder.go:21-39; cmd/engine-cli/playlist_reorder.go:11-37. Historical evidence pins remain unchanged; no new actor or persistence owner is introduced."
+      ]
     }
   ]
 }
