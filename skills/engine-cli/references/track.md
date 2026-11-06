@@ -482,6 +482,21 @@ Automatically saves a safety backup of your library before making changes unless
 
 Updates Track.path prefixes across collection in Database2/m.db when drive mount points or folders change.
 
+Match an exact file path or the start of a stored path at a complete directory boundary.
+Use the stored relative spelling, including `../`; matching is case-sensitive and does not
+resolve or clean paths. Trailing directory separators are optional. Sibling names and
+occurrences later in the path remain unchanged. Relocation changes database paths and
+filenames, without moving audio files.
+
+Use drive letters, UNC paths or backslash-only prefixes for Windows syntax across hosts.
+Provide an explicit directory or drive root such as `D:/`; bare drive prefixes such as `D:` are refused.
+Other relative prefixes use the host's separators; slash-led prefixes use Unix syntax.
+For example, use `--from 'Music\'` on Unix to select Windows-relative records explicitly.
+Use the destination's separators for the remaining path; a bare destination inherits the
+source syntax. Unix filenames containing literal backslashes cannot be relocated into
+Windows directory paths. Inspect reported errors before retrying: earlier successful
+updates remain applied when a later track fails, and the safety snapshot is retained.
+
 - `--from` (string; default ``): Old directory prefix to replace.
 - `--help, -h` (bool; default `false`): help for relocate.
 - `--to` (string; default ``): New directory prefix.

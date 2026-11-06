@@ -819,38 +819,6 @@ func FindTrack(ctx context.Context, database *sql.DB, idOrPath string) (*Track, 
 	return &populated[0], nil
 }
 
-// RelocateTracks replaces oldPrefix with newPrefix in Track.path for matching tracks.
-func RelocateTracks(ctx context.Context, database *sql.DB, oldPrefix string, newPrefix string) (int, error) {
-	if database == nil {
-		return 0, fmt.Errorf("database cannot be nil")
-	}
-	if oldPrefix == "" {
-		return 0, fmt.Errorf("old prefix cannot be empty")
-	}
-
-	tracks, err := GetAllTracks(ctx, database)
-	if err != nil {
-		return 0, fmt.Errorf("fetching tracks for relocation: %w", err)
-	}
-
-	relocatedCount := 0
-	for _, t := range tracks {
-		pathStr := t.PathString()
-		if strings.HasPrefix(pathStr, oldPrefix) || strings.Contains(pathStr, oldPrefix) {
-			newPath := strings.Replace(pathStr, oldPrefix, newPrefix, 1)
-			newFilename := filepath.Base(newPath)
-			t.Path = sql.NullString{String: newPath, Valid: true}
-			t.Filename = sql.NullString{String: newFilename, Valid: true}
-			if err := UpdateTrackMetadata(ctx, database, &t); err != nil {
-				return relocatedCount, fmt.Errorf("updating relocated track %d: %w", t.ID, err)
-			}
-			relocatedCount++
-		}
-	}
-
-	return relocatedCount, nil
-}
-
 // DeleteAlbumArt removes an AlbumArt row by ID.
 func DeleteAlbumArt(ctx context.Context, database *sql.DB, id int64) error {
 	_, err := database.ExecContext(ctx, "DELETE FROM AlbumArt WHERE id = ?", id)

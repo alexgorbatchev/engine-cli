@@ -292,6 +292,16 @@ func newTrackRelocateCommand() *cobra.Command {
 
 Useful when moving your library to a new USB drive, different volume name, or reorganized folder.
 
+Matches the start of the stored path at a complete directory boundary, or an exact file path.
+Use the stored relative spelling (including ../) for relative paths. Matching is case-sensitive;
+paths are not resolved or cleaned. Trailing directory separators are optional.
+Drive letters, UNC paths and backslash-only prefixes select Windows path syntax across hosts.
+Bare drive prefixes such as D: are refused; use an explicit directory or drive root such as D:/.
+Other relative prefixes use the host's separators; slash-led prefixes use Unix syntax.
+The destination's separators are used for the remaining path; a bare destination inherits the source syntax.
+Unix filenames containing literal backslashes cannot be relocated into Windows directory paths.
+Only database paths change; this command does not move audio files.
+
 Automatically saves a safety backup of your library before making changes unless --no-backup is specified.`,
 		Example: `  engine-cli track relocate --from "/Volumes/OldUSB/Music" --to "/Volumes/NewUSB/Music"
   engine-cli track relocate --from "D:\Music" --to "/Volumes/DJ_USB/Music"`,

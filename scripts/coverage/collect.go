@@ -37,6 +37,7 @@ func testBatches(goos string) [][]string {
 	}
 	return [][]string{
 		{"-run", "^$", "./..."},
+		{"-run", "^TestRelocate", "./internal/db"},
 		{"./internal/discovery", "./internal/systemcheck", "./internal/fileidentity", "./internal/regularfile", "./internal/intakelease", "./internal/intake", "./internal/intakecontrol", "./internal/intakestate", "./internal/watchclock", "./internal/watchfs", "./internal/watchcontrol", "./internal/pcm", "./internal/performance", "./internal/audiodecode"},
 		{"-run", "TestLocal|TestImport|TestRetainedImport|TestCancelledImport|TestManifestPublication|TestStorePersistenceAndContainment", "./internal/staging"},
 		{"-run", "TestIntake|TestInvalidIntake|TestCollectionUndoRetainsIntake|TestExplicitIntake|TestUndoReplacement|TestUndoRefusesForeignQueue|TestUndoRelocation|TestWatch|TestHistoryEntryPublication|TestUndoPreservesLaterChangesAndForce", "./internal/backup", "./internal/history"},
