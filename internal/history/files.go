@@ -81,9 +81,9 @@ func captureDatabases(ctx context.Context, lib, dir string, databases map[string
 		return err
 	}
 	for _, path := range paths {
-		// Intake is a live operational journal. Ordinary collection Undo must
-		// retain its receipts even after the worker finalizes an import.
-		if filepath.Base(path) == companion.IntakeName {
+		// Operational journals retain handoff/import receipts across ordinary
+		// collection Undo. Explicit replacement enrolls their paired images.
+		if name := filepath.Base(path); name == companion.IntakeName || name == companion.WatchName {
 			continue
 		}
 		if err := captureDatabase(ctx, path, dir, databases); err != nil {

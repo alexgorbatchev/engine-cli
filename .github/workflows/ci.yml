@@ -37,7 +37,7 @@ jobs:
         if: runner.os == 'macOS'
         run: go test -count=50 -timeout=5m -v ./internal/intakelease -run '^(TestReservationNativeConcurrentAnchorCreation|TestReservationReverseAcquisitionDoesNotLeakPartialOwner)$'
       - name: Test native queue, process death and parent reservations
-        run: go test -count=1 -timeout=10m -v ./internal/intake ./internal/intakecontrol ./internal/intakelease
+        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intake-watch-native.cover' '-coverpkg=./internal/intake,./internal/intakecontrol,./internal/intakestate,./internal/watchclock,./internal/watchfs,./internal/watchcontrol' ./internal/intake ./internal/intakecontrol ./internal/intakelease ./internal/intakestate ./internal/watchclock ./internal/watchfs ./internal/watchcontrol
       - name: Cover native parent reservations
         run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-native.cover' ./internal/intakelease
       - name: Require native case-insensitive alias ownership
@@ -46,13 +46,20 @@ jobs:
           ENGINE_INTAKE_REQUIRE_CASE_ALIAS: '1'
         run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intakelease-casealias.cover' ./internal/intakelease -run TestReservationNativeCaseAlias
       - name: Test native retained staging and reviewed import
-        run: go test -count=1 -timeout=10m -v ./internal/staging -run 'TestLocal|TestImport|TestRetainedImport|TestCancelledImport'
+        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intake-watch-staging.cover' ./internal/staging -run 'TestLocal|TestImport|TestRetainedImport|TestCancelledImport'
       - name: Test native queue backup, replacement and Undo
-        run: go test -count=1 -timeout=10m -v ./internal/backup ./internal/history -run 'TestIntake|TestInvalidIntake|TestCollectionUndoRetainsIntake|TestExplicitIntake|TestUndoReplacement|TestUndoRefusesForeignQueue|TestUndoRelocation'
+        run: go test -count=1 -timeout=10m -v -covermode=atomic '-coverprofile=intake-watch-pair.cover' '-coverpkg=./internal/backup,./internal/history,./internal/watchcontrol,./internal/watchclock,./internal/intakestate' ./internal/backup ./internal/history -run 'TestIntake|TestInvalidIntake|TestCollectionUndoRetainsIntake|TestExplicitIntake|TestUndoReplacement|TestUndoRefusesForeignQueue|TestUndoRelocation|TestWatch'
       - name: Test native API queue lifecycle and committed cleanup failures
-        run: go test -count=1 -timeout=10m -v ./internal/api -run '^TestAPIIntake'
+        run: go test -count=1 -timeout=10m -v ./internal/api -run '^TestAPI(Intake|Watch|QueueOwned)'
       - name: Test native public queue commands
-        run: go test -count=1 -timeout=10m -v ./cmd/engine-cli -run '^TestIntakeCLI'
+        run: go test -count=1 -timeout=10m -v ./cmd/engine-cli -run '^TestIntake(CLI|WatchCLI)'
+      - name: Retain native watcher and paired companion coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: intake-watch-${{ matrix.os }}
+          path: intake-watch-*.cover
+          if-no-files-found: error
       - name: Retain native reservation coverage
         if: always()
         uses: actions/upload-artifact@v7

@@ -8,6 +8,7 @@ require (
 	github.com/alexgorbatchev/godeps v1.1.0
 	github.com/cabbagekobe/mixedkey v0.1.0
 	github.com/cabbagekobe/tactus v0.1.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/nateranda/djtools v0.0.0-00010101000000-000000000000
 	github.com/spf13/cobra v1.10.2

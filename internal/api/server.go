@@ -145,6 +145,7 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("/v1/libraries/{library}/{resource...}", s.libraryRequest)
 	s.mux.HandleFunc("GET /v1/intake", s.collectionRead(s.intakeList))
 	s.mux.HandleFunc("GET /v1/staging", s.collectionRead(s.stagedList))
+	s.mux.HandleFunc("GET /v1/intake/watch", s.intakeWatchList)
 	s.mux.HandleFunc("GET /v1/staging/{id}/audio", s.stagedMedia(false))
 	s.mux.HandleFunc("POST /v1/staging/{id}/pcm", s.createStagedPCM)
 	s.mux.HandleFunc("GET /v1/staging/{id}/artwork", s.stagedMedia(true))

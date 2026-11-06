@@ -219,6 +219,11 @@ func runOperation(c *cobra.Command, operation string, values map[string]any, asJ
 		}
 	}
 	if result != nil {
+		if asJSON && strings.HasPrefix(operation, "intake.watch.") {
+			if handled, err := printIntakeWatch(c, result, true); handled {
+				return errors.Join(runErr, err)
+			}
+		}
 		if handled, err := printPlaylistReorder(c, result, asJSON); handled {
 			return errors.Join(runErr, err)
 		}
