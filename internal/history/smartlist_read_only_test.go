@@ -2,7 +2,6 @@ package history
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -41,19 +40,11 @@ func historyLeaseTree(t *testing.T, root string) map[string]string {
 		if err != nil {
 			return err
 		}
-		info, err := entry.Info()
+		value, err := historyLeaseTreeEntry(path, entry)
 		if err != nil {
 			return err
 		}
-		var sum [sha256.Size]byte
-		if !entry.IsDir() {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			sum = sha256.Sum256(data)
-		}
-		result[path] = fmt.Sprintf("%s:%d:%d:%x", info.Mode(), info.Size(), info.ModTime().UnixNano(), sum)
+		result[path] = value
 		return nil
 	})
 	if err != nil {
