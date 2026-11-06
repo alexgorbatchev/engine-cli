@@ -1,6 +1,6 @@
 ---
 created_on: 2026-11-06 04:17
-last_modified: 2026-11-06 04:17
+last_modified: 2026-11-06 04:54
 status: current
 ---
 
@@ -8,9 +8,11 @@ status: current
 
 The shared [audio setup action](../../../.github/actions/setup-audio/action.yml) installs a pinned native ARM64 FFmpeg/FFprobe pair for CI and release coverage. This reference is for maintainers updating that distribution; local developer installation and the Desktop fixture workflow are separate.
 
-[macos.json](../../../scripts/audio-setup/macos.json) pins Martin Riedl's build, both HTTPS URLs and SHA-256 digests, the reported version, and the Apple signing team. The [setup helper](../../../scripts/audio-setup/macos.sh) keys its archive cache by the provider, build, architecture, and the complete manifest and helper bytes. An exact hit avoids downloads. Every run checks both archive digests before extracting, verifies regular executable entries, native architecture, signature and signing team, system-only direct dylib dependencies, version, and required FFmpeg capabilities. Only a successful pair is added to PATH. Unsupported architectures and failed verification stop setup; there is no Homebrew fallback.
+[macos.json](../../../scripts/audio-setup/macos.json) pins Martin Riedl's build, both HTTPS URLs and SHA-256 digests, the reported version, and the Apple signing team. The [setup helper](../../../scripts/audio-setup/macos.sh) keys its archive cache by the provider, build, architecture, and the complete manifest, helper, and [shared validation](../../../scripts/audio-setup/common.sh) bytes. An exact hit avoids downloads. Every run checks both archive digests before extracting, verifies regular executable entries, native architecture, signature and signing team, system-only direct dylib dependencies, version, and required FFmpeg capabilities. The `lavfi` input device is checked through `-devices`; container demuxers are checked separately. Only a successful pair is added to PATH. Unsupported architectures and failed verification stop setup; there is no Homebrew fallback.
 
 The cache holds only the ZIP pair. Executables are extracted into a fresh runner temporary directory, removed on setup failure and retained for the rest of a successful job. GitHub's cache action saves only after a successful job. The provider describes ZIP binaries as signed and its separate installers as notarized; ZIP setup does not claim installer notarization or Gatekeeper acceptance.
+
+[Linux and Windows setup](prebuilt-ci-audio.md) shares download ownership, digest checks, capability checks, and path publication. Changes to shared validation require the macOS regressions and native workflow as well.
 
 ## Update and qualify a pin
 

@@ -16,7 +16,7 @@ case "$name" in
         --output|-o) output=$2; shift 2 ;;
         --proto|--proto-redir|--connect-timeout|--max-time|--retry|--retry-delay) shift 2 ;;
         --fail|--location|--silent|--show-error|--retry-all-errors|-f|-L|-s|-S|-fsSL|-fSL) shift ;;
-        https://audio.example/*.zip) url=$1; shift ;;
+        https://audio.example/*.zip|https://audio.example/*.tar.xz) url=$1; shift ;;
         *) printf 'Unexpected curl argument: %s\n' "$1" >&2; exit 90 ;;
       esac
     done
@@ -36,6 +36,16 @@ case "$name" in
   unzip)
     printf 'unzip %s\n' "$*" >> "$AUDIO_TEST_EVENTS"
     exec "$AUDIO_TEST_UNZIP" "$@"
+    ;;
+  tar)
+    printf 'tar %s\n' "$*" >> "$AUDIO_TEST_EVENTS"
+    exec "$AUDIO_TEST_TAR" "$@"
+    ;;
+  cygpath)
+    [ "$#" -eq 2 ] && [ "$1" = -w ]
+    printf '%s\n' "$2" > "$AUDIO_TEST_STATE/cygpath-input"
+    if [ "${AUDIO_TEST_CYGPATH_FAIL:-}" = true ]; then exit 23; fi
+    printf '%s\n' "$AUDIO_TEST_WINDOWS_PATH"
     ;;
   lipo|codesign|otool)
     target=${!#}

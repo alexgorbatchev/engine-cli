@@ -2,14 +2,12 @@ package audiosetup
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"testing"
-	"time"
 )
 
 func TestInstallColdAndWarm(t *testing.T) {
@@ -27,31 +25,11 @@ func TestInstallColdAndWarm(t *testing.T) {
 			if filepath.Dir(installed) != f.scratch {
 				t.Fatalf("installation escaped runner scratch: %q", installed)
 			}
-			for _, tool := range []string{"ffmpeg", "ffprobe"} {
-				if !bytes.Equal(readTestFile(t, filepath.Join(installed, tool)), f.tool) {
-					t.Errorf("installed %s differs from verified archive", tool)
-				}
-				info, err := os.Lstat(filepath.Join(installed, tool))
-				if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0100 == 0 {
-					t.Errorf("installed %s is not a regular executable: %v", tool, err)
-				}
-			}
-			events := string(readTestFile(t, f.events))
 			wantDownloads := 2
 			if cached {
 				wantDownloads = 0
 			}
-			if got := strings.Count(events, "download "); got != wantDownloads {
-				t.Errorf("downloads = %d, want %d\n%s", got, wantDownloads, events)
-			}
-			for _, required := range []string{"execute ffmpeg -version", "execute ffprobe -version", "execute ffmpeg -hide_banner -encoders"} {
-				if !strings.Contains(events, required) {
-					t.Errorf("missing behavior %q\n%s", required, events)
-				}
-			}
-			if string(readTestFile(t, filepath.Join(f.scratch, "unowned"))) != "preserve" {
-				t.Error("setup changed unrelated runner content")
-			}
+			f.installed(t, installed, "", wantDownloads)
 		})
 	}
 }
@@ -165,11 +143,15 @@ func TestCacheIdentityTracksArchivePinsAndRecipe(t *testing.T) {
 	changedPin := f.identify(t)
 	writeTestFile(t, f.script, append(readTestFile(t, f.script), []byte("\n# changed verification recipe\n")...), 0700)
 	changedRecipe := f.identify(t)
-	if initial == changedPin || changedPin == changedRecipe || initial == changedRecipe {
-		t.Fatalf("cache identity did not invalidate: %q, %q, %q", initial, changedPin, changedRecipe)
+	common := filepath.Join(filepath.Dir(f.script), "common.sh")
+	writeTestFile(t, common, append(readTestFile(t, common), []byte("\n# changed shared verification\n")...), 0700)
+	changedShared := f.identify(t)
+	keys := map[string]bool{initial: true, changedPin: true, changedRecipe: true, changedShared: true}
+	if len(keys) != 4 {
+		t.Fatalf("cache identity did not invalidate: %v", keys)
 	}
-	if again := f.identify(t); again != changedRecipe {
-		t.Fatalf("unchanged recipe identity is unstable: %q != %q", again, changedRecipe)
+	if again := f.identify(t); again != changedShared {
+		t.Fatalf("unchanged recipe identity is unstable: %q != %q", again, changedShared)
 	}
 }
 
@@ -178,54 +160,7 @@ func TestCancellationOwnsActiveDownload(t *testing.T) {
 		t.Run(signal.String(), func(t *testing.T) {
 			f := newSetupFixture(t)
 			f.env["AUDIO_TEST_DOWNLOAD_BLOCK"] = "ffprobe.zip"
-			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-			defer cancel()
-			cmd := f.command(ctx, "install")
-			var output bytes.Buffer
-			cmd.Stdout, cmd.Stderr = &output, &output
-			if err := cmd.Start(); err != nil {
-				t.Fatal(err)
-			}
-			waited := false
-			defer func() {
-				cancel()
-				if !waited {
-					_ = cmd.Wait() // Cancellation cleanup; the triggering failure is already reported.
-				}
-			}()
-			pidFile := filepath.Join(f.state, "downloader.pid")
-			for len(optionalTestFile(t, pidFile)) == 0 {
-				if ctx.Err() != nil {
-					t.Fatal("downloader never became ready")
-				}
-				time.Sleep(10 * time.Millisecond)
-			}
-			pid, err := strconv.Atoi(strings.TrimSpace(string(readTestFile(t, pidFile))))
-			if err != nil {
-				t.Fatal(err)
-			}
-			start := time.Now()
-			// Signal only the entry process. Group cancellation would hide a
-			// script that leaves its downloader alive or defers its cleanup.
-			if err := cmd.Process.Signal(signal); err != nil {
-				t.Fatal(err)
-			}
-			err = cmd.Wait()
-			waited = true
-			if err == nil || ctx.Err() != nil || time.Since(start) > 3*time.Second {
-				t.Fatalf("cancellation did not terminate promptly: %v (%s)\n%s", err, time.Since(start), &output)
-			}
-			process, err := os.FindProcess(pid)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := process.Signal(syscall.Signal(0)); err == nil {
-				t.Errorf("downloader %d survived entry-process cancellation", pid)
-			}
-			if err := process.Release(); err != nil {
-				t.Error(err)
-			}
-			f.failedCleanly(t)
+			assertDownloadCancellation(t, f, signal)
 		})
 	}
 }

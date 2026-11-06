@@ -1,26 +1,26 @@
 name: Set up cached native audio tools
-description: Restore prebuilt FFmpeg binaries, with pinned and verified native macOS archives.
+description: Restore pinned, verified native FFmpeg and FFprobe archives.
 runs:
   using: composite
   steps:
-    - name: Restore prebuilt FFmpeg cache
+    - name: Identify pinned Linux and Windows audio tools
       if: runner.os != 'macOS'
-      id: ffmpeg-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: ${{ runner.tool_cache }}/ffmpeg
-        key: ffmpeg-v3-${{ runner.os }}-${{ runner.arch }}-
-        restore-keys: ffmpeg-v3-${{ runner.os }}-${{ runner.arch }}-
-    - name: Set up prebuilt FFmpeg
+      id: prebuilt-audio
+      shell: bash
+      run: exec bash scripts/audio-setup/prebuilt.sh identify
+    - name: Cache pinned Linux and Windows audio archive
       if: runner.os != 'macOS'
-      id: ffmpeg
-      uses: FedericoCarboni/setup-ffmpeg@8073ccb51e517ed576e6871c7f2360c6de4ebb7c # v3.1 + upstream Node24 runtime fix
-    - name: Save versioned FFmpeg cache
-      if: runner.os != 'macOS' && steps.ffmpeg-cache.outputs.cache-matched-key != format('ffmpeg-v3-{0}-{1}-{2}', runner.os, runner.arch, steps.ffmpeg.outputs.ffmpeg-version)
-      uses: actions/cache/save@v6
+      id: prebuilt-audio-cache
+      uses: actions/cache@v6
       with:
-        path: ${{ runner.tool_cache }}/ffmpeg
-        key: ffmpeg-v3-${{ runner.os }}-${{ runner.arch }}-${{ steps.ffmpeg.outputs.ffmpeg-version }}
+        path: ${{ steps.prebuilt-audio.outputs.path }}
+        key: ${{ steps.prebuilt-audio.outputs.key }}
+    - name: Verify and install Linux and Windows audio tools
+      if: runner.os != 'macOS'
+      shell: bash
+      env:
+        AUDIO_CACHE_HIT: ${{ steps.prebuilt-audio-cache.outputs.cache-hit }}
+      run: exec bash scripts/audio-setup/prebuilt.sh install
     - name: Identify pinned native macOS audio tools
       if: runner.os == 'macOS'
       id: macos-audio
@@ -37,7 +37,7 @@ runs:
       if: runner.os == 'macOS'
       shell: bash
       env:
-        MACOS_AUDIO_CACHE_HIT: ${{ steps.macos-audio-cache.outputs.cache-hit }}
+        AUDIO_CACHE_HIT: ${{ steps.macos-audio-cache.outputs.cache-hit }}
       run: exec bash scripts/audio-setup/macos.sh install
     - name: Verify audio tools
       shell: bash

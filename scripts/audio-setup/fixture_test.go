@@ -21,12 +21,13 @@ import (
 type asset struct {
 	URL    string `json:"url"`
 	SHA256 string `json:"sha256"`
+	Root   string `json:"root,omitempty"`
 }
 
 type audioManifest struct {
 	Build   string           `json:"build"`
 	Version string           `json:"version"`
-	TeamID  string           `json:"teamID"`
+	TeamID  string           `json:"teamID,omitempty"`
 	Assets  map[string]asset `json:"assets"`
 }
 
@@ -38,12 +39,26 @@ type setupFixture struct {
 	tool                                              []byte
 }
 
-// Only platform inspection and downloads are controlled. ZIP extraction and
-// SHA-256 validation use the host tools against real generated archives.
 func newSetupFixture(t *testing.T) *setupFixture {
 	t.Helper()
+	f := newRunnerFixture(t, "macos.sh")
+	if err := json.Unmarshal(readTestFile(t, "macos.json"), &f.manifest); err != nil {
+		t.Fatal(err)
+	}
+	f.manifest.Build, f.manifest.TeamID = "fixture", "TESTTEAM01"
+	f.env["AUDIO_TEST_VERSION"] = f.manifest.Version
+	for _, tool := range []string{"ffmpeg", "ffprobe"} {
+		f.archive(t, tool, []archiveEntry{{tool, f.tool, 0755}})
+	}
+	return f
+}
+
+// Platform inspection and downloads are controlled. Archive extraction and
+// SHA-256 validation use host tools against real generated archives.
+func newRunnerFixture(t *testing.T, script string) *setupFixture {
+	t.Helper()
 	if runtime.GOOS == "windows" {
-		t.Skip("macOS setup shell behavior is exercised on POSIX hosts")
+		t.Skip("offline shell fixtures run on POSIX hosts; they do not certify native Windows behavior")
 	}
 	for _, name := range []string{"bash", "jq", "shasum", "unzip"} {
 		if _, err := exec.LookPath(name); err != nil {
@@ -52,7 +67,7 @@ func newSetupFixture(t *testing.T) *setupFixture {
 	}
 	root := filepath.Join(t.TempDir(), "runner with spaces")
 	f := &setupFixture{
-		root: root, script: filepath.Join(root, "source", "macos.sh"),
+		root: root, script: filepath.Join(root, "source", script),
 		commands: filepath.Join(root, "commands"), downloads: filepath.Join(root, "downloads"),
 		scratch: filepath.Join(root, "scratch"), state: filepath.Join(root, "state"),
 		output: filepath.Join(root, "output"), pathOutput: filepath.Join(root, "path"),
@@ -63,11 +78,8 @@ func newSetupFixture(t *testing.T) *setupFixture {
 			t.Fatal(err)
 		}
 	}
-	writeTestFile(t, f.script, readTestFile(t, "macos.sh"), 0700)
-	if err := json.Unmarshal(readTestFile(t, "macos.json"), &f.manifest); err != nil {
-		t.Fatal(err)
-	}
-	f.manifest.Build, f.manifest.TeamID = "fixture", "TESTTEAM01"
+	writeTestFile(t, f.script, readTestFile(t, script), 0700)
+	writeTestFile(t, filepath.Join(filepath.Dir(f.script), "common.sh"), readTestFile(t, "common.sh"), 0700)
 	f.tool = readTestFile(t, "testdata/audio-tool.sh")
 	command := readTestFile(t, "testdata/command.sh")
 	for _, name := range []string{"uname", "curl", "unzip", "lipo", "codesign", "otool"} {
@@ -82,13 +94,10 @@ func newSetupFixture(t *testing.T) *setupFixture {
 		"RUNNER_TOOL_CACHE": filepath.Join(root, "cache"), "RUNNER_TEMP": f.scratch,
 		"GITHUB_OUTPUT": f.output, "GITHUB_PATH": f.pathOutput,
 		"TMPDIR": f.scratch, "TMP": f.scratch, "TEMP": f.scratch,
-		"MACOS_AUDIO_CACHE_HIT": "false", "AUDIO_TEST_EVENTS": f.events,
+		"AUDIO_CACHE_HIT": "false", "AUDIO_TEST_EVENTS": f.events,
 		"AUDIO_TEST_STATE": f.state, "AUDIO_TEST_DOWNLOADS": f.downloads,
-		"AUDIO_TEST_UNZIP": unzip, "AUDIO_TEST_VERSION": f.manifest.Version,
-		"BASH_ENV": "", "ENV": "", "UNZIP": "", "UNZIPOPT": "", "LC_ALL": "C",
-	}
-	for _, tool := range []string{"ffmpeg", "ffprobe"} {
-		f.archive(t, tool, []archiveEntry{{tool, f.tool, 0755}})
+		"AUDIO_TEST_UNZIP": unzip,
+		"BASH_ENV":         "", "ENV": "", "UNZIP": "", "UNZIPOPT": "", "LC_ALL": "C",
 	}
 	writeTestFile(t, filepath.Join(f.scratch, "unowned"), []byte("preserve"), 0600)
 	return f
@@ -101,6 +110,11 @@ type archiveEntry struct {
 }
 
 func (f *setupFixture) archive(t *testing.T, tool string, entries []archiveEntry) {
+	t.Helper()
+	f.archiveBytes(t, tool, zipArchive(t, entries))
+}
+
+func zipArchive(t *testing.T, entries []archiveEntry) []byte {
 	t.Helper()
 	var data bytes.Buffer
 	z := zip.NewWriter(&data)
@@ -118,7 +132,7 @@ func (f *setupFixture) archive(t *testing.T, tool string, entries []archiveEntry
 	if err := z.Close(); err != nil {
 		t.Fatal(err)
 	}
-	f.archiveBytes(t, tool, data.Bytes())
+	return data.Bytes()
 }
 
 func (f *setupFixture) archiveBytes(t *testing.T, tool string, data []byte) {
@@ -140,7 +154,11 @@ func (f *setupFixture) saveManifest(t *testing.T) {
 }
 
 func (f *setupFixture) command(ctx context.Context, action string) *exec.Cmd {
-	cmd := godeps.CommandContext(ctx, "bash", f.script, action)
+	return f.process(ctx, "bash", f.script, action)
+}
+
+func (f *setupFixture) process(ctx context.Context, name string, args ...string) *exec.Cmd {
+	cmd := godeps.CommandContext(ctx, name, args...)
 	for _, value := range os.Environ() {
 		if !strings.HasPrefix(value, "AUDIO_TEST_") {
 			cmd.Env = append(cmd.Env, value)
@@ -157,7 +175,12 @@ func (f *setupFixture) run(t *testing.T, action string) (string, error) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
-	data, err := f.command(ctx, action).CombinedOutput()
+	cmd := f.command(ctx, action)
+	defer stopCommand(t, cmd)
+	data, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		t.Fatalf("setup exceeded its deadline: %v\n%s", ctx.Err(), data)
+	}
 	return string(data), err
 }
 
@@ -191,7 +214,7 @@ func (f *setupFixture) cached(t *testing.T) {
 	for _, tool := range []string{"ffmpeg", "ffprobe"} {
 		writeTestFile(t, filepath.Join(f.cache, tool+".zip"), readTestFile(t, filepath.Join(f.downloads, tool+".zip")), 0600)
 	}
-	f.env["MACOS_AUDIO_CACHE_HIT"] = "true"
+	f.env["AUDIO_CACHE_HIT"] = "true"
 }
 
 func (f *setupFixture) failedCleanly(t *testing.T) {
@@ -217,7 +240,7 @@ func (f *setupFixture) failedCleanly(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() && filepath.Ext(path) != ".zip" {
+		if !d.IsDir() && !strings.HasSuffix(path, ".zip") && !strings.HasSuffix(path, ".tar.xz") {
 			t.Errorf("partial download remains: %s", path)
 		}
 		return nil
