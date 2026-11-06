@@ -443,6 +443,15 @@
         "The existing collection scheduler, fresh Desktop protection, snapshot and history own writes. Failed first enrollment removes its incomplete companion; cross-file lifecycle or sync publication failures retain explicit recovery history. API producers return an actual nil result on failure, keeping human and JSON output separate from failure diagnostics.",
         "Reviewed committed evidence f0db5cd495abc6491bb70a8e0e3857e54932dda7: internal/api/colors.go:16-70; internal/colors/assignment.go:58-109; internal/colors/reconcile.go:27-112; internal/colors/store.go:109-192; internal/history/history.go:213-239; cmd/engine-cli/track_colors.go:10-23. Historical graph and evidence pins remain unchanged."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "PCM generation — explicit non-mutating streaming boundary",
+      "items": [
+        "PCM endpoints use direct HTTP responses rather than operation submission or job polling. Source lookup and opening hold the collection read barrier; the retained regular descriptor is handed to the PCM Store only after that barrier is released. Long decoding and window reads therefore do not retain collection scheduling locks.",
+        "Creation, reads and explicit release do not mutate Engine databases or companion stores and do not enroll Desktop write checks, snapshots, history or Undo. Library ownership, request bounds, source-change detection and generation teardown remain enforced. This separate streaming path does not weaken the safeguards of collection-writing operations.",
+        "Reviewed committed evidence 067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0: internal/api/pcm.go:21-139; internal/api/server.go:137-152,206-228; internal/pcm/store.go:33-150; internal/pcm/lifecycle.go:5-65. Historical workflow topology and reviewed source pins remain unchanged."
+      ]
     }
   ]
 }

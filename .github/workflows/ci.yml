@@ -33,11 +33,12 @@ jobs:
       - name: Install FFmpeg (Windows)
         if: runner.os == 'Windows'
         run: choco install ffmpeg --no-progress -y
-      - name: Qualify retained-file decoding and HTTP handoff
-        run: |
-          go test -count=1 -v ./internal/staging -run 'TestManifestPublication|TestStorePersistenceAndContainment'
-          go test -tags pcm_native -count=1 -v ./internal/regularfile ./internal/pcm
-          go test -tags pcm_native -count=1 -v -run PCM ./internal/api
+      - name: Test native staging manifest publication
+        run: go test -count=1 -v ./internal/staging -run 'TestManifestPublication|TestStorePersistenceAndContainment'
+      - name: Test retained-file PCM decoding
+        run: go test -tags pcm_native -count=1 -v ./internal/regularfile ./internal/pcm
+      - name: Test native PCM HTTP handoff
+        run: go test -tags pcm_native -count=1 -v -run PCM ./internal/api
 
   build:
     runs-on: ubuntu-latest

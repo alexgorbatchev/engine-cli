@@ -6110,6 +6110,42 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Reviewed committed evidence f0db5cd495abc6491bb70a8e0e3857e54932dda7: internal/backup/companion.go:20-109,116-170; internal/colors/lifecycle.go:10-29; internal/colors/merge.go:10-64; internal/duplicate/merge.go:34-134; internal/transfer/colors.go:13-61; internal/transfer/companions.go:21-70; internal/history/history.go:213-239. Existing collection, snapshot and Undo owners remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Retained-file PCM — direct HTTP and process ownership</h3>
+        </div>
+        <ul>
+          <li>The root HTTP server owns one in-memory PCM Store shared by its library servers. Track and staging creation resolve a regular source file under the collection read barrier, then release that barrier before decoding. Generations bind the captured library owner and retained descriptor; they are not asynchronous jobs, persistent companion state or Engine writes.</li>
+          <li>The Store limits generations, concurrent workers and its decoded-page cache. One active worker owns each retained file offset. FFmpeg receives the retained file on stdin with fixed first-audio decoding arguments; bounded stdout reads, cancellation and child Wait remain owned by the decoding call. Native descriptor and pathname identity, size and modification-time checks reject changed sources.</li>
+          <li>Reviewed committed evidence 067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0: internal/api/server.go:91-106,206-228; internal/api/pcm.go:41-94; internal/pcm/types.go:12-22,60-87; internal/pcm/store.go:33-150; internal/pcm/decode.go:13-78. Historical graph and source pins remain unchanged. Browser MessagePort and device-output correlation belong to the consumer, outside this CLI evidence.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>PCM windows — observed extent and bounded teardown</h3>
+        </div>
+        <ul>
+          <li>Creation selects 44100 or 48000 Hz stereo interleaved float32 little-endian output. Metadata exposes an opaque generation ID and nullable frame length; window reads are bounded to 96000 frames. Decoded first-audio EOF establishes the authoritative end. An empty far seek does not prove EOF, and contradictory observations invalidate the generation.</li>
+          <li>Library-scoped metadata, window and release requests use the captured generation owner. Release and server shutdown cancel active work, join owned workers and close retained descriptors; idle generations expire. Cancellation closes the stdout pipe before killing and waiting for the direct child. WaitDelay bounds inherited stderr drain; this does not claim descendant process-tree termination.</li>
+          <li>Reviewed committed evidence 067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0: internal/api/pcm.go:96-164; internal/pcm/decode.go:80-138; internal/pcm/window.go:9-107; internal/pcm/lifecycle.go:5-65. Native CI qualification is recorded separately; these cards describe committed implementation rather than asserting all-platform acceptance.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Staging manifest publication — retained rooted handles</h3>
+        </div>
+        <ul>
+          <li>Staging writes preserve the current manifest through the existing history.Preserve call, then write, sync and close a unique temporary file under os.Root before publishing it. Unix retains rooted rename followed by directory synchronization; publication and close failures remain errors.</li>
+          <li>Windows retains the confined parent and opens the temporary source relative to its directory handle. It rejects source reparse points and replaces the manifest through a native relative-handle rename opened with WRITE_THROUGH. The documented rename-metadata durability guarantee is NTFS-specific; this does not promise identical physical durability across Windows filesystems.</li>
+          <li>Reviewed committed evidence 067f3b9fb30f3c2f45e0e4bc32bd8fb9b00fbbd0: internal/staging/store.go:128-164; internal/staging/publication_unix.go:11-20; internal/staging/publication_windows.go:14-75; internal/staging/publication_test.go:1-105; internal/staging/publication_windows_test.go:1-46. Existing staging history scope and API scheduling remain unchanged; platform qualification is recorded separately.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
