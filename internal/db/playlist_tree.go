@@ -174,10 +174,16 @@ func buildPlaylistTree(playlists []playlistRow, paths map[int64]string, counts m
 			predecessor[row.nextID] = row.id
 			continue
 		}
-		parent := pathIDs[row.parent][0]
+		// The detector flags every row whose paths do not name exactly one playlist; an
+		// unresolved row left here is never placed rather than placed at a guess.
+		parents, nexts := pathIDs[row.parent], pathIDs[row.next]
+		if len(parents) != 1 || (row.next != "" && len(nexts) != 1) {
+			continue
+		}
+		parent := parents[0]
 		var next int64
 		if row.next != "" {
-			next = pathIDs[row.next][0]
+			next = nexts[0]
 		}
 		if tails[parent] == nil {
 			tails[parent] = make(map[int64]string)

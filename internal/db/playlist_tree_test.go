@@ -67,6 +67,12 @@ func TestReadPlaylistTreePlacesSmartlistsInSavedOrder(t *testing.T) {
 		{"deleted parent", `DELETE FROM Playlist WHERE id=1`,
 			"Household", map[string]string{"a": "parent_path_unresolved", "b": "parent_path_unresolved"}},
 		{"library without smart playlists", `DROP TABLE Smartlist`, "House{Deep} Household", map[string]string{}},
+		{"two chains ending at the same playlist",
+			`CREATE TABLE copy AS SELECT * FROM Smartlist; DROP TABLE Smartlist; ALTER TABLE copy RENAME TO Smartlist; INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES ('c','Saved C','House;','House;Deep;','','')`,
+			"House{Deep} Household", map[string]string{"a": "sibling_link_invalid", "b": "sibling_link_invalid", "c": "sibling_link_invalid"}},
+		{"semicolon in a title makes a path name two playlists",
+			`INSERT INTO Playlist(title,parentListId,nextListId) VALUES ('House;Deep',0,0)`,
+			"House{Deep} Household House;Deep", map[string]string{"a": "sibling_link_invalid", "b": "next_path_unresolved"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := smartlistInspectionLibrary(t)
