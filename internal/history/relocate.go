@@ -21,6 +21,9 @@ func RelocateLibrary(ctx context.Context, from, to string) error {
 	if r == nil || r.entry.Library != from {
 		return fmt.Errorf("library relocation requires its active undo journal")
 	}
+	if r.entry.RelocationFrom != "" {
+		return fmt.Errorf("library relocation already recorded in this undo journal")
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}

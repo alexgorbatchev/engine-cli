@@ -13,6 +13,7 @@ import (
 
 func TestUndoRelocationCopyRetainsHistoryOwner(t *testing.T) {
 	from, to, restoreParent := copyRelocationFixture(t)
+	second := filepath.Join(t.TempDir(), "second")
 	entry, err := Run(t.Context(), from, "library.move", ScopeCollection, nil, func(ctx context.Context) error {
 		if err := RelocateLibrary(ctx, from, to); err != nil {
 			return err
@@ -22,6 +23,12 @@ func TestUndoRelocationCopyRetainsHistoryOwner(t *testing.T) {
 		}
 		if _, err := List(to); sqlite.ErrCode(err) != sqlite.ResultBusy {
 			return fmt.Errorf("copied destination was not exclusively owned during publication: %v", err)
+		}
+		if err := RelocateLibrary(ctx, to, second); err == nil {
+			return fmt.Errorf("second relocation under the same journal was accepted")
+		}
+		if _, err := os.Stat(second); !os.IsNotExist(err) {
+			return fmt.Errorf("refused second relocation created a destination: %v", err)
 		}
 		return nil
 	})
@@ -71,6 +78,16 @@ func TestUndoRelocationCopyFailureReleasesDestination(t *testing.T) {
 	}
 	if _, err := os.Stat(to); !os.IsNotExist(err) {
 		t.Fatalf("failed copy retained destination or its open owner: %v", err)
+	}
+	if err := os.Mkdir(to, 0700); err != nil {
+		t.Fatal(err)
+	}
+	owner, err := lock(t.Context(), filepath.Join(to, ".engine-cli", "history"))
+	if err != nil {
+		t.Fatalf("cannot reacquire failed copy destination: %v", err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
 	}
 	after, err := os.Stat(broken)
 	if err != nil || after.Mode() != before.Mode() || !after.ModTime().Equal(before.ModTime()) {
