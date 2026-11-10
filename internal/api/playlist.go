@@ -43,6 +43,9 @@ func (s *Server) playlistOperations() []operation {
 		defineCollectionRead("playlist.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.GetPlaylistHierarchy(ctx, d) })
 		}),
+		defineCollectionRead("playlist.tree", nil, func(ctx context.Context, _ emptyParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.GetTree(ctx, d) })
+		}),
 		s.detailOperation("playlist"),
 		define("playlist.rename", true, []string{"identifier", "title"}, func(ctx context.Context, p renamePlaylistParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return playlist.RenamePlaylist(ctx, d, p.Identifier, p.Title) })

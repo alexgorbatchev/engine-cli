@@ -107,6 +107,10 @@ var techCatalog = cobrahelptree.TechCatalog{
 		Summary:     "Construct and output hierarchical playlist graph from Database2/m.db",
 		Description: "Queries Playlist and PlaylistEntity tables in Database2/m.db to construct tree rooted at Collection. Emits bulleted list in AGENT=1 mode.",
 	},
+	"engine-cli playlist tree": {
+		Summary:     "Output playlists and saved Smartlists in native sibling order",
+		Description: "Reads Playlist, PlaylistEntity and Smartlist in Database2/m.db in one read-only transaction. Smartlists with unresolved saved links are reported after the tree instead of being placed. Emits bulleted list in AGENT=1 mode.",
+	},
 	"engine-cli playlist inspect": {
 		Summary:     "Query and list Track records associated with a playlist",
 		Description: "Queries PlaylistEntity joined with Track in Database2/m.db for specified playlist numeric ID and outputs track list.",

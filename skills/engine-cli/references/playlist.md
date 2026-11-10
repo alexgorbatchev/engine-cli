@@ -11,6 +11,7 @@ Usage: `engine-cli playlist [flags]`.
 Inspect and manage playlists and folders in your Engine DJ collection.
 
   - Use 'engine-cli playlist list' to view the full folder and playlist tree.
+  - Use 'engine-cli playlist tree' to include smart playlists in their saved positions.
   - Use 'engine-cli playlist inspect <id>' to view the songs inside a playlist.
   - Use 'engine-cli playlist create <name>' to create a playlist or folder.
   - Use 'engine-cli playlist rm <id>' to remove a playlist.
@@ -93,6 +94,26 @@ In AGENT=1 mode, displays a compact token-conservative bulleted list.
 Queries Playlist and PlaylistEntity tables in Database2/m.db to construct tree rooted at Collection. Emits bulleted list in AGENT=1 mode.
 
 - `--help, -h` (bool; default `false`): help for list.
+
+## `engine-cli playlist tree`
+
+Display playlists, folders and smart playlists together
+
+Usage: `engine-cli playlist tree [flags]`.
+
+Display the folder tree of your Engine DJ collection with smart playlists in their saved positions.
+
+Playlists show their ID and song count. Smart playlists show their identifier and whether
+Engine DJ treats their rules as read-only. A smart playlist whose saved position is damaged
+is listed after the tree; 'engine-cli library smartlist-repair preview' reviews a repair.
+
+In AGENT=1 mode, displays a compact indented list.
+
+Reads Playlist, PlaylistEntity and Smartlist in Database2/m.db in one read-only transaction. Smartlists with unresolved saved links are reported after the tree instead of being placed. Emits bulleted list in AGENT=1 mode.
+
+- `--help, -h` (bool; default `false`): help for tree.
+
+Each smart playlist renders as `<title> [smartlist:<uuid>]`, with ` read-only` added when Engine DJ would not edit its rules. Agent mode reports each unplaced smart playlist as `unplaced_smartlist: uuid=<uuid> code=<code>`.
 
 ## `engine-cli playlist move`
 

@@ -835,6 +835,14 @@ Playlist rename and move update saved Smartlist parent and sibling paths for the
 
 Libraries using a native schema without the optional `Smartlist` table retain ordinary playlist rename, move, removal, and Undo behavior. These operations do not create or migrate that table. If the table exists but cannot be queried or updated, the mutation fails and rolls back rather than ignoring the saved data.
 
+### Playlist tree
+
+`playlist.tree` accepts no parameters and reads ordinary playlists, membership counts and saved Smartlists from one read-only snapshot. It returns `{nodes,issues}`. `nodes` is the root folder's children in native sibling order: each Smartlist chain appears immediately before the ordinary sibling its last row names in `nextPlaylistPath`, and a chain whose last row names no successor ends its folder.
+
+Each node has `kind`, `title` and `parentId`. Playlist nodes (`kind:"playlist"`) add `id`, `trackCount` and, when they have children, `children`. Smartlist nodes (`kind:"smartlist"`) add `uuid`, the stored `listUuid`, and `readOnly`, which is true when Engine DJ would not edit the rule document: an `rv` other than 1 or 2, a rule version above 2.21.0, or unreadable rules. Smartlists are leaves; their rules and membership are not returned.
+
+A saved Smartlist whose links do not resolve is left out of `nodes` and listed in `issues` as `{uuid,title,code}`, so the rest of the tree stays usable. Codes are the detector's: `parent_path_unresolved`, `next_path_unresolved`, `sibling_link_invalid` (including a healthy row whose chain passes through a damaged one), `sibling_cycle` and `identity_invalid`. The read never repairs them; `library.smartlist-repair.preview` reviews a repair. A library without a `Smartlist` table returns only playlists. Like other collection reads, a pending Smartlist repair refuses with `smartlist_repair_pending`. `playlist.list` is unchanged and lists ordinary playlists only.
+
 ### Saved Smartlist link repair
 
 `library.smartlist-repair.preview` accepts no parameters and returns `{plan_token,reconnected,removed,amended_deletes,rows}`. Rows contain `{uuid,name,action,delete_entry_id?}`; actions are `reconnect` or `remove`. Preview changes no collection/history state. It binds consent to the observed native database and retained history, preserving opaque rule data.
@@ -943,6 +951,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `library.history` | `library?`; defaults to the server's configured library |
 | `library.undo` | `library?`, `id?`, `force?`, `dry_run?`; omitted ID selects latest in that library |
 | `playlist.list` | `{}` |
+| `playlist.tree` | `{}`; see the playlist tree below |
 | `playlist.inspect`, `track.inspect` | Either `ids` (array of 1–500 positive numeric IDs) or `refs` (array of stable references) |
 | `system.check` | `checks?` (array; omitted or empty runs all supported checks) |
 | `playlist.create` | `name`, `parent?`, `folder?` |

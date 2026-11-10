@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/spf13/cobra"
 )
@@ -18,6 +20,7 @@ func newPlaylistCommand() *cobra.Command {
 		Long: `Inspect and manage playlists and folders in your Engine DJ collection.
 
   - Use 'engine-cli playlist list' to view the full folder and playlist tree.
+  - Use 'engine-cli playlist tree' to include smart playlists in their saved positions.
   - Use 'engine-cli playlist inspect <id>' to view the songs inside a playlist.
   - Use 'engine-cli playlist create <name>' to create a playlist or folder.
   - Use 'engine-cli playlist rm <id>' to remove a playlist.
@@ -30,6 +33,7 @@ func newPlaylistCommand() *cobra.Command {
 	}
 
 	plCmd.AddCommand(newPlaylistListCommand())
+	plCmd.AddCommand(newPlaylistTreeCommand())
 	plCmd.AddCommand(newDetailsCommand("playlist"))
 	plCmd.AddCommand(newPlaylistCreateCommand())
 	plCmd.AddCommand(newPlaylistRenameCommand())
@@ -96,6 +100,50 @@ In AGENT=1 mode, displays a compact token-conservative bulleted list.`,
 			}
 
 			cmd.Print(playlist.FormatPlaylistTree(tree))
+			return nil
+		},
+	}
+}
+
+func newPlaylistTreeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "tree",
+		Short: "Display playlists, folders and smart playlists together",
+		Long: `Display the folder tree of your Engine DJ collection with smart playlists in their saved positions.
+
+Playlists show their ID and song count. Smart playlists show their identifier and whether
+Engine DJ treats their rules as read-only. A smart playlist whose saved position is damaged
+is listed after the tree; 'engine-cli library smartlist-repair preview' reviews a repair.
+
+In AGENT=1 mode, displays a compact indented list.`,
+		Example: `  engine-cli playlist tree
+  engine-cli -l "/Volumes/DJ_USB/Engine Library" playlist tree`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tree, err := history.ReadSmartlistSafe(cmd.Context(), libDirFlag, func(ctx context.Context) (*playlist.Tree, error) {
+				database, err := db.Open(filepath.Join(libDirFlag, "Database2", "m.db"), true)
+				if err != nil {
+					return nil, err
+				}
+				defer database.Close()
+				return playlist.GetTree(ctx, database)
+			})
+			if err != nil {
+				return err
+			}
+			if len(tree.Nodes) == 0 && len(tree.Issues) == 0 {
+				if agent.IsAgentMode() {
+					cmd.Println("status: empty")
+				} else {
+					cmd.Println("No playlists found in database.")
+				}
+				return nil
+			}
+			if agent.IsAgentMode() {
+				cmd.Print(playlist.FormatTreeBulletList(tree))
+			} else {
+				cmd.Print(playlist.FormatTree(tree))
+			}
 			return nil
 		},
 	}
