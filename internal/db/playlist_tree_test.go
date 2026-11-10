@@ -168,12 +168,14 @@ func TestReadPlaylistTreeFailures(t *testing.T) {
 
 func TestSmartlistRulesEditable(t *testing.T) {
 	for rules, want := range map[string]bool{
-		editableRules:                         true,
-		`{"match":"all","rules":[],"rv":1}`:   true,
-		`{"rules":[{"v":"2.21.0"}],"rv":2}`:   true,
-		`{"rules":[{"v":"2.22.0"}],"rv":2}`:   false,
-		`{"rules":[{"v":"3.0.0"}],"rv":2}`:    false,
-		`{"rules":[{"v":"latest"}],"rv":2}`:   false,
+		editableRules:                       true,
+		`{"match":"all","rules":[],"rv":1}`: true,
+		`{"rules":[{"v":"2.21.0"}],"rv":2}`: true,
+		// Desktop skips rules of a later version on read; only rv makes a list read-only.
+		`{"rules":[{"v":"2.22.0"}],"rv":2}`:   true,
+		`{"rules":[{"v":"latest"}],"rv":2}`:   true,
+		`{"rules":[],"rv":2.0}`:               false,
+		`{"rules":[],"rv":0}`:                 false,
 		`{"rules":[{"v":"2.20.0"}],"rv":3}`:   false,
 		`{"rules":[{"v":"2.20.0"}]}`:          false,
 		`{"rules":[{"v":"2.20.0"}],"rv":"2"}`: false,

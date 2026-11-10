@@ -14,9 +14,6 @@ const (
 	TreeNodeSmartlist = "smartlist"
 )
 
-// highestReadableRuleVersion is the newest rule version Engine DJ 5.1.0 reads (2.21.0).
-const highestReadableRuleVersion = 2<<20 | 21<<10
-
 // TreeNode is one ordinary playlist or saved Smartlist in native sibling order.
 // Playlist nodes carry ID and TrackCount; Smartlist nodes carry UUID and are leaves.
 type TreeNode struct {
@@ -136,31 +133,20 @@ func smartlistTreeRows(ctx context.Context, tx *sql.Tx) ([]smartlistTreeRow, err
 	return result, rows.Err()
 }
 
-// smartlistRulesEditable reports whether Desktop would edit a rule document: rv 1
-// or 2 and every rule version through 2.21.0. Anything unreadable is read-only.
+// smartlistRulesEditable reports whether Desktop edits a rule document: its
+// parser (0x10145c59c) marks every document read-only unless rv is the integer
+// 1 or 2. Rules of a later version are skipped on read, not a read-only marker.
+// Text that is not a JSON document is treated as read-only.
 func smartlistRulesEditable(rules string) bool {
 	var document struct {
-		RV    *float64 `json:"rv"`
-		Rules []struct {
-			V string `json:"v"`
-		} `json:"rules"`
+		RV json.RawMessage `json:"rv"`
 	}
-	if err := json.Unmarshal([]byte(rules), &document); err != nil || document.RV == nil {
+	if err := json.Unmarshal([]byte(rules), &document); err != nil {
 		return false
 	}
-	if *document.RV != 1 && *document.RV != 2 {
-		return false
-	}
-	for _, rule := range document.Rules {
-		var major, minor, patch int
-		if _, err := fmt.Sscanf(rule.V, "%d.%d.%d", &major, &minor, &patch); err != nil {
-			return false
-		}
-		if major<<20|minor<<10|patch > highestReadableRuleVersion {
-			return false
-		}
-	}
-	return true
+	// Only the JSON integers 1 and 2: strings, fractions and exponents are not.
+	version := string(document.RV)
+	return version == "1" || version == "2"
 }
 
 func buildPlaylistTree(playlists []playlistRow, paths map[int64]string, counts map[int64]int, saved []smartlistTreeRow, detected []SmartlistIssue) (*PlaylistTree, error) {
