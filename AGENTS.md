@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-11-04 23:19
+last_modified: 2026-11-10 05:49
 status: current
 ---
 
@@ -72,6 +72,11 @@ The test for everything this CLI writes: close the app, open the library in Engi
 - **Merge Duplicates:** `bin/engine-cli track duplicate merge <id...> --keep <id> [--performance-from <id>]`
 - **Inspect Undo History:** `bin/engine-cli library history`
 - **Undo an Operation:** `bin/engine-cli library undo [id] [--dry-run] [--force]`
+
+## Verification and delivery
+
+- Run implementation verification locally with `just check`; preserve its required checks and coverage gates. Do not add CI workflows, provision runners, or require remote CI results for delivery.
+- Do not create or use pull requests to deliver work. Review changes and integrate verified commits directly through the authorized Git workflow; record commit references and local verification evidence in the tracker.
 
 ## Setup & Environment
 - **Prerequisites:** Go 1.27.2+, `ffmpeg`, `ffprobe`, `just`. Analysis tests stand in fake `ffmpeg`/`ffprobe` scripts on `PATH` that stream PCM sidecar files. `fetch-track`, `fetch-mix`, `tag-track`, and `agent-ask-cli` are managed dependencies.

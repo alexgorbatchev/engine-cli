@@ -6266,6 +6266,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:68–155; internal/history/history.go:174–244; internal/history/smartlist_mutation_observation.go:12–55; internal/transfer/apply.go:21–101; internal/transfer/observation.go:69–95; internal/transfer/model.go:186–215; internal/transfer/mutation.go:16–110. Historical source pins and existing graph topology remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Relocated library publication ownership</h3>
+        </div>
+        <ul>
+          <li>A cross-filesystem library relocation acquires an independent exclusive destination History owner before copying the first file. It does not copy the source lock database or its journal. The destination owner remains held through final History publication; failed copies close it before removing the reserved destination.</li>
+          <li>Each active undo journal accepts one relocation. A repeated request is refused before creating another destination, preserving the original publication cleanup and destination ownership.</li>
+          <li>Committed source evidence 7592ce2f01fae810afcd97cdbfe7ebfea47df05b: internal/history/relocate.go:19–100; internal/history/relocate_copy_test.go. Existing History publication and Undo remain the owners; no new persistence store or actor is introduced.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">

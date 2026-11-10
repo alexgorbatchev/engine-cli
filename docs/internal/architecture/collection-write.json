@@ -607,6 +607,15 @@
         "Accepted repair remains bound to the observed evidence. The repaired destination, including its Smartlist table definition, is checked again before backup and before mutation. The final native Smartlist graph and complete saved rows are validated before native commit; companion/state publication follows. Media changes made during application remain History-owned filesystem effects, not part of native database rollback.",
         "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:68–155; internal/history/history.go:174–244; internal/history/smartlist_mutation_observation.go:12–55; internal/transfer/apply.go:21–101; internal/transfer/observation.go:69–95; internal/transfer/model.go:186–215; internal/transfer/mutation.go:16–110. Historical source pins and existing graph topology remain unchanged."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Relocated library publication ownership",
+      "items": [
+        "A cross-filesystem library relocation acquires an independent exclusive destination History owner before copying the first file. It does not copy the source lock database or its journal. The destination owner remains held through final History publication; failed copies close it before removing the reserved destination.",
+        "Each active undo journal accepts one relocation. A repeated request is refused before creating another destination, preserving the original publication cleanup and destination ownership.",
+        "Committed source evidence 7592ce2f01fae810afcd97cdbfe7ebfea47df05b: internal/history/relocate.go:19–100; internal/history/relocate_copy_test.go. Existing History publication and Undo remain the owners; no new persistence store or actor is introduced."
+      ]
     }
   ]
 }
