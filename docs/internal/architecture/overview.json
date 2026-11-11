@@ -567,7 +567,7 @@
     },
     {
       "dot": "cyan",
-      "title": "Saved markers — working-tree addition",
+      "title": "Saved markers \u2014 working-tree addition",
       "items": [
         "GET /v1/tracks/{id}/performance also resolves within opened-library routes. requestTrack validates identity, and collectionRead shares the collection barrier.",
         "The handler opens m.db read-only and reads PerformanceData beatData, quickCues, and loops. djtools v0.1.1 decodes slots, names, colors, and positions in seconds without database access of its own.",
@@ -577,7 +577,7 @@
     },
     {
       "dot": "amber",
-      "title": "Analysis and beat grids — after the pinned revision",
+      "title": "Analysis and beat grids \u2014 after the pinned revision",
       "items": [
         "internal/analysis decodes audio once through FFmpeg and combines windowed tactus tempo and mixedkey key candidates with beat-phase, downbeat and tempo-change fitting. internal/beatgrid converts results into Engine anchors, computes reviewed edits, and stores grids through djtools v0.1.3's native beatData codec.",
         "The HTTP API and CLI share track.analyze, track.grid.update and the read-only grid edit endpoint; commands are track analyze, track grid update and track add --analyze. Engine CLI remains the only component that opens Engine databases. Committed in 050ada5 and b333e89."
@@ -585,26 +585,26 @@
     },
     {
       "dot": "cyan",
-      "title": "Custom tags — committed addition: companion ownership",
+      "title": "Custom tags \u2014 committed addition: companion ownership",
       "items": [
         "Engine CLI owns the separate library-local .engine-cli/tags.db companion: named categories and values use opaque UUIDs; assignments use native Engine origin UUID/track-ID pairs. Embedded-file track.tags operations remain a different domain. The browser accesses neither database directly.",
         "Taxonomy and assignment reads never create storage or remove unavailable assignments. Taxonomy reports live-origin counts and unavailable origins, while its revision remains the stored taxonomy/assignment revision. Collection mutations use the existing scheduler, fresh Desktop guard, safety backup and history.",
-        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/companion/companion.go:10–35; internal/api/tags.go:39–120; internal/tags/store.go:30–50. This separately reviewed addition preserves the historical diagram graph and source pins."
+        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/companion/companion.go:10\u201335; internal/api/tags.go:39\u2013120; internal/tags/store.go:30\u201350. This separately reviewed addition preserves the historical diagram graph and source pins."
       ]
     },
     {
       "dot": "amber",
-      "title": "Custom tags — committed addition: recovery and synchronization",
+      "title": "Custom tags \u2014 committed addition: recovery and synchronization",
       "items": [
         "The enrolled companion participates in native database snapshots, explicit backup presence, conflict-sensitive undo, and portable library recovery. A first-write undo can restore companion absence. This is CLI-owned library state, not UI preferences or embedded audio metadata.",
         "Sync carries UUID-defined taxonomy and origin-based assignments. Destination-only definitions remain except under explicit whole-library/root mirroring. Playlist mirrors never delete unrelated destination taxonomy. Distinct-identity normalized-name collisions and retained references to removed definitions block application; a generic conflict winner does not repair these constraints.",
         "Engine, companion and identity/sync JSON publications are separate commits. A later publication failure retains pending history and reports history_recovery_required; it does not claim all-or-nothing cross-database atomicity. Unresolved history blocks later collection writes until explicit recovery.",
-        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/history/files.go:57–104; internal/backup/companion.go:26–117; internal/transfer/tags.go:15–43; internal/transfer/apply.go:133–171; internal/history/history.go:161–264. The historical source pins remain unchanged."
+        "Reviewed committed evidence 56cee6e56c5001e0d68795442cc3b7a72856df39: internal/history/files.go:57\u2013104; internal/backup/companion.go:26\u2013117; internal/transfer/tags.go:15\u201343; internal/transfer/apply.go:133\u2013171; internal/history/history.go:161\u2013264. The historical source pins remain unchanged."
       ]
     },
     {
       "dot": "emerald",
-      "title": "Play history — after the pinned revision",
+      "title": "Play history \u2014 after the pinned revision",
       "items": [
         "internal/playhistory opens Engine's Database2/hm.db read-only beside m.db and never creates or changes it. History track copies resolve to library tracks by exact path, then origin identity; session.list, session.inspect and GET /v1/sessions follow Engine's listing order and labels.",
         "Track records add playCount and lastPlayed from history entries, unknown when history is missing or unreadable. session.import reviews a session as a plan token, then writes only m.db: one new playlist in play order, first plays kept, under the usual Desktop check, snapshot and undo record."
@@ -612,66 +612,66 @@
     },
     {
       "dot": "emerald",
-      "title": "Batch custom tags — committed reviewed assignment",
+      "title": "Batch custom tags \u2014 committed reviewed assignment",
       "items": [
-        "track.custom-tags.batch-inspect resolves 1–500 selectors, deduplicates library tracks in first-seen order, and counts assignments only across that captured selection. Custom-tag values retain their UUID identity; unspecified values stay unchanged.",
+        "track.custom-tags.batch-inspect resolves 1\u2013500 selectors, deduplicates library tracks in first-seen order, and counts assignments only across that captured selection. Custom-tag values retain their UUID identity; unspecified values stay unchanged.",
         "track.custom-tags.batch-update accepts explicit add and remove lists. Preview binds the global taxonomy revision, resolved track IDs, native origin identities and exact actions into one review token. Apply changes the companion in one transaction under the existing Desktop, safety snapshot and history ownership; one undo restores the batch.",
-        "Reviewed committed evidence 8e33df9d106215b5fd9723c82800867c72b670c6: internal/tags/batch.go:16–115,129–192,200–263; internal/api/tags.go:126–138; cmd/engine-cli/custom_tags.go:38–39,78–91. Historical evidence pins remain unchanged. No additional actor, daemon or collection database writer is introduced."
+        "Reviewed committed evidence 8e33df9d106215b5fd9723c82800867c72b670c6: internal/tags/batch.go:16\u2013115,129\u2013192,200\u2013263; internal/api/tags.go:126\u2013138; cmd/engine-cli/custom_tags.go:38\u201339,78\u201391. Historical evidence pins remain unchanged. No additional actor, daemon or collection database writer is introduced."
       ]
     },
     {
       "dot": "emerald",
-      "title": "Custom-tag filtering — one read-only collection snapshot",
+      "title": "Custom-tag filtering \u2014 one read-only collection snapshot",
       "items": [
         "track.custom-tags.list returns categories and current track assignments from one companion read and revision under the ordinary collection read barrier. It resolves assignments against native origin identities in the selected Engine library; row IDs remain library-local.",
         "The complete response orders tracks by native row ID and value IDs deterministically, omits unassigned tracks and absent origins, and retains unavailable-origin counts. Browsing never creates companion storage, prunes assignments, or creates backup/history artifacts. No additional collection writer or HTTP lifecycle is introduced.",
-        "Reviewed committed evidence 716327b379a737aafd13f3808f8faa75424be4be: internal/api/tag_assignments.go:10–20; internal/tags/collection.go:10–63; internal/tags/store.go:29–49; docs/http-api.md:466–481. Existing batch-write and historical evidence pins remain unchanged."
+        "Reviewed committed evidence 716327b379a737aafd13f3808f8faa75424be4be: internal/api/tag_assignments.go:10\u201320; internal/tags/collection.go:10\u201363; internal/tags/store.go:29\u201349; docs/http-api.md:466\u2013481. Existing batch-write and historical evidence pins remain unchanged."
       ]
     },
     {
       "dot": "amber",
-      "title": "Saved Smartlist paths — committed playlist maintenance",
+      "title": "Saved Smartlist paths \u2014 committed playlist maintenance",
       "items": [
         "Playlist rename and move rewrite saved Smartlist parent and next-playlist paths for the complete affected subtree in the same m.db transaction as ordinary playlist changes. Moves reconnect the old Smartlist sibling chain and insert the playlist after the Smartlists preceding its destination.",
         "Removal deletes saved Smartlists beneath the removed subtree and reconnects preceding Smartlists to the following sibling chain. A folder containing ordinary playlists or saved Smartlists requires force. Native semicolon-separated paths retain literal title bytes; rules and Smartlist edit timestamps remain unchanged.",
         "CLI and HTTP operations retain their existing Desktop protection, snapshot and history ownership. Native API and Cobra tests exercise actual undo and restore ordinary playlists together with saved Smartlist paths, order and opaque rules. This is path and sibling-order maintenance, not Smartlist rule editing or evaluation.",
-        "Reviewed committed evidence 87475aff4b8dcaebc791d6925f3233daced826f8: internal/db/smartlist_paths.go:47–177; internal/db/playlist_order.go:146–198; internal/db/db.go:443–517; internal/playlist/rename.go:12–29. This separately reviewed addition preserves the historical diagram graph and source pins."
+        "Reviewed committed evidence 87475aff4b8dcaebc791d6925f3233daced826f8: internal/db/smartlist_paths.go:47\u2013177; internal/db/playlist_order.go:146\u2013198; internal/db/db.go:443\u2013517; internal/playlist/rename.go:12\u201329. This separately reviewed addition preserves the historical diagram graph and source pins."
       ]
     },
     {
       "dot": "amber",
-      "title": "Optional Smartlist schema — committed transactional handling",
+      "title": "Optional Smartlist schema \u2014 committed transactional handling",
       "items": [
         "Playlist rename, move and removal inspect the named Smartlist schema object inside the ordinary transaction. Genuine absence preserves ordinary playlist behavior without creating or migrating the optional table. An existing wrong-type object, malformed columns or failed writes abort and roll back instead of ignoring saved data.",
         "A folder containing ordinary child playlists or saved Smartlists requires explicit recursive removal. The playlist_not_empty code reaches CLI errors, HTTP job failures and progress. Existing Desktop protection, snapshots, history and Undo retain ownership; no actor, migration or rule evaluator is added.",
-        "Reviewed committed evidence b07c6e03b078dc0b94b991392c4187c50c79dc61: internal/db/smartlist_paths.go:47–65; internal/db/playlist_order.go:162–170; internal/db/db.go:476–495. Native HTTP Undo, malformed-object rollback and CLI refusal controls are in internal/api/playlist_smartlist_test.go, internal/playlist/smartlist_test.go and cmd/engine-cli/playlist_smartlist_test.go. Original 87475af and historical diagram evidence pins remain unchanged."
+        "Reviewed committed evidence b07c6e03b078dc0b94b991392c4187c50c79dc61: internal/db/smartlist_paths.go:47\u201365; internal/db/playlist_order.go:162\u2013170; internal/db/db.go:476\u2013495. Native HTTP Undo, malformed-object rollback and CLI refusal controls are in internal/api/playlist_smartlist_test.go, internal/playlist/smartlist_test.go and cmd/engine-cli/playlist_smartlist_test.go. Original 87475af and historical diagram evidence pins remain unchanged."
       ]
     },
     {
       "dot": "emerald",
-      "title": "Metadata find/replace — bounded exact review",
+      "title": "Metadata find/replace \u2014 bounded exact review",
       "items": [
-        "track.batch.find-replace and track batch find-replace share collection-only transformations of eight text fields across 1–500 explicit selectors. Native Go regular expressions provide Unicode case folding and capture expansion; literal mode keeps replacement dollars literal. Audio files and embedded tags are unchanged.",
+        "track.batch.find-replace and track batch find-replace share collection-only transformations of eight text fields across 1\u2013500 explicit selectors. Native Go regular expressions provide Unicode case folding and capture expansion; literal mode keeps replacement dollars literal. Audio files and embedded tags are unchanged.",
         "A read-only review binds normalized options, canonical library root, library UUID, resolved track IDs, native origins and current metadata. Apply checks the captured token before Desktop checks, snapshots and history, then rechecks inside one metadata transaction. Empty titles block the whole batch; failed writes roll back. Results return affected IDs without rereading committed entities.",
         "Before hydration, source values are limited to 1 MiB each and 16 MiB of review evidence. Output is separately bounded to 1 MiB per field and 16 MiB per batch; native match-index storage and capture expansion are bounded before allocation. Cancellation is checked around native matching and during assembly. Oversized work fails with metadata_transform_too_large before mutation artifacts.",
-        "Reviewed committed evidence 18a4587f84bc9cfe799395ed28f03d2c0f77ff43: internal/api/find_replace.go:21–37; internal/track/find_replace.go:112–142,201–339; internal/track/bounded_replace.go:9–103; cmd/engine-cli/find_replace.go:12–31. Historical graph and evidence pins remain unchanged; no new actor or database owner is introduced."
+        "Reviewed committed evidence 18a4587f84bc9cfe799395ed28f03d2c0f77ff43: internal/api/find_replace.go:21\u201337; internal/track/find_replace.go:112\u2013142,201\u2013339; internal/track/bounded_replace.go:9\u2013103; cmd/engine-cli/find_replace.go:12\u201331. Historical graph and evidence pins remain unchanged; no new actor or database owner is introduced."
       ]
     },
     {
       "dot": "cyan",
-      "title": "Metadata capitalization — Unicode recipes and exact review",
+      "title": "Metadata capitalization \u2014 Unicode recipes and exact review",
       "items": [
         "track.batch.capitalize and track batch capitalize apply upper, lower or title casing to eight selected collection text fields. Existing golang.org/x/text cases and language APIs own Unicode and BCP 47 semantics; an empty language uses language.Und rather than the host locale. Audio and embedded tags remain unchanged.",
         "Read-only preview and checked apply share the metadata transformation owner with find/replace. Exact consent binds canonical library root, UUID, resolved identities, native origins, options and current metadata. Checked preflight runs before Desktop protection, snapshot and history; application rechecks the token inside one transaction and returns affected IDs after commit without rereading entities.",
         "SQL byte-length checks precede hydration. Source evidence and outputs are bounded to 1 MiB per field and 16 MiB per batch. Whole-field casing supplies EOF for contextual word endings, resets before bounded expansion retries, and observes cancellation between attempts. Invalid recipes, languages, UTF-8 and empty resulting titles cannot authorize a write.",
-        "Reviewed committed evidence 195709a8a69741190a17c9f1732c739bfd8062f1: internal/track/capitalization.go:25–130; internal/track/metadata_transform.go:136–288; internal/api/capitalization.go:12–44. Historical graph and evidence pins remain unchanged; the ordinary collection writer retains Desktop, snapshot and single-Undo ownership. No separate actor or persistence store is introduced."
+        "Reviewed committed evidence 195709a8a69741190a17c9f1732c739bfd8062f1: internal/track/capitalization.go:25\u2013130; internal/track/metadata_transform.go:136\u2013288; internal/api/capitalization.go:12\u201344. Historical graph and evidence pins remain unchanged; the ordinary collection writer retains Desktop, snapshot and single-Undo ownership. No separate actor or persistence store is introduced."
       ]
     },
     {
       "dot": "cyan",
-      "title": "Native saved hot cues — committed API ownership",
+      "title": "Native saved hot cues \u2014 committed API ownership",
       "items": [
-        "track.cue.inspect is a library read; track.cue.set and track.cue.clear are checked collection writes. Cobra exposes the same slot A–H, revision, position/name/color contract with readable output. The UI never opens Engine databases.",
+        "track.cue.inspect is a library read; track.cue.set and track.cue.clear are checked collection writes. Cobra exposes the same slot A\u2013H, revision, position/name/color contract with readable output. The UI never opens Engine databases.",
         "Preparation validates target, slot, exact native revision and encodable values before Desktop protection, safety snapshot and history. The protected transaction rechecks native interpretation and media identity, then changes only the target cue bytes and any initially absent unset beat header required for interpretation.",
         "Native codec edits preserve unrelated cue slots, loops, opaque bytes and trailer fields. A successful write returns the exact track/slot/revision result constructed from the committed plan, without a fallible post-commit entity read.",
         "Reviewed committed evidence 81ae0430470400191f0e053c9b6e5a2f72bc480d: internal/api/performance.go:62-85; cmd/engine-cli/cues.go:12-86; internal/performance/edit.go:46-145; internal/performance/performance.go:44-118"
@@ -679,7 +679,7 @@
     },
     {
       "dot": "cyan",
-      "title": "Rekordbox XML import — immutable review and native preparation",
+      "title": "Rekordbox XML import \u2014 immutable review and native preparation",
       "items": [
         "migrate.import and migrate import read server-local Rekordbox XML into a reviewed new root hierarchy. Preview is a collection read and does not enroll source storage. Explicit missing-media, native-conflict and unsupported-field policies determine each source disposition; complete extant imports refuse duplicate hierarchy creation, while partial imports disclose retained mappings, omissions and the new root.",
         "One job owns immutable XML bytes, destination observations, native origins, media observations and decoded first-audio sample extents. Checked preparation binds exact consent before Desktop protection, snapshot and history. Expensive decoding stays outside the write transaction; native file identity, size/time and exact XML content are rechecked before application and again after acquiring its transaction.",
@@ -689,7 +689,7 @@
     },
     {
       "dot": "amber",
-      "title": "Preserved import evidence — separate publication and recovery",
+      "title": "Preserved import evidence \u2014 separate publication and recovery",
       "items": [
         "The native transaction creates metadata, performance data and ordered hierarchy together, with explicit reviewed reuse and skips. A success receipt projects the committed root/document IDs and actual counts only after native commit and source-archive publication both succeed; it does not perform a fallible post-commit entity reread.",
         "CLI-owned .engine-cli/imports.db stores exact source XML and document-local selector to native-origin mappings. Named companion enrollment keeps imports independent of custom tags. Snapshots and presence-aware restore/Undo preserve or remove each companion independently; damaged or unreadable evidence fails closed.",
@@ -699,25 +699,25 @@
     },
     {
       "dot": "emerald",
-      "title": "Playlist membership — atomic removal and move",
+      "title": "Playlist membership \u2014 atomic removal and move",
       "items": [
         "RemoveTrackFromPlaylist owns one SQLite transaction for predecessor relinking and target deletion. MoveTrackInPlaylist shares one transaction across source removal, destination insertion and destination-tail relinking; failures preserve both playlists.",
-        "Membership resolution matches the native originTrackId and originDatabaseUuid pair. Engine’s native before-delete trigger remains installed; explicit relink failures propagate instead of being ignored. Existing API and CLI protection, snapshot and Undo wrappers retain ownership.",
-        "Reviewed committed evidence f5d8f4f04a35b4b62bc2d4e4ed8b5499e509ca23: internal/db/db.go:588–655; internal/db/library_schema.sql:172–180; internal/db/membership_atomic_test.go:18–269. This is atomicity for one removal or move, not standalone Add or a multi-track batch. Historical graph and evidence pins remain unchanged."
+        "Membership resolution matches the native originTrackId and originDatabaseUuid pair. Engine\u2019s native before-delete trigger remains installed; explicit relink failures propagate instead of being ignored. Existing API and CLI protection, snapshot and Undo wrappers retain ownership.",
+        "Reviewed committed evidence f5d8f4f04a35b4b62bc2d4e4ed8b5499e509ca23: internal/db/db.go:588\u2013655; internal/db/library_schema.sql:172\u2013180; internal/db/membership_atomic_test.go:18\u2013269. This is atomicity for one removal or move, not standalone Add or a multi-track batch. Historical graph and evidence pins remain unchanged."
       ]
     },
     {
       "dot": "emerald",
-      "title": "Standalone membership insertion — one transaction",
+      "title": "Standalone membership insertion \u2014 one transaction",
       "items": [
         "AddTrackToPlaylist called with *sql.DB begins one transaction before membership lookup and commits only after insertion and tail relinking succeed. Rejected insertion or tail UPDATE leaves exact existing membership rows and links unchanged.",
         "A caller-owned *sql.Tx remains caller-owned: Add participates without beginning or committing another transaction. Deduplication and native originTrackId plus originDatabaseUuid identity remain unchanged, including equal origin IDs from different libraries.",
-        "Reviewed committed evidence 86e33dbd1cbb1409cee82ab67af1167d10d95df0: internal/db/db.go:529–604; internal/db/membership_add_atomic_test.go:1–163. Existing API/Cobra Desktop protection, snapshots and Undo remain the owners; no multi-track batch atomicity is added. Historical evidence pins and graph topology remain unchanged."
+        "Reviewed committed evidence 86e33dbd1cbb1409cee82ab67af1167d10d95df0: internal/db/db.go:529\u2013604; internal/db/membership_add_atomic_test.go:1\u2013163. Existing API/Cobra Desktop protection, snapshots and Undo remain the owners; no multi-track batch atomicity is added. Historical evidence pins and graph topology remain unchanged."
       ]
     },
     {
       "dot": "cyan",
-      "title": "Playlist track ordering — exact native membership review",
+      "title": "Playlist track ordering \u2014 exact native membership review",
       "items": [
         "playlist.reorder and playlist reorder share native membership ordering. Preview resolves local tracks through the originTrackId/originDatabaseUuid pair and validates the full PlaylistEntity chain. Ambiguous origins, cycles, missing links and multiple heads fail closed; unresolved native memberships remain preserved in the chain.",
         "The supplied view must follow native ascending or descending membership order. Selected displayed runs retain their internal order and hidden memberships between their endpoints; the planner translates the displayed drop gap into native links without assigning local track IDs as membership identities.",
@@ -728,7 +728,7 @@
     },
     {
       "dot": "cyan",
-      "title": "Custom track colors — independent companion ownership",
+      "title": "Custom track colors \u2014 independent companion ownership",
       "items": [
         "Engine CLI owns library-local .engine-cli/colors.db independently of tags.db and imports.db. Canonical RGB assignments use native origin UUID/track-ID pairs. They do not change Engine Desktop color fields, embedded metadata or custom-tag taxonomy; the browser accesses this state only through Engine CLI.",
         "track.color.list projects assigned collection rows from one stored observation; track.color.inspect resolves one selected track. Reads neither enroll storage nor prune unavailable origins. The revision covers stored assignments, so an external Desktop removal changes availability without silently discarding colors or changing that revision.",
@@ -737,7 +737,7 @@
     },
     {
       "dot": "amber",
-      "title": "Custom track colors — recovery and synchronization",
+      "title": "Custom track colors \u2014 recovery and synchronization",
       "items": [
         "Shared native database snapshots preserve independent companion enrollment. Backup presence version 3 records colors separately from tags and imports. Older backup presence versions imply color absence; restoration validates required databases before publication. Existing history and Undo preserve before-images, including first-enrollment absence.",
         "Collection removal prunes only origins actually removed within that history boundary, retaining earlier unavailable assignments. Duplicate merge keeps an assigned survivor color, otherwise inherits one unambiguous removed color; conflicting removed colors are refused before safety enrollment.",
@@ -747,7 +747,7 @@
     },
     {
       "dot": "cyan",
-      "title": "Retained-file PCM — direct HTTP and process ownership",
+      "title": "Retained-file PCM \u2014 direct HTTP and process ownership",
       "items": [
         "The root HTTP server owns one in-memory PCM Store shared by its library servers. Track and staging creation resolve a regular source file under the collection read barrier, then release that barrier before decoding. Generations bind the captured library owner and retained descriptor; they are not asynchronous jobs, persistent companion state or Engine writes.",
         "The Store limits generations, concurrent workers and its decoded-page cache. One active worker owns each retained file offset. FFmpeg receives the retained file on stdin with fixed first-audio decoding arguments; bounded stdout reads, cancellation and child Wait remain owned by the decoding call. Native descriptor and pathname identity, size and modification-time checks reject changed sources.",
@@ -756,7 +756,7 @@
     },
     {
       "dot": "amber",
-      "title": "PCM windows — observed extent and bounded teardown",
+      "title": "PCM windows \u2014 observed extent and bounded teardown",
       "items": [
         "Creation selects 44100 or 48000 Hz stereo interleaved float32 little-endian output. Metadata exposes an opaque generation ID and nullable frame length; window reads are bounded to 96000 frames. Decoded first-audio EOF establishes the authoritative end. An empty far seek does not prove EOF, and contradictory observations invalidate the generation.",
         "Library-scoped metadata, window and release requests use the captured generation owner. Release and server shutdown cancel active work, join owned workers and close retained descriptors; idle generations expire. Cancellation closes the stdout pipe before killing and waiting for the direct child. WaitDelay bounds inherited stderr drain; this does not claim descendant process-tree termination.",
@@ -765,7 +765,7 @@
     },
     {
       "dot": "emerald",
-      "title": "Staging manifest publication — retained rooted handles",
+      "title": "Staging manifest publication \u2014 retained rooted handles",
       "items": [
         "Staging writes preserve the current manifest through the existing history.Preserve call, then write, sync and close a unique temporary file under os.Root before publishing it. Unix retains rooted rename followed by directory synchronization; publication and close failures remain errors.",
         "Windows retains the confined parent and opens the temporary source relative to its directory handle. It rejects source reparse points and replaces the manifest through a native relative-handle rename opened with WRITE_THROUGH. The documented rename-metadata durability guarantee is NTFS-specific; this does not promise identical physical durability across Windows filesystems.",
@@ -774,7 +774,7 @@
     },
     {
       "dot": "amber",
-      "title": "Library health checks — incomplete reads fail closed",
+      "title": "Library health checks \u2014 incomplete reads fail closed",
       "items": [
         "library.verify and library verify share the read-only VerifyLibrary audit. Required track, playlist, artwork and membership reads must succeed before a report is returned; unreadable membership rows or invalid saved playlist chains stop the check instead of silently omitting them.",
         "Orphan detection resolves PlaylistEntity references through the native originTrackId/originDatabaseUuid pair rather than the local Track ID. Membership query, Scan, iteration and Close errors propagate. Cancellation and deadline errors retain their original classifications.",
@@ -784,7 +784,7 @@
     },
     {
       "dot": "cyan",
-      "title": "Intake ownership — committed service topology",
+      "title": "Intake ownership \u2014 committed service topology",
       "items": [
         "The original overview was pinned to b85be4d87dc1045eca6133f6868e0b13f7bceb62. Its existing components have been traced again at 6f724a545fa0944deef7d8e260d0d403549d2d42; historical supplemental cards and their individual pins are preserved verbatim. Their statements about unchanged topology describe those historical additions, not the new intake actors shown here.",
         "One API-owned registry is shared by opened-library servers. An enrolled library has a preparation service independent of individual HTTP requests. Opening does not enroll an absent queue. Initial receipt reconciliation precedes eligible FIFO preparation; a manually paused, restored or unresolved queue does not silently resume.",
@@ -795,7 +795,7 @@
     },
     {
       "dot": "amber",
-      "title": "Intake persistence — independent publication evidence",
+      "title": "Intake persistence \u2014 independent publication evidence",
       "items": [
         "The live intake journal records source identity/version, attempt, staging reservation, cancellation, durable import intent and exact returned Track ID. The retained staging manifest and copy are separate publications. Quiet time is only an observation heuristic; the retained regular source identity, size and mtime are checked around copying. Original source files remain untouched.",
         "A reviewed intake import enters the ordinary collection-write Desktop, safety backup and History path. Durable intent precedes Engine writes; the exact Track receipt precedes History After capture. These are independent commits, not a distributed atomic transaction. Reconciliation never resubmits an import.",
@@ -810,7 +810,7 @@
         "ReadSmartlistSafe owns a library-local observation lease. Existing history storage shares one SQLite owner across overlapping in-process readers; cross-process publication remains excluded until the last lease closes. Cancelling the first reader does not release another reader's lease.",
         "An unenrolled library is read optimistically without creating history storage. If enrollment appears during the read, the result is discarded and the side-effect-free callback is repeated under the owner. A durable pending repair refuses observation; reads never recover it implicitly.",
         "API collection-read metadata and native preparation lookups use this owner. Audio and PCM preparation retain their opened regular file across lookup, close discarded retry handles, and release observation before streaming or decoding. The API's collection scheduler remains a separate owner.",
-        "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_observe.go:1–59; internal/history/smartlist_read_lock.go:1–52; internal/api/browse.go:1–96; internal/api/pcm.go:1–192. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
+        "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_observe.go:1\u201359; internal/history/smartlist_read_lock.go:1\u201352; internal/api/browse.go:1\u201396; internal/api/pcm.go:1\u2013192. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
       ]
     },
     {
@@ -820,7 +820,7 @@
         "Engine CLI owns native Smartlist detection, temporally proven linkage, historical deletion attribution, staged images, exact plan tokens, publication and recovery. HTTP clients submit catalog operations; Engine database access remains CLI-owned.",
         "library.smartlist-repair.preview is a coherent read. apply requires the reviewed plan_token and fresh Desktop protection; recover also requires fresh Desktop protection. Both use the repair publisher's exclusive history owner and immutable originals rather than generic AutoBackup or history.Run.",
         "Reconnection gets a selective repair Undo entry. Proven deletion damage amends that original deletion's Before/After evidence so its existing one-step Undo remains the owner. An unattributed damaged component is removed without fabricated Undo; unrelated native rows and existing unrelated historical damage remain preserved.",
-        "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_publish.go:1–177; internal/history/smartlist_prepare.go:1–203; internal/api/smartlist_repair.go:1–32. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
+        "Reviewed committed evidence 9c73c219e66a760ef38d79ce606e3c233bce9079: internal/history/smartlist_publish.go:1\u2013177; internal/history/smartlist_prepare.go:1\u2013203; internal/api/smartlist_repair.go:1\u201332. Historical supplemental evidence remains separately pinned. Desktop-authored rule evaluation and Desktop acceptance are not established by this implementation evidence."
       ]
     },
     {
@@ -832,7 +832,7 @@
         "A queue without retained import intents does not enroll or wait on History merely to prepare sources. Missing History is identified before observation and checked again under the worker owner; unresolved missing or incomplete evidence still requires recovery.",
         "Service shutdown cancels an initial History wait and joins the worker without publishing successful initial readiness or recording cancellation as a worker failure.",
         "Import review opens its intake service before entering the shared Smartlist-safe read boundary. Only its database review callback, inside Service.Use, takes that read lease. At the original 6c8135c evidence revision, a live publisher or pending repair refused review; current reader ownership is described in the Cancellable collection reads supplement below; explicit import remains in the existing Desktop-protected History publication path.",
-        "Committed evidence: 6c8135c64da17554f2ff2aa6dbac05cf6270529c; internal/history/observe_entries.go:20–56; internal/intake/import.go:140–219; internal/intake/control.go:24–30; internal/intake/service.go:129–189; internal/api/intake.go:155–182. Historical diagram pins remain unchanged."
+        "Committed evidence: 6c8135c64da17554f2ff2aa6dbac05cf6270529c; internal/history/observe_entries.go:20\u201356; internal/intake/import.go:140\u2013219; internal/intake/control.go:24\u201330; internal/intake/service.go:129\u2013189; internal/api/intake.go:155\u2013182. Historical diagram pins remain unchanged."
       ]
     },
     {
@@ -843,7 +843,7 @@
         "A pending per-library read owner is published before native acquisition. The process-global readers mutex is released during the native wait, so unrelated libraries and existing readers can make progress. Overlapping readers share one retained native lease.",
         "Each waiting reader can cancel independently. A cancelled first acquirer removes its pending owner and wakes surviving waiters to retry. Once acquired, the native lease is detached from that first reader context and remains until its last reader releases it.",
         "Pending repair detected before acquisition refuses immediately; pending repair is checked again after acquisition before any observation. Reads do not recover or apply repair. Private History List and mutation acquisition retain fail-fast behavior; Desktop protection, snapshots and Undo publication remain unchanged.",
-        "Source evidence: 76d507cd514fc04c15bff17f69eba37bb3b591ce; internal/history/history.go:73–99; internal/history/smartlist_read_lock.go:24–83; internal/history/smartlist_observe.go; internal/history/smartlist_barrier.go:54–58. Behavioral evidence: internal/history/smartlist_read_wait_test.go and internal/api/intake_review_read_test.go; the immediate post-import GET is covered by internal/api/intake_import_test.go. Historical source pins remain unchanged."
+        "Source evidence: 76d507cd514fc04c15bff17f69eba37bb3b591ce; internal/history/history.go:73\u201399; internal/history/smartlist_read_lock.go:24\u201383; internal/history/smartlist_observe.go; internal/history/smartlist_barrier.go:54\u201358. Behavioral evidence: internal/history/smartlist_read_wait_test.go and internal/api/intake_review_read_test.go; the immediate post-import GET is covered by internal/api/intake_import_test.go. Historical source pins remain unchanged."
       ]
     },
     {
@@ -856,7 +856,7 @@
         "Discovery and source-preserving preparation do not import. Explicit reviewed import still owns Desktop checks, safety backup and ordinary History; decoded-frame audio admission remains a separate collection gate.",
         "Explicit replacement validates and preserves the portable watch/intake pair while the state owner is retained. Its native authority fence commits before the first live replacement. Ordinary collection Undo excludes both live journals; replacement Undo enrolls the paired images. Restored absence remains absent and still requires explicit watch activation.",
         "Source evidence: 05102c1cc0c4b1db00826dc007753b544162e79b. Watch discovery lifecycle and ownership diagrams describe the additional owners; the historical intake cards retain their original revision scope.",
-        "Source evidence: 05102c1cc0c4b1db00826dc007753b544162e79b; internal/intake/watch_events.go:23–140; internal/intake/watch_service.go:159–171,206–256,274–295. These ranges cover registration identity, complete successor installation and postvalidation, immediate follow-up scanning, and drain cancellation/join. Native-platform qualification is separate."
+        "Source evidence: 05102c1cc0c4b1db00826dc007753b544162e79b; internal/intake/watch_events.go:23\u2013140; internal/intake/watch_service.go:159\u2013171,206\u2013256,274\u2013295. These ranges cover registration identity, complete successor installation and postvalidation, immediate follow-up scanning, and drain cancellation/join. Native-platform qualification is separate."
       ]
     },
     {
@@ -868,23 +868,23 @@
     },
     {
       "dot": "cyan",
-      "title": "Offline Desktop fixture capture — shared CLI and HTTP primitive",
+      "title": "Offline Desktop fixture capture \u2014 shared CLI and HTTP primitive",
       "items": [
         "library fixture capture accepts explicitly offline before/after handovers and a new private output directory. Retained native ancestor identities reject input/output containment before output creation, including case-insensitive aliases without conflating distinct native names. Retained read-only handles archive all observed files and database sidecars before SQLite opens working databases; complete path, native-identity, size, timestamp and content observations are checked before and after processing. Observed changes fail capture. This does not establish live-copy atomicity.",
         "Distinct working copies recover copied rollback journals or WAL through SQLite, then the existing native SQLite backup primitive produces standalone snapshots. JSON exports retain SQL storage types, NULL and exact TEXT/BLOB bytes; unsupported filenames or schema metadata and ambiguous sidecar families fail closed. Native Smartlist, Playlist and PlaylistEntity comparisons retain complete rows and link changes. Failed outputs remain private evidence and cannot be reused.",
         "The synchronous CLI command and library.fixture.capture HTTP job delegate to the same capture primitive. API capture retains a catalog read effect and shared collection-read token, while its output writes serialize through the existing write queue. Queued cancellation creates no output; later failures retain private incomplete evidence and stable typed causes. Neither entrypoint opens original databases through SQLite, selects a library, enrolls companions, or creates normal collection backups or Undo history. Raw evidence requires privacy review; captured rule bytes and screenshot memberships do not establish an evaluator.",
-        "Committed source evidence at 16980172720ca6644c55cd3272b6a3ce9774f37b. cmd/engine-cli/library_fixture.go:12–46; internal/api/library_fixture.go:9–19; internal/api/scheduling.go:9–41; internal/fixturecapture/archive.go:44–123; internal/fixturecapture/archive.go:126–259; internal/fixturecapture/containment.go:11–51; internal/fixturecapture/snapshot.go:21–114; internal/fixturecapture/snapshot.go:116–212; internal/fixturecapture/compare.go:24–117; internal/fixturecapture/failure.go:1–15; internal/backup/sqlite.go:22–27. Historical source pins and graph topology remain unchanged."
+        "Committed source evidence at 16980172720ca6644c55cd3272b6a3ce9774f37b. cmd/engine-cli/library_fixture.go:12\u201346; internal/api/library_fixture.go:9\u201319; internal/api/scheduling.go:9\u201341; internal/fixturecapture/archive.go:44\u2013123; internal/fixturecapture/archive.go:126\u2013259; internal/fixturecapture/containment.go:11\u201351; internal/fixturecapture/snapshot.go:21\u2013114; internal/fixturecapture/snapshot.go:116\u2013212; internal/fixturecapture/compare.go:24\u2013117; internal/fixturecapture/failure.go:1\u201315; internal/backup/sqlite.go:22\u201327. Historical source pins and graph topology remain unchanged."
       ]
     },
     {
       "dot": "violet",
-      "title": "Native maintainer handoff — qualification and Desktop acceptance",
+      "title": "Native maintainer handoff \u2014 qualification and Desktop acceptance",
       "items": [
         "Dispatch with full committed source and ancestor golden revisions. Native macOS arm64 and x64 jobs build a clean complete checkout, bind actual host/Go architecture, golden bytes and CLI/helper hashes, and refuse reused output namespaces. Source inventories must remain unchanged.",
         "Observe all four baselines before the first repair in each independent seed: healthy, reconnect, unknown-removal and original-deletion. Apply reviewed tokens; verify complete native rows and exact History ownership; require zero-change preview/application without new Undo. Relocate with the old root absent and verify actual CLI track reads and scoped audio bytes against synthetic media.",
         "Qualification exercises exact-ID reconnect repair Undo and original-deletion Undo with preview and History preservation. A separate delivery seed repeats the baseline barrier and repair checks and stays repaired. Archive only allowlisted synthetic libraries, executable CLI, instructions and delivery-specific Undo script; extract into a fresh namespace and reverify repaired rows and bundled CLI audio. Private full-row provenance remains outside the delivery archive.",
         "Human Desktop evaluation records actual version/architecture, visible names, rules, memberships, sibling order and playback before Undo. Close Desktop before exact delivery-specific Undo, then reopen to record the two distinct restored states. Automated native qualification produces an acceptance candidate; desktop_accepted remains false until actual observations are reviewed.",
-        "Committed source evidence da0162f016a99113b5e37362668502aca83dbae6: .github/workflows/desktop-repair-handoff.yml:18–78; scripts/qualify-desktop-repair-handoff.mjs:29–44,51–95,98–201; scripts/desktop-repair/delivery.mjs:5–61; docs/internal/references/desktop-repair-handoff.md:9–27. Existing offline capture evidence remains 16980172720ca6644c55cd3272b6a3ce9774f37b. Source inspection proves neither a successful native workflow nor human Desktop acceptance."
+        "Committed source evidence da0162f016a99113b5e37362668502aca83dbae6: .github/workflows/desktop-repair-handoff.yml:18\u201378; scripts/qualify-desktop-repair-handoff.mjs:29\u201344,51\u201395,98\u2013201; scripts/desktop-repair/delivery.mjs:5\u201361; docs/internal/references/desktop-repair-handoff.md:9\u201327. Existing offline capture evidence remains 16980172720ca6644c55cd3272b6a3ce9774f37b. Source inspection proves neither a successful native workflow nor human Desktop acceptance."
       ]
     },
     {
@@ -893,17 +893,17 @@
       "items": [
         "tools.inspect reads each managed tool once and combines requirements with godeps version semantics. Each dependency has one highest minimum and observations for every requiring context, including Engine-managed tools. Missing, invalid or failed observations cannot establish readiness. Child processes receive their own managed dependency directory before the inherited PATH without mutating Engine's environment.",
         "tools.dependencies.install and tools.dependencies.update each run as one serialized system operation across every known requiring context. Separately managed copies remain explicit internally. Existing native installers and verification retain ownership; the aggregate operation records successes and failures without adding a post-write inspection. The consumer requests a separate fresh tools.inspect read before reporting readiness.",
-        "Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependencies.go:42–180; internal/acquire/shared_dependency_actions.go:31–122; internal/acquire/client.go:173–190; internal/api/tools.go:27–40. Historical source pins and graph topology remain unchanged."
+        "Committed source evidence 127214327ddd656b8ffe05de234fa13db639568b: internal/acquire/shared_dependencies.go:42\u2013180; internal/acquire/shared_dependency_actions.go:31\u2013122; internal/acquire/client.go:173\u2013190; internal/api/tools.go:27\u201340. Historical source pins and graph topology remain unchanged."
       ]
     },
     {
       "dot": "cyan",
       "title": "Native shared readers and exclusive publishers",
       "items": [
-        "ReadSmartlistSafe and ReadSmartlistProjection retain a native shared History lease for an enrolled library. Readers in separate processes can overlap; readers in one process share a reference-counted owner. The last reader releases that owner, independently of the first reader’s cancellation.",
+        "ReadSmartlistSafe and ReadSmartlistProjection retain a native shared History lease for an enrolled library. Readers in separate processes can overlap; readers in one process share a reference-counted owner. The last reader releases that owner, independently of the first reader\u2019s cancellation.",
         "History publication takes an exclusive lease on the same empty lock database. The lock database must be an empty regular file using a rollback journal. Native acquisition remains cancellable where the caller requests waiting; mutating History operations keep their fail-fast policy.",
         "ObserveEntries retains exclusive ownership while handing History entries to intake reconciliation. It is not the shared read lease. Intake preparation/import states and their recovery transitions do not change.",
-        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/history/smartlist_read_lock.go:26–113; internal/history/history.go:73–101; internal/history/history_lock.go:13–58; internal/history/observe_entries.go:18–58. Historical source pins and existing graph topology remain unchanged."
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/history/smartlist_read_lock.go:26\u2013113; internal/history/history.go:73\u2013101; internal/history/history_lock.go:13\u201358; internal/history/observe_entries.go:18\u201358. Historical source pins and existing graph topology remain unchanged."
       ]
     },
     {
@@ -911,9 +911,18 @@
       "title": "Smartlist sync observes source, then owns destination",
       "items": [
         "Sync captures the source native rows and projected Smartlist recovery evidence together, then releases source observation before inspecting or acquiring the destination. Preview computes the final destination graph without repairing either library.",
-        "Apply repeats the comparison under destination publication ownership before repair, backup or an ordinary History entry. Selected source rows, retained destination rows, conflict choices, mirror removals and native playlist identities determine one final graph. The final saved rows are also rehearsed against the destination’s declared Smartlist table constraints in isolated memory. Raw rule values and unchanged NULL cells are preserved.",
+        "Apply repeats the comparison under destination publication ownership before repair, backup or an ordinary History entry. Selected source rows, retained destination rows, conflict choices, mirror removals and native playlist identities determine one final graph. The final saved rows are also rehearsed against the destination\u2019s declared Smartlist table constraints in isolated memory. Raw rule values and unchanged NULL cells are preserved.",
         "The dedicated Library sync workflow describes this specialized path. It does not replace the ordinary collection-write safeguards.",
-        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:17–65; internal/transfer/smartlist_plan.go:11–80; internal/transfer/smartlist_validate.go:11–75; internal/history/smartlist_projection.go:29–100; internal/transfer/smartlist_constraints.go:14–64. Historical source pins and existing graph topology remain unchanged."
+        "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:17\u201365; internal/transfer/smartlist_plan.go:11\u201380; internal/transfer/smartlist_validate.go:11\u201375; internal/history/smartlist_projection.go:29\u2013100; internal/transfer/smartlist_constraints.go:14\u201364. Historical source pins and existing graph topology remain unchanged."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Read-only Smartlist membership",
+      "items": [
+        "smartlist.tracks is a library-scoped collection read through the existing job and read barrier. Engine CLI validates native rules, compiles allowlisted columns/operators with bound values, then returns current matching tracks using the existing listing fields. It creates no PlaylistEntity rows, snapshot, Undo entry or persistent membership cache.",
+        "Saved Stems status observes regular files under the library Stems directory by origin identity. Desktop transient rendering queue state is outside this offline read. Captured metadata memberships are replayed; Stems tests explicitly reconstruct excluded file inputs. Unknown rules fail with smartlist_rules_unsupported instead of returning partial rows.",
+        "Committed source evidence 51d7d1f9fe1761fe2af1c884f6773829624d3ba9: internal/api/smartlist_rules.go; internal/smartlist/evaluate.go; internal/db/db.go. Tests cover captured memberships, injection-shaped values, next-read changes, empty versus NULL values and a measured 50,000-track query plan. No new store, actor or write owner is introduced. Source and fixture evidence do not claim a new Desktop execution."
       ]
     }
   ]

@@ -6512,6 +6512,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/transfer/run.go:17–65; internal/transfer/smartlist_plan.go:11–80; internal/transfer/smartlist_validate.go:11–75; internal/history/smartlist_projection.go:29–100; internal/transfer/smartlist_constraints.go:14–64. Historical source pins and existing graph topology remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Read-only Smartlist membership</h3>
+        </div>
+        <ul>
+          <li>smartlist.tracks is a library-scoped collection read through the existing job and read barrier. Engine CLI validates native rules, compiles allowlisted columns/operators with bound values, then returns current matching tracks using the existing listing fields. It creates no PlaylistEntity rows, snapshot, Undo entry or persistent membership cache.</li>
+          <li>Saved Stems status observes regular files under the library Stems directory by origin identity. Desktop transient rendering queue state is outside this offline read. Captured metadata memberships are replayed; Stems tests explicitly reconstruct excluded file inputs. Unknown rules fail with smartlist_rules_unsupported instead of returning partial rows.</li>
+          <li>Committed source evidence 51d7d1f9fe1761fe2af1c884f6773829624d3ba9: internal/api/smartlist_rules.go; internal/smartlist/evaluate.go; internal/db/db.go. Tests cover captured memberships, injection-shaped values, next-read changes, empty versus NULL values and a measured 50,000-track query plan. No new store, actor or write owner is introduced. Source and fixture evidence do not claim a new Desktop execution.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
