@@ -46,6 +46,8 @@ Retry a staged acquisition or its failed mix tracks
 
 Usage: `engine-cli staging retry <id> [flags]`.
 
+- `--auto-install` (bool; default `false`): Install missing or outdated tools when retrying.
+
 - `--help, -h` (bool; default `false`): help for retry.
 - `--json` (bool; default `false`): Print compact structured results.
 

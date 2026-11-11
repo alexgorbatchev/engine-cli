@@ -269,7 +269,7 @@ func encodeRequest(request any) json.RawMessage {
 }
 
 // Retry preserves the original request and only retries unfinished mix children.
-func (s Service) Retry(ctx context.Context, id string) (any, error) {
+func (s Service) Retry(ctx context.Context, id string, autoInstall bool) (any, error) {
 	store := staging.New(s.Library)
 	item, err := store.Inspect(ctx, id)
 	if err != nil {
@@ -280,6 +280,7 @@ func (s Service) Retry(ctx context.Context, id string) (any, error) {
 		if err := json.Unmarshal(item.Request, &request); err != nil {
 			return nil, fmt.Errorf("staged item has no valid acquisition request: %w", err)
 		}
+		request.Options.AutoInstall = request.Options.AutoInstall || autoInstall
 		if err := request.Options.Validate(); err != nil {
 			return nil, err
 		}
@@ -290,6 +291,7 @@ func (s Service) Retry(ctx context.Context, id string) (any, error) {
 		if err := json.Unmarshal(item.Request, &request); err != nil {
 			return nil, err
 		}
+		request.Options.AutoInstall = request.Options.AutoInstall || autoInstall
 		if err := request.Options.Validate(); err != nil {
 			return nil, err
 		}
@@ -305,7 +307,7 @@ func (s Service) Retry(ctx context.Context, id string) (any, error) {
 			readyCount++
 			continue
 		}
-		result, err := s.Retry(ctx, child.ID)
+		result, err := s.Retry(ctx, child.ID, autoInstall)
 		if err != nil {
 			retryErr = errors.Join(retryErr, err)
 		}

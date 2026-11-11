@@ -51,6 +51,30 @@ func TestMixDoesNotStageIncompleteNativeOutput(t *testing.T) {
 	}
 }
 
+func TestRetryEnablesInstallationOverSavedOptOut(t *testing.T) {
+	for _, kind := range []string{"track", "mix"} {
+		t.Run(kind, func(t *testing.T) {
+			lib := t.TempDir()
+			store := staging.New(lib)
+			item, err := store.Create(t.Context(), staging.Item{Kind: kind, Status: "failed", Request: json.RawMessage(`{"query":"song","options":{"auto_install":false}}`)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			called := false
+			service := Service{Library: lib, Client: acquire.Client{Runner: func(_ context.Context, _ string, args ...string) ([]byte, error) {
+				called = true
+				if !contains(args, "--auto-install") {
+					t.Fatalf("retry omitted installation: %v", args)
+				}
+				return nil, errors.New("download unavailable")
+			}}}
+			if _, err := service.Retry(t.Context(), item.ID, true); err == nil || !called {
+				t.Fatalf("retry err=%v called=%v", err, called)
+			}
+		})
+	}
+}
+
 func TestMixRetryOnlyFailedChildren(t *testing.T) {
 	ctx := context.Background()
 	lib := t.TempDir()
@@ -80,7 +104,7 @@ func TestMixRetryOnlyFailedChildren(t *testing.T) {
 	}
 	first := report.Item.Items[0]
 	failed := report.Item.Items[1]
-	result, err := service.Retry(ctx, report.Item.ID)
+	result, err := service.Retry(ctx, report.Item.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +145,7 @@ func TestRetryEmptyMixKeepsIdentity(t *testing.T) {
 	if err == nil {
 		t.Fatal("failed mix reported success")
 	}
-	retried, err := service.Retry(ctx, report.Item.ID)
+	retried, err := service.Retry(ctx, report.Item.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}

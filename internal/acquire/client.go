@@ -18,7 +18,9 @@ import (
 )
 
 type Client struct {
-	Runner enginesync.CommandRunner
+	// LatestVersion replaces read-only release discovery, independently of installation.
+	LatestVersion func(context.Context, string) (string, error)
+	Runner        enginesync.CommandRunner
 	// Installer replaces the GitHub release installer for managed tools.
 	Installer godeps.Installer
 	// autoInstall installs a missing or outdated managed tool before running it.

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-11-10 05:49
+last_modified: 2026-11-11 06:25
 status: current
 ---
 
@@ -84,6 +84,7 @@ The test for everything this CLI writes: close the app, open the library in Engi
 ## Setup & Environment
 - **Prerequisites:** Go 1.27.2+, `ffmpeg`, `ffprobe`, `just`. Analysis tests stand in fake `ffmpeg`/`ffprobe` scripts on `PATH` that stream PCM sidecar files. `fetch-track`, `fetch-mix`, `tag-track`, and `agent-ask-cli` are managed dependencies.
 - **Managed Tool Dependencies:** Install, update, and verify `fetch-track`, `fetch-mix`, `tag-track`, and `agent-ask-cli` through `github.com/alexgorbatchev/godeps/v2`; never call a tool's own updater. `internal/acquire/requirements.go` owns minimum versions and release repositories. Managed releases live in `$XDG_DATA_HOME/engine-cli/bin`. At startup and after installation, use a godeps manager containing every tool requirement to select satisfying copies. Satisfying external copies retain precedence; a satisfying managed copy replaces an outdated or unreadable external copy. The managed bin directory is shared, so promoting it for one tool also promotes the other managed executables. Ordinary version checks must not mutate process-wide `PATH`. Running a missing or outdated tool fails with `tool_unavailable` or `tool_outdated` unless the request sets `auto_install`, which installs or updates it through godeps first; install failures use `tool_install_failed`. Rely on godeps for version parsing; it never lets an unreadable version satisfy a requirement. When godeps lacks behavior or misbehaves, fix and release godeps rather than working around it here.
+- **Tool Release Checks:** `tools inspect --check-updates` and HTTP `tools.inspect` with `check_updates:true` add official website links and available upstream versions to the shared dependency report. Release checks are read-only; per-tool lookup failures retain installed-version observations and do not invalidate dependency readiness. The UI always enables supported `auto_install` parameters, including retries of saved acquisition requests.
 - **Default Library Directory:** `$HOME/Music/Engine Library` (override with `-l <dir>` / `--lib-dir`).
 - **API Startup Libraries:** `ENGINE_LIBRARY_PATHS` supplies semicolon-separated existing library directories to `api serve`; ignore empty entries and trim surrounding whitespace. Explicit `--library` flags replace the environment list; `--lib-dir` still selects the unscoped default library.
 - **Portable Library Storage:** Store default backups in `<lib-dir>/.engine-cli/backups/` and undo history in `<lib-dir>/.engine-cli/history/`. Library-contained history paths must follow the library when it moves.

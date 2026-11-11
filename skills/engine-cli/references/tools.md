@@ -3,6 +3,8 @@
 All commands inherit the root flags documented in [SKILL.md](../SKILL.md).
 
 1. Run `engine-cli tools inspect --json` to read all managed tools and one row per dependency, including the highest known minimum version and every requiring tool context. `verified:false` or `complete:false` means a check was incomplete; `satisfied:false` also covers known missing or outdated copies.
+Use `--check-updates` to include latest upstream versions and official sites without installing. A release lookup failure sets `update_error_code` independently of installed-version verification. FFmpeg source releases may differ from package-manager versions.
+
 2. Run `engine-cli tools dependencies install --dependencies ffmpeg --json` or `engine-cli tools dependencies update --dependencies ffmpeg --json` to change every known requiring context in one operation. An absent copy is installed and an installed copy is updated regardless of the chosen verb. Selected names are deduplicated. Each tool's installer owns its copies, so multiple package-manager invocations may occur. An empty or unknown selection fails before mutation.
 3. Read the returned `status` and per-context `receipts`, including successful receipts when the command exits unsuccessfully or is cancelled. Incomplete preflight coverage reports `dependency_check_incomplete` while permitting repair of known contexts. Run inspection again after any terminal outcome; a successful action is not a readiness report.
 
@@ -21,6 +23,8 @@ Usage: `engine-cli tools [flags]`.
 Inspect all tools and their shared requirements
 
 Usage: `engine-cli tools inspect [flags]`.
+
+- `--check-updates` (bool; default `false`): Check latest upstream releases without installing.
 
 - `--help, -h` (bool; default `false`): help for inspect.
 - `--json` (bool; default `false`): Print compact structured results.

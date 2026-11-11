@@ -78,7 +78,7 @@ func TestFailedRetryLeavesNoHistory(t *testing.T) {
 		t.Fatal("failed download reported success")
 	}
 	entry, err := history.Run(ctx, lib, "staging.retry", history.ScopeFiles, nil, func(ctx context.Context) error {
-		_, err := s.Retry(ctx, report.Item.ID)
+		_, err := s.Retry(ctx, report.Item.ID, false)
 		return err
 	})
 	if err == nil {

@@ -8,6 +8,9 @@ import (
 type toolParams struct {
 	Tool string `json:"tool"`
 }
+type toolsInspectParams struct {
+	CheckUpdates bool `json:"check_updates"`
+}
 type dependencyParams struct {
 	Tool         string   `json:"tool"`
 	Dependencies []string `json:"dependencies"`
@@ -21,13 +24,19 @@ type providerParams struct {
 
 // toolClient runs and installs managed tools as the server is configured to.
 func (s *Server) toolClient() acquire.Client {
-	return acquire.Client{Runner: s.config.ToolRunner, Installer: s.config.ToolInstaller}
+	return acquire.Client{Runner: s.config.ToolRunner, Installer: s.config.ToolInstaller, LatestVersion: s.config.ToolLatestVersion}
 }
 
 func (s *Server) toolOperations() []operation {
 	client := s.toolClient()
 	return []operation{
-		defineEffect("tools.inspect", "read", nil, func(ctx context.Context, _ emptyParams) (any, error) { return client.InspectTools(ctx) }),
+		defineEffect("tools.inspect", "read", nil, func(ctx context.Context, p toolsInspectParams) (any, error) {
+			report, err := client.InspectTools(ctx)
+			if err == nil && p.CheckUpdates {
+				err = client.CheckToolUpdates(ctx, report)
+			}
+			return report, err
+		}),
 		defineEffect("tools.dependencies.install", "system", []string{"dependencies"}, func(ctx context.Context, p sharedDependencyParams) (any, error) {
 			return client.ChangeDependencies(ctx, "install", p.Dependencies)
 		}),

@@ -39,7 +39,7 @@ func TestMixRetryAttemptsEachFailedChildAndKeepsPartialResults(t *testing.T) {
 				queries = append(queries, args[len(args)-1])
 				return json.Marshal(acquire.TrackResult{Status: "error", Error: "fixture source offline"})
 			}}}
-			result, err := service.Retry(ctx, parent.ID)
+			result, err := service.Retry(ctx, parent.ID, false)
 			if (err == nil) != existingReady {
 				t.Fatalf("result=%+v error=%v", result, err)
 			}

@@ -39,7 +39,8 @@ type Config struct {
 	ArtworkRunner  artwork.CommandRunner
 	ToolRunner     enginesync.CommandRunner
 	// ToolInstaller replaces release downloads for managed tools.
-	ToolInstaller godeps.Installer
+	ToolInstaller     godeps.Installer
+	ToolLatestVersion func(context.Context, string) (string, error)
 }
 
 type Server struct {

@@ -61,11 +61,11 @@ func addAcquisitionCommands(root *cobra.Command) {
 	track.AddCommand(acquisitionCommand("track.verify", "verify [url|path|identifier]", "Verify the spectral quality of remote, local, collection, or staged audio", "identifier", []acquisitionFlag{{"target", "string", "Verify this URL or local path"}, {"staging-id", "string", "Verify this staged item instead of a collection track"}, {"min-bandwidth-khz", "float", "Minimum accepted bandwidth in kHz"}, {"auto-install", "bool", "Install missing verification dependencies"}}))
 	tags := &cobra.Command{Use: "tags", Short: "Inspect and update tags embedded in audio files", Args: cobra.NoArgs}
 	targetFlags := []acquisitionFlag{{"staging-id", "string", "Select a staged item"}, {"staging-ids", "strings", "Select staged items; repeat or separate with commas"}, {"path", "string", "Select a local audio file"}, {"paths", "strings", "Select local audio paths; repeat or separate with commas"}}
-	tags.AddCommand(acquisitionCommand("track.tags.inspect", "inspect [path|identifier...]", "Inspect actual audio file tags", "identifiers", targetFlags))
+	tags.AddCommand(acquisitionCommand("track.tags.inspect", "inspect [path|identifier...]", "Inspect actual audio file tags", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"auto-install", "bool", "Install missing or outdated tag tools"})))
 	tags.AddCommand(acquisitionCommand("track.tags.update", "update [path|identifier...]", "Update embedded tags while preserving original audio and collection metadata", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), tagFlags...)))
 	track.AddCommand(tags)
 	artwork, _, _ := track.Find([]string{"artwork"})
-	artwork.AddCommand(acquisitionCommand("track.artwork.embed", "embed [path|identifier...]", "Embed artwork without re-encoding audio", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"artwork", "string", "Artwork file path or URL"})))
+	artwork.AddCommand(acquisitionCommand("track.artwork.embed", "embed [path|identifier...]", "Embed artwork without re-encoding audio", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"artwork", "string", "Artwork file path or URL"}, acquisitionFlag{"auto-install", "bool", "Install missing or outdated tag tools"})))
 	mix := &cobra.Command{Use: "mix", Short: "Extract tracklists and acquire ordered mixes", Args: cobra.NoArgs}
 	for _, action := range []string{"inspect", "candidates", "fetch"} {
 		flags := append([]acquisitionFlag{}, mixFetchFlags...)
@@ -94,7 +94,7 @@ func addAcquisitionCommands(root *cobra.Command) {
 	tool.AddCommand(deps)
 	root.AddCommand(tool)
 	tools := &cobra.Command{Use: "tools", Short: "Manage shared dependencies across all tools", Args: cobra.NoArgs}
-	tools.AddCommand(acquisitionCommand("tools.inspect", "inspect", "Inspect all tools and their shared requirements", "", nil))
+	tools.AddCommand(acquisitionCommand("tools.inspect", "inspect", "Inspect all tools and their shared requirements", "", []acquisitionFlag{{"check-updates", "bool", "Check latest upstream releases without installing"}}))
 	shared := &cobra.Command{Use: "dependencies", Short: "Install or update every known copy of a dependency", Args: cobra.NoArgs}
 	for _, action := range []string{"install", "update"} {
 		command := acquisitionCommand("tools.dependencies."+action, action, "Manage selected dependencies across all requiring tools", "", []acquisitionFlag{{"dependencies", "strings", "Required dependency names; repeat or use commas"}})
@@ -106,7 +106,7 @@ func addAcquisitionCommands(root *cobra.Command) {
 	tools.AddCommand(shared)
 	root.AddCommand(tools)
 	staged, _, _ := root.Find([]string{"staging"})
-	staged.AddCommand(acquisitionCommand("staging.retry", "retry <id>", "Retry a staged acquisition or its failed mix tracks", "id", nil))
+	staged.AddCommand(acquisitionCommand("staging.retry", "retry <id>", "Retry a staged acquisition or its failed mix tracks", "id", []acquisitionFlag{{"auto-install", "bool", "Install missing or outdated tools when retrying"}}))
 }
 
 func acquisitionCommand(operation, use, short, positional string, flags []acquisitionFlag) *cobra.Command {

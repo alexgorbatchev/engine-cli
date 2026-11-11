@@ -109,7 +109,7 @@ func TestRetryRejectsMissingOrDamagedRequests(t *testing.T) {
 	ctx := context.Background()
 	service := Service{Library: t.TempDir()}
 	store := staging.New(service.Library)
-	if _, err := service.Retry(ctx, "missing"); err == nil {
+	if _, err := service.Retry(ctx, "missing", false); err == nil {
 		t.Fatal("retried missing item")
 	}
 	for _, kind := range []string{"track", "mix"} {
@@ -118,7 +118,7 @@ func TestRetryRejectsMissingOrDamagedRequests(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err = service.Retry(ctx, item.ID); err == nil {
+			if _, err = service.Retry(ctx, item.ID, false); err == nil {
 				t.Fatal("retried damaged request")
 			}
 		}
@@ -233,7 +233,7 @@ func TestMixFailureAndCancellationPreserveRetryState(t *testing.T) {
 				service.Client.Runner = func(context.Context, string, ...string) ([]byte, error) {
 					return []byte(`{"status":"error","error":"still offline"}`), nil
 				}
-				result, err := service.Retry(ctx, parent.ID)
+				result, err := service.Retry(ctx, parent.ID, false)
 				if err == nil {
 					t.Fatal("failed retry reported success")
 				}

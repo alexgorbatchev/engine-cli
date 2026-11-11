@@ -57,6 +57,40 @@ func TestSharedDependencyInspectionAndRequestBoundary(t *testing.T) {
 	}
 }
 
+func TestToolReleaseChecksAreExplicitAndReadOnly(t *testing.T) {
+	s := sharedDependencyAPI(t, func(context.Context, string, []string) ([]byte, error) {
+		t.Fatal("release check invoked a tool mutation")
+		return nil, nil
+	})
+	checks := 0
+	s.config.ToolLatestVersion = func(context.Context, string) (string, error) {
+		checks++
+		return "v10.0.0", nil
+	}
+	for _, op := range s.toolOperations() {
+		s.operations[op.Name] = op
+	}
+	for _, check := range []bool{false, true} {
+		raw, err := json.Marshal(map[string]bool{"check_updates": check})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, _, err := s.RunOperation(t.Context(), "tools.inspect", raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		report := result.(*acquire.ToolsInspection)
+		if report.UpdatesChecked != check || (!check && checks != 0) || (check && checks != len(report.Dependencies)) {
+			t.Fatalf("check=%v calls=%d report=%+v", check, checks, report)
+		}
+		for _, dep := range report.Dependencies {
+			if check && dep.AvailableVersion != "10.0.0" {
+				t.Fatalf("release missing: %+v", dep)
+			}
+		}
+	}
+}
+
 func TestSharedDependencyJobRetainsReceiptsAfterFailureOrCancellation(t *testing.T) {
 	for _, cancelled := range []bool{false, true} {
 		t.Run(map[bool]string{false: "failure", true: "cancelled"}[cancelled], func(t *testing.T) {

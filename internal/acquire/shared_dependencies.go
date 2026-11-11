@@ -23,6 +23,9 @@ type DependencyContext struct {
 
 // SharedDependency combines requirements without hiding separately installed copies.
 type SharedDependency struct {
+	Website           string              `json:"website,omitempty"`
+	AvailableVersion  string              `json:"available_version,omitempty"`
+	UpdateErrorCode   string              `json:"update_error_code,omitempty"`
 	Name              string              `json:"name"`
 	MinimumVersion    string              `json:"minimum_version"`
 	InstalledVersions []string            `json:"installed_versions"`
@@ -35,9 +38,10 @@ type SharedDependency struct {
 }
 
 type ToolsInspection struct {
-	Tools        []*Tool             `json:"tools"`
-	Dependencies []*SharedDependency `json:"dependencies"`
-	Complete     bool                `json:"complete"`
+	UpdatesChecked bool                `json:"updates_checked"`
+	Tools          []*Tool             `json:"tools"`
+	Dependencies   []*SharedDependency `json:"dependencies"`
+	Complete       bool                `json:"complete"`
 }
 
 // InspectTools reads each tool once so requirements and observations share one
@@ -94,6 +98,7 @@ func aggregateTools(tools []*Tool) *ToolsInspection {
 		}
 	}
 	for _, dep := range byName {
+		dep.Website = toolWebsite(dep.Name)
 		finishDependency(dep, report.Complete)
 		report.Dependencies = append(report.Dependencies, dep)
 	}

@@ -84,6 +84,8 @@ Embed artwork without re-encoding audio
 
 Usage: `engine-cli track artwork embed [path|identifier...] [flags]`.
 
+- `--auto-install` (bool; default `false`): Install missing or outdated tag tools.
+
 - `--artwork` (string; default ``): Artwork file path or URL.
 - `--help, -h` (bool; default `false`): help for embed.
 - `--json` (bool; default `false`): Print compact structured results.
@@ -554,6 +556,8 @@ Usage: `engine-cli track tags [flags]`.
 Inspect actual audio file tags
 
 Usage: `engine-cli track tags inspect [path|identifier...] [flags]`.
+
+- `--auto-install` (bool; default `false`): Install missing or outdated tag tools.
 
 - `--help, -h` (bool; default `false`): help for inspect.
 - `--json` (bool; default `false`): Print compact structured results.

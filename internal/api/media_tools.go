@@ -33,6 +33,7 @@ func (p mediaParams) validate() error {
 }
 
 type tagInspectParams struct {
+	AutoInstall bool     `json:"auto_install"`
 	Identifier  string   `json:"identifier"`
 	StagingID   string   `json:"staging_id"`
 	Path        string   `json:"path"`
@@ -71,6 +72,7 @@ type tagParams struct {
 }
 
 type artworkParams struct {
+	AutoInstall bool     `json:"auto_install"`
 	Identifier  string   `json:"identifier"`
 	StagingID   string   `json:"staging_id"`
 	Path        string   `json:"path"`
@@ -138,11 +140,17 @@ func (s *Server) mediaPath(ctx context.Context, p mediaParams) (string, error) {
 		return value.(string), nil
 	})
 }
+
+type stagedRetryParams struct {
+	ID          string `json:"id"`
+	AutoInstall bool   `json:"auto_install"`
+}
+
 func (s *Server) mediaOperations() []operation {
 	client := s.toolClient()
 	ops := []operation{
-		defineEffect("staging.retry", "staging", []string{"id"}, func(ctx context.Context, p stagedIDParams) (any, error) {
-			return s.acquisitionService().Retry(ctx, p.ID)
+		defineEffect("staging.retry", "staging", []string{"id"}, func(ctx context.Context, p stagedRetryParams) (any, error) {
+			return s.acquisitionService().Retry(ctx, p.ID, p.AutoInstall)
 		}),
 		define("track.verify", false, nil, func(ctx context.Context, p mediaParams) (any, error) {
 			path, err := s.mediaPath(ctx, p)
@@ -152,13 +160,13 @@ func (s *Server) mediaOperations() []operation {
 			return client.Verify(ctx, path, acquire.VerifyOptions{MinBandwidthKHz: p.MinBandwidthKHz, AutoInstall: p.AutoInstall})
 		}),
 		define("track.tags.inspect", false, nil, func(ctx context.Context, p tagInspectParams) (any, error) {
-			return s.tagSelection(ctx, p.selection(), "inspect", acquire.TagOptions{})
+			return s.tagSelection(ctx, p.selection(), "inspect", acquire.TagOptions{AutoInstall: p.AutoInstall})
 		}),
 	}
 	ops = append(ops, defineEffect("track.tags.update", "collection", nil, func(ctx context.Context, p tagParams) (any, error) {
 		return s.tagSelection(ctx, p.selection(), "update", p.options())
 	}), defineEffect("track.artwork.embed", "collection", []string{"artwork"}, func(ctx context.Context, p artworkParams) (any, error) {
-		return s.tagSelection(ctx, p.selection(), "artwork", acquire.TagOptions{Artwork: p.Artwork})
+		return s.tagSelection(ctx, p.selection(), "artwork", acquire.TagOptions{Artwork: p.Artwork, AutoInstall: p.AutoInstall})
 	}))
 	return ops
 }
