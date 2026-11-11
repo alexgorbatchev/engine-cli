@@ -38,3 +38,21 @@ func (s *Server) removeSmartlistOperation() operation {
 		})
 	})
 }
+
+type moveSmartlistParams struct {
+	UUID   string `json:"uuid"`
+	To     string `json:"to"`
+	Before string `json:"before"`
+}
+
+func (s *Server) moveSmartlistOperation() operation {
+	return define("smartlist.move", true, []string{"uuid"}, func(ctx context.Context, p moveSmartlistParams) (any, error) {
+		return s.database(ctx, func(d *sql.DB) (any, error) {
+			parent, err := playlist.MoveSmartlist(ctx, d, p.UUID, p.To, p.Before)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"uuid": p.UUID, "parent_id": parent}, nil
+		})
+	})
+}

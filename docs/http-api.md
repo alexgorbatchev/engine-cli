@@ -997,6 +997,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.rename` | `identifier`, `title` |
 | `smartlist.rename` | `uuid`, `title` |
 | `smartlist.rm` | `uuid` |
+| `smartlist.move` | `uuid`, `to`, `before` |
 | `smartlist.convert` | `uuid`, `plan_token` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling playlist identifier or `smart:<UUID>`, omitted appends after all ordinary and Smartlist siblings |
@@ -1142,3 +1143,8 @@ engine-cli session import 12 --plan-token <reviewed-token>
 ```
 
 Keep `--name`, `--parent`, and `--skip-missing` identical between review and apply. Human output prints tables and counts; `--json` emits the structured HTTP results.
+
+
+`smartlist.move` moves a saved definition identified by required `uuid`. Optional `to` is an ordinary playlist ID; omitted, empty or `0` means the library root. Optional `before` is a sibling ordinary playlist ID or `smart:<UUID>`; omitted or empty appends after every sibling. Smartlists cannot be parents. The native transaction parks the source outside its parent, joins its predecessor to its old successor, inserts it at the destination slot and restores its parent. Rules and edit time remain byte-identical, and no ordinary playlist, track or membership row is written. The original and final native graphs must validate. The operation uses fresh Desktop protection, snapshot and exact Undo, and returns held `{uuid,parent_id}` values without a post-commit read.
+
+Invalid destinations return `smartlist_move_parent`; missing or wrong-parent anchors return `smartlist_move_anchor`; self anchors return `smartlist_move_self`; unchanged positions return `smartlist_move_unchanged`. Same-parent Smartlist name collisions return `smartlist_name_conflict`. A missing source returns `smartlist_not_found`, and invalid links require the existing repair workflow. Rejected moves and failed transactions preserve native rows.

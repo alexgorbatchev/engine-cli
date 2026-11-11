@@ -39,6 +39,7 @@ func (s *Server) playlistOperations() []operation {
 	return append(s.smartlistRuleOperations(), []operation{
 		s.renameSmartlistOperation(),
 		s.removeSmartlistOperation(),
+		s.moveSmartlistOperation(),
 		s.importPlaylistOperation(),
 		s.exportPlaylistOperation(),
 		s.reorderPlaylistOperation(),
