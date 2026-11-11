@@ -865,6 +865,12 @@ A saved Smartlist whose links do not resolve is left out of `nodes` and listed i
 
 Same-parent Smartlist names must be unique, treating NULL and empty root paths equivalently; ordinary playlist names form a separate namespace. Stable refusal codes include `smartlist_name_conflict`, `smartlist_changed`, `smartlist_not_found`, `smartlist_rules_read_only`, `smartlist_rules_invalid`, `smartlist_parent_not_found`, `smartlist_paths_damaged` and `smartlist_schema_unavailable`. The catalog and persisted rules do not materialize track membership.
 
+### Smartlist conversion
+
+`smartlist.convert.preview` requires `uuid` and reads one snapshot. It returns `{uuid,title,parent_id,parent_path,track_count,can_apply,plan_token}`. The name starts with the source Smartlist title and uses the first free suffix starting at `2`, avoiding native path collisions across all ordinary playlists, including semicolons in titles. The destination is the same parent, at the end of its mixed sibling order. Empty matches report `can_apply:false`; unsupported rules refuse with `smartlist_rules_unsupported`.
+
+`smartlist.convert` requires `uuid` and the reviewed `plan_token`. It re-evaluates rules, ordered matching IDs, parent and destination name inside its write transaction. A changed plan refuses with `smartlist_conversion_changed`; empty matches refuse with `smartlist_conversion_empty`. It creates an ordinary playlist and native memberships in ascending local track-ID order, using each track's native origin identity. Source Smartlist and rule bytes remain intact; terminal sibling links are updated to precede the new ordinary tail. Final native links are validated before commit. The result is `{uuid,playlist_id,title,track_count}`, captured before commit without a post-commit read. Fresh Desktop protection, snapshot and Undo apply. Undo restores the exact ordinary rows and native links. Membership is static after creation; later track metadata changes affect only future Smartlist evaluation.
+
 ### Saved Smartlist link repair
 
 `smartlist.tracks` requires `uuid` and returns the same track fields as `track.list`, ordered by local track ID. It is a collection read: native rules are validated and compiled with allowlisted columns/operators and bound parameters on every request. No Smartlist memberships are written to `PlaylistEntity`, and the operation creates no snapshot or Undo entry. Missing identities return `smartlist_not_found`; unsupported rule documents return `smartlist_rules_unsupported` without partial tracks. An empty match is `[]`.
@@ -991,6 +997,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.rename` | `identifier`, `title` |
 | `smartlist.rename` | `uuid`, `title` |
 | `smartlist.rm` | `uuid` |
+| `smartlist.convert` | `uuid`, `plan_token` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling playlist identifier or `smart:<UUID>`, omitted appends after all ordinary and Smartlist siblings |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |

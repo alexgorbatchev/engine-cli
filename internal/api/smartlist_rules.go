@@ -16,6 +16,16 @@ type getSmartlistParams struct {
 
 func (s *Server) smartlistRuleOperations() []operation {
 	return []operation{
+		defineCollectionRead("smartlist.convert.preview", []string{"uuid"}, func(ctx context.Context, p getSmartlistParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				return smartlist.PreviewConversion(ctx, d, p.UUID, s.config.LibraryDir)
+			})
+		}),
+		define("smartlist.convert", true, []string{"uuid", "plan_token"}, func(ctx context.Context, p smartlist.ConversionOptions) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				return smartlist.Convert(ctx, d, s.config.LibraryDir, p)
+			})
+		}),
 		defineCollectionRead("smartlist.tracks", []string{"uuid"}, func(ctx context.Context, p getSmartlistParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				ids, err := smartlist.MatchingIDs(ctx, d, p.UUID, s.config.LibraryDir)

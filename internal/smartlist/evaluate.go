@@ -2,7 +2,6 @@ package smartlist
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,11 +9,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
 // MatchingIDs computes native membership on every read. It never materializes
 // PlaylistEntity rows or caches membership. Ordering matches collection reads.
-func MatchingIDs(ctx context.Context, d *sql.DB, id, libraryFolder string) ([]int64, error) {
+func MatchingIDs(ctx context.Context, d db.Reader, id, libraryFolder string) ([]int64, error) {
 	_, raw, err := read(ctx, d, id)
 	if err != nil {
 		return nil, err
