@@ -616,6 +616,16 @@
         "Each active undo journal accepts one relocation. A repeated request is refused before creating another destination, preserving the original publication cleanup and destination ownership.",
         "Committed source evidence 7592ce2f01fae810afcd97cdbfe7ebfea47df05b: internal/history/relocate.go:19–100; internal/history/relocate_copy_test.go. Existing History publication and Undo remain the owners; no new persistence store or actor is introduced."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Exact playlist positions among saved Smartlists",
+      "items": [
+        "playlist.move accepts an ordinary playlist selector or smart:<UUID> as its before anchor. The destination remains an ordinary playlist folder or the library root. Append means the end of the complete mixed sibling order.",
+        "The existing collection-write path owns Desktop protection, backup and History. A native transaction validates the anchor, unlinks the source, rewrites ordinary paths and reconnects Smartlist predecessor links. Invalid or ambiguous anchors roll back; moving to the existing exact mixed position is a no-op.",
+        "Saved Smartlist rules and identity remain opaque and unchanged. Existing Undo restores the complete native playlist and Smartlist rows; no new store, machine or publication owner is introduced.",
+        "Committed source evidence 7984b27930261ebf40fb991f6e00dd03cfbf818d: internal/db/playlist_order.go; internal/db/playlist_position.go; internal/playlist/playlist.go; internal/api/playlist_smartlist_test.go. Synthetic rollback and Undo verification do not establish an observed Engine DJ Desktop reopen. Historical source pins remain unchanged."
+      ]
     }
   ]
 }
