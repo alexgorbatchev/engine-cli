@@ -933,6 +933,16 @@
         "The existing write job owns fresh Desktop protection, snapshot and History Undo. Exact Undo restores the removed definition and sibling links. The result returns the UUID and parent playlist ID without a post-commit read. No new scheduler, persistent store or actor is introduced.",
         "Committed CLI evidence b57050cfac99b280b20a099a4d5549c3e5aa148c: internal/playlist/smartlist_remove.go; internal/api/smartlist.go; internal/api/smartlist_remove_test.go. Recovered Desktop sequence at engine-dj-app 4e406207fa23c9ca2027b9a47f4738e5108ef7c8 and native-constraint fixtures establish this persisted transaction contract, not a new Desktop execution."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Reviewed Smartlist conversion",
+      "items": [
+        "smartlist.convert.preview reads a coherent plan: source UUID, collision-free ordinary title, same parent and current matching count. Empty plans cannot apply; unsupported rules refuse. The plan token binds rule bytes, parent, name and ascending local track IDs.",
+        "smartlist.convert recomputes the plan inside one native transaction, appends the ordinary playlist after all mixed siblings and materializes native origin-key memberships. Names avoid semicolon path aliases across the entire ordinary hierarchy. Final native links are validated before commit. Source Smartlist and rules survive, and later metadata changes do not alter the new playlist membership.",
+        "Existing collection scheduling, fresh Desktop protection, snapshots and History Undo remain authoritative. Undo restores exact rows and links. The returned destination is captured before commit without a post-commit read. No new persistent store or scheduler is introduced.",
+        "Committed CLI 4f950ecf694d21b50557fae5215cae1dd24f587b: internal/smartlist/conversion.go:39-166; internal/api/smartlist_rules.go; internal/api/smartlist_conversion_test.go. Recovered engine-dj-app 4e406207fa23c9ca2027b9a47f4738e5108ef7c8 conversion source and authentic Desktop native conversion/membership fixtures support this contract without claiming a new Desktop run."
+      ]
     }
   ]
 }

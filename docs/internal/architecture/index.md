@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-11-11 02:18
+last_modified: 2026-11-11 04:20
 status: current
 ---
 
@@ -191,3 +191,5 @@ The [overview](overview.html) records read-only membership ownership at CLI `51d
 ## Smartlist removal ownership
 
 The [overview](overview.html) documents committed CLI `b57050cfac99b280b20a099a4d5549c3e5aa148c`. A protected write parks, relinks and removes a native definition in one transaction, preserving tracks, playlists, memberships and opaque rule bytes. Snapshot and History Undo retain their existing owners. Recovered source and native-constraint fixtures establish persistence compatibility without claiming a new Desktop run.
+
+The overview documents reviewed Smartlist conversion at committed CLI `4f950ecf694d21b50557fae5215cae1dd24f587b`. Preview and apply bind current rule bytes, parent, collision-free native path and ordered membership. Existing protected writes own snapshot/Undo; one transaction preserves the source, creates the ordinary playlist, materializes origin-key membership and validates final links. No new store or scheduler is added.
