@@ -36,7 +36,7 @@ type moveMembershipParams struct {
 }
 
 func (s *Server) playlistOperations() []operation {
-	return []operation{
+	return append(s.smartlistRuleOperations(), []operation{
 		s.renameSmartlistOperation(),
 		s.importPlaylistOperation(),
 		s.exportPlaylistOperation(),
@@ -76,7 +76,7 @@ func (s *Server) playlistOperations() []operation {
 				})
 			})
 		}),
-	}
+	}...)
 }
 
 func (s *Server) membershipOperation(name string) operation {
