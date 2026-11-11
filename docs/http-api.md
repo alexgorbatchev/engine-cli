@@ -990,6 +990,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `session.import` | `session`, `name?`, `parent?`, `skip_missing?`, `dry_run?`, `plan_token?`; see play history below |
 | `playlist.rename` | `identifier`, `title` |
 | `smartlist.rename` | `uuid`, `title` |
+| `smartlist.rm` | `uuid` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling playlist identifier or `smart:<UUID>`, omitted appends after all ordinary and Smartlist siblings |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
@@ -1091,6 +1092,10 @@ engine-cli playlist export 3 --path /Music/set.m3u8 --plan-token <reviewed-token
 ```
 
 Keep `--encoding`, `--path-mode`, and `--skip-unavailable` identical between review and apply. Human output lists ordered review entries and counts; `--json` emits the structured HTTP plan or result.
+
+## Smart playlist removal
+
+`smartlist.rm` removes one saved Smartlist definition by `uuid` through the collection write scheduler, fresh Desktop protection, automatic snapshot and Undo pipeline. It parks the row outside its parent, relinks its predecessor to the original successor, then deletes the row in one native transaction. It does not parse or rewrite rules and never writes tracks, ordinary playlists or playlist memberships. The result is `{"uuid":"…","parent_id":0}` (zero for the collection root), captured before deletion. Consumers refresh the tree after success; Undo restores the definition, opaque rules and exact sibling position. A missing UUID returns `smartlist_not_found`; invalid native links require the existing repair workflow.
 
 ## Play history
 
