@@ -514,11 +514,6 @@ func DeletePlaylist(ctx context.Context, database *sql.DB, id int64, force bool)
 	if childCount > 0 && !force {
 		return &progress.Error{Code: "playlist_not_empty", Cause: fmt.Errorf("playlist ID %d contains child playlists or saved Smartlists; use --force to delete them recursively", id)}
 	}
-	if hasSaved {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM Smartlist WHERE INSTR(parentPlaylistPath,?)=1`, path); err != nil {
-			return err
-		}
-	}
 	if err := unlinkSmartlistPredecessor(ctx, tx, source, paths); err != nil {
 		return err
 	}
@@ -538,6 +533,13 @@ func DeletePlaylist(ctx context.Context, database *sql.DB, id int64, force bool)
 	}
 	collect(id)
 	for _, delID := range allToDelete {
+		// Titles may contain semicolons, so a path prefix does not establish
+		// ancestry. Delete saved lists only at identity-selected parent paths.
+		if hasSaved {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM Smartlist WHERE parentPlaylistPath=?`, paths[delID]); err != nil {
+				return err
+			}
+		}
 		if _, err := tx.ExecContext(ctx, "DELETE FROM PlaylistEntity WHERE listId = ?", delID); err != nil {
 			return fmt.Errorf("deleting playlist entities for %d: %w", delID, err)
 		}

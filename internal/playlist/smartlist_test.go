@@ -182,6 +182,30 @@ func TestSmartlistNativeTitlePaths(t *testing.T) {
 	}
 }
 
+func TestSmartlistDeletionPreservesSemicolonSibling(t *testing.T) {
+	d := smartlistLibrary(t)
+	if _, err := db.CreatePlaylist(t.Context(), d, "House;Live", 1, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Exec(`INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules,lastEditTime)
+ VALUES('semicolon-sibling','Saved','Crates;House;Live;','','','opaque-sibling','2026-01-01')`); err != nil {
+		t.Fatal(err)
+	}
+	before := smartlistState(t, d)
+	if _, err := DeletePlaylist(t.Context(), d, "2", true); err != nil {
+		t.Fatal(err)
+	}
+	after := smartlistState(t, d)
+	if got, exists := after["semicolon-sibling"]; !exists || got != before["semicolon-sibling"] {
+		t.Fatalf("unrelated sibling Smartlist changed: got %v, exists %v", got, exists)
+	}
+	for _, id := range []string{"under-house", "under-deep"} {
+		if _, exists := after[id]; exists {
+			t.Fatalf("deleted subtree retained Smartlist %s", id)
+		}
+	}
+}
+
 func TestSmartlistMutationRollback(t *testing.T) {
 	for _, name := range []string{"rename", "move", "delete"} {
 		t.Run(name, func(t *testing.T) {
