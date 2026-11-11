@@ -65,6 +65,20 @@ func (p *plan) applyPlaylists(ctx context.Context, c *sql.Tx) error {
 			return fmt.Errorf("playlist hierarchy contains a cycle or missing parent")
 		}
 	}
+	// NULL parking bypasses the native parent-change comparison (NULL != id).
+	// Restore its ancestor-persistence effect after all final parents exist.
+	for _, key := range orderedKeys(p.desired) {
+		e := p.desired[key]
+		old := p.destination.Entities[key]
+		if e.Kind != "playlist" || old == nil || !p.remove[old.Parent] {
+			continue
+		}
+		if _, err := c.ExecContext(ctx, `UPDATE Playlist SET isPersisted=1
+ WHERE id IN (SELECT parentListId FROM PlaylistAllParent WHERE id=?)
+ AND EXISTS (SELECT 1 FROM Playlist WHERE id=? AND isPersisted=1)`, ids[key], ids[key]); err != nil {
+			return err
+		}
+	}
 	// Publish the exact ordinary order reviewed by the planner.
 	for _, parent := range slices.Sorted(maps.Keys(p.playlistOrders)) {
 		order := p.playlistOrders[parent]

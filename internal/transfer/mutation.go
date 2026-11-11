@@ -141,6 +141,19 @@ func (p *plan) membershipTrack(key string) *entity {
 	return tr
 }
 func (p *plan) removePlaylists(ctx context.Context, c *sql.Tx) error {
+	// Native deletion triggers remove children even when the reviewed plan keeps
+	// them. Detach retained movers before deleting their old parents; NULL avoids
+	// temporary root-name collisions until applyPlaylists publishes final links.
+	for _, key := range orderedKeys(p.desired) {
+		e := p.desired[key]
+		old := p.destination.Entities[key]
+		if e.Kind != "playlist" || old == nil || !p.remove[old.Parent] {
+			continue
+		}
+		if _, err := c.ExecContext(ctx, "UPDATE Playlist SET parentListId=NULL,nextListId=NULL WHERE id=?", old.ID); err != nil {
+			return err
+		}
+	}
 	keys := []string{}
 	for k := range p.remove {
 		if p.destination.Entities[k].Kind == "playlist" {
