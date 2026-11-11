@@ -6549,6 +6549,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Committed CLI 4f950ecf694d21b50557fae5215cae1dd24f587b: internal/smartlist/conversion.go:39-166; internal/api/smartlist_rules.go; internal/api/smartlist_conversion_test.go. Recovered engine-dj-app 4e406207fa23c9ca2027b9a47f4738e5108ef7c8 conversion source and authentic Desktop native conversion/membership fixtures support this contract without claiming a new Desktop run.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Protected Smartlist moves and mixed reordering</h3>
+        </div>
+        <ul>
+          <li>smartlist.move validates the source UUID, ordinary destination and mixed sibling anchor before changing any row. One transaction parks the source, joins its old predecessor past it, inserts it before the destination sibling and publishes its new parent. Final native graph validation precedes commit.</li>
+          <li>Rules and edit time remain opaque and unchanged, including malformed and future rules. Ordinary playlists, memberships and tracks are untouched. Invalid destinations, anchors, unchanged positions and name collisions refuse without publishing; exact History Undo restores all original links.</li>
+          <li>The existing collection-write owner retains fresh Desktop protection, snapshot and Undo. The result returns held UUID and parent values without a post-commit read. No new store, scheduler or actor is introduced.</li>
+          <li>Committed CLI be2665130488ddf170e683055af1fca1ef4f1c76: internal/playlist/smartlist_move.go; internal/api/smartlist.go; internal/api/smartlist_move_test.go. Recovered engine-dj-app 4e406207fa23c9ca2027b9a47f4738e5108ef7c8 smartlist_edit.rs and native fixture constraints support the persisted transaction contract without claiming a fresh Desktop run.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
