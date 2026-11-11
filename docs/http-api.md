@@ -867,6 +867,10 @@ Same-parent Smartlist names must be unique, treating NULL and empty root paths e
 
 ### Saved Smartlist link repair
 
+`smartlist.tracks` requires `uuid` and returns the same track fields as `track.list`, ordered by local track ID. It is a collection read: native rules are validated and compiled with allowlisted columns/operators and bound parameters on every request. No Smartlist memberships are written to `PlaylistEntity`, and the operation creates no snapshot or Undo entry. Missing identities return `smartlist_not_found`; unsupported rule documents return `smartlist_rules_unsupported` without partial tracks. An empty match is `[]`.
+
+Saved Stems membership uses regular files under the selected library's `Stems` directory, keyed by native origin track ID and origin database UUID. Desktop's transient rendering queue is not part of this offline observation. Captured Stems membership tests reconstruct omitted file inputs explicitly. Escaped non-LIKE text follows the captured zero-match outcome of the recovered invalid compiler shape; Desktop's internal error handling is not claimed as observed. NULL predicates preserve the distinction from externally stored empty strings.
+
 `smartlist.rename` requires `uuid` (the stored `listUuid`) and a nonblank `title`. It trims surrounding whitespace and updates only the native title, leaving opaque rules, parent/sibling links and `lastEditTime` unchanged. Same-parent Smartlist title collisions fail with `smartlist_name_conflict`; an absent UUID fails with `smartlist_not_found`. Ordinary playlist titles use a separate namespace. Rule-version restrictions do not block title-only renaming. The operation uses fresh Desktop protection, snapshot and Undo, and returns `{uuid}` without a post-commit database read.
 
 `library.smartlist-repair.preview` accepts no parameters and returns `{plan_token,reconnected,removed,amended_deletes,rows}`. Rows contain `{uuid,name,action,delete_entry_id?}`; actions are `reconnect` or `remove`. Preview changes no collection/history state. It binds consent to the observed native database and retained history, preserving opaque rule data.

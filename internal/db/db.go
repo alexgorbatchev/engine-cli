@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
@@ -145,15 +146,29 @@ func InitSchema(ctx context.Context, database *sql.DB) error {
 
 // GetAllTracks retrieves all tracks from the database.
 func GetAllTracks(ctx context.Context, database *sql.DB) ([]Track, error) {
+	return getTracks(ctx, database, "", nil)
+}
+
+// GetTracksByIDs reads explicit members in collection order in one bound query.
+func GetTracksByIDs(ctx context.Context, database *sql.DB, ids []int64) ([]Track, error) {
+	encoded, err := json.Marshal(ids)
+	if err != nil {
+		return nil, err
+	}
+	return getTracks(ctx, database, "WHERE id IN (SELECT value FROM json_each(?))", []any{string(encoded)})
+}
+
+func getTracks(ctx context.Context, database *sql.DB, where string, args []any) ([]Track, error) {
 	query := `
 		SELECT id, playOrder, length, bpm, year, path, filename, bitrate, bpmAnalyzed,
 		       albumArtId, fileBytes, title, artist, album, genre, comment, label,
 		       composer, remixer, key, rating, albumArt, fileType, isAnalyzed, isAvailable,
 		       lastEditTime, albumArtSourceHash
 		FROM Track
+ ` + where + `
 		ORDER BY id ASC;
 	`
-	rows, err := database.QueryContext(ctx, query)
+	rows, err := database.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("querying tracks: %w", err)
 	}
