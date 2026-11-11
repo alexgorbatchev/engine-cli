@@ -1,12 +1,14 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-11-10 18:22
+last_modified: 2026-11-11 01:19
 status: current
 ---
 
 # engine-cli architecture
 
 These diagrams explain collection management, asynchronous jobs, and mutation recovery for contributors.
+
+The collection-write page also documents title-only Smartlist renaming at `dd1dddf3550c1ca137ee1f28bc5cc379fef8cac4`. The existing protected write and Undo owners remain responsible; rules and native links are preserved. No new machine or persistent store is introduced.
 
 The collection-write page includes exact ordinary-playlist positioning among saved Smartlists at committed revision `7984b27930261ebf40fb991f6e00dd03cfbf818d`. Existing Desktop protection, native transaction, History and Undo ownership remain unchanged; no machine inventory entry is added. Source and synthetic test evidence do not claim an observed Engine DJ Desktop reopen.
 

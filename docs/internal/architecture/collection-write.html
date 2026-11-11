@@ -6291,6 +6291,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Committed source evidence 7984b27930261ebf40fb991f6e00dd03cfbf818d: internal/db/playlist_order.go; internal/db/playlist_position.go; internal/playlist/playlist.go; internal/api/playlist_smartlist_test.go. Synthetic rollback and Undo verification do not establish an observed Engine DJ Desktop reopen. Historical source pins remain unchanged.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Protected Smartlist title changes</h3>
+        </div>
+        <ul>
+          <li>smartlist.rename uses the ordinary collection-write owner: fresh Desktop protection, safety snapshot and History/Undo. It accepts a native UUID and nonblank title, returning the affected UUID without reading an entity after commit.</li>
+          <li>The native write changes only Smartlist.title. Rules, parent/sibling links and lastEditTime remain opaque and unchanged, including unsupported rule versions. Native same-parent Smartlist uniqueness produces smartlist_name_conflict; ordinary playlist names are a separate namespace.</li>
+          <li>Committed source evidence dd1dddf3550c1ca137ee1f28bc5cc379fef8cac4: internal/api/smartlist.go:15–24; internal/playlist/smartlist_rename.go:17–38; preservation and exact Undo controls in internal/api/smartlist_rename_test.go. No new store, lock owner or actor is introduced. Recovered Desktop title-only SQL corroborates compatibility; these tests do not claim a new Desktop session.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
