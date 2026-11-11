@@ -1,12 +1,14 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-11-11 04:20
+last_modified: 2026-11-11 06:37
 status: current
 ---
 
 # engine-cli architecture
 
 These diagrams explain collection management, asynchronous jobs, and mutation recovery for contributors.
+
+The overview documents automatic tool installation, flat installed/available version rows, and explicit read-only upstream release checks at UI `b8584f5ec79b22a275743fea2f8886eeed02bf8e` and CLI `03c9938c22c7e80273ff7f3bad55620985d6e27b`. Existing operation, session and component owners remain responsible; the machine and storage inventory is unchanged. Release-check failures preserve installed-version observations.
 
 The collection-write page documents native Smartlist rule creation and revision-bound editing at `dd7e2e8056ba038513795892e0549ec52584bb5e`. The existing protection, snapshot, transaction and Undo owners remain responsible; no store or actor is added. Unchanged native rules and date boundaries survive edits, and logical root name checks cover NULL and empty parent paths.
 

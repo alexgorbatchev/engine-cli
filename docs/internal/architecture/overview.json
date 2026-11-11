@@ -953,6 +953,16 @@
         "The existing collection-write owner retains fresh Desktop protection, snapshot and Undo. The result returns held UUID and parent values without a post-commit read. No new store, scheduler or actor is introduced.",
         "Committed CLI be2665130488ddf170e683055af1fca1ef4f1c76: internal/playlist/smartlist_move.go; internal/api/smartlist.go; internal/api/smartlist_move_test.go. Recovered engine-dj-app 4e406207fa23c9ca2027b9a47f4738e5108ef7c8 smartlist_edit.rs and native fixture constraints support the persisted transaction contract without claiming a fresh Desktop run."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Automatic tools and upstream release checks",
+      "items": [
+        "tools.inspect accepts check_updates:true to read official upstream release versions without installing software. Shared dependency rows carry website, available_version and update_error_code; updates_checked records completion. Release lookup failures retain installed observations and dependency readiness. FFmpeg and FFprobe share one release lookup; system package versions may differ from upstream.",
+        "The UI always submits supported auto_install parameters, overriding old saved opt-outs. Forms and operation dialogs omit the checkbox and installation-only consent. Collection, staged-file and explicit tool-change confirmations retain their existing scopes. Staging retries can enable installation over saved acquisition requests; tag inspection and artwork embedding also support auto_install.",
+        "The tool-management page shows a flat list with website links and installed/available versions. Entry, Check for updates and post-change reads request release checks. Existing component/session and CLI operation owners remain responsible; no database owner, machine or persistent store is added.",
+        "Committed UI: https://github.com/alexgorbatchev/engine-ui/blob/b8584f5ec79b22a275743fea2f8886eeed02bf8e/src/components/InstalledToolsView.tsx ; submission: https://github.com/alexgorbatchev/engine-ui/blob/b8584f5ec79b22a275743fea2f8886eeed02bf8e/src/hooks/useEngine.ts ; committed CLI: https://github.com/alexgorbatchev/engine-cli/blob/03c9938c22c7e80273ff7f3bad55620985d6e27b/internal/acquire/tool_updates.go ; API: https://github.com/alexgorbatchev/engine-cli/blob/03c9938c22c7e80273ff7f3bad55620985d6e27b/internal/api/media_tools.go"
+      ]
     }
   ]
 }
