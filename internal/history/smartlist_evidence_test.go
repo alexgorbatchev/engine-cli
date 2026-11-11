@@ -22,7 +22,11 @@ func smartlistHistoryLibrary(t *testing.T) (string, *sql.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = d.Close() })
+	t.Cleanup(func() {
+		if err := d.Close(); err != nil {
+			t.Errorf("close Smartlist fixture database: %v", err)
+		}
+	})
 	for _, title := range []string{"House", "Sets"} {
 		if _, err := db.CreatePlaylist(context.Background(), d, title, 0, false); err != nil {
 			t.Fatal(err)

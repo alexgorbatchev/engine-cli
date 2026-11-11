@@ -41,7 +41,11 @@ func TestSmartlistProjectionDormantWALPreservesSourceContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = database.Close() })
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Errorf("close Smartlist fixture database: %v", err)
+		}
+	})
 	projection := projectionForTest(t, lib, database)
 	if err := database.Close(); err != nil {
 		t.Fatal(err)
