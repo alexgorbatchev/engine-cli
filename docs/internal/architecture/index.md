@@ -1,12 +1,14 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-11-11 01:19
+last_modified: 2026-11-11 02:18
 status: current
 ---
 
 # engine-cli architecture
 
 These diagrams explain collection management, asynchronous jobs, and mutation recovery for contributors.
+
+The collection-write page documents native Smartlist rule creation and revision-bound editing at `dd7e2e8056ba038513795892e0549ec52584bb5e`. The existing protection, snapshot, transaction and Undo owners remain responsible; no store or actor is added. Unchanged native rules and date boundaries survive edits, and logical root name checks cover NULL and empty parent paths.
 
 The collection-write page also documents title-only Smartlist renaming at `dd1dddf3550c1ca137ee1f28bc5cc379fef8cac4`. The existing protected write and Undo owners remain responsible; rules and native links are preserved. No new machine or persistent store is introduced.
 

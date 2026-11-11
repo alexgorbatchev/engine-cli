@@ -6303,6 +6303,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Committed source evidence dd1dddf3550c1ca137ee1f28bc5cc379fef8cac4: internal/api/smartlist.go:15–24; internal/playlist/smartlist_rename.go:17–38; preservation and exact Undo controls in internal/api/smartlist_rename_test.go. No new store, lock owner or actor is introduced. Recovered Desktop title-only SQL corroborates compatibility; these tests do not claim a new Desktop session.</li>
         </ul>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Native Smartlist rule editing</h3>
+        </div>
+        <ul>
+          <li>Engine CLI owns the catalog, structured rule reads and native encoding. smartlist.create and revision-bound smartlist.update use the existing collection-write protection, snapshot and History/Undo pipeline. Unsupported or newer documents remain read-only; catalog reads do not open or modify native state.</li>
+          <li>Creation validates the native sibling graph, checks logical parent/name uniqueness, appends a UUID by terminal identity and inserts native rules with creation time in one transaction. Update preserves links and edit time; unchanged original-index rows retain native date boundaries and versions. Unchanged documents retain their bytes. Rename also normalizes NULL and empty root parents when checking name collisions.</li>
+          <li>Committed source evidence dd7e2e8056ba038513795892e0549ec52584bb5e: internal/api/smartlist_rules.go:14–38; internal/smartlist/store.go:83–187; internal/smartlist/rules.go; internal/playlist/smartlist_rename.go. Captured Desktop fixtures and recovered parser/editor source establish the persisted encoding contract without claiming a new Desktop run. Membership evaluation remains a separate read contract. No new store, actor or publication owner is introduced.</li>
+        </ul>
+      </div>
     </div>
     <nav class="node-outline no-print" id="node-outline" hidden aria-labelledby="node-outline-title">
       <div class="node-outline-head">
