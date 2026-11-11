@@ -47,3 +47,21 @@ func TestRenameSmartlistValidationAndNativeConstraints(t *testing.T) {
 		}
 	}
 }
+
+func TestRenameSmartlistNullableRootNameConflict(t *testing.T) {
+	d := smartlistLibrary(t)
+	if _, err := d.Exec(`UPDATE Smartlist SET parentPlaylistPath=NULL WHERE listUuid='tail-head'`); err != nil {
+		t.Fatal(err)
+	}
+	err := RenameSmartlist(t.Context(), d, "before-root", "tail-head")
+	if progress.ErrorCode(err) != "smartlist_name_conflict" {
+		t.Fatalf("got %v, want logical root name conflict", err)
+	}
+	var title string
+	if err := d.QueryRow(`SELECT title FROM Smartlist WHERE listUuid='before-root'`).Scan(&title); err != nil {
+		t.Fatal(err)
+	}
+	if title != "before-root" {
+		t.Fatalf("refused rename changed title: %q", title)
+	}
+}
