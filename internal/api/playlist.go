@@ -37,6 +37,7 @@ type moveMembershipParams struct {
 
 func (s *Server) playlistOperations() []operation {
 	return []operation{
+		s.renameSmartlistOperation(),
 		s.importPlaylistOperation(),
 		s.exportPlaylistOperation(),
 		s.reorderPlaylistOperation(),

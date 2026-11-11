@@ -857,6 +857,8 @@ A saved Smartlist whose links do not resolve is left out of `nodes` and listed i
 
 ### Saved Smartlist link repair
 
+`smartlist.rename` requires `uuid` (the stored `listUuid`) and a nonblank `title`. It trims surrounding whitespace and updates only the native title, leaving opaque rules, parent/sibling links and `lastEditTime` unchanged. Same-parent Smartlist title collisions fail with `smartlist_name_conflict`; an absent UUID fails with `smartlist_not_found`. Ordinary playlist titles use a separate namespace. Rule-version restrictions do not block title-only renaming. The operation uses fresh Desktop protection, snapshot and Undo, and returns `{uuid}` without a post-commit database read.
+
 `library.smartlist-repair.preview` accepts no parameters and returns `{plan_token,reconnected,removed,amended_deletes,rows}`. Rows contain `{uuid,name,action,delete_entry_id?}`; actions are `reconnect` or `remove`. Preview changes no collection/history state. It binds consent to the observed native database and retained history, preserving opaque rule data.
 
 `library.smartlist-repair.apply` requires the exact string `plan_token`. Fresh Desktop protection and collection-write scheduling apply. Repair retains immutable original images and durable publication intent before replacing targets. The result adds `applied` and optional `undo_id`. Reconnects receive their own Undo entry and job `history_id`; removals owned by an original deletion amend that deletion's Undo instead. Unattributed damaged rows receive no invented Undo. Repair publication owns this recovery boundary and is excluded from generic safety-backup/history wrapping. A healthy collection returns `applied:false` without enrolling repair storage.
@@ -973,6 +975,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `session.inspect` | `session` (positive numeric session ID) |
 | `session.import` | `session`, `name?`, `parent?`, `skip_missing?`, `dry_run?`, `plan_token?`; see play history below |
 | `playlist.rename` | `identifier`, `title` |
+| `smartlist.rename` | `uuid`, `title` |
 | `playlist.rm` | `identifier`, `force?` |
 | `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling playlist identifier or `smart:<UUID>`, omitted appends after all ordinary and Smartlist siblings |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
