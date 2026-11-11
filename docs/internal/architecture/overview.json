@@ -924,6 +924,15 @@
         "Saved Stems status observes regular files under the library Stems directory by origin identity. Desktop transient rendering queue state is outside this offline read. Captured metadata memberships are replayed; Stems tests explicitly reconstruct excluded file inputs. Unknown rules fail with smartlist_rules_unsupported instead of returning partial rows.",
         "Committed source evidence 51d7d1f9fe1761fe2af1c884f6773829624d3ba9: internal/api/smartlist_rules.go; internal/smartlist/evaluate.go; internal/db/db.go. Tests cover captured memberships, injection-shaped values, next-read changes, empty versus NULL values and a measured 50,000-track query plan. No new store, actor or write owner is introduced. Source and fixture evidence do not claim a new Desktop execution."
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Protected Smartlist removal",
+      "items": [
+        "smartlist.rm owns one native transaction: park the target under its own UUID, relink its predecessor using unchanged nullable successor values, then delete only the saved definition. Native unique-link constraints stay enabled. Track, Playlist and PlaylistEntity rows are untouched; malformed or future rule bytes remain opaque.",
+        "The existing write job owns fresh Desktop protection, snapshot and History Undo. Exact Undo restores the removed definition and sibling links. The result returns the UUID and parent playlist ID without a post-commit read. No new scheduler, persistent store or actor is introduced.",
+        "Committed CLI evidence b57050cfac99b280b20a099a4d5549c3e5aa148c: internal/playlist/smartlist_remove.go; internal/api/smartlist.go; internal/api/smartlist_remove_test.go. Recovered Desktop sequence at engine-dj-app 4e406207fa23c9ca2027b9a47f4738e5108ef7c8 and native-constraint fixtures establish this persisted transaction contract, not a new Desktop execution."
+      ]
     }
   ]
 }

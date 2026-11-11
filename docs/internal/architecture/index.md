@@ -187,3 +187,7 @@ The dedicated workflow cites committed Engine CLI `d3de75b98ba479484d49b0779087f
 ## Smartlist membership reads
 
 The [overview](overview.html) records read-only membership ownership at CLI `51d7d1f9fe1761fe2af1c884f6773829624d3ba9`. The existing collection read barrier and job owner serve `smartlist.tracks`; native rules and saved Stems files remain CLI-owned. Membership is computed on each request without native membership writes or a new persistence store. Captured fixture and reconstructed Stems input boundaries are documented separately from actual Desktop execution.
+
+## Smartlist removal ownership
+
+The [overview](overview.html) documents committed CLI `b57050cfac99b280b20a099a4d5549c3e5aa148c`. A protected write parks, relinks and removes a native definition in one transaction, preserving tracks, playlists, memberships and opaque rule bytes. Snapshot and History Undo retain their existing owners. Recovered source and native-constraint fixtures establish persistence compatibility without claiming a new Desktop run.
