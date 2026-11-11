@@ -266,7 +266,9 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 			}
 			return e
 		}
-		if effect == "collection" && !bound.preview && !ownsSmartlistRepairPublication(op.Name) {
+		// Sync owns recovery checks for its explicit source and destination.
+		// Its unbound fallback library is unrelated to either endpoint.
+		if effect == "collection" && !bound.preview && op.Name != "library.sync" && !ownsSmartlistRepairPublication(op.Name) {
 			if e := history.CheckSmartlistRepair(ctx, lib); e != nil {
 				return e
 			}
