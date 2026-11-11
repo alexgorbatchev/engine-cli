@@ -126,9 +126,9 @@ Move a playlist or folder under a new parent folder in your Engine DJ collection
 Arguments:
   <id>   The numeric ID of the playlist to move.
 
-Atomically updates parentListId and sibling nextListId links, preventing circular loops. --before inserts before a destination sibling; omitted appends.
+Atomically updates ordinary and Smartlist sibling links, preventing circular loops. `--before` accepts an ordinary playlist identifier or `smart:<UUID>` for a Smartlist in the destination folder. Omitting it appends after all siblings, including trailing Smartlists. Smartlists themselves remain read-only; their rule bytes are preserved. The protected mutation pipeline snapshots the library and supports exact Undo.
 
-- `--before` (string; default ``): Insert before this destination sibling playlist ID; omitted appends at the end.
+- `--before` (string; default ``): Insert before a destination sibling playlist identifier or `smart:<UUID>`; omitted appends after all siblings.
 - `--help, -h` (bool; default `false`): help for move.
 - `--to` (string; default ``): Destination parent playlist ID, or 0 for the library root.
 

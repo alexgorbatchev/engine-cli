@@ -194,7 +194,13 @@ func MovePlaylist(ctx context.Context, database *sql.DB, identifier string, toPa
 	}
 
 	var beforeID int64
-	if strings.TrimSpace(beforeIdentifier) != "" {
+	var beforeSmartlist string
+	if strings.HasPrefix(beforeIdentifier, "smart:") {
+		beforeSmartlist = strings.TrimPrefix(beforeIdentifier, "smart:")
+		if beforeSmartlist == "" {
+			return nil, nil, &progress.Error{Code: "playlist_move_invalid", Cause: fmt.Errorf("Smartlist insertion sibling is required")}
+		}
+	} else if strings.TrimSpace(beforeIdentifier) != "" {
 		before, err := db.FindPlaylist(ctx, database, beforeIdentifier)
 		if err != nil {
 			return nil, nil, err
@@ -204,7 +210,7 @@ func MovePlaylist(ctx context.Context, database *sql.DB, identifier string, toPa
 		}
 		beforeID = before.ID
 	}
-	if err := db.MovePlaylist(ctx, database, target.ID, parentID, beforeID); err != nil {
+	if err := db.MovePlaylist(ctx, database, target.ID, parentID, db.PlaylistPosition{BeforeID: beforeID, BeforeSmartlist: beforeSmartlist}); err != nil {
 		return nil, nil, err
 	}
 

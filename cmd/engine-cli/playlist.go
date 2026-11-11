@@ -332,7 +332,7 @@ Arguments:
 	}
 
 	cmd.Flags().StringVar(&toFlag, "to", "", "Destination parent playlist ID, or 0 for the library root")
-	cmd.Flags().StringVar(&beforeFlag, "before", "", "Insert before this destination sibling playlist ID; omitted appends at the end")
+	cmd.Flags().StringVar(&beforeFlag, "before", "", "Insert before a destination sibling playlist ID or smart:<UUID>; omitted appends after all siblings")
 	_ = cmd.MarkFlagRequired("to")
 
 	return cmd

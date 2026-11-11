@@ -974,7 +974,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `session.import` | `session`, `name?`, `parent?`, `skip_missing?`, `dry_run?`, `plan_token?`; see play history below |
 | `playlist.rename` | `identifier`, `title` |
 | `playlist.rm` | `identifier`, `force?` |
-| `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling ID, omitted appends |
+| `playlist.move` | `identifier`, `to?`, `before?`; omitted destination moves to root; `before` is a destination sibling playlist identifier or `smart:<UUID>`, omitted appends after all ordinary and Smartlist siblings |
 | `playlist.track.add`, `playlist.track.rm` | `playlist`, `tracks` array |
 | `playlist.track.move` | `from`, `to`, `tracks` array |
 | `playlist.reorder` | `playlist`, `rows` array, `drop`; optional `view` array, `descending`, `dry_run`, `plan_token`; see reviewed track ordering below |

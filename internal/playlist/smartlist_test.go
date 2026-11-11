@@ -287,7 +287,7 @@ func TestSmartlistSiblingReordering(t *testing.T) {
 		wantNext     string
 		wantLink     string
 	}{
-		{"unchanged", "5", "Crates;House;", ""},
+		{"cross intervening Smartlists", "5", "", "tail-head"},
 		{"append", "", "", "tail-head"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

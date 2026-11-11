@@ -85,9 +85,15 @@ func siblingOrder(rows []playlistRow, parent int64) ([]int64, error) {
 	return ordered, nil
 }
 
+// PlaylistPosition identifies an ordinary or Smartlist sibling. The zero value appends.
+type PlaylistPosition struct {
+	BeforeID        int64
+	BeforeSmartlist string
+}
+
 // MovePlaylist atomically repairs the source chain and inserts before a destination sibling.
 // A zero beforeID appends to the destination. Playlist identity and memberships never change.
-func MovePlaylist(ctx context.Context, database *sql.DB, id, newParentID, beforeID int64) error {
+func MovePlaylist(ctx context.Context, database *sql.DB, id, newParentID int64, position PlaylistPosition) error {
 	if database == nil {
 		return fmt.Errorf("database cannot be nil")
 	}
@@ -106,6 +112,10 @@ func MovePlaylist(ctx context.Context, database *sql.DB, id, newParentID, before
 	}
 	invalid := func(message string) error {
 		return &progress.Error{Code: "playlist_move_invalid", Cause: fmt.Errorf("%s", message)}
+	}
+	beforeID := position.BeforeID
+	if beforeID != 0 && position.BeforeSmartlist != "" {
+		return invalid("only one insertion sibling is allowed")
 	}
 	source, exists := byID[id]
 	if !exists {
@@ -132,6 +142,36 @@ func MovePlaylist(ctx context.Context, database *sql.DB, id, newParentID, before
 			return invalid("insertion sibling is not in the destination folder")
 		}
 	}
+	paths, err := playlistPaths(rows)
+	if err != nil {
+		return err
+	}
+	hasSaved, err := hasSmartlistTable(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if source.ParentListID == newParentID {
+		var nextSmartlist string
+		if hasSaved {
+			nextSmartlist, err = smartlistChainHead(ctx, tx, paths[newParentID], paths[source.next.Int64])
+			if err != nil {
+				return err
+			}
+		}
+		if (position.BeforeSmartlist != "" && position.BeforeSmartlist == nextSmartlist) ||
+			(position.BeforeSmartlist == "" && nextSmartlist == "" && beforeID == source.next.Int64) {
+			return tx.Commit()
+		}
+	}
+	if err := unlinkSmartlistPredecessor(ctx, tx, source, paths); err != nil {
+		return err
+	}
+	if position.BeforeSmartlist != "" {
+		beforeID, err = smartlistFollowingPlaylist(ctx, tx, position.BeforeSmartlist, newParentID, paths, rows)
+		if err != nil {
+			return err
+		}
+	}
 	parents := []int64{source.ParentListID}
 	if source.ParentListID != newParentID {
 		parents = append(parents, newParentID)
@@ -149,28 +189,16 @@ func MovePlaylist(ctx context.Context, database *sql.DB, id, newParentID, before
 		index = slices.Index(orders[newParentID], beforeID)
 	}
 	orders[newParentID] = slices.Insert(orders[newParentID], index, id)
-	original, err := siblingOrder(rows, source.ParentListID)
-	if err != nil {
-		return err
-	}
-	if source.ParentListID == newParentID && slices.Equal(original, orders[newParentID]) {
-		return tx.Commit()
-	}
-	paths, err := playlistPaths(rows)
-	if err != nil {
-		return err
-	}
-	if err := unlinkSmartlistPredecessor(ctx, tx, source, paths); err != nil {
-		return err
-	}
 	// Inserting before an ordinary sibling follows the Smartlist chain that
 	// already preceded it, as with Engine's native playlist insertion.
-	hasSaved, err := hasSmartlistTable(ctx, tx)
-	if err != nil {
-		return err
-	}
 	if hasSaved {
-		if _, err := tx.ExecContext(ctx, `UPDATE Smartlist SET nextPlaylistPath=? WHERE parentPlaylistPath=? AND nextPlaylistPath=? AND nextListUuid=''`, paths[newParentID]+source.Title+";", paths[newParentID], paths[beforeID]); err != nil {
+		query := `UPDATE Smartlist SET nextPlaylistPath=?,nextListUuid='' WHERE parentPlaylistPath=? AND nextPlaylistPath=? AND nextListUuid=''`
+		anchor := paths[beforeID]
+		if position.BeforeSmartlist != "" {
+			query = `UPDATE Smartlist SET nextPlaylistPath=?,nextListUuid='' WHERE parentPlaylistPath=? AND nextListUuid=?`
+			anchor = position.BeforeSmartlist
+		}
+		if _, err := tx.ExecContext(ctx, query, paths[newParentID]+source.Title+";", paths[newParentID], anchor); err != nil {
 			return err
 		}
 	}

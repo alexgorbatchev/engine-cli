@@ -90,7 +90,7 @@ func TestMovePlaylistNativeOrder(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = MovePlaylist(ctx, d, tc.id, tc.parent, tc.before)
+			err = MovePlaylist(ctx, d, tc.id, tc.parent, PlaylistPosition{BeforeID: tc.before})
 			if progress.ErrorCode(err) != tc.code {
 				t.Fatalf("error=%v code=%s want %s", err, progress.ErrorCode(err), tc.code)
 			}
@@ -141,7 +141,7 @@ CREATE TRIGGER fail_relink BEFORE UPDATE ON Playlist WHEN NEW.nextListId=1 BEGIN
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := MovePlaylist(t.Context(), d, 2, 0, 1); err == nil {
+	if err := MovePlaylist(t.Context(), d, 2, 0, PlaylistPosition{BeforeID: 1}); err == nil {
 		t.Fatal("expected failed relink")
 	}
 	after, err := playlistRows(t.Context(), d)
