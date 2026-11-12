@@ -34,6 +34,7 @@ type openedLibrary struct {
 type libraryListing struct {
 	openedLibrary
 	libraryops.Identity
+	TrackCount *int64 `json:"track_count,omitempty"`
 }
 
 type KnownLibrary struct {
@@ -78,8 +79,24 @@ func (s *Server) listedLibraries(ctx context.Context, opened []openedLibrary) ([
 	listings := make([]libraryListing, len(opened))
 	for i, lib := range opened {
 		listings[i] = libraryListing{openedLibrary: lib, Identity: identities[lib.Path]}
+		listings[i].TrackCount = lib.server.libraryTrackCount(ctx)
 	}
 	return listings, nil
+}
+
+func (s *Server) libraryTrackCount(ctx context.Context) *int64 {
+	database, err := s.openLibrary()
+	if err != nil {
+		return nil
+	}
+	var count int64
+	err = database.QueryRowContext(ctx, "SELECT COUNT(*) FROM Track").Scan(&count)
+	closeErr := database.Close()
+	if err != nil || closeErr != nil {
+		// A disconnected or damaged library must not look like an empty collection.
+		return nil
+	}
+	return &count
 }
 
 func (s *Server) libraryPreferenceListings(ctx context.Context) ([]KnownLibrary, error) {

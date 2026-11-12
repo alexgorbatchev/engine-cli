@@ -21,6 +21,11 @@ Jobs report progress through JSON status and server-sent events.
 Close Engine DJ before changing or restoring your library.
 Job status and progress are cleared when this server stops. Library undo history is stored separately.
 
+GET /v1/libraries returns opened libraries with optional `track_count`: the fresh
+collection size, including zero for an empty collection. An unreadable collection
+omits the count; clients must distinguish that from zero. POST /v1/libraries
+returns the same count when opening explicit paths.
+
 GET /v1/operations lists accepted parameters. POST /v1/operations/{name} starts a job; GET /v1/jobs/{id} reports its result and GET /v1/jobs/{id}/events streams resumable progress. POST /v1/jobs/{id}/cancel requests cancellation. Job status and progress last for the server process lifetime; library undo history is stored separately.
 
 - `--allow-origin` (stringSlice; default `[]`): Exact browser origins permitted to access the API, such as http://localhost:3000.

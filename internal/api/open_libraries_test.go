@@ -16,6 +16,49 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 )
 
+func TestOpenedLibraryTrackCounts(t *testing.T) {
+	for _, state := range []string{"populated", "empty", "unavailable"} {
+		t.Run(state, func(t *testing.T) {
+			s, path := testAPI(t)
+			file := filepath.Join(path, "Database2", "m.db")
+			if state == "empty" {
+				database, err := db.Open(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, err = database.Exec("DELETE FROM Track")
+				closeErr := database.Close()
+				if err != nil || closeErr != nil {
+					t.Fatalf("empty collection: %v %v", err, closeErr)
+				}
+			} else if state == "unavailable" {
+				if err := os.Remove(file); err != nil {
+					t.Fatal(err)
+				}
+			}
+			response := requestAPI(t, s, http.MethodGet, "/v1/libraries", "")
+			var listed []libraryListing
+			if err := json.Unmarshal(response.Body.Bytes(), &listed); err != nil || len(listed) != 1 {
+				t.Fatalf("list: %s %v", response.Body, err)
+			}
+			count := listed[0].TrackCount
+			if state == "unavailable" {
+				if count != nil || strings.Contains(response.Body.String(), "track_count") {
+					t.Fatalf("unavailable collection reported a count: %s", response.Body)
+				}
+				return
+			}
+			want := int64(1)
+			if state == "empty" {
+				want = 0
+			}
+			if count == nil || *count != want {
+				t.Fatalf("wrong %s count: %s", state, response.Body)
+			}
+		})
+	}
+}
+
 func TestOpenExplicitLibraries(t *testing.T) {
 	s, first := testAPI(t)
 	initial := requestAPI(t, s, http.MethodGet, "/v1/libraries", "")

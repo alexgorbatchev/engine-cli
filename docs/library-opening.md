@@ -51,11 +51,17 @@ While the server is running, send `POST /v1/libraries` with
 ```
 
 The response is `200` with an array of
-`{path,url,key,default,instance,engine_uuid,registration}` objects, in input order with
+`{path,url,key,default,instance,engine_uuid,registration,track_count}` objects, in input order with
 duplicate paths removed. Paths are absolute and symlinks are resolved. Each
 `url` is a server-relative API base, such as `/v1/libraries/<opaque-key>`, and
 `key` is its final segment. The key derives from the canonical path, so it
 changes when a library moves.
+
+`track_count` is the current number of collection tracks, read without loading
+track details. An empty collection returns `0`; failure to open, count, or close
+the database omits the field. Counts are read fresh for each opening or listing response
+under the shared collection-read barrier. A missing count must not be displayed
+as zero.
 
 `instance` is the identity sync uses: the registered instance ID, or the Engine
 database UUID (`engine_uuid`) while the library is unregistered. Use it to
