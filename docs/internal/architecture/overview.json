@@ -963,6 +963,15 @@
         "The tool-management page shows a flat list with website links and installed/available versions. Entry, Check for updates and post-change reads request release checks. Existing component/session and CLI operation owners remain responsible; no database owner, machine or persistent store is added.",
         "Committed UI: https://github.com/alexgorbatchev/engine-ui/blob/b8584f5ec79b22a275743fea2f8886eeed02bf8e/src/components/InstalledToolsView.tsx ; submission: https://github.com/alexgorbatchev/engine-ui/blob/b8584f5ec79b22a275743fea2f8886eeed02bf8e/src/hooks/useEngine.ts ; committed CLI: https://github.com/alexgorbatchev/engine-cli/blob/03c9938c22c7e80273ff7f3bad55620985d6e27b/internal/acquire/tool_updates.go ; API: https://github.com/alexgorbatchev/engine-cli/blob/03c9938c22c7e80273ff7f3bad55620985d6e27b/internal/api/media_tools.go"
       ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Fresh library track counts",
+      "items": [
+        "GET/POST /v1/libraries returns optional track_count from a fresh readonly COUNT(*) for each opened library under the existing shared collection-read lease. A confirmed empty library returns 0; database open, query or close failure omits only the count. Sequential per-library reads do not claim an atomic snapshot across libraries.",
+        "The API owns database access. The UI consumes the listing without loading track details. No new actor, cache, persistent store, write, snapshot or Undo is added.",
+        "Committed CLI deebcfb055d6356bb34e1a15eaa15b346272d761: internal/api/open_libraries.go:34-99 and 214-216; internal/api/server.go:142-143; internal/api/collection_read.go:11-28; internal/api/play_history.go:84-96. Populated, empty and unavailable behavior is verified in internal/api/open_libraries_test.go:19-61."
+      ]
     }
   ]
 }
