@@ -94,7 +94,7 @@ func TestBuildRefusesActualCLIWithoutReviewedSourceMetadata(t *testing.T) {
 		t.Fatalf("intact native build refused: %v", err)
 	}
 	binary := filepath.Join(t.TempDir(), "engine-cli")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-p=1", "-buildvcs=false", "-o", binary, "./cmd/engine-cli")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-p=1", "-trimpath", "-buildvcs=false", "-o", binary, "./cmd/engine-cli")
 	cmd.Dir = in.SourceRoot
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("building actual CLI without VCS metadata: %v %s", err, output)

@@ -76,7 +76,9 @@ func committedNativeInputs(t *testing.T) inputs {
 	commit := strings.TrimSpace(string(head))
 	out := t.TempDir()
 	binary := filepath.Join(out, "engine-cli")
-	cmd := exec.CommandContext(ctx, "go", "build", "-p=1", "-o", binary, "./cmd/engine-cli")
+	// Independent source roots must share compiled packages without embedding their temporary paths.
+	// VCS stamping remains enabled so every binary still proves its own clean source commit.
+	cmd := exec.CommandContext(ctx, "go", "build", "-p=1", "-trimpath", "-o", binary, "./cmd/engine-cli")
 	cmd.Dir = root
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("actual clean CLI build: %v %s", err, output)
