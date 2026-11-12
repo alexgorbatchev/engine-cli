@@ -9,20 +9,26 @@ import (
 	"mime"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 type Job struct {
-	ID              string                         `json:"id"`
-	Operation       string                         `json:"operation"`
-	State           string                         `json:"state"`
-	Progress        progress.Event                 `json:"progress"`
-	Result          any                            `json:"result,omitempty"`
-	Error           *progress.Failure              `json:"error,omitempty"`
-	HistoryID       string                         `json:"history_id,omitempty"`
-	SmartlistRepair *history.SmartlistRepairResult `json:"smartlist_repair,omitempty"`
+	CreatedAt         time.Time                      `json:"created_at"`
+	StartedAt         *time.Time                     `json:"started_at,omitempty"`
+	FinishedAt        *time.Time                     `json:"finished_at,omitempty"`
+	Parameters        map[string]json.RawMessage     `json:"parameters"`
+	ParametersOmitted []string                       `json:"parameters_omitted,omitempty"`
+	ID                string                         `json:"id"`
+	Operation         string                         `json:"operation"`
+	State             string                         `json:"state"`
+	Progress          progress.Event                 `json:"progress"`
+	Result            any                            `json:"result,omitempty"`
+	Error             *progress.Failure              `json:"error,omitempty"`
+	HistoryID         string                         `json:"history_id,omitempty"`
+	SmartlistRepair   *history.SmartlistRepairResult `json:"smartlist_repair,omitempty"`
 }
 
 type job struct {
@@ -90,7 +96,8 @@ func (s *Server) start(op operation, run *boundOperation) (Job, error) {
 			cancel()
 		}
 	}()
-	j := &job{view: Job{ID: id, Operation: op.Name, State: "queued"}, changed: make(chan struct{}), cancel: cancel, reduceResult: op.reduceResult}
+	parameters, omitted := jobParameters(op, run.parameters)
+	j := &job{view: Job{ID: id, Operation: op.Name, State: "queued", CreatedAt: time.Now().UTC(), Parameters: parameters, ParametersOmitted: omitted}, changed: make(chan struct{}), cancel: cancel, reduceResult: op.reduceResult}
 	ctx = progress.WithJobReporter(ctx, id, func(e progress.Event) { s.record(j, e) })
 	// Initialize the event stream before publishing the job to request handlers.
 	progress.Emit(ctx, progress.Event{Type: "queued", Phase: op.Name})
@@ -162,6 +169,7 @@ func (s *Server) work(ctx context.Context, j *job, op operation, run *boundOpera
 		j.view.Result = result
 	}
 	j.view.HistoryID = historyID
+	j.view.FinishedAt = new(time.Now().UTC())
 	j.view.State = "succeeded"
 	if err != nil {
 		j.view.State = "failed"
@@ -203,6 +211,7 @@ func (s *Server) runOperation(ctx context.Context, j *job, op operation, run *bo
 		if err == nil && j != nil {
 			s.mu.Lock()
 			j.view.State = "running"
+			j.view.StartedAt = new(time.Now().UTC())
 			s.mu.Unlock()
 		}
 		return finish, err

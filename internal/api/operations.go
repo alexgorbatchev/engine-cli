@@ -35,6 +35,7 @@ type operation struct {
 }
 
 type boundOperation struct {
+	parameters         map[string]json.RawMessage
 	before             func(context.Context) error
 	run                func(context.Context) (any, error)
 	preview            bool
@@ -140,7 +141,7 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 			if v, ok := any(p).(interface{ operationPreview() bool }); ok {
 				preview = v.operationPreview()
 			}
-			bound := &boundOperation{run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, replacementLibrary: sync.Destination, effect: boundEffect, paths: paths}
+			bound := &boundOperation{parameters: values, run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, replacementLibrary: sync.Destination, effect: boundEffect, paths: paths}
 			if v, ok := any(p).(interface{ operationCollectionRead() bool }); ok {
 				bound.collectionRead = v.operationCollectionRead()
 			}

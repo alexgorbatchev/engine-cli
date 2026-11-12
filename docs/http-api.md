@@ -507,6 +507,10 @@ events.addEventListener("progress", async ({ data }) => {
 
 Reconnect with the `Last-Event-ID` header to replay events after that sequence. Browsers send this header automatically on reconnect. A consumed terminal cursor returns `204`, stopping reconnection. An expired cursor returns `409`; retrieve status and reconnect without a cursor. Heartbeat comments arrive every 15 seconds while idle.
 
+Job status includes `created_at` (UTC RFC 3339 with fractional seconds), optional `started_at` after scheduler admission, and optional `finished_at` together with its final state. Queued cancellation has no `started_at`. These timestamps remain fixed when observing progress or polling status.
+
+`parameters` contains only supplied fields admitted by the operation catalog, preserving explicit false, zero, null and empty values without inventing defaults. `parameters_omitted`, when present, names withheld top-level fields. Capability tokens, credential-related fields (including nested keys), and fields containing URLs with user information, query strings or fragments are withheld entirely. Filtering affects observations only; the operation executes its original validated inputs. The same details appear in submission, status and cancellation responses.
+
 The server retains up to 128 jobs and 1,024 events per job in memory. It evicts completed jobs as needed and rejects submissions with `503` when all slots are active. Restarting clears job status and events. Durable library undo history is separate. An evicted or unknown job returns `404`.
 
 ## Library-local custom tags

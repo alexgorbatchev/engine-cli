@@ -151,7 +151,10 @@ func TestRekordboxImportFailedProducersReturnTrueNil(t *testing.T) {
 			if job["state"] != "failed" || job["result"] != nil || job["history_id"] != nil {
 				t.Fatalf("failed HTTP job has result: %+v", job)
 			}
-			data, err := json.Marshal(job)
+			if parameters := job["parameters"].(map[string]any); parameters["path"] != opts.Path {
+				t.Fatalf("submitted source path missing from job details: %+v", parameters)
+			}
+			data, err := json.Marshal(map[string]any{"error": job["error"], "progress": job["progress"]})
 			if err != nil || strings.Contains(string(data), opts.Path) {
 				t.Fatalf("raw source diagnostics escaped failure boundary: %s %v", data, err)
 			}

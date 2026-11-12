@@ -26,6 +26,8 @@ collection size, including zero for an empty collection. An unreadable collectio
 omits the count; clients must distinguish that from zero. POST /v1/libraries
 returns the same count when opening explicit paths.
 
+Job responses include genuine UTC `created_at`, optional scheduler-admitted `started_at`, and terminal `finished_at` timestamps. Queued cancellation has no start time. `parameters` preserves supplied catalog-admitted inputs; `parameters_omitted` names fields withheld because they contain capability tokens, credential-related keys, or URLs with user information, query strings or fragments. Filtering never changes execution inputs.
+
 GET /v1/operations lists accepted parameters. POST /v1/operations/{name} starts a job; GET /v1/jobs/{id} reports its result and GET /v1/jobs/{id}/events streams resumable progress. POST /v1/jobs/{id}/cancel requests cancellation. Job status and progress last for the server process lifetime; library undo history is stored separately.
 
 - `--allow-origin` (stringSlice; default `[]`): Exact browser origins permitted to access the API, such as http://localhost:3000.
