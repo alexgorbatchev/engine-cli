@@ -65,17 +65,23 @@ func fetchHelperCommand() *cobra.Command {
 		if err := os.WriteFile(path, data, 0600); err != nil {
 			return err
 		}
-		return json.NewEncoder(c.OutOrStdout()).Encode(map[string]any{"status": "success", "output_file": path, "verification": map[string]any{"bandwidth_hz": 20000, "peak_dbfs": -1}})
+		return json.NewEncoder(c.OutOrStdout()).Encode(map[string]any{"status": "success", "output_file": path, "verification": map[string]any{"bandwidth_hz": 20000, "peak_dbfs": -1, "min_bandwidth_hz": 19000, "meets_minimum": true, "low_quality_reasons": []string{}}})
 	}}
 	root.PersistentFlags().Bool("json", false, "")
 	root.Flags().Bool("skip-metadata", false, "")
 	root.Flags().StringVar(&target, "progress-target", "", "")
 	root.Flags().StringVar(&dir, "out-dir", "", "")
 	root.Flags().Float64Var(&minimum, "min-bandwidth-khz", 0, "")
-	root.AddCommand(&cobra.Command{Use: "verify", Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, _ []string) error {
-		_, err := fmt.Fprintln(c.OutOrStdout(), `{"status":"success","verification":{"bandwidth_hz":16000}}`)
+	var verifyMinimum float64
+	verify := &cobra.Command{Use: "verify", Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, _ []string) error {
+		if verifyMinimum != 19 {
+			return fmt.Errorf("original verified against %v kHz, want the 19 kHz default", verifyMinimum)
+		}
+		_, err := fmt.Fprintln(c.OutOrStdout(), `{"status":"success","verification":{"bandwidth_hz":16000,"min_bandwidth_hz":19000,"meets_minimum":false,"low_quality_reasons":["bandwidth_below_minimum"]}}`)
 		return err
-	}})
+	}}
+	verify.Flags().Float64Var(&verifyMinimum, "min-bandwidth-khz", 0, "")
+	root.AddCommand(verify)
 	return root
 }
 

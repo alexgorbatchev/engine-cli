@@ -122,6 +122,7 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 		Verification *struct {
 			BandwidthHz int      `json:"bandwidth_hz"`
 			PeakDbFS    *float64 `json:"peak_dbfs"`
+			upgradeVerdict
 		} `json:"verification"`
 	}
 	if err := json.Unmarshal(output, &result); err != nil {
@@ -148,6 +149,10 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 	if result.Verification.PeakDbFS == nil || *result.Verification.PeakDbFS <= silentUpgradePeakDbFS {
 		return nil, fmt.Errorf("fetch-track returned silent audio or no usable signal measurement; original retained")
 	}
+	meets, err := meetsUpgradeBar(result.Verification.upgradeVerdict, upgradeMinimumHz(options.MinBandwidthKHz))
+	if err != nil {
+		return nil, fmt.Errorf("checking replacement audio quality: %w", err)
+	}
 	path, err := filepath.EvalSymlinks(result.OutputFile)
 	if err != nil {
 		return nil, fmt.Errorf("opening downloaded audio: %w", err)
@@ -167,8 +172,7 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 	if !info.Mode().IsRegular() || info.Size() == 0 {
 		return nil, fmt.Errorf("downloaded audio is empty or not a regular file")
 	}
-	bandwidth := result.Verification.BandwidthHz
-	return &acquiredUpgrade{Path: path, BandwidthHz: bandwidth, MeetsBar: meetsUpgradeBar(bandwidth, upgradeMinimumHz(options.MinBandwidthKHz))}, nil
+	return &acquiredUpgrade{Path: path, BandwidthHz: result.Verification.BandwidthHz, MeetsBar: meets}, nil
 }
 
 func outsideUpgradeDir(path string) bool {

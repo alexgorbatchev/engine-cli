@@ -75,7 +75,7 @@ func TestUpgradeTrackRealAudio(t *testing.T) {
 					return defaultRunner(ctx, name, args...)
 				}
 				if args[0] == "verify" {
-					return []byte(`{"status":"success","verification":{"bandwidth_hz":16000}}`), nil
+					return json.Marshal(map[string]any{"status": "success", "verification": fakeVerdict(t, args, 16000, false)})
 				}
 				var work string
 				for i, arg := range args {
@@ -101,7 +101,7 @@ func TestUpgradeTrackRealAudio(t *testing.T) {
 				if closeErr != nil {
 					return nil, closeErr
 				}
-				return json.Marshal(map[string]any{"status": "success", "output_file": path, "verification": map[string]any{"bandwidth_hz": 20000, "peak_dbfs": -1}})
+				return json.Marshal(map[string]any{"status": "success", "output_file": path, "verification": fakeVerdict(t, args, 20000, false)})
 			}
 			result, err := UpgradeTrack(ctx, database, libDir, "1", UpgradeOptions{Runner: runner, KeepTiming: true})
 			if err != nil {

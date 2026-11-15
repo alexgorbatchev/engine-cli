@@ -96,16 +96,17 @@ func TestFetchUpgradeRejectsUnusableDownloads(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			work := t.TempDir()
 			file := filepath.Join(work, "candidate.m4a")
-			verification := any(map[string]int{"bandwidth_hz": 20000, "peak_dbfs": -1})
+			verdict := fakeVerdict(t, nil, 20000, false)
+			verification := any(verdict)
 			switch scenario {
 			case "unverified":
 				verification = nil
 			case "low bandwidth":
-				verification = map[string]int{"bandwidth_hz": 12000, "peak_dbfs": -1}
+				verification = fakeVerdict(t, nil, 12000, false)
 			case "silent":
-				verification = map[string]int{"bandwidth_hz": 20000, "peak_dbfs": -180}
+				verdict["peak_dbfs"] = -180
 			case "missing peak":
-				verification = map[string]int{"bandwidth_hz": 20000}
+				delete(verdict, "peak_dbfs")
 			case "directory":
 				if err := os.Mkdir(file, 0700); err != nil {
 					t.Fatal(err)
@@ -378,7 +379,7 @@ func TestUpgradeLateFailuresLeaveLibraryUntouched(t *testing.T) {
 				switch name {
 				case "fetch-track":
 					if len(args) > 0 && args[0] == "verify" {
-						return []byte(`{"status":"success","verification":{"bandwidth_hz":16000}}`), nil
+						return json.Marshal(map[string]any{"status": "success", "verification": fakeVerdict(t, args, 16000, false)})
 					}
 					if args[len(args)-1] != "Artist - Explicit query" {
 						t.Fatalf("query=%v", args)
@@ -393,7 +394,7 @@ func TestUpgradeLateFailuresLeaveLibraryUntouched(t *testing.T) {
 					if err := os.WriteFile(candidate, []byte("replacement"), 0600); err != nil {
 						return nil, err
 					}
-					return json.Marshal(map[string]any{"status": "success", "output_file": candidate, "verification": map[string]int{"bandwidth_hz": 20000, "peak_dbfs": -1}})
+					return json.Marshal(map[string]any{"status": "success", "output_file": candidate, "verification": fakeVerdict(t, args, 20000, false)})
 				case "ffprobe":
 					probes++
 					if stage == "replacement probe" && probes == 2 || stage == "final probe" && probes == 3 {

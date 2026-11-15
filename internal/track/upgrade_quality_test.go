@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -38,32 +40,68 @@ func TestUpgradeRejectsIncompatibleAudio(t *testing.T) {
 	}
 }
 
+// fakeVerdict answers like Fetch Track 1.12.0 for a file measured at
+// bandwidthHz: it judges it against the --min-bandwidth-khz in args (19 kHz
+// when absent), and floorFails adds a failed codec bitrate floor, as for Opus
+// below 160 kbps.
+func fakeVerdict(t *testing.T, args []string, bandwidthHz int, floorFails bool) map[string]any {
+	t.Helper()
+	minimum := 19000
+	for i, arg := range args {
+		if arg == "--min-bandwidth-khz" && i+1 < len(args) {
+			khz, err := strconv.ParseFloat(args[i+1], 64)
+			if err != nil {
+				t.Fatalf("minimum bandwidth %q: %v", args[i+1], err)
+			}
+			minimum = int(math.Round(khz * 1000))
+		}
+	}
+	reasons := []string{}
+	if bandwidthHz < minimum {
+		reasons = append(reasons, "bandwidth_below_minimum")
+	}
+	if floorFails {
+		reasons = append(reasons, "bitrate_below_minimum")
+	}
+	return map[string]any{"bandwidth_hz": bandwidthHz, "peak_dbfs": -1, "min_bandwidth_hz": minimum, "meets_minimum": len(reasons) == 0, "low_quality_reasons": reasons}
+}
+
 func TestUpgradeQualityComparison(t *testing.T) {
 	for _, tt := range []struct {
 		name         string
 		bandwidth    int
 		duration     float64
+		original     int
 		verification string
 		err          error
 		wantErr      bool
 	}{
-		{name: "replacement meets the minimum", bandwidth: 20000, duration: 180, verification: `{"status":"success","verification":{"bandwidth_hz":16000}}`},
-		{name: "longer mix", bandwidth: 16000, duration: 360, verification: `{"status":"success","verification":{"bandwidth_hz":16000}}`},
-		{name: "downgrade", bandwidth: 16000, duration: 360, verification: `{"status":"success","verification":{"bandwidth_hz":20000}}`, wantErr: true},
-		{name: "no improvement", bandwidth: 16000, duration: 180, verification: `{"status":"success","verification":{"bandwidth_hz":16000}}`, wantErr: true},
+		{name: "replacement meets the minimum", bandwidth: 20000, duration: 180, original: 16000},
+		{name: "longer mix", bandwidth: 16000, duration: 360, original: 16000},
+		{name: "downgrade", bandwidth: 16000, duration: 360, original: 20000, wantErr: true},
+		{name: "no improvement", bandwidth: 16000, duration: 180, original: 16000, wantErr: true},
 		{name: "verification failure", err: errors.New("failed"), wantErr: true},
 		{name: "malformed result", verification: "not JSON", wantErr: true},
+		{name: "failed verification status", bandwidth: 20000, duration: 180, verification: `{"status":"error","verification":{"bandwidth_hz":16000,"min_bandwidth_hz":19000,"meets_minimum":false}}`, wantErr: true},
 		{name: "missing spectrum", verification: `{"status":"success"}`, wantErr: true},
-		{name: "negative spectrum", verification: `{"status":"success","verification":{"bandwidth_hz":-1}}`, wantErr: true},
+		{name: "negative spectrum", verification: `{"status":"success","verification":{"bandwidth_hz":-1,"min_bandwidth_hz":19000,"meets_minimum":false}}`, wantErr: true},
+		{name: "missing verdict", bandwidth: 20000, duration: 180, verification: `{"status":"success","verification":{"bandwidth_hz":16000}}`, wantErr: true},
+		{name: "verdict for another minimum", bandwidth: 20000, duration: 180, verification: `{"status":"success","verification":{"bandwidth_hz":16000,"min_bandwidth_hz":18000,"meets_minimum":false,"low_quality_reasons":["bandwidth_below_minimum"]}}`, wantErr: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := func(_ context.Context, name string, args ...string) ([]byte, error) {
 				if name != "fetch-track" || len(args) < 2 || args[0] != "verify" {
 					t.Fatalf("unexpected verification: %s %v", name, args)
 				}
-				return []byte(tt.verification), tt.err
+				if !slices.Equal(args[1:], []string{"--json", "--min-bandwidth-khz", "19", "--", "original.mp3"}) {
+					t.Fatalf("original verified with %v, want the requested 19 kHz minimum", args)
+				}
+				if tt.verification != "" || tt.err != nil {
+					return []byte(tt.verification), tt.err
+				}
+				return json.Marshal(map[string]any{"status": "success", "verification": fakeVerdict(t, args, tt.original, false)})
 			}
-			replacement := upgradeAudio{Seconds: tt.duration, BandwidthHz: tt.bandwidth, MeetsBar: meetsUpgradeBar(tt.bandwidth, 19000)}
+			replacement := upgradeAudio{Seconds: tt.duration, BandwidthHz: tt.bandwidth, MeetsBar: tt.bandwidth >= 19000}
 			input := upgradeQualityInput{OriginalPath: "original.mp3", OriginalSeconds: 180, Replacement: replacement, MinimumBandwidth: 19000}
 			if err := compareUpgradeQuality(context.Background(), runner, input); (err != nil) != tt.wantErr {
 				t.Fatalf("error=%v", err)
@@ -75,6 +113,8 @@ func TestUpgradeQualityComparison(t *testing.T) {
 // Cutoffs below are measured encoder ladders: MP3 128 kbps 16650 Hz, AAC
 // 128 kbps 17700 Hz, MP3 192 kbps 18700 Hz, MP3 256 kbps 19400 Hz, MP3
 // 320 kbps 20150 Hz, Opus at any music bitrate 20200 Hz and lossless 22000 Hz.
+// The bar is each file's verdict, so it can fail above the minimum, as Opus
+// below its bitrate floor does.
 // Lengths are ffprobe format durations: a 240 s edit probes 240.000000 s as
 // WAV, FLAC and MP3 but 240.023220 s as AAC in M4A without an edit list,
 // because of encoder priming.
@@ -193,13 +233,14 @@ func TestSameUpgradeLengthAtProbeResolution(t *testing.T) {
 	}
 }
 
-// The original's bar comes from Fetch Track's measurement and the request's
-// minimum, so it is decided on both sides of that minimum.
+// The original's bar is Fetch Track's verdict at the request's minimum, so it
+// is decided on both sides of that minimum and by any codec bitrate floor.
 func TestUpgradeQualityMeasuresOriginalAgainstMinimum(t *testing.T) {
 	for _, tt := range []struct {
 		name            string
 		minimum         int
 		original        int
+		originalFloor   bool
 		originalSeconds float64
 		replacement     upgradeAudio
 		wins            bool
@@ -208,10 +249,13 @@ func TestUpgradeQualityMeasuresOriginalAgainstMinimum(t *testing.T) {
 		{name: "original at the minimum keeps against a same-length replacement", minimum: 19000, original: 19000, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 22000, MeetsBar: true}},
 		{name: "raised minimum lets a 320 kbps radio edit replace a 256 kbps extended mix", minimum: 20000, original: 19400, originalSeconds: 420, replacement: upgradeAudio{Seconds: 210, BandwidthHz: 20150, MeetsBar: true}, wins: true},
 		{name: "lowered minimum keeps a 192 kbps original against same-length lossless", minimum: 18000, original: 18700, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 22000, MeetsBar: true}},
+		{name: "fractional minimum judges an original 1 Hz under it", minimum: 17500, original: 17499, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 17500, MeetsBar: true}, wins: true},
+		{name: "original whose cutoff passes but bitrate floor fails loses to a same-length replacement", minimum: 19000, original: 20200, originalFloor: true, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 19400, MeetsBar: true}, wins: true},
+		{name: "original whose cutoff passes but bitrate floor fails loses to a shorter replacement", minimum: 19000, original: 20200, originalFloor: true, originalSeconds: 420, replacement: upgradeAudio{Seconds: 210, BandwidthHz: 22000, MeetsBar: true}, wins: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			runner := func(context.Context, string, ...string) ([]byte, error) {
-				return json.Marshal(map[string]any{"status": "success", "verification": map[string]any{"bandwidth_hz": tt.original}})
+			runner := func(_ context.Context, _ string, args ...string) ([]byte, error) {
+				return json.Marshal(map[string]any{"status": "success", "verification": fakeVerdict(t, args, tt.original, tt.originalFloor)})
 			}
 			input := upgradeQualityInput{OriginalPath: "original.mp3", OriginalSeconds: tt.originalSeconds, Replacement: tt.replacement, MinimumBandwidth: tt.minimum}
 			if err := compareUpgradeQuality(context.Background(), runner, input); (err == nil) != tt.wins {
@@ -221,13 +265,16 @@ func TestUpgradeQualityMeasuresOriginalAgainstMinimum(t *testing.T) {
 	}
 }
 
-// Acquisition enforces the 16 kHz floor and reports whether the replacement
-// meets the request's minimum.
+// Acquisition enforces the 16 kHz floor and takes the replacement's bar from
+// Fetch Track's verdict at the request's minimum. A missing verdict, or one
+// judged against another minimum, cannot decide the bar.
 func TestFetchUpgradeFloorAndBar(t *testing.T) {
 	for _, tt := range []struct {
 		name       string
 		minimumKHz float64
 		bandwidth  int
+		floorFails bool
+		edit       func(verdict map[string]any)
 		refused    bool
 		meetsBar   bool
 	}{
@@ -238,6 +285,9 @@ func TestFetchUpgradeFloorAndBar(t *testing.T) {
 		{name: "1 Hz under a lowered minimum", minimumKHz: 17.5, bandwidth: 17499},
 		{name: "at a lowered minimum meets the bar", minimumKHz: 17.5, bandwidth: 17500, meetsBar: true},
 		{name: "lowered minimum keeps the 16 kHz floor", minimumKHz: 15, bandwidth: 15999, refused: true},
+		{name: "cutoff above the minimum with a failed bitrate floor misses the bar", bandwidth: 20200, floorFails: true},
+		{name: "missing verdict is refused", bandwidth: 20000, edit: func(v map[string]any) { delete(v, "meets_minimum") }, refused: true},
+		{name: "verdict for another minimum is refused", bandwidth: 20000, edit: func(v map[string]any) { v["min_bandwidth_hz"] = 18000 }, refused: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			work := t.TempDir()
@@ -245,8 +295,12 @@ func TestFetchUpgradeFloorAndBar(t *testing.T) {
 			if err := os.WriteFile(file, []byte("synthetic audio"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			runner := func(context.Context, string, ...string) ([]byte, error) {
-				return json.Marshal(map[string]any{"status": "success", "output_file": file, "verification": map[string]any{"bandwidth_hz": tt.bandwidth, "peak_dbfs": -1}})
+			runner := func(_ context.Context, _ string, args ...string) ([]byte, error) {
+				verdict := fakeVerdict(t, args, tt.bandwidth, tt.floorFails)
+				if tt.edit != nil {
+					tt.edit(verdict)
+				}
+				return json.Marshal(map[string]any{"status": "success", "output_file": file, "verification": verdict})
 			}
 			acquired, err := fetchUpgrade(context.Background(), runner, "Artist - Title", work, acquire.TrackOptions{MinBandwidthKHz: tt.minimumKHz})
 			if tt.refused {

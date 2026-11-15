@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 )
@@ -48,8 +49,23 @@ func TestUpstreamBinaries(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.Verification == nil || result.Verification.DurationSeconds <= 0 {
+		if result.Verification == nil || result.Verification.DurationSeconds <= 0 || result.Verification.MeetsMinimum == nil || result.Verification.MinBandwidthHz != 16000 {
 			t.Fatalf("result: %+v", result)
+		}
+	})
+	t.Run("Opus bitrate floor", func(t *testing.T) {
+		opus := filepath.Join(dir, "noise.opus")
+		cmd := exec.CommandContext(ctx, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "anoisesrc=color=pink:duration=5:sample_rate=48000", "-c:a", "libopus", "-b:a", "96k", "-vbr", "off", opus)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Skipf("Opus fixture needs FFmpeg with libopus: %v: %s", err, output)
+		}
+		result, err := client.Verify(ctx, opus, VerifyOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		v := result.Verification
+		if v == nil || v.Codec != "opus" || v.BandwidthHz < 19000 || v.MinBitrateBps != 160000 || v.MeetsMinimum == nil || *v.MeetsMinimum || !slices.Equal(v.LowQualityReasons, []string{"bitrate_below_minimum"}) {
+			t.Fatalf("96 kbps Opus verdict: %+v", v)
 		}
 	})
 	t.Run("local artwork", func(t *testing.T) {

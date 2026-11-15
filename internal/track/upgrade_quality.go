@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
@@ -70,12 +71,34 @@ func upgradeMinimumHz(khz float64) int {
 	return int(math.Round(acquire.MinBandwidthOrDefault(khz) * 1000))
 }
 
-// meetsUpgradeBar decides the bar from the measured cutoff alone. The bar is
-// an input to decideUpgrade rather than part of it, so Fetch Track's verify
-// verdict, which adds a per-codec bitrate floor where the cutoff does not
-// reflect quality, can supply it for both files without changing the rule.
-func meetsUpgradeBar(bandwidthHz, minimumHz int) bool {
-	return bandwidthHz >= minimumHz
+// upgradeVerdict is Fetch Track's quality verdict for one file, decoded from
+// its verification report.
+type upgradeVerdict struct {
+	// MinBandwidthHz is the minimum the verdict applied.
+	MinBandwidthHz int `json:"min_bandwidth_hz"`
+	// MeetsMinimum is nil when Fetch Track reported no verdict.
+	MeetsMinimum *bool `json:"meets_minimum"`
+}
+
+// meetsUpgradeBar decides whether a file meets the bar: Fetch Track's verdict
+// at the request's minimum, which adds a per-codec bitrate floor where the
+// measured cutoff does not reflect quality (Opus below 160 kbps at minimums of
+// 19 kHz and above). It decides the bar for both files. A missing verdict, or
+// one applied to another minimum, cannot decide it.
+func meetsUpgradeBar(verdict upgradeVerdict, minimumHz int) (bool, error) {
+	if verdict.MeetsMinimum == nil {
+		return false, fmt.Errorf("fetch-track reported no quality verdict; update fetch-track")
+	}
+	if verdict.MinBandwidthHz != minimumHz {
+		return false, fmt.Errorf("fetch-track judged audio quality against %d Hz instead of the requested %d Hz", verdict.MinBandwidthHz, minimumHz)
+	}
+	return *verdict.MeetsMinimum, nil
+}
+
+// upgradeMinimumArgument formats a minimum in Hz as Fetch Track's
+// --min-bandwidth-khz value, which it rounds back to the same Hz.
+func upgradeMinimumArgument(minimumHz int) string {
+	return strconv.FormatFloat(float64(minimumHz)/1000, 'f', -1, 64)
 }
 
 // sameUpgradeLength reports whether two durations, in seconds, count as the
@@ -121,12 +144,13 @@ type upgradeQualityInput struct {
 	OriginalPath    string
 	OriginalSeconds float64
 	Replacement     upgradeAudio
-	// MinimumBandwidth, in Hz, decides whether the original meets the bar.
+	// MinimumBandwidth, in Hz, is the minimum Fetch Track judges the original
+	// against.
 	MinimumBandwidth int
 }
 
 func compareUpgradeQuality(ctx context.Context, runner sync.CommandRunner, input upgradeQualityInput) error {
-	data, err := runner(ctx, "fetch-track", "verify", "--json", "--", input.OriginalPath)
+	data, err := runner(ctx, "fetch-track", "verify", "--json", "--min-bandwidth-khz", upgradeMinimumArgument(input.MinimumBandwidth), "--", input.OriginalPath)
 	if err != nil {
 		return fmt.Errorf("checking original audio quality with fetch-track: %w", err)
 	}
@@ -134,6 +158,7 @@ func compareUpgradeQuality(ctx context.Context, runner sync.CommandRunner, input
 		Status       string `json:"status"`
 		Verification *struct {
 			BandwidthHz *int `json:"bandwidth_hz"`
+			upgradeVerdict
 		} `json:"verification"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
@@ -142,7 +167,10 @@ func compareUpgradeQuality(ctx context.Context, runner sync.CommandRunner, input
 	if result.Status != "success" || result.Verification == nil || result.Verification.BandwidthHz == nil || *result.Verification.BandwidthHz < 0 {
 		return fmt.Errorf("fetch-track could not measure the original audio quality")
 	}
-	bandwidth := *result.Verification.BandwidthHz
-	original := upgradeAudio{Seconds: input.OriginalSeconds, BandwidthHz: bandwidth, MeetsBar: meetsUpgradeBar(bandwidth, input.MinimumBandwidth)}
+	meets, err := meetsUpgradeBar(result.Verification.upgradeVerdict, input.MinimumBandwidth)
+	if err != nil {
+		return fmt.Errorf("checking original audio quality: %w", err)
+	}
+	original := upgradeAudio{Seconds: input.OriginalSeconds, BandwidthHz: *result.Verification.BandwidthHz, MeetsBar: meets}
 	return decideUpgrade(original, input.Replacement, input.MinimumBandwidth)
 }

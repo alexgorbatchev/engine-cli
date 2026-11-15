@@ -31,7 +31,7 @@ func TestUpgradeTrack(t *testing.T) {
 				switch name {
 				case "fetch-track":
 					if args[0] == "verify" {
-						return []byte(`{"status":"success","verification":{"bandwidth_hz":16000}}`), nil
+						return json.Marshal(map[string]any{"status": "success", "verification": fakeVerdict(t, args, 16000, false)})
 					}
 					if fail == "fetch" {
 						return nil, errors.New("fetch failed")
@@ -64,7 +64,9 @@ func TestUpgradeTrack(t *testing.T) {
 					if fail == "warning" {
 						status = "quality_warning"
 					}
-					return json.Marshal(map[string]any{"status": status, "output_file": candidate, "verification": map[string]any{"bandwidth_hz": 20000, "peak_dbfs": -1, "duration_seconds": 360}})
+					verification := fakeVerdict(t, args, 20000, false)
+					verification["duration_seconds"] = 360
+					return json.Marshal(map[string]any{"status": status, "output_file": candidate, "verification": verification})
 				case "ffprobe":
 					if fail == "probe" {
 						return nil, errors.New("probe failed")
@@ -142,18 +144,22 @@ func TestUpgradeTrack(t *testing.T) {
 	}
 }
 
-// The requested minimum, or its default, must decide each file's bar, and the
-// replacement's bar must reach the rule: each case gives a different outcome
-// when the bar uses a hardcoded, zero or unscaled minimum, or when the
-// replacement's bar is lost. Durations are ffprobe format durations.
+// The requested minimum, or its default, must decide each file's bar through
+// Fetch Track's verdict, and the replacement's bar must reach the rule: each
+// case gives a different outcome when the bar uses a hardcoded, zero or
+// unscaled minimum, ignores a failed bitrate floor, or when the replacement's
+// bar is lost. Durations are ffprobe format durations.
 func TestUpgradeTrackComparesAgainstRequestedMinimum(t *testing.T) {
 	for _, tt := range []struct {
 		name                                  string
 		minimumKHz                            float64
 		original, replacement                 int
+		originalFloor, replacementFloor       bool
 		originalDuration, replacementDuration string
 		wins                                  bool
 	}{
+		{name: "original whose bitrate floor fails above the minimum loses to a same-length replacement", original: 20200, originalFloor: true, originalDuration: "240", replacement: 19400, replacementDuration: "240", wins: true},
+		{name: "replacement whose bitrate floor fails above the minimum loses while longer to an original that meets it", original: 19400, originalDuration: "210", replacement: 20200, replacementFloor: true, replacementDuration: "420"},
 		{name: "raised minimum lets a 320 kbps radio edit beat a 256 kbps extended mix", minimumKHz: 20, original: 19400, originalDuration: "420", replacement: 20150, replacementDuration: "210", wins: true},
 		{name: "default minimum keeps the longer 256 kbps mix", original: 19400, originalDuration: "420", replacement: 20150, replacementDuration: "210"},
 		{name: "default minimum lets a higher cutoff below it win", original: 16650, originalDuration: "420", replacement: 17700, replacementDuration: "210", wins: true},
@@ -175,7 +181,7 @@ func TestUpgradeTrackComparesAgainstRequestedMinimum(t *testing.T) {
 				switch name {
 				case "fetch-track":
 					if args[0] == "verify" {
-						return json.Marshal(map[string]any{"status": "success", "verification": map[string]any{"bandwidth_hz": tt.original}})
+						return json.Marshal(map[string]any{"status": "success", "verification": fakeVerdict(t, args, tt.original, tt.originalFloor)})
 					}
 					var dir string
 					for i, a := range args {
@@ -187,7 +193,7 @@ func TestUpgradeTrackComparesAgainstRequestedMinimum(t *testing.T) {
 					if err := os.WriteFile(candidate, []byte("replacement"), 0o600); err != nil {
 						t.Fatal(err)
 					}
-					return json.Marshal(map[string]any{"status": "success", "output_file": candidate, "verification": map[string]any{"bandwidth_hz": tt.replacement, "peak_dbfs": -1}})
+					return json.Marshal(map[string]any{"status": "success", "output_file": candidate, "verification": fakeVerdict(t, args, tt.replacement, tt.replacementFloor)})
 				case "ffprobe":
 					if args[len(args)-1] == original {
 						return fmt.Appendf(nil, `{"format":{"duration":%q},"streams":[{"codec_type":"audio","codec_name":"mp3"}]}`, tt.originalDuration), nil
