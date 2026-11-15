@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -141,18 +142,24 @@ func TestUpgradeTrack(t *testing.T) {
 	}
 }
 
-// The requested minimum, or its default, must reach the comparison: each case
-// gives a different outcome under a hardcoded, zero or unscaled cap.
+// The requested minimum, or its default, must decide each file's bar, and the
+// replacement's bar must reach the rule: each case gives a different outcome
+// when the bar uses a hardcoded, zero or unscaled minimum, or when the
+// replacement's bar is lost. Durations are ffprobe format durations.
 func TestUpgradeTrackComparesAgainstRequestedMinimum(t *testing.T) {
 	for _, tt := range []struct {
-		name                  string
-		minimumKHz            float64
-		original, replacement int
-		wins                  bool
+		name                                  string
+		minimumKHz                            float64
+		original, replacement                 int
+		originalDuration, replacementDuration string
+		wins                                  bool
 	}{
-		{name: "raised minimum lets 320 kbps beat 256 kbps", minimumKHz: 20, original: 19400, replacement: 20150, wins: true},
-		{name: "default minimum keeps the longer 256 kbps mix", original: 19400, replacement: 20150},
-		{name: "default minimum lets a higher cutoff below it win", original: 16650, replacement: 17700, wins: true},
+		{name: "raised minimum lets a 320 kbps radio edit beat a 256 kbps extended mix", minimumKHz: 20, original: 19400, originalDuration: "420", replacement: 20150, replacementDuration: "210", wins: true},
+		{name: "default minimum keeps the longer 256 kbps mix", original: 19400, originalDuration: "420", replacement: 20150, replacementDuration: "210"},
+		{name: "default minimum lets a higher cutoff below it win", original: 16650, originalDuration: "420", replacement: 17700, replacementDuration: "210", wins: true},
+		{name: "replacement at the default minimum beats a longer original 1 Hz under it", original: 18999, originalDuration: "420", replacement: 19000, replacementDuration: "210", wins: true},
+		{name: "replacement at the default minimum more than 1 s longer beats an original that meets it", original: 19400, originalDuration: "240", replacement: 19000, replacementDuration: "241.5", wins: true},
+		{name: "replacement 1 Hz under the default minimum loses while longer to an original at it", original: 19000, originalDuration: "210", replacement: 18999, replacementDuration: "420"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			database, libDir, _ := createTestDB(t)
@@ -181,11 +188,10 @@ func TestUpgradeTrackComparesAgainstRequestedMinimum(t *testing.T) {
 					}
 					return json.Marshal(map[string]any{"status": "success", "output_file": candidate, "verification": map[string]any{"bandwidth_hz": tt.replacement, "peak_dbfs": -1}})
 				case "ffprobe":
-					// The original is the longer extended mix.
 					if args[len(args)-1] == original {
-						return []byte(`{"format":{"duration":"420"},"streams":[{"codec_type":"audio","codec_name":"mp3"}]}`), nil
+						return fmt.Appendf(nil, `{"format":{"duration":%q},"streams":[{"codec_type":"audio","codec_name":"mp3"}]}`, tt.originalDuration), nil
 					}
-					return []byte(`{"format":{"duration":"210","bit_rate":"320000"},"streams":[{"codec_type":"audio","codec_name":"aac","bit_rate":"320000"}]}`), nil
+					return fmt.Appendf(nil, `{"format":{"duration":%q,"bit_rate":"320000"},"streams":[{"codec_type":"audio","codec_name":"aac","bit_rate":"320000"}]}`, tt.replacementDuration), nil
 				case "ffmpeg":
 					return nil, os.WriteFile(args[len(args)-1], []byte("tagged replacement"), 0o600)
 				}
