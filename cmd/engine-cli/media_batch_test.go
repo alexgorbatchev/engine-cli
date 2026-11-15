@@ -9,6 +9,46 @@ import (
 	"testing"
 )
 
+func TestVerifyMinimumBandwidthDefault(t *testing.T) {
+	original := acquisitionRunner
+	t.Cleanup(func() { acquisitionRunner = original })
+	for _, tc := range []struct {
+		name    string
+		flags   []string
+		minimum string
+	}{
+		{"omitted uses default", nil, "19"},
+		{"zero uses default", []string{"--min-bandwidth-khz", "0"}, "19"},
+		{"explicit value", []string{"--min-bandwidth-khz", "17.5"}, "17.5"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var forwarded []string
+			acquisitionRunner = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+				forwarded = args
+				return []byte(`{"status":"success"}`), nil
+			}
+			args := append([]string{"-l", t.TempDir(), "track", "verify", "https://example.test/music.mp3", "--json"}, tc.flags...)
+			if _, err := executeCommand(args...); err != nil {
+				t.Fatal(err)
+			}
+			index := slices.Index(forwarded, "--min-bandwidth-khz")
+			if index < 0 || forwarded[index+1] != tc.minimum {
+				t.Fatalf("forwarded %v, want minimum %s", forwarded, tc.minimum)
+			}
+		})
+	}
+	// Help shows the default the operation applies; fetches keep Fetch Track's own.
+	for path, want := range map[string]string{"track verify": "19", "track upgrade": "19", "track fetch": "0", "track candidates": "0"} {
+		command, _, err := newRootCommand().Find(strings.Fields(path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := command.Flags().Lookup("min-bandwidth-khz").DefValue; got != want {
+			t.Fatalf("%s --min-bandwidth-khz default %s, want %s", path, got, want)
+		}
+	}
+}
+
 func TestMediaCLINativeTargetsAndBatches(t *testing.T) {
 	original := acquisitionRunner
 	t.Cleanup(func() { acquisitionRunner = original })

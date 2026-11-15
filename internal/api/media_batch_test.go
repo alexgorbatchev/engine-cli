@@ -22,7 +22,7 @@ import (
 func TestVerifyRawTargetDoesNotRequireCollection(t *testing.T) {
 	for _, target := range []string{"https://example.test/audio.mp3", filepath.Join(t.TempDir(), "audio.mp3")} {
 		s, err := New(Config{LibraryDir: t.TempDir(), ToolRunner: func(_ context.Context, name string, args ...string) ([]byte, error) {
-			if name != "fetch-track" || !slices.Equal(args, []string{"--json", "verify", "--", target}) {
+			if name != "fetch-track" || !slices.Equal(args, []string{"--json", "verify", "--min-bandwidth-khz", "19", "--", target}) {
 				t.Fatalf("native verification: %s %v", name, args)
 			}
 			return []byte(`{"status":"success"}`), nil

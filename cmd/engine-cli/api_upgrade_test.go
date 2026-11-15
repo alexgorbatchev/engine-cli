@@ -37,7 +37,11 @@ func TestMain(m *testing.M) {
 
 func fetchHelperCommand() *cobra.Command {
 	var target, dir string
+	var minimum float64
 	root := &cobra.Command{Use: "fetch-track", Args: cobra.MinimumNArgs(1), RunE: func(c *cobra.Command, _ []string) error {
+		if minimum != 19 {
+			return fmt.Errorf("upgrade requested minimum bandwidth %v kHz, want the 19 kHz default", minimum)
+		}
 		conn, err := net.Dial("tcp", strings.TrimPrefix(target, "tcp://"))
 		if err != nil {
 			return err
@@ -67,6 +71,7 @@ func fetchHelperCommand() *cobra.Command {
 	root.Flags().Bool("skip-metadata", false, "")
 	root.Flags().StringVar(&target, "progress-target", "", "")
 	root.Flags().StringVar(&dir, "out-dir", "", "")
+	root.Flags().Float64Var(&minimum, "min-bandwidth-khz", 0, "")
 	root.AddCommand(&cobra.Command{Use: "verify", Args: cobra.ExactArgs(1), RunE: func(c *cobra.Command, _ []string) error {
 		_, err := fmt.Fprintln(c.OutOrStdout(), `{"status":"success","verification":{"bandwidth_hz":16000}}`)
 		return err

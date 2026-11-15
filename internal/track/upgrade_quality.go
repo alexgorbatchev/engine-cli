@@ -41,11 +41,20 @@ func (p *upgradeProbe) engineCompatible(path string) error {
 	return fmt.Errorf("replacement contains no audio")
 }
 
+// upgradeBandwidthTolerance is the smallest difference in measured cutoff, in
+// Hz, that counts as a quality change. Smaller differences are within the
+// spread of encoders at similar bitrates and of the measurement itself.
+const upgradeBandwidthTolerance = 500
+
 type upgradeQualityInput struct {
 	OriginalPath         string
 	OriginalSeconds      float64
 	ReplacementSeconds   float64
 	ReplacementBandwidth int
+	// MinimumBandwidth caps both measured cutoffs before comparison: audio that
+	// already meets the minimum gains nothing from a higher cutoff, so the
+	// longer version is preferred.
+	MinimumBandwidth int
 }
 
 func compareUpgradeQuality(ctx context.Context, runner sync.CommandRunner, input upgradeQualityInput) error {
@@ -66,11 +75,14 @@ func compareUpgradeQuality(ctx context.Context, runner sync.CommandRunner, input
 		return fmt.Errorf("fetch-track could not measure the original audio quality")
 	}
 	original := *result.Verification.BandwidthHz
-	if input.ReplacementBandwidth < original {
+	gain := min(input.ReplacementBandwidth, input.MinimumBandwidth) - min(original, input.MinimumBandwidth)
+	switch {
+	case gain >= upgradeBandwidthTolerance:
+		return nil
+	case gain <= -upgradeBandwidthTolerance:
 		return fmt.Errorf("replacement has lower measured audio bandwidth (%d Hz versus %d Hz); original retained", input.ReplacementBandwidth, original)
+	case input.ReplacementSeconds > input.OriginalSeconds:
+		return nil
 	}
-	if input.ReplacementBandwidth == original && input.ReplacementSeconds <= input.OriginalSeconds {
-		return fmt.Errorf("replacement has neither higher measured audio bandwidth nor a longer mix; original retained")
-	}
-	return nil
+	return fmt.Errorf("replacement is neither at least %d Hz higher in measured audio bandwidth (up to the %d Hz minimum) nor a longer mix; original retained", upgradeBandwidthTolerance, input.MinimumBandwidth)
 }

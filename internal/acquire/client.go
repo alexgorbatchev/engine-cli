@@ -46,6 +46,20 @@ type TrackOptions struct {
 	JSRuntime          string  `json:"js_runtime"`
 }
 
+// DefaultMinBandwidthKHz is the club playback bar for verification and
+// upgrades: MP3 at 224 kbps and above, Opus at 160 kbps, AAC at 256 kbps and
+// lossless audio reach it.
+const DefaultMinBandwidthKHz = 19.0
+
+// MinBandwidthOrDefault returns the requested minimum bandwidth, or
+// DefaultMinBandwidthKHz when the request leaves it unset (zero).
+func MinBandwidthOrDefault(khz float64) float64 {
+	if khz == 0 {
+		return DefaultMinBandwidthKHz
+	}
+	return khz
+}
+
 func (o TrackOptions) Validate() error {
 	if math.IsNaN(o.MinBandwidthKHz) || math.IsInf(o.MinBandwidthKHz, 0) || o.MinBandwidthKHz < 0 || o.MinBandwidthKHz > 100 {
 		return fmt.Errorf("min_bandwidth_khz must be between 0 and 100")
@@ -117,7 +131,7 @@ type VerifyOptions struct {
 }
 
 func (c Client) Verify(ctx context.Context, path string, options VerifyOptions) (*TrackResult, error) {
-	opts := TrackOptions{MinBandwidthKHz: options.MinBandwidthKHz, AutoInstall: options.AutoInstall}
+	opts := TrackOptions{MinBandwidthKHz: MinBandwidthOrDefault(options.MinBandwidthKHz), AutoInstall: options.AutoInstall}
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}

@@ -40,6 +40,9 @@ func TestUpgradeTrack(t *testing.T) {
 					if !strings.Contains(strings.Join(args, " "), "Curated artist - Curated title") {
 						t.Fatalf("search ignores original metadata: %v", args)
 					}
+					if !strings.Contains(strings.Join(args, " "), "--min-bandwidth-khz 19 ") {
+						t.Fatalf("upgrade omits the default minimum bandwidth: %v", args)
+					}
 					var dir string
 					for i, a := range args {
 						if a == "--out-dir" {

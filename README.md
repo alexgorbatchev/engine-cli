@@ -37,7 +37,7 @@ For agent usage, run `engine-cli skill` for installation instructions or read th
 - Keeps the original audio file when upgrading a track. Close Engine DJ before running the upgrade, then analyze the replacement with `track analyze` or in Engine DJ before playing it.
 - `track analyze` writes each track as soon as its analysis finishes and checks again that Engine DJ is closed before every write. One undo record covers the whole run, including tracks written before a failure or cancellation. Tracks without a steady beat or a detectable key report it and keep their values.
 - When an upgraded track has saved cues, loops, or beat grids, requires `--keep-timing` or `--clear-timing`. An extended mix can shift those positions, so check retained timing before playing.
-- Track upgrades require at least 16 kHz of measured audio bandwidth and either a higher measured bandwidth than the original or a longer mix with equal bandwidth. This is a screening measure, not a guarantee of audible improvement.
+- Track upgrades require at least 16 kHz of measured audio bandwidth. Both measured cutoffs are capped at the minimum bandwidth (`--min-bandwidth-khz`, default 19 kHz: MP3 224 kbps and above, Opus 160 kbps, AAC 256 kbps and lossless reach it) before comparison. A replacement at least 0.5 kHz higher wins at any length, and one at least 0.5 kHz lower never wins. Otherwise only a longer replacement wins, so a 320 kbps radio edit never replaces a 256 kbps extended mix. This is a screening measure, not a guarantee of audible improvement.
 - Track upgrades keep the original audio file and reject formats outside Engine DJ's supported codec/container combinations, including Opus. Audio is never re-encoded to make an unsupported download fit.
 
 # How it Really Works

@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
@@ -56,6 +58,7 @@ func (j *upgradeJob) resolve(ctx context.Context, identifier string) error {
 	if j.opts.Runner == nil {
 		j.opts.Runner = defaultUpgradeRunner
 	}
+	j.opts.Acquisition.MinBandwidthKHz = acquire.MinBandwidthOrDefault(j.opts.Acquisition.MinBandwidthKHz)
 	return nil
 }
 
@@ -131,6 +134,7 @@ func (j *upgradeJob) checkQuality(ctx context.Context, acquired *acquiredUpgrade
 	quality := upgradeQualityInput{
 		OriginalPath: j.original, OriginalSeconds: oldSeconds,
 		ReplacementSeconds: newSeconds, ReplacementBandwidth: acquired.BandwidthHz,
+		MinimumBandwidth: int(math.Round(j.opts.Acquisition.MinBandwidthKHz * 1000)),
 	}
 	return compareUpgradeQuality(ctx, j.opts.Runner, quality)
 }

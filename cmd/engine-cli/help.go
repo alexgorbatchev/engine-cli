@@ -195,7 +195,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"engine-cli track upgrade": {
 		Summary:     "Fetch replacement audio and preserve curated metadata and playlist membership",
-		Description: "Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.",
+		Description: "Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. Measured cutoffs are capped at the minimum bandwidth before comparison: a replacement at least 0.5 kHz higher wins at any length, one at least 0.5 kHz lower never wins, and otherwise only a longer replacement wins. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.",
 		Args:        []cobrahelptree.ArgSpec{{Name: "<id|path>"}},
 		MutatesDB:   true,
 		AutoBackup:  true,

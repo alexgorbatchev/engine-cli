@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/api"
 	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
 	"github.com/alexgorbatchev/engine-cli/internal/libraryops"
@@ -58,7 +59,7 @@ func addAcquisitionCommands(root *cobra.Command) {
 		}
 		track.AddCommand(acquisitionCommand("track."+action, action+" <query>", "Find and acquire individual audio tracks", "query", flags))
 	}
-	track.AddCommand(acquisitionCommand("track.verify", "verify [url|path|identifier]", "Verify the spectral quality of remote, local, collection, or staged audio", "identifier", []acquisitionFlag{{"target", "string", "Verify this URL or local path"}, {"staging-id", "string", "Verify this staged item instead of a collection track"}, {"min-bandwidth-khz", "float", "Minimum accepted bandwidth in kHz"}, {"auto-install", "bool", "Install missing verification dependencies"}}))
+	track.AddCommand(acquisitionCommand("track.verify", "verify [url|path|identifier]", "Verify the spectral quality of remote, local, collection, or staged audio", "identifier", []acquisitionFlag{{"target", "string", "Verify this URL or local path"}, {"staging-id", "string", "Verify this staged item instead of a collection track"}, {"min-bandwidth-khz", "float", "Minimum accepted bandwidth in kHz; 0 uses the default"}, {"auto-install", "bool", "Install missing verification dependencies"}}))
 	tags := &cobra.Command{Use: "tags", Short: "Inspect and update tags embedded in audio files", Args: cobra.NoArgs}
 	targetFlags := []acquisitionFlag{{"staging-id", "string", "Select a staged item"}, {"staging-ids", "strings", "Select staged items; repeat or separate with commas"}, {"path", "string", "Select a local audio file"}, {"paths", "strings", "Select local audio paths; repeat or separate with commas"}}
 	tags.AddCommand(acquisitionCommand("track.tags.inspect", "inspect [path|identifier...]", "Inspect actual audio file tags", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"auto-install", "bool", "Install missing or outdated tag tools"})))
@@ -109,6 +110,15 @@ func addAcquisitionCommands(root *cobra.Command) {
 	staged.AddCommand(acquisitionCommand("staging.retry", "retry <id>", "Retry a staged acquisition or its failed mix tracks", "id", []acquisitionFlag{{"auto-install", "bool", "Install missing or outdated tools when retrying"}}))
 }
 
+// floatFlagDefault shows defaults the operation applies itself. Unchanged flags
+// are not forwarded, so the displayed value matches an omitted parameter.
+func floatFlagDefault(operation, name string) float64 {
+	if name == "min-bandwidth-khz" && (operation == "track.verify" || operation == "track.upgrade") {
+		return acquire.DefaultMinBandwidthKHz
+	}
+	return 0
+}
+
 func acquisitionCommand(operation, use, short, positional string, flags []acquisitionFlag) *cobra.Command {
 	var asJSON bool
 	command := &cobra.Command{Use: use, Short: short, Args: cobra.NoArgs, Annotations: map[string]string{"engine-api-operation": "true"}}
@@ -130,7 +140,7 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 		case "bool":
 			command.Flags().Bool(flag.name, false, flag.description)
 		case "float":
-			command.Flags().Float64(flag.name, 0, flag.description)
+			command.Flags().Float64(flag.name, floatFlagDefault(operation, flag.name), flag.description)
 		case "strings":
 			command.Flags().StringSlice(flag.name, nil, flag.description)
 		default:

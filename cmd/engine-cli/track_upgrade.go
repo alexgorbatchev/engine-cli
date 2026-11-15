@@ -8,7 +8,13 @@ import (
 )
 
 func newTrackUpgradeCommand() *cobra.Command {
-	flags := append([]acquisitionFlag{{"query", "string", "Search words instead of the saved artist and title"}, {"keep-timing", "bool", "Keep saved cues, loops, and beat grids"}, {"clear-timing", "bool", "Remove saved cues, loops, and beat grids"}}, trackFetchFlags...)
+	flags := []acquisitionFlag{{"query", "string", "Search words instead of the saved artist and title"}, {"keep-timing", "bool", "Keep saved cues, loops, and beat grids"}, {"clear-timing", "bool", "Remove saved cues, loops, and beat grids"}}
+	for _, flag := range trackFetchFlags {
+		if flag.name == "min-bandwidth-khz" {
+			flag.description = "Minimum accepted bandwidth in kHz; cutoffs above it count as equal when comparing with the original (0 uses the default)"
+		}
+		flags = append(flags, flag)
+	}
 	flags = append(flags, continuationFlags...)
 	command := acquisitionCommand("track.upgrade", "upgrade <id|path>", "Fetch replacement audio while keeping track information and playlists", "identifier", flags)
 	command.Args = cobra.ExactArgs(1)
