@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -151,6 +153,42 @@ func TestSameUpgradeLength(t *testing.T) {
 	} {
 		if got := sameUpgradeLength(240, 240+tt.difference); got != tt.same {
 			t.Errorf("lengths %g s apart same=%t, want %t", tt.difference, got, tt.same)
+		}
+	}
+}
+
+// ffprobe prints durations in microseconds. Two printed durations exactly the
+// tolerance apart are the same length even when they straddle a power of two,
+// where binary subtraction of the parsed values exceeds the tolerance.
+func TestSameUpgradeLengthAtProbeResolution(t *testing.T) {
+	parse := func(micros int64) float64 {
+		seconds, err := strconv.ParseFloat(fmt.Sprintf("%d.%06d", micros/1e6, micros%1e6), 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return seconds
+	}
+	for _, tt := range []struct {
+		a, b float64
+		same bool
+	}{
+		{1.002991, 2.002991, true},
+		{255.000012, 256.000012, true},
+		{255.000012, 256.000013, false},
+	} {
+		if got := sameUpgradeLength(tt.a, tt.b); got != tt.same {
+			t.Errorf("%f s and %f s same=%t, want %t", tt.a, tt.b, got, tt.same)
+		}
+	}
+	for _, start := range []int64{127e6, 255e6, 511e6} {
+		for offset := int64(0); offset < 1e6; offset += 997 {
+			a := start + offset
+			if !sameUpgradeLength(parse(a), parse(a+1e6)) {
+				t.Fatalf("%f s and %f s count as different lengths", parse(a), parse(a+1e6))
+			}
+			if sameUpgradeLength(parse(a), parse(a+1e6+1)) {
+				t.Fatalf("%f s and %f s count as the same length", parse(a), parse(a+1e6+1))
+			}
 		}
 	}
 }

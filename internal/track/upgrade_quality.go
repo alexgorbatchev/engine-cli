@@ -79,9 +79,12 @@ func meetsUpgradeBar(bandwidthHz, minimumHz int) bool {
 }
 
 // sameUpgradeLength reports whether two durations, in seconds, count as the
-// same length.
+// same length. It compares whole microseconds, the resolution ffprobe prints,
+// because subtracting the parsed values directly puts some durations exactly
+// the tolerance apart just over it when they straddle a power of two, such as
+// 255.000012 s and 256.000012 s.
 func sameUpgradeLength(a, b float64) bool {
-	return math.Abs(a-b) <= upgradeLengthTolerance
+	return math.Abs(math.Round(a*1e6)-math.Round(b*1e6)) <= upgradeLengthTolerance*1e6
 }
 
 // decideUpgrade returns nil when the replacement should replace the original,

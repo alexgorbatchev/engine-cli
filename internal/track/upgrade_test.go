@@ -160,6 +160,7 @@ func TestUpgradeTrackComparesAgainstRequestedMinimum(t *testing.T) {
 		{name: "replacement at the default minimum beats a longer original 1 Hz under it", original: 18999, originalDuration: "420", replacement: 19000, replacementDuration: "210", wins: true},
 		{name: "replacement at the default minimum more than 1 s longer beats an original that meets it", original: 19400, originalDuration: "240", replacement: 19000, replacementDuration: "241.5", wins: true},
 		{name: "replacement 1 Hz under the default minimum loses while longer to an original at it", original: 19000, originalDuration: "210", replacement: 18999, replacementDuration: "420"},
+		{name: "both meet the minimum and probe exactly 1 s apart across 256 s", original: 19400, originalDuration: "255.000012", replacement: 22000, replacementDuration: "256.000012"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			database, libDir, _ := createTestDB(t)
