@@ -17,7 +17,8 @@ const releaseOwner = "alexgorbatchev"
 
 // requirement is the oldest release providing the machine interfaces Engine
 // consumes, and the repository that publishes the tool's releases. Fetch Track
-// 1.11.0 is the first release whose bandwidth_hz measures the real cutoff.
+// 1.11.0 is the first release whose bandwidth_hz measures the real cutoff;
+// Tag Track 1.2.0 is the first that can update tags without an online lookup.
 type requirement struct {
 	minVersion string
 	repo       string
@@ -27,7 +28,7 @@ var requirements = map[string]requirement{
 	"agent-ask-cli": {minVersion: "1.0.0", repo: "agent-ask-cli"},
 	"fetch-track":   {minVersion: "1.11.0", repo: "fetch-track-cli"},
 	"fetch-mix":     {minVersion: "2.1.4", repo: "fetch-mix-cli"},
-	"tag-track":     {minVersion: "1.1.1", repo: "tag-track-cli"},
+	"tag-track":     {minVersion: "1.2.0", repo: "tag-track-cli"},
 }
 
 // UseManagedTools selects satisfying external or managed releases at startup.

@@ -47,7 +47,8 @@ func TestUpdateFileTags(t *testing.T) {
 					return nil, nil
 				}
 			}
-			r, err := UpdateFileTags(context.Background(), d, lib, "1", FileTagOptions{Options: acquire.TagOptions{Title: new("New")}, Runner: runner})
+			// An online lookup rewrites every field, so the album follows the file.
+			r, err := UpdateFileTags(context.Background(), d, lib, "1", FileTagOptions{Options: acquire.TagOptions{Lookup: acquire.LookupReplace, Title: new("New")}, Runner: runner})
 			if changedAudio {
 				if err == nil {
 					t.Fatal("changed audio accepted")

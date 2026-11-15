@@ -6,7 +6,16 @@ import (
 	"time"
 )
 
+// Lookup modes for tag updates. Only LookupReplace identifies the file online;
+// every other value, including the zero value, writes only the supplied fields.
+const (
+	LookupNone    = "none"
+	LookupReplace = "replace"
+)
+
 type TagOptions struct {
+	// Lookup is LookupReplace to replace untouched fields with an online match.
+	Lookup      string  `json:"lookup"`
 	Artist      *string `json:"artist"`
 	Title       *string `json:"title"`
 	Album       *string `json:"album"`
@@ -107,6 +116,9 @@ func (c Client) Tags(ctx context.Context, action, path, work string, opts TagOpt
 				if flag.value {
 					args = append(args, "--"+flag.name)
 				}
+			}
+			if opts.Lookup != LookupReplace {
+				args = append(args, "--no-lookup")
 			}
 		}
 	}

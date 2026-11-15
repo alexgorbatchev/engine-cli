@@ -161,7 +161,7 @@ func TestAcquisitionToolsAndProviderDispatch(t *testing.T) {
 		args                    []string
 	}{
 		{"tool.inspect", `{"tool":"fetch-track"}`, "fetch-track", "1.11.0\n", []string{"--version"}},
-		{"tool.upgrade", `{"tool":"tag-track"}`, "tag-track", "1.1.1\n", []string{"--version"}},
+		{"tool.upgrade", `{"tool":"tag-track"}`, "tag-track", "1.2.0\n", []string{"--version"}},
 		{"tool.dependencies.inspect", `{"tool":"fetch-mix"}`, "fetch-mix", `{"status":"success"}`, []string{"--json", "dependencies"}},
 		{"tool.dependencies.install", `{"tool":"fetch-track","dependencies":["ffmpeg","deno"]}`, "fetch-track", `{"status":"success"}`, []string{"--json", "dependencies", "install", "ffmpeg", "deno"}},
 		{"tool.dependencies.update", `{"tool":"tag-track","dependencies":["ffmpeg"]}`, "tag-track", `{"status":"success"}`, []string{"--json", "dependencies", "update", "ffmpeg"}},

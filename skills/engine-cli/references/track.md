@@ -572,6 +572,8 @@ Update embedded tags while preserving original audio and collection metadata
 
 Usage: `engine-cli track tags update [path|identifier...] [flags]`.
 
+Without `--lookup replace`, no online lookup runs: only the supplied fields change, and every other embedded tag, the comment, the embedded artwork and the file name are kept. For a collection track, only the matching library fields (`--date` sets the year) follow the file; supplied `--artwork` also replaces the library artwork. `--lookup replace` identifies the file online and overwrites every untouched field, the comment and possibly the artwork with the match, and the library entry then follows the whole file. Preview with `--dry-run` first.
+
 - `--album` (string; default ``): Set album; an explicit empty value clears it.
 - `--artist` (string; default ``): Set artist; an explicit empty value clears it.
 - `--artwork` (string; default ``): Artwork file path or URL.
@@ -582,11 +584,12 @@ Usage: `engine-cli track tags update [path|identifier...] [flags]`.
 - `--genre` (string; default ``): Set genre; an explicit empty value clears it.
 - `--help, -h` (bool; default `false`): help for update.
 - `--json` (bool; default `false`): Print compact structured results.
-- `--no-cache` (bool; default `false`): Bypass cached metadata.
+- `--lookup` (string; default ``): Online lookup: none (default) writes only the supplied fields; replace overwrites untouched fields with an online match.
+- `--no-cache` (bool; default `false`): Bypass cached lookup results and artwork.
 - `--path` (string; default ``): Select a local audio file.
 - `--paths` (stringSlice; default `[]`): Select local audio paths; repeat or separate with commas.
-- `--refresh` (bool; default `false`): Refresh metadata using online sources.
-- `--source-url` (string; default ``): Metadata lookup source URL.
+- `--refresh` (bool; default `false`): Fetch lookup results and artwork again instead of using the cache.
+- `--source-url` (string; default ``): Audio source URL recorded with --lookup replace.
 - `--staging-id` (string; default ``): Select a staged item.
 - `--staging-ids` (stringSlice; default `[]`): Select staged items; repeat or separate with commas.
 - `--title` (string; default ``): Set title; an explicit empty value clears it.

@@ -80,7 +80,7 @@ func TestToolInstallationKeepsSharedManagedSelection(t *testing.T) {
 			installs := 0
 			c := Client{Installer: godeps.InstallerFunc(func(_ context.Context, dir string) error {
 				installs++
-				writeToolResult(t, dir, "tag-track", "1.1.1", marker, `{"status":"ok","source":"managed"}`)
+				writeToolResult(t, dir, "tag-track", "1.2.0", marker, `{"status":"ok","source":"managed"}`)
 				return nil
 			})}
 			if auto {
@@ -93,7 +93,7 @@ func TestToolInstallationKeepsSharedManagedSelection(t *testing.T) {
 				}
 			} else {
 				result, err := c.Upgrade(t.Context(), "tag-track")
-				if err != nil || result.Status != "success" || result.Version != "1.1.1" {
+				if err != nil || result.Status != "success" || result.Version != "1.2.0" {
 					t.Fatalf("upgrade=%+v err=%v", result, err)
 				}
 			}
@@ -111,16 +111,16 @@ func TestUpgradeReportsActiveExternalVersion(t *testing.T) {
 	external := t.TempDir()
 	t.Setenv("PATH", external)
 	marker := filepath.Join(t.TempDir(), "ran")
-	writeToolResult(t, external, "tag-track", "1.1.1", marker, `{"source":"external"}`)
+	writeToolResult(t, external, "tag-track", "1.2.0", marker, `{"source":"external"}`)
 	if err := UseManagedTools(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	c := Client{Installer: godeps.InstallerFunc(func(_ context.Context, dir string) error {
-		writeToolResult(t, dir, "tag-track", "1.2.0", marker, `{"source":"managed"}`)
+		writeToolResult(t, dir, "tag-track", "1.3.0", marker, `{"source":"managed"}`)
 		return nil
 	})}
 	result, err := c.Upgrade(t.Context(), "tag-track")
-	if err != nil || result.Status != "current" || result.Version != "1.1.1" {
+	if err != nil || result.Status != "current" || result.Version != "1.2.0" {
 		t.Fatalf("upgrade=%+v err=%v", result, err)
 	}
 	assertSelectedTool(t, "tag-track", "external")

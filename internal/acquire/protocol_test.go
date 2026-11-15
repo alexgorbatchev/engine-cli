@@ -44,7 +44,11 @@ func TestMachineOperations(t *testing.T) {
 			return e
 		}},
 		{"update", "tag-track", `{"status":"ok","results":[{"status":"success","output_file":"out"}]}`, []string{"--json", "track", "update", "--out-dir", "work", "--artwork", "cover", "--artist", "", "--title", "value", "--album", "value", "--date", "value", "--genre", "value", "--comment", "", "--source-url", "source", "--refresh", "--dry-run", "--no-cache", "--auto-install", "--", "file"}, func(c Client) error {
-			_, e := c.Tags(ctx, "update", "file", "work", TagOptions{Artist: &empty, Title: &value, Album: &value, Date: &value, Genre: &value, Comment: &empty, Artwork: "cover", SourceURL: "source", Refresh: true, DryRun: true, NoCache: true, AutoInstall: true})
+			_, e := c.Tags(ctx, "update", "file", "work", TagOptions{Lookup: LookupReplace, Artist: &empty, Title: &value, Album: &value, Date: &value, Genre: &value, Comment: &empty, Artwork: "cover", SourceURL: "source", Refresh: true, DryRun: true, NoCache: true, AutoInstall: true})
+			return e
+		}},
+		{"update without lookup", "tag-track", `{"status":"ok","results":[{"status":"success","output_file":"out"}]}`, []string{"--json", "track", "update", "--out-dir", "work", "--title", "value", "--no-lookup", "--", "file"}, func(c Client) error {
+			_, e := c.Tags(ctx, "update", "file", "work", TagOptions{Title: &value})
 			return e
 		}},
 		{"artwork", "tag-track", `{"status":"ok","results":[{"status":"success"}]}`, []string{"--json", "artwork", "embed", "--out-dir", "work", "--artwork", "cover", "--", "file"}, func(c Client) error {

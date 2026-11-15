@@ -57,6 +57,7 @@ type tagParams struct {
 	Identifiers []string `json:"identifiers"`
 	StagingIDs  []string `json:"staging_ids"`
 	Paths       []string `json:"paths"`
+	Lookup      string   `json:"lookup"`
 	Artist      *string  `json:"artist"`
 	Title       *string  `json:"title"`
 	Album       *string  `json:"album"`
@@ -96,6 +97,14 @@ func (p artworkParams) operationEffect() string {
 }
 
 func (p tagParams) validate() error {
+	switch p.Lookup {
+	case "", acquire.LookupNone, acquire.LookupReplace:
+	default:
+		return fmt.Errorf("lookup must be none or replace")
+	}
+	if p.SourceURL != "" && p.Lookup != acquire.LookupReplace {
+		return fmt.Errorf("source_url is recorded only with lookup replace")
+	}
 	return p.selection().validate()
 }
 func (p tagParams) selection() mediaSelection {
@@ -109,7 +118,7 @@ func (p tagParams) operationEffect() string {
 	return p.selection().effect()
 }
 func (p tagParams) options() acquire.TagOptions {
-	return acquire.TagOptions{Artist: p.Artist, Title: p.Title, Album: p.Album, Date: p.Date, Genre: p.Genre, Comment: p.Comment, Artwork: p.Artwork, SourceURL: p.SourceURL, Refresh: p.Refresh, DryRun: p.DryRun, NoCache: p.NoCache, AutoInstall: p.AutoInstall}
+	return acquire.TagOptions{Lookup: p.Lookup, Artist: p.Artist, Title: p.Title, Album: p.Album, Date: p.Date, Genre: p.Genre, Comment: p.Comment, Artwork: p.Artwork, SourceURL: p.SourceURL, Refresh: p.Refresh, DryRun: p.DryRun, NoCache: p.NoCache, AutoInstall: p.AutoInstall}
 }
 
 func (s *Server) mediaPath(ctx context.Context, p mediaParams) (string, error) {

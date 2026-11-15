@@ -89,9 +89,12 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 	if err := probe.engineCompatible(path); err != nil {
 		return report, err
 	}
-	prepared, err := taggedArtwork(ctx, runner, path, probe)
-	if err != nil {
-		return report, err
+	isLookup := !opts.ArtworkOnly && opts.Options.Lookup == acquire.LookupReplace
+	var prepared *artwork.Prepared
+	if opts.ArtworkOnly || isLookup || opts.Options.Artwork != "" {
+		if prepared, err = taggedArtwork(ctx, runner, path, probe); err != nil {
+			return report, err
+		}
 	}
 	installed, err := installUpgrade(ctx, path, original)
 	if err != nil {
@@ -126,18 +129,25 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 			}
 		}
 		mergeUpgradeTags(tags, probe.Format.Tags)
+		// A lookup rewrites every field, so the row follows the file. Otherwise only
+		// the edited fields changed; curated values the file does not carry stay.
+		edited := map[string]bool{"title": opts.Options.Title != nil, "artist": opts.Options.Artist != nil, "album": opts.Options.Album != nil, "genre": opts.Options.Genre != nil, "comment": opts.Options.Comment != nil}
 		for _, field := range []string{"title", "artist", "album", "genre", "comment", "label", "composer", "remixer"} {
-			columns = append(columns, field+"=?")
-			values = append(values, tags[field])
-		}
-		year := 0
-		if date := tags["date"]; len(date) >= 4 {
-			if parsed, err := strconv.Atoi(date[:4]); err == nil && parsed >= 0 && parsed <= 9999 {
-				year = parsed
+			if isLookup || edited[field] {
+				columns = append(columns, field+"=?")
+				values = append(values, tags[field])
 			}
 		}
-		columns = append(columns, "year=?")
-		values = append(values, year)
+		if isLookup || opts.Options.Date != nil {
+			year := 0
+			if date := tags["date"]; len(date) >= 4 {
+				if parsed, err := strconv.Atoi(date[:4]); err == nil && parsed >= 0 && parsed <= 9999 {
+					year = parsed
+				}
+			}
+			columns = append(columns, "year=?")
+			values = append(values, year)
+		}
 	}
 	if prepared != nil {
 		id, err := prepared.Store(ctx, tx, lib)

@@ -44,9 +44,11 @@ var tagFlags = []acquisitionFlag{
 	{"artist", "string", "Set artist; an explicit empty value clears it"}, {"title", "string", "Set title; an explicit empty value clears it"},
 	{"album", "string", "Set album; an explicit empty value clears it"}, {"date", "string", "Set release date; an explicit empty value clears it"},
 	{"genre", "string", "Set genre; an explicit empty value clears it"}, {"comment", "string", "Set comment; an explicit empty value clears it"},
-	{"artwork", "string", "Artwork file path or URL"}, {"source-url", "string", "Metadata lookup source URL"},
-	{"refresh", "bool", "Refresh metadata using online sources"}, {"dry-run", "bool", "Preview the tag update"},
-	{"no-cache", "bool", "Bypass cached metadata"}, {"auto-install", "bool", "Install missing upstream dependencies"},
+	{"artwork", "string", "Artwork file path or URL"},
+	{"lookup", "string", "Online lookup: none (default) writes only the supplied fields; replace overwrites untouched fields with an online match"},
+	{"source-url", "string", "Audio source URL recorded with --lookup replace"},
+	{"refresh", "bool", "Fetch lookup results and artwork again instead of using the cache"}, {"dry-run", "bool", "Preview the tag update"},
+	{"no-cache", "bool", "Bypass cached lookup results and artwork"}, {"auto-install", "bool", "Install missing upstream dependencies"},
 }
 
 func addAcquisitionCommands(root *cobra.Command) {

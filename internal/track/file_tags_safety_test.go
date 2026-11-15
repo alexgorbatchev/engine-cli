@@ -17,6 +17,15 @@ import (
 )
 
 func TestFileTagsReconcilesClearedDateAndRemainingMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		lookup, label string
+	}{{acquire.LookupNone, "Old label"}, {acquire.LookupReplace, "Actual label"}} {
+		t.Run(tc.lookup, func(t *testing.T) { reconcileClearedDate(t, tc.lookup, tc.label) })
+	}
+}
+
+// reconcileClearedDate clears the date; only a lookup also takes the file's remaining metadata.
+func reconcileClearedDate(t *testing.T, lookup, label string) {
 	d, lib, _ := createTestDB(t)
 	original := filepath.Join(lib, "original.mp3")
 	if err := os.WriteFile(original, []byte("original"), 0600); err != nil {
@@ -45,7 +54,7 @@ func TestFileTagsReconcilesClearedDateAndRemainingMetadata(t *testing.T) {
 		t.Fatalf("unexpected %s", name)
 		return nil, nil
 	}
-	result, err := UpdateFileTags(context.Background(), d, lib, "1", FileTagOptions{Options: acquire.TagOptions{Date: new("")}, Runner: runner})
+	result, err := UpdateFileTags(context.Background(), d, lib, "1", FileTagOptions{Options: acquire.TagOptions{Lookup: lookup, Date: new("")}, Runner: runner})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +62,9 @@ func TestFileTagsReconcilesClearedDateAndRemainingMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Path != tagged.PathString() || tagged.Year.Int64 != 0 || tagged.Label.String != "Actual label" || tagged.Composer.String != "Actual composer" || tagged.Remixer.String != "Actual remixer" {
+	composer, remixer := strings.Replace(label, "label", "composer", 1), strings.Replace(label, "label", "remixer", 1)
+	if result.Path != tagged.PathString() || tagged.Year.Int64 != 0 || (tagged.Title.String == "New") != (lookup == acquire.LookupReplace) ||
+		tagged.Label.String != label || tagged.Composer.String != composer || tagged.Remixer.String != remixer {
 		t.Fatalf("stale database metadata: result=%+v track=%+v", result, tagged)
 	}
 }
