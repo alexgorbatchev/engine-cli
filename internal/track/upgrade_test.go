@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 )
 
@@ -135,6 +136,66 @@ func TestUpgradeTrack(t *testing.T) {
 			data, readErr := os.ReadFile(original)
 			if readErr != nil || string(data) != "original audio" {
 				t.Fatalf("original changed: %s %v", data, readErr)
+			}
+		})
+	}
+}
+
+// The requested minimum, or its default, must reach the comparison: each case
+// gives a different outcome under a hardcoded, zero or unscaled cap.
+func TestUpgradeTrackComparesAgainstRequestedMinimum(t *testing.T) {
+	for _, tt := range []struct {
+		name                  string
+		minimumKHz            float64
+		original, replacement int
+		wins                  bool
+	}{
+		{name: "raised minimum lets 320 kbps beat 256 kbps", minimumKHz: 20, original: 19400, replacement: 20150, wins: true},
+		{name: "default minimum keeps the longer 256 kbps mix", original: 19400, replacement: 20150},
+		{name: "default minimum lets a higher cutoff below it win", original: 16650, replacement: 17700, wins: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			database, libDir, _ := createTestDB(t)
+			original := filepath.Join(libDir, "original.mp3")
+			if err := os.WriteFile(original, []byte("original audio"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := database.Exec(`INSERT INTO Track (id,path,filename,title,artist) VALUES (1,'original.mp3','original.mp3','Title','Artist')`); err != nil {
+				t.Fatal(err)
+			}
+			runner := func(_ context.Context, name string, args ...string) ([]byte, error) {
+				switch name {
+				case "fetch-track":
+					if args[0] == "verify" {
+						return json.Marshal(map[string]any{"status": "success", "verification": map[string]any{"bandwidth_hz": tt.original}})
+					}
+					var dir string
+					for i, a := range args {
+						if a == "--out-dir" {
+							dir = args[i+1]
+						}
+					}
+					candidate := filepath.Join(dir, "download.m4a")
+					if err := os.WriteFile(candidate, []byte("replacement"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					return json.Marshal(map[string]any{"status": "success", "output_file": candidate, "verification": map[string]any{"bandwidth_hz": tt.replacement, "peak_dbfs": -1}})
+				case "ffprobe":
+					// The original is the longer extended mix.
+					if args[len(args)-1] == original {
+						return []byte(`{"format":{"duration":"420"},"streams":[{"codec_type":"audio","codec_name":"mp3"}]}`), nil
+					}
+					return []byte(`{"format":{"duration":"210","bit_rate":"320000"},"streams":[{"codec_type":"audio","codec_name":"aac","bit_rate":"320000"}]}`), nil
+				case "ffmpeg":
+					return nil, os.WriteFile(args[len(args)-1], []byte("tagged replacement"), 0o600)
+				}
+				t.Fatalf("unexpected command %s", name)
+				return nil, nil
+			}
+			opts := UpgradeOptions{Runner: runner, Acquisition: acquire.TrackOptions{MinBandwidthKHz: tt.minimumKHz}}
+			_, err := UpgradeTrack(context.Background(), database, libDir, "1", opts)
+			if (err == nil) != tt.wins {
+				t.Fatalf("replacement wins=%t, want %t (error %v)", err == nil, tt.wins, err)
 			}
 		})
 	}
