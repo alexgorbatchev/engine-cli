@@ -51,7 +51,7 @@ func TestToolsRunOnlyWhenSupported(t *testing.T) {
 func TestToolCancelledDuringRequirementCheck(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
-	writeTool(t, dir, "fetch-track", "1.10.1", filepath.Join(dir, "ran"))
+	writeTool(t, dir, "fetch-track", "1.11.0", filepath.Join(dir, "ran"))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	var result map[string]any
@@ -71,7 +71,9 @@ func TestInspectToolReportsRequirement(t *testing.T) {
 	}{
 		{name: "missing", versionErr: &exec.Error{Name: "fetch-track", Err: exec.ErrNotFound}, code: "tool_unavailable"},
 		{name: "outdated", version: "1.5.0", available: true, code: "tool_outdated"},
-		{name: "supported", version: "1.10.1", available: true, satisfied: true},
+		// 1.10.x reported 20 kHz for every file, which upgrade comparisons cannot use.
+		{name: "constant bandwidth release", version: "1.10.4", available: true, code: "tool_outdated"},
+		{name: "supported", version: "1.11.0", available: true, satisfied: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -87,7 +89,7 @@ func TestInspectToolReportsRequirement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if r.Available != tt.available || r.Satisfied != tt.satisfied || r.ErrorCode != tt.code || r.MinimumVersion != "1.10.1" || r.Version != tt.version {
+			if r.Available != tt.available || r.Satisfied != tt.satisfied || r.ErrorCode != tt.code || r.MinimumVersion != "1.11.0" || r.Version != tt.version {
 				t.Fatalf("report=%+v", r)
 			}
 			if r.NativeJSON != tt.satisfied || (probes > 0) != tt.satisfied {
@@ -107,9 +109,9 @@ func TestUpgradeInstallsManagedRelease(t *testing.T) {
 		status     string
 		code       string
 	}{
-		{name: "installs missing tool", after: "1.10.1", method: "install", status: "success"},
-		{name: "updates outdated tool", before: "1.5.0", after: "1.10.1", method: "update", status: "success"},
-		{name: "reports current release", before: "1.10.1", after: "1.10.1", method: "update", status: "current"},
+		{name: "installs missing tool", after: "1.11.0", method: "install", status: "success"},
+		{name: "updates outdated tool", before: "1.5.0", after: "1.11.0", method: "update", status: "success"},
+		{name: "reports current release", before: "1.11.0", after: "1.11.0", method: "update", status: "current"},
 		{name: "download failure", before: "1.5.0", installErr: errors.New("connection refused"), method: "update", code: "tool_install_failed"},
 		{name: "release still unsupported", before: "1.5.0", after: "1.6.0", method: "update", code: "tool_outdated"},
 	}

@@ -16,7 +16,8 @@ const managedApp = "engine-cli"
 const releaseOwner = "alexgorbatchev"
 
 // requirement is the oldest release providing the machine interfaces Engine
-// consumes, and the repository that publishes the tool's releases.
+// consumes, and the repository that publishes the tool's releases. Fetch Track
+// 1.11.0 is the first release whose bandwidth_hz measures the real cutoff.
 type requirement struct {
 	minVersion string
 	repo       string
@@ -24,7 +25,7 @@ type requirement struct {
 
 var requirements = map[string]requirement{
 	"agent-ask-cli": {minVersion: "1.0.0", repo: "agent-ask-cli"},
-	"fetch-track":   {minVersion: "1.10.1", repo: "fetch-track-cli"},
+	"fetch-track":   {minVersion: "1.11.0", repo: "fetch-track-cli"},
 	"fetch-mix":     {minVersion: "2.1.4", repo: "fetch-mix-cli"},
 	"tag-track":     {minVersion: "1.1.1", repo: "tag-track-cli"},
 }
