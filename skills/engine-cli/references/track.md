@@ -629,7 +629,7 @@ Uses Fetch Track CLI JSON download output to replace audio, retaining the origin
 - `--js-runtime` (string; default ``): JavaScript runtime used by the downloader.
 - `--json` (bool; default `false`): Print compact structured results.
 - `--keep-timing` (bool; default `false`): Keep saved cues, loops, and beat grids.
-- `--min-bandwidth-khz` (float64; default `19`): Minimum accepted bandwidth in kHz; cutoffs above it count as equal when comparing with the original (0 uses the default).
+- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz at and above which measured cutoffs count as equal when comparing with the original; Fetch Track also flags downloads below it (0 uses the default).
 - `--no-cache` (bool; default `false`): Bypass cached results.
 - `--query` (string; default ``): Search words instead of the saved artist and title.
 - `--selection-token` (string; default ``): Persisted candidate selection token.
@@ -646,6 +646,6 @@ Usage: `engine-cli track verify [url|path|identifier] [flags]`.
 - `--auto-install` (bool; default `false`): Install missing verification dependencies.
 - `--help, -h` (bool; default `false`): help for verify.
 - `--json` (bool; default `false`): Print compact structured results.
-- `--min-bandwidth-khz` (float64; default `19`): Minimum accepted bandwidth in kHz; 0 uses the default.
+- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz below which audio is flagged as low quality; 0 uses the default.
 - `--staging-id` (string; default ``): Verify this staged item instead of a collection track.
 - `--target` (string; default ``): Verify this URL or local path.
