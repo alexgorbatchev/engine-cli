@@ -11,7 +11,7 @@ func newTrackUpgradeCommand() *cobra.Command {
 	flags := []acquisitionFlag{{"query", "string", "Search words instead of the saved artist and title"}, {"keep-timing", "bool", "Keep saved cues, loops, and beat grids"}, {"clear-timing", "bool", "Remove saved cues, loops, and beat grids"}}
 	for _, flag := range trackFetchFlags {
 		if flag.name == "min-bandwidth-khz" {
-			flag.description = "Bandwidth in kHz at and above which measured cutoffs count as equal when comparing with the original; Fetch Track also flags downloads below it (0 uses the default)"
+			flag.description = "Bandwidth in kHz that counts as good enough: a replacement reaching it beats an original that does not, and when both reach it only length decides; Fetch Track also flags downloads below it (0 uses the default)"
 		}
 		flags = append(flags, flag)
 	}

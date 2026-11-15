@@ -103,6 +103,7 @@ func upgradeWorkspace() (string, func(), error) {
 type acquiredUpgrade struct {
 	Path        string
 	BandwidthHz int
+	MeetsBar    bool
 }
 
 func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work string, options acquire.TrackOptions) (*acquiredUpgrade, error) {
@@ -166,7 +167,8 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 	if !info.Mode().IsRegular() || info.Size() == 0 {
 		return nil, fmt.Errorf("downloaded audio is empty or not a regular file")
 	}
-	return &acquiredUpgrade{Path: path, BandwidthHz: result.Verification.BandwidthHz}, nil
+	bandwidth := result.Verification.BandwidthHz
+	return &acquiredUpgrade{Path: path, BandwidthHz: bandwidth, MeetsBar: meetsUpgradeBar(bandwidth, upgradeMinimumHz(options.MinBandwidthKHz))}, nil
 }
 
 func outsideUpgradeDir(path string) bool {

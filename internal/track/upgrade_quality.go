@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"path/filepath"
 	"strings"
 
+	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
@@ -46,14 +48,77 @@ func (p *upgradeProbe) engineCompatible(path string) error {
 // spread of encoders at similar bitrates and of the measurement itself.
 const upgradeBandwidthTolerance = 500
 
+// upgradeLengthTolerance is the largest difference in duration, in seconds,
+// that still counts as the same length. Copies of one edit differ by encoder
+// priming and padding (AAC in M4A without an edit list probes 23 ms longer
+// than the same audio in MP3 or FLAC), so only a larger difference is a
+// different edit. Every Upgrade audio length decision goes through
+// sameUpgradeLength.
+const upgradeLengthTolerance = 1.0
+
+// upgradeAudio is what the upgrade rule knows about one file.
+type upgradeAudio struct {
+	Seconds     float64
+	BandwidthHz int
+	// MeetsBar reports whether the file passes the quality minimum.
+	MeetsBar bool
+}
+
+// upgradeMinimumHz converts a requested minimum in kHz, where zero selects
+// the default, to Hz.
+func upgradeMinimumHz(khz float64) int {
+	return int(math.Round(acquire.MinBandwidthOrDefault(khz) * 1000))
+}
+
+// meetsUpgradeBar decides the bar from the measured cutoff alone. The bar is
+// an input to decideUpgrade rather than part of it, so Fetch Track's verify
+// verdict, which adds a per-codec bitrate floor where the cutoff does not
+// reflect quality, can supply it for both files without changing the rule.
+func meetsUpgradeBar(bandwidthHz, minimumHz int) bool {
+	return bandwidthHz >= minimumHz
+}
+
+// sameUpgradeLength reports whether two durations, in seconds, count as the
+// same length.
+func sameUpgradeLength(a, b float64) bool {
+	return math.Abs(a-b) <= upgradeLengthTolerance
+}
+
+// decideUpgrade returns nil when the replacement should replace the original,
+// or the reason the original is retained. Audio that meets the bar beats audio
+// that does not at any length. Two files that meet it are equal in quality, so
+// only a longer replacement wins. Below the bar the cutoff decides first, then
+// the length.
+func decideUpgrade(original, replacement upgradeAudio, minimumHz int) error {
+	longer := replacement.Seconds > original.Seconds && !sameUpgradeLength(original.Seconds, replacement.Seconds)
+	switch {
+	case replacement.MeetsBar && !original.MeetsBar:
+		return nil
+	case original.MeetsBar && !replacement.MeetsBar:
+		return fmt.Errorf("replacement does not meet the quality minimum (%d Hz) that the original meets; original retained", minimumHz)
+	case original.MeetsBar:
+		if longer {
+			return nil
+		}
+		return fmt.Errorf("both files meet the quality minimum (%d Hz) and the replacement is not more than %g s longer; original retained", minimumHz, upgradeLengthTolerance)
+	}
+	gain := replacement.BandwidthHz - original.BandwidthHz
+	switch {
+	case gain >= upgradeBandwidthTolerance:
+		return nil
+	case gain <= -upgradeBandwidthTolerance:
+		return fmt.Errorf("replacement has lower measured audio bandwidth (%d Hz versus %d Hz); original retained", replacement.BandwidthHz, original.BandwidthHz)
+	case longer:
+		return nil
+	}
+	return fmt.Errorf("neither file meets the quality minimum (%d Hz), and the replacement is neither at least %d Hz higher in measured audio bandwidth nor more than %g s longer; original retained", minimumHz, upgradeBandwidthTolerance, upgradeLengthTolerance)
+}
+
 type upgradeQualityInput struct {
-	OriginalPath         string
-	OriginalSeconds      float64
-	ReplacementSeconds   float64
-	ReplacementBandwidth int
-	// MinimumBandwidth caps both measured cutoffs before comparison: audio that
-	// already meets the minimum gains nothing from a higher cutoff, so the
-	// longer version is preferred.
+	OriginalPath    string
+	OriginalSeconds float64
+	Replacement     upgradeAudio
+	// MinimumBandwidth, in Hz, decides whether the original meets the bar.
 	MinimumBandwidth int
 }
 
@@ -74,15 +139,7 @@ func compareUpgradeQuality(ctx context.Context, runner sync.CommandRunner, input
 	if result.Status != "success" || result.Verification == nil || result.Verification.BandwidthHz == nil || *result.Verification.BandwidthHz < 0 {
 		return fmt.Errorf("fetch-track could not measure the original audio quality")
 	}
-	original := *result.Verification.BandwidthHz
-	gain := min(input.ReplacementBandwidth, input.MinimumBandwidth) - min(original, input.MinimumBandwidth)
-	switch {
-	case gain >= upgradeBandwidthTolerance:
-		return nil
-	case gain <= -upgradeBandwidthTolerance:
-		return fmt.Errorf("replacement has lower measured audio bandwidth (%d Hz versus %d Hz); original retained", input.ReplacementBandwidth, original)
-	case input.ReplacementSeconds > input.OriginalSeconds:
-		return nil
-	}
-	return fmt.Errorf("replacement is neither at least %d Hz higher in measured audio bandwidth (up to the %d Hz minimum) nor a longer mix; original retained", upgradeBandwidthTolerance, input.MinimumBandwidth)
+	bandwidth := *result.Verification.BandwidthHz
+	original := upgradeAudio{Seconds: input.OriginalSeconds, BandwidthHz: bandwidth, MeetsBar: meetsUpgradeBar(bandwidth, input.MinimumBandwidth)}
+	return decideUpgrade(original, input.Replacement, input.MinimumBandwidth)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,8 +132,8 @@ func (j *upgradeJob) checkQuality(ctx context.Context, acquired *acquiredUpgrade
 	}
 	quality := upgradeQualityInput{
 		OriginalPath: j.original, OriginalSeconds: oldSeconds,
-		ReplacementSeconds: newSeconds, ReplacementBandwidth: acquired.BandwidthHz,
-		MinimumBandwidth: int(math.Round(j.opts.Acquisition.MinBandwidthKHz * 1000)),
+		Replacement:      upgradeAudio{Seconds: newSeconds, BandwidthHz: acquired.BandwidthHz, MeetsBar: acquired.MeetsBar},
+		MinimumBandwidth: upgradeMinimumHz(j.opts.Acquisition.MinBandwidthKHz),
 	}
 	return compareUpgradeQuality(ctx, j.opts.Runner, quality)
 }

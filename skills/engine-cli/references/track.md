@@ -622,7 +622,7 @@ Fetch replacement audio while keeping track information and playlists
 
 Usage: `engine-cli track upgrade <id|path> [flags]`.
 
-Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. Measured cutoffs are capped at the minimum bandwidth before comparison: a replacement at least 0.5 kHz higher wins at any length, one at least 0.5 kHz lower never wins, and otherwise only a longer replacement wins. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.
+Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. A replacement must measure at least 16 kHz. Audio that reaches the minimum bandwidth beats audio that does not, at any length. When both files reach it, only a replacement more than 1 s longer wins. When neither does, a replacement at least 0.5 kHz higher wins at any length, one at least 0.5 kHz lower never wins, and otherwise only a replacement more than 1 s longer wins. Lengths within 1 s count as the same. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.
 
 - `--auto-install` (bool; default `false`): Install missing upstream dependencies.
 - `--candidate-url` (string; default ``): URL from the selected candidate set.
@@ -632,7 +632,7 @@ Uses Fetch Track CLI JSON download output to replace audio, retaining the origin
 - `--js-runtime` (string; default ``): JavaScript runtime used by the downloader.
 - `--json` (bool; default `false`): Print compact structured results.
 - `--keep-timing` (bool; default `false`): Keep saved cues, loops, and beat grids.
-- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz at and above which measured cutoffs count as equal when comparing with the original; Fetch Track also flags downloads below it (0 uses the default).
+- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz that counts as good enough: a replacement reaching it beats an original that does not, and when both reach it only length decides; Fetch Track also flags downloads below it (0 uses the default).
 - `--no-cache` (bool; default `false`): Bypass cached results.
 - `--query` (string; default ``): Search words instead of the saved artist and title.
 - `--selection-token` (string; default ``): Persisted candidate selection token.
