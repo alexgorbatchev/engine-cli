@@ -26,6 +26,10 @@ func TestTrackUpgradeHelp(t *testing.T) {
 					t.Errorf("help missing %q: %s", want, out)
 				}
 			}
+			// Agent help describes the rule for files below the minimum.
+			if want := "a file short only of the Opus bitrate floor counts as equal in quality to the other, so only a replacement more than 1 s longer wins"; mode == "1" && !strings.Contains(out, want) {
+				t.Errorf("help does not state %q: %s", want, out)
+			}
 		})
 	}
 }

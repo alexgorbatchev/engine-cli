@@ -131,6 +131,19 @@ func TestDecideUpgrade(t *testing.T) {
 	meets := func(seconds float64, hz int) UpgradeAudio {
 		return UpgradeAudio{Seconds: seconds, BandwidthHz: hz, MeetsBar: true}
 	}
+	// Files below the bar with the reasons Fetch Track reports for them.
+	withReasons := func(seconds float64, hz int, reasons ...string) UpgradeAudio {
+		return UpgradeAudio{Seconds: seconds, BandwidthHz: hz, Reasons: reasons}
+	}
+	floorOnly := func(seconds float64, hz int) UpgradeAudio {
+		return withReasons(seconds, hz, "bitrate_below_minimum")
+	}
+	cutoffBelow := func(seconds float64, hz int) UpgradeAudio {
+		return withReasons(seconds, hz, "bandwidth_below_minimum")
+	}
+	bothBelow := func(seconds float64, hz int) UpgradeAudio {
+		return withReasons(seconds, hz, "bandwidth_below_minimum", "bitrate_below_minimum")
+	}
 	// Each refusal has a stable code: the replacement misses the bar the
 	// original meets, its cutoff is lower while neither meets it, or the
 	// files are equal in quality and it is not more than 1 s longer.
@@ -175,6 +188,20 @@ func TestDecideUpgrade(t *testing.T) {
 		{name: "neither meets, AAC priming is the same length", original: below(edit, 17700), replacement: below(240.02322, 17700), refusal: noGain},
 		{name: "neither meets, 1 Hz under the tolerance lower, 1.1 s longer wins", original: below(edit, 17700), replacement: below(edit+1.1, 17201), refusal: wins},
 		{name: "neither meets, exactly the tolerance lower is refused while longer", original: below(radioEdit, 17150), replacement: below(extendedMix, 16650), refusal: lowerCutoff},
+
+		// Step 6, a file short only of its codec's bitrate floor: its cutoff
+		// does not grade it, so it counts as equal in quality to the other file
+		// and only a replacement more than 1 s longer wins.
+		{name: "floor-only original, lower-cutoff replacement 1.1 s longer wins", original: floorOnly(edit, 20200), replacement: cutoffBelow(edit+1.1, 17500), refusal: wins},
+		{name: "floor-only original, lower-cutoff replacement of the same length is refused", original: floorOnly(edit, 20200), replacement: cutoffBelow(edit, 18500), refusal: noGain},
+		{name: "floor-only original, replacement 1.0 s longer is the same length", original: floorOnly(edit, 20200), replacement: cutoffBelow(edit+1, 18500), refusal: noGain},
+		{name: "floor-only original, shorter replacement is refused", original: floorOnly(extendedMix, 20200), replacement: cutoffBelow(radioEdit, 18900), refusal: noGain},
+		{name: "floor-only replacement of the same length does not win on cutoff", original: cutoffBelow(edit, 17000), replacement: floorOnly(edit, 20200), refusal: noGain},
+		{name: "floor-only replacement 1.1 s longer wins", original: cutoffBelow(edit, 17000), replacement: floorOnly(edit+1.1, 20200), refusal: wins},
+		{name: "both floor-only, shorter replacement is refused", original: floorOnly(extendedMix, 20200), replacement: floorOnly(radioEdit, 20200), refusal: noGain},
+		{name: "both floor-only, 1.1 s longer wins", original: floorOnly(edit, 20200), replacement: floorOnly(edit+1.1, 20200), refusal: wins},
+		{name: "original short of the floor and the cutoff is graded by its cutoff", original: bothBelow(edit, 15000), replacement: cutoffBelow(edit, 17000), refusal: wins},
+		{name: "replacement short of the floor and the cutoff is graded by its cutoff", original: cutoffBelow(edit, 17000), replacement: bothBelow(extendedMix, 15000), refusal: lowerCutoff},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := decideUpgrade(tt.original, tt.replacement, 19000)

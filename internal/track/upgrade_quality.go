@@ -89,8 +89,9 @@ const (
 	// refusedBelowMinimum: the original meets the bar and the replacement
 	// does not.
 	refusedBelowMinimum = "upgrade_replacement_below_minimum"
-	// refusedLowerBandwidth: neither meets the bar and the replacement's
-	// cutoff is at least the tolerance lower.
+	// refusedLowerBandwidth: neither meets the bar, neither falls short only
+	// of its bitrate floor, and the replacement's cutoff is at least the
+	// tolerance lower.
 	refusedLowerBandwidth = "upgrade_lower_bandwidth"
 	// refusedNotLonger: neither file wins on quality and the replacement is
 	// not more than the length tolerance longer.
@@ -150,11 +151,25 @@ func sameUpgradeLength(a, b float64) bool {
 	return math.Abs(math.Round(a*1e6)-math.Round(b*1e6)) <= upgradeLengthTolerance*1e6
 }
 
+// failsOnlyBitrateFloor reports whether Fetch Track's only reason for a file
+// missing the bar is its codec's bitrate floor. Such a codec's cutoff does not
+// reflect its quality (Opus codes about 20 kHz at every bitrate), so the cutoff
+// cannot rank the file against another one below the bar.
+func failsOnlyBitrateFloor(audio UpgradeAudio) bool {
+	return len(audio.Reasons) == 1 && audio.Reasons[0] == reasonBitrateBelowMinimum
+}
+
+// reasonBitrateBelowMinimum is Fetch Track's low-quality reason for an
+// average bitrate below the codec's floor.
+const reasonBitrateBelowMinimum = "bitrate_below_minimum"
+
 // decideUpgrade returns nil when the replacement should replace the original,
 // or an UpgradeRefusal, coded with the reason, when the original is retained.
 // Audio that meets the bar beats audio that does not at any length. Two files
 // that meet it are equal in quality, so only a longer replacement wins. Below
-// the bar the cutoff decides first, then the length.
+// the bar, a file short only of its codec's bitrate floor also counts as equal
+// in quality to the other file, so only a longer replacement wins; otherwise
+// the cutoff decides first, then the length.
 func decideUpgrade(original, replacement UpgradeAudio, minimumHz int) error {
 	longer := replacement.Seconds > original.Seconds && !sameUpgradeLength(original.Seconds, replacement.Seconds)
 	switch {
@@ -167,6 +182,11 @@ func decideUpgrade(original, replacement UpgradeAudio, minimumHz int) error {
 			return nil
 		}
 		return refuseUpgrade(refusedNotLonger, original, replacement, minimumHz, "both files meet the quality minimum (%d Hz) and the replacement is not more than %g s longer", minimumHz, upgradeLengthTolerance)
+	case failsOnlyBitrateFloor(original) || failsOnlyBitrateFloor(replacement):
+		if longer {
+			return nil
+		}
+		return refuseUpgrade(refusedNotLonger, original, replacement, minimumHz, "neither file meets the quality minimum (%d Hz), a file short only of its codec's bitrate floor counts as equal in quality, and the replacement is not more than %g s longer", minimumHz, upgradeLengthTolerance)
 	}
 	gain := replacement.BandwidthHz - original.BandwidthHz
 	switch {
