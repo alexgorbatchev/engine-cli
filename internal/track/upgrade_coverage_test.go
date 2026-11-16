@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 func TestUpgradeRejectsInvalidOriginal(t *testing.T) {
@@ -136,8 +137,13 @@ func TestFetchUpgradeRejectsUnusableDownloads(t *testing.T) {
 			if err == nil {
 				t.Fatal("unusable audio accepted")
 			}
-			if (scenario == "silent" || scenario == "missing peak") && !strings.Contains(err.Error(), "signal measurement") {
+			if scenario == "missing peak" && !strings.Contains(err.Error(), "signal measurement") {
 				t.Fatalf("unexpected peak rejection: %v", err)
+			}
+			// Measured refusals carry stable codes; the rest are unusable results.
+			want := map[string]string{"silent": "upgrade_replacement_silent", "low bandwidth": "upgrade_replacement_below_floor"}[scenario]
+			if code := progress.ErrorCode(err); want != "" && code != want {
+				t.Fatalf("%s refusal coded %q, want %q (error %v)", scenario, code, want, err)
 			}
 		})
 	}

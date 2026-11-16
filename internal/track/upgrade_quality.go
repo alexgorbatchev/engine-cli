@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/sync"
 )
 
@@ -39,7 +40,7 @@ func (p *upgradeProbe) engineCompatible(path string) error {
 		if compatible {
 			return nil
 		}
-		return fmt.Errorf("replacement format %s/%s is not supported for Engine DJ upgrades; original retained (audio is never re-encoded)", ext, s.CodecName)
+		return &progress.Error{Code: "upgrade_unsupported_format", Cause: fmt.Errorf("replacement format %s/%s is not supported for Engine DJ upgrades; original retained (audio is never re-encoded)", ext, s.CodecName)}
 	}
 	return fmt.Errorf("replacement contains no audio")
 }
@@ -57,12 +58,48 @@ const upgradeBandwidthTolerance = 500
 // sameUpgradeLength.
 const upgradeLengthTolerance = 1.0
 
-// upgradeAudio is what the upgrade rule knows about one file.
-type upgradeAudio struct {
-	Seconds     float64
-	BandwidthHz int
+// UpgradeAudio is what the upgrade rule knows about one file.
+type UpgradeAudio struct {
+	// Seconds is the length ffprobe reports.
+	Seconds float64 `json:"duration_seconds"`
+	// BandwidthHz is Fetch Track's measured cutoff.
+	BandwidthHz int `json:"bandwidth_hz"`
 	// MeetsBar reports whether the file passes the quality minimum.
-	MeetsBar bool
+	MeetsBar bool `json:"meets_minimum"`
+	// Reasons are Fetch Track's stable codes for each criterion of the
+	// minimum the file fails, such as bandwidth_below_minimum or
+	// bitrate_below_minimum.
+	Reasons []string `json:"low_quality_reasons,omitempty"`
+}
+
+// UpgradeRefusal is an upgrade refused after comparing both files: what the
+// rule compared for each one at the minimum it applied. It travels inside a
+// progress.Error whose code names the refusal, and the original is retained.
+type UpgradeRefusal struct {
+	MinBandwidthHz int          `json:"min_bandwidth_hz"`
+	Original       UpgradeAudio `json:"original"`
+	Replacement    UpgradeAudio `json:"replacement"`
+	message        string
+}
+
+func (r *UpgradeRefusal) Error() string { return r.message }
+
+// Stable codes for refusals that compare the two files.
+const (
+	// refusedBelowMinimum: the original meets the bar and the replacement
+	// does not.
+	refusedBelowMinimum = "upgrade_replacement_below_minimum"
+	// refusedLowerBandwidth: neither meets the bar and the replacement's
+	// cutoff is at least the tolerance lower.
+	refusedLowerBandwidth = "upgrade_lower_bandwidth"
+	// refusedNotLonger: neither file wins on quality and the replacement is
+	// not more than the length tolerance longer.
+	refusedNotLonger = "upgrade_not_longer"
+)
+
+func refuseUpgrade(code string, original, replacement UpgradeAudio, minimumHz int, format string, args ...any) error {
+	refusal := &UpgradeRefusal{MinBandwidthHz: minimumHz, Original: original, Replacement: replacement, message: fmt.Sprintf(format, args...) + "; original retained"}
+	return &progress.Error{Code: code, Cause: refusal}
 }
 
 // upgradeMinimumHz converts a requested minimum in kHz, where zero selects
@@ -78,16 +115,19 @@ type upgradeVerdict struct {
 	MinBandwidthHz int `json:"min_bandwidth_hz"`
 	// MeetsMinimum is nil when Fetch Track reported no verdict.
 	MeetsMinimum *bool `json:"meets_minimum"`
+	// LowQualityReasons names each failed criterion of the minimum.
+	LowQualityReasons []string `json:"low_quality_reasons"`
 }
 
 // meetsUpgradeBar decides whether a file meets the bar: Fetch Track's verdict
 // at the request's minimum, which adds a per-codec bitrate floor where the
-// measured cutoff does not reflect quality (Opus below 160 kbps at minimums of
-// 19 kHz and above). It decides the bar for both files. A missing verdict, or
-// one applied to another minimum, cannot decide it.
+// measured cutoff does not reflect quality (Opus averaging below 160 kbps at
+// minimums of 19 kHz and above). It decides the bar for both files. A missing
+// verdict means a Fetch Track release older than the verdict, and neither it
+// nor one applied to another minimum can decide the bar.
 func meetsUpgradeBar(verdict upgradeVerdict, minimumHz int) (bool, error) {
 	if verdict.MeetsMinimum == nil {
-		return false, fmt.Errorf("fetch-track reported no quality verdict; update fetch-track")
+		return false, &progress.Error{Code: "tool_outdated", Cause: fmt.Errorf("fetch-track reported no quality verdict; update it with `engine-cli tool upgrade fetch-track`")}
 	}
 	if verdict.MinBandwidthHz != minimumHz {
 		return false, fmt.Errorf("fetch-track judged audio quality against %d Hz instead of the requested %d Hz", verdict.MinBandwidthHz, minimumHz)
@@ -111,39 +151,39 @@ func sameUpgradeLength(a, b float64) bool {
 }
 
 // decideUpgrade returns nil when the replacement should replace the original,
-// or the reason the original is retained. Audio that meets the bar beats audio
-// that does not at any length. Two files that meet it are equal in quality, so
-// only a longer replacement wins. Below the bar the cutoff decides first, then
-// the length.
-func decideUpgrade(original, replacement upgradeAudio, minimumHz int) error {
+// or an UpgradeRefusal, coded with the reason, when the original is retained.
+// Audio that meets the bar beats audio that does not at any length. Two files
+// that meet it are equal in quality, so only a longer replacement wins. Below
+// the bar the cutoff decides first, then the length.
+func decideUpgrade(original, replacement UpgradeAudio, minimumHz int) error {
 	longer := replacement.Seconds > original.Seconds && !sameUpgradeLength(original.Seconds, replacement.Seconds)
 	switch {
 	case replacement.MeetsBar && !original.MeetsBar:
 		return nil
 	case original.MeetsBar && !replacement.MeetsBar:
-		return fmt.Errorf("replacement does not meet the quality minimum (%d Hz) that the original meets; original retained", minimumHz)
+		return refuseUpgrade(refusedBelowMinimum, original, replacement, minimumHz, "replacement does not meet the quality minimum (%d Hz) that the original meets", minimumHz)
 	case original.MeetsBar:
 		if longer {
 			return nil
 		}
-		return fmt.Errorf("both files meet the quality minimum (%d Hz) and the replacement is not more than %g s longer; original retained", minimumHz, upgradeLengthTolerance)
+		return refuseUpgrade(refusedNotLonger, original, replacement, minimumHz, "both files meet the quality minimum (%d Hz) and the replacement is not more than %g s longer", minimumHz, upgradeLengthTolerance)
 	}
 	gain := replacement.BandwidthHz - original.BandwidthHz
 	switch {
 	case gain >= upgradeBandwidthTolerance:
 		return nil
 	case gain <= -upgradeBandwidthTolerance:
-		return fmt.Errorf("replacement has lower measured audio bandwidth (%d Hz versus %d Hz); original retained", replacement.BandwidthHz, original.BandwidthHz)
+		return refuseUpgrade(refusedLowerBandwidth, original, replacement, minimumHz, "replacement has lower measured audio bandwidth (%d Hz versus %d Hz)", replacement.BandwidthHz, original.BandwidthHz)
 	case longer:
 		return nil
 	}
-	return fmt.Errorf("neither file meets the quality minimum (%d Hz), and the replacement is neither at least %d Hz higher in measured audio bandwidth nor more than %g s longer; original retained", minimumHz, upgradeBandwidthTolerance, upgradeLengthTolerance)
+	return refuseUpgrade(refusedNotLonger, original, replacement, minimumHz, "neither file meets the quality minimum (%d Hz), and the replacement is neither at least %d Hz higher in measured audio bandwidth nor more than %g s longer", minimumHz, upgradeBandwidthTolerance, upgradeLengthTolerance)
 }
 
 type upgradeQualityInput struct {
 	OriginalPath    string
 	OriginalSeconds float64
-	Replacement     upgradeAudio
+	Replacement     UpgradeAudio
 	// MinimumBandwidth, in Hz, is the minimum Fetch Track judges the original
 	// against.
 	MinimumBandwidth int
@@ -171,6 +211,6 @@ func compareUpgradeQuality(ctx context.Context, runner sync.CommandRunner, input
 	if err != nil {
 		return fmt.Errorf("checking original audio quality: %w", err)
 	}
-	original := upgradeAudio{Seconds: input.OriginalSeconds, BandwidthHz: *result.Verification.BandwidthHz, MeetsBar: meets}
+	original := UpgradeAudio{Seconds: input.OriginalSeconds, BandwidthHz: *result.Verification.BandwidthHz, MeetsBar: meets, Reasons: result.Verification.LowQualityReasons}
 	return decideUpgrade(original, input.Replacement, input.MinimumBandwidth)
 }

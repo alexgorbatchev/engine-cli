@@ -84,6 +84,18 @@ func requirementError(r godeps.DependencyReport) error {
 	return &progress.Error{Code: "tool_outdated", Cause: fmt.Errorf("%s reports %s but requires %s or newer; update it with `engine-cli tool upgrade %s`", r.Name, found, r.MinVersion, r.Name)}
 }
 
+// RequireTool applies the managed-tool requirement for a caller that runs the
+// tool through its own process runner instead of this client: it refuses a
+// missing or outdated release, or installs or updates it first when
+// autoInstall is set. An injected Runner stands in for the tool process, so a
+// client with one is not checked, as when the client runs the tool itself.
+func (c Client) RequireTool(ctx context.Context, name string, autoInstall bool) error {
+	if c.Runner != nil {
+		return nil
+	}
+	return c.installing(autoInstall).requireTool(ctx, name)
+}
+
 // requireTool refuses to run a managed tool that is missing or older than the
 // release providing Engine's machine interfaces. When the caller requested
 // auto_install, it installs a missing tool or updates an outdated one first.

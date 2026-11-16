@@ -63,7 +63,10 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 			return nil, err
 		}
 	}
-	result, err := (acquire.Client{Runner: runner}).Tags(ctx, action, original, work, opts.Options)
+	// The client runs tag-track itself unless a runner was injected, so the
+	// tag-track requirement and auto_install apply as for staged and
+	// unmanaged files.
+	result, err := (acquire.Client{Runner: opts.Runner}).Tags(ctx, action, original, work, opts.Options)
 	report := &FileTagResult{TrackID: t.ID, OriginalPath: original, Result: result}
 	if err != nil {
 		return report, err

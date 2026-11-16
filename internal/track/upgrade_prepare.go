@@ -55,6 +55,11 @@ func (j *upgradeJob) resolve(ctx context.Context, identifier string) error {
 		j.query = t.Artist.String + " - " + t.Title.String
 	}
 	if j.opts.Runner == nil {
+		// The default runner runs Fetch Track straight off PATH, so the
+		// release is checked after the request and before any download.
+		if err := j.opts.Tools.RequireTool(ctx, "fetch-track", j.opts.Acquisition.AutoInstall); err != nil {
+			return err
+		}
 		j.opts.Runner = defaultUpgradeRunner
 	}
 	j.opts.Acquisition.MinBandwidthKHz = acquire.MinBandwidthOrDefault(j.opts.Acquisition.MinBandwidthKHz)
@@ -132,7 +137,7 @@ func (j *upgradeJob) checkQuality(ctx context.Context, acquired *acquiredUpgrade
 	}
 	quality := upgradeQualityInput{
 		OriginalPath: j.original, OriginalSeconds: oldSeconds,
-		Replacement:      upgradeAudio{Seconds: newSeconds, BandwidthHz: acquired.BandwidthHz, MeetsBar: acquired.MeetsBar},
+		Replacement:      UpgradeAudio{Seconds: newSeconds, BandwidthHz: acquired.BandwidthHz, MeetsBar: acquired.MeetsBar, Reasons: acquired.Reasons},
 		MinimumBandwidth: upgradeMinimumHz(j.opts.Acquisition.MinBandwidthKHz),
 	}
 	return compareUpgradeQuality(ctx, j.opts.Runner, quality)

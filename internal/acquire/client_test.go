@@ -44,11 +44,22 @@ func TestTrackFetchFailures(t *testing.T) {
 }
 
 func TestValidateOptions(t *testing.T) {
-	for _, opts := range []TrackOptions{{MinBandwidthKHz: -1}, {JSRuntime: "invalid"}, {Sources: "youtube,invalid"}} {
+	// Engine and Fetch Track both round the minimum to whole Hz. A positive
+	// minimum below 1 Hz is refused: under 0.5 Hz it rounds to 0 Hz, which
+	// Fetch Track reads as unset and judges against its own default instead.
+	for _, opts := range []TrackOptions{{MinBandwidthKHz: -1}, {MinBandwidthKHz: 0.0004}, {MinBandwidthKHz: 0.0009}, {MinBandwidthKHz: 100.001}, {JSRuntime: "invalid"}, {Sources: "youtube,invalid"}} {
 		called := false
 		c := Client{Runner: func(context.Context, string, ...string) ([]byte, error) { called = true; return nil, nil }}
 		if _, err := c.FetchTrack(context.Background(), "query", "work", opts); err == nil || called {
 			t.Fatalf("opts=%+v called=%v error=%v", opts, called, err)
+		}
+		if _, err := c.Verify(context.Background(), "song.mp3", VerifyOptions{MinBandwidthKHz: opts.MinBandwidthKHz}); opts.MinBandwidthKHz != 0 && (err == nil || called) {
+			t.Fatalf("verify minimum %v called=%v error=%v", opts.MinBandwidthKHz, called, err)
+		}
+	}
+	for _, minimum := range []float64{0, 0.001, 16, 100} {
+		if err := (TrackOptions{MinBandwidthKHz: minimum}).Validate(); err != nil {
+			t.Fatalf("minimum %v refused: %v", minimum, err)
 		}
 	}
 }

@@ -47,9 +47,14 @@ type TrackOptions struct {
 }
 
 // DefaultMinBandwidthKHz is the club playback bar for verification and
-// upgrades: MP3 at 224 kbps and above, Opus at 160 kbps, AAC at 256 kbps and
-// lossless audio reach it.
+// upgrades: MP3 at 224 kbps and above, Opus averaging 160 kbps or more, AAC
+// at 256 kbps and lossless audio reach it.
 const DefaultMinBandwidthKHz = 19.0
+
+// minimumBandwidthResolutionKHz is the smallest positive minimum: Engine and
+// Fetch Track both round the minimum to whole Hz, and Fetch Track reads a
+// minimum that rounds to 0 Hz as unset and judges against its own default.
+const minimumBandwidthResolutionKHz = 0.001
 
 // MinBandwidthOrDefault returns the requested minimum bandwidth, or
 // DefaultMinBandwidthKHz when the request leaves it unset (zero).
@@ -61,8 +66,9 @@ func MinBandwidthOrDefault(khz float64) float64 {
 }
 
 func (o TrackOptions) Validate() error {
-	if math.IsNaN(o.MinBandwidthKHz) || math.IsInf(o.MinBandwidthKHz, 0) || o.MinBandwidthKHz < 0 || o.MinBandwidthKHz > 100 {
-		return fmt.Errorf("min_bandwidth_khz must be between 0 and 100")
+	khz := o.MinBandwidthKHz
+	if math.IsNaN(khz) || math.IsInf(khz, 0) || khz < 0 || khz > 100 || (khz > 0 && khz < minimumBandwidthResolutionKHz) {
+		return fmt.Errorf("min_bandwidth_khz must be 0 (the default) or between %g and 100", minimumBandwidthResolutionKHz)
 	}
 	if o.JSRuntime != "" && !oneOf(o.JSRuntime, "auto", "deno", "node", "bun", "quickjs", "none") {
 		return fmt.Errorf("unsupported JavaScript runtime %q", o.JSRuntime)

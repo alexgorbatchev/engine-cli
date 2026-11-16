@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -202,7 +203,12 @@ func (s *Server) trackOperations() []operation {
 				options.CandidateURL = p.CandidateURL
 			}
 			return s.database(ctx, func(d *sql.DB) (any, error) {
-				r, err := track.UpgradeTrack(ctx, d, s.config.LibraryDir, p.Identifier, track.UpgradeOptions{Query: p.Query, KeepTiming: p.KeepTiming, ClearTiming: p.ClearTiming, Acquisition: options, Runner: s.config.ToolRunner})
+				r, err := track.UpgradeTrack(ctx, d, s.config.LibraryDir, p.Identifier, track.UpgradeOptions{Query: p.Query, KeepTiming: p.KeepTiming, ClearTiming: p.ClearTiming, Acquisition: options, Runner: s.config.ToolRunner, Tools: s.toolClient()})
+				// A refusal that compared both files reports that comparison
+				// as the failed job's result.
+				if refusal, ok := errors.AsType[*track.UpgradeRefusal](err); ok {
+					return refusal, err
+				}
 				if err != nil {
 					return nil, err
 				}

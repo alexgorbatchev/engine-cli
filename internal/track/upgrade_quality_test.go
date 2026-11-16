@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 func TestUpgradeRejectsIncompatibleAudio(t *testing.T) {
@@ -75,6 +76,8 @@ func TestUpgradeQualityComparison(t *testing.T) {
 		verification string
 		err          error
 		wantErr      bool
+		// code, when set, is the refusal's stable code.
+		code string
 	}{
 		{name: "replacement meets the minimum", bandwidth: 20000, duration: 180, original: 16000},
 		{name: "longer mix", bandwidth: 16000, duration: 360, original: 16000},
@@ -85,7 +88,7 @@ func TestUpgradeQualityComparison(t *testing.T) {
 		{name: "failed verification status", bandwidth: 20000, duration: 180, verification: `{"status":"error","verification":{"bandwidth_hz":16000,"min_bandwidth_hz":19000,"meets_minimum":false}}`, wantErr: true},
 		{name: "missing spectrum", verification: `{"status":"success"}`, wantErr: true},
 		{name: "negative spectrum", verification: `{"status":"success","verification":{"bandwidth_hz":-1,"min_bandwidth_hz":19000,"meets_minimum":false}}`, wantErr: true},
-		{name: "missing verdict", bandwidth: 20000, duration: 180, verification: `{"status":"success","verification":{"bandwidth_hz":16000}}`, wantErr: true},
+		{name: "missing verdict means an outdated fetch-track", bandwidth: 20000, duration: 180, verification: `{"status":"success","verification":{"bandwidth_hz":16000}}`, wantErr: true, code: "tool_outdated"},
 		{name: "verdict for another minimum", bandwidth: 20000, duration: 180, verification: `{"status":"success","verification":{"bandwidth_hz":16000,"min_bandwidth_hz":18000,"meets_minimum":false,"low_quality_reasons":["bandwidth_below_minimum"]}}`, wantErr: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -101,10 +104,14 @@ func TestUpgradeQualityComparison(t *testing.T) {
 				}
 				return json.Marshal(map[string]any{"status": "success", "verification": fakeVerdict(t, args, tt.original, false)})
 			}
-			replacement := upgradeAudio{Seconds: tt.duration, BandwidthHz: tt.bandwidth, MeetsBar: tt.bandwidth >= 19000}
+			replacement := UpgradeAudio{Seconds: tt.duration, BandwidthHz: tt.bandwidth, MeetsBar: tt.bandwidth >= 19000}
 			input := upgradeQualityInput{OriginalPath: "original.mp3", OriginalSeconds: 180, Replacement: replacement, MinimumBandwidth: 19000}
-			if err := compareUpgradeQuality(context.Background(), runner, input); (err != nil) != tt.wantErr {
+			err := compareUpgradeQuality(context.Background(), runner, input)
+			if (err != nil) != tt.wantErr {
 				t.Fatalf("error=%v", err)
+			}
+			if code := progress.ErrorCode(err); tt.code != "" && code != tt.code {
+				t.Fatalf("code=%q want %q (error %v)", code, tt.code, err)
 			}
 		})
 	}
@@ -120,20 +127,23 @@ func TestUpgradeQualityComparison(t *testing.T) {
 // because of encoder priming.
 func TestDecideUpgrade(t *testing.T) {
 	const radioEdit, extendedMix, edit = 210.0, 420.0, 240.0
-	below := func(seconds float64, hz int) upgradeAudio { return upgradeAudio{Seconds: seconds, BandwidthHz: hz} }
-	meets := func(seconds float64, hz int) upgradeAudio {
-		return upgradeAudio{Seconds: seconds, BandwidthHz: hz, MeetsBar: true}
+	below := func(seconds float64, hz int) UpgradeAudio { return UpgradeAudio{Seconds: seconds, BandwidthHz: hz} }
+	meets := func(seconds float64, hz int) UpgradeAudio {
+		return UpgradeAudio{Seconds: seconds, BandwidthHz: hz, MeetsBar: true}
 	}
+	// Each refusal has a stable code: the replacement misses the bar the
+	// original meets, its cutoff is lower while neither meets it, or the
+	// files are equal in quality and it is not more than 1 s longer.
 	const (
 		wins        = ""
-		failsBar    = "does not meet"
-		notLonger   = "not more than"
-		lowerCutoff = "lower measured audio bandwidth"
-		noGain      = "neither at least"
+		failsBar    = "upgrade_replacement_below_minimum"
+		notLonger   = "upgrade_not_longer"
+		lowerCutoff = "upgrade_lower_bandwidth"
+		noGain      = "upgrade_not_longer"
 	)
 	for _, tt := range []struct {
 		name                  string
-		original, replacement upgradeAudio
+		original, replacement UpgradeAudio
 		refusal               string
 	}{
 		// Step 3: a replacement that meets the bar beats an original that does not, at any length.
@@ -174,8 +184,8 @@ func TestDecideUpgrade(t *testing.T) {
 				}
 				return
 			}
-			if err == nil || !strings.Contains(err.Error(), tt.refusal) {
-				t.Fatalf("refusal %v, want one containing %q", err, tt.refusal)
+			if code := progress.ErrorCode(err); err == nil || code != tt.refusal {
+				t.Fatalf("refusal %v coded %q, want %q", err, code, tt.refusal)
 			}
 			if !strings.HasSuffix(err.Error(), "original retained") {
 				t.Fatalf("refusal does not say the original is kept: %v", err)
@@ -242,16 +252,16 @@ func TestUpgradeQualityMeasuresOriginalAgainstMinimum(t *testing.T) {
 		original        int
 		originalFloor   bool
 		originalSeconds float64
-		replacement     upgradeAudio
+		replacement     UpgradeAudio
 		wins            bool
 	}{
-		{name: "original 1 Hz under the minimum loses to a same-length replacement", minimum: 19000, original: 18999, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 19000, MeetsBar: true}, wins: true},
-		{name: "original at the minimum keeps against a same-length replacement", minimum: 19000, original: 19000, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 22000, MeetsBar: true}},
-		{name: "raised minimum lets a 320 kbps radio edit replace a 256 kbps extended mix", minimum: 20000, original: 19400, originalSeconds: 420, replacement: upgradeAudio{Seconds: 210, BandwidthHz: 20150, MeetsBar: true}, wins: true},
-		{name: "lowered minimum keeps a 192 kbps original against same-length lossless", minimum: 18000, original: 18700, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 22000, MeetsBar: true}},
-		{name: "fractional minimum judges an original 1 Hz under it", minimum: 17500, original: 17499, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 17500, MeetsBar: true}, wins: true},
-		{name: "original whose cutoff passes but bitrate floor fails loses to a same-length replacement", minimum: 19000, original: 20200, originalFloor: true, originalSeconds: 240, replacement: upgradeAudio{Seconds: 240, BandwidthHz: 19400, MeetsBar: true}, wins: true},
-		{name: "original whose cutoff passes but bitrate floor fails loses to a shorter replacement", minimum: 19000, original: 20200, originalFloor: true, originalSeconds: 420, replacement: upgradeAudio{Seconds: 210, BandwidthHz: 22000, MeetsBar: true}, wins: true},
+		{name: "original 1 Hz under the minimum loses to a same-length replacement", minimum: 19000, original: 18999, originalSeconds: 240, replacement: UpgradeAudio{Seconds: 240, BandwidthHz: 19000, MeetsBar: true}, wins: true},
+		{name: "original at the minimum keeps against a same-length replacement", minimum: 19000, original: 19000, originalSeconds: 240, replacement: UpgradeAudio{Seconds: 240, BandwidthHz: 22000, MeetsBar: true}},
+		{name: "raised minimum lets a 320 kbps radio edit replace a 256 kbps extended mix", minimum: 20000, original: 19400, originalSeconds: 420, replacement: UpgradeAudio{Seconds: 210, BandwidthHz: 20150, MeetsBar: true}, wins: true},
+		{name: "lowered minimum keeps a 192 kbps original against same-length lossless", minimum: 18000, original: 18700, originalSeconds: 240, replacement: UpgradeAudio{Seconds: 240, BandwidthHz: 22000, MeetsBar: true}},
+		{name: "fractional minimum judges an original 1 Hz under it", minimum: 17500, original: 17499, originalSeconds: 240, replacement: UpgradeAudio{Seconds: 240, BandwidthHz: 17500, MeetsBar: true}, wins: true},
+		{name: "original whose cutoff passes but bitrate floor fails loses to a same-length replacement", minimum: 19000, original: 20200, originalFloor: true, originalSeconds: 240, replacement: UpgradeAudio{Seconds: 240, BandwidthHz: 19400, MeetsBar: true}, wins: true},
+		{name: "original whose cutoff passes but bitrate floor fails loses to a shorter replacement", minimum: 19000, original: 20200, originalFloor: true, originalSeconds: 420, replacement: UpgradeAudio{Seconds: 210, BandwidthHz: 22000, MeetsBar: true}, wins: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := func(_ context.Context, _ string, args ...string) ([]byte, error) {
@@ -277,17 +287,19 @@ func TestFetchUpgradeFloorAndBar(t *testing.T) {
 		edit       func(verdict map[string]any)
 		refused    bool
 		meetsBar   bool
+		// code is a refusal's stable code.
+		code string
 	}{
-		{name: "1 Hz under the 16 kHz floor is refused", bandwidth: 15999, refused: true},
+		{name: "1 Hz under the 16 kHz floor is refused", bandwidth: 15999, refused: true, code: "upgrade_replacement_below_floor"},
 		{name: "at the 16 kHz floor is accepted under the bar", bandwidth: 16000},
 		{name: "1 Hz under the default minimum", bandwidth: 18999},
 		{name: "at the default minimum meets the bar", bandwidth: 19000, meetsBar: true},
 		{name: "1 Hz under a lowered minimum", minimumKHz: 17.5, bandwidth: 17499},
 		{name: "at a lowered minimum meets the bar", minimumKHz: 17.5, bandwidth: 17500, meetsBar: true},
-		{name: "lowered minimum keeps the 16 kHz floor", minimumKHz: 15, bandwidth: 15999, refused: true},
+		{name: "lowered minimum keeps the 16 kHz floor", minimumKHz: 15, bandwidth: 15999, refused: true, code: "upgrade_replacement_below_floor"},
 		{name: "cutoff above the minimum with a failed bitrate floor misses the bar", bandwidth: 20200, floorFails: true},
-		{name: "missing verdict is refused", bandwidth: 20000, edit: func(v map[string]any) { delete(v, "meets_minimum") }, refused: true},
-		{name: "verdict for another minimum is refused", bandwidth: 20000, edit: func(v map[string]any) { v["min_bandwidth_hz"] = 18000 }, refused: true},
+		{name: "missing verdict means an outdated fetch-track", bandwidth: 20000, edit: func(v map[string]any) { delete(v, "meets_minimum") }, refused: true, code: "tool_outdated"},
+		{name: "verdict for another minimum is refused", bandwidth: 20000, edit: func(v map[string]any) { v["min_bandwidth_hz"] = 18000 }, refused: true, code: "operation_failed"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			work := t.TempDir()
@@ -306,6 +318,9 @@ func TestFetchUpgradeFloorAndBar(t *testing.T) {
 			if tt.refused {
 				if err == nil {
 					t.Fatalf("accepted %d Hz", tt.bandwidth)
+				}
+				if code := progress.ErrorCode(err); code != tt.code {
+					t.Fatalf("refusal coded %q, want %q (error %v)", code, tt.code, err)
 				}
 				return
 			}

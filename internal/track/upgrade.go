@@ -29,6 +29,10 @@ type UpgradeOptions struct {
 	KeepTiming  bool
 	ClearTiming bool
 	Runner      sync.CommandRunner
+	// Tools checks Fetch Track's release, and with auto_install installs or
+	// updates it, before the default runner runs it off PATH. An injected
+	// Runner stands in for the tool and skips the check.
+	Tools       acquire.Client
 	Acquisition acquire.TrackOptions
 }
 
@@ -104,6 +108,8 @@ type acquiredUpgrade struct {
 	Path        string
 	BandwidthHz int
 	MeetsBar    bool
+	// Reasons are the verdict's codes for each failed criterion.
+	Reasons []string
 }
 
 func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work string, options acquire.TrackOptions) (*acquiredUpgrade, error) {
@@ -143,11 +149,17 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 		// Verification identifies the input as target rather than output_file.
 		result.OutputFile = verified.Target
 	}
-	if result.Status != "success" || result.Verification == nil || result.Verification.BandwidthHz < minimumUpgradeBandwidth {
-		return nil, fmt.Errorf("fetch-track did not return a verified high-quality replacement (status %q)", result.Status)
+	if result.Status != "success" || result.Verification == nil {
+		return nil, fmt.Errorf("fetch-track did not return a verified replacement (status %q)", result.Status)
 	}
-	if result.Verification.PeakDbFS == nil || *result.Verification.PeakDbFS <= silentUpgradePeakDbFS {
-		return nil, fmt.Errorf("fetch-track returned silent audio or no usable signal measurement; original retained")
+	if result.Verification.BandwidthHz < minimumUpgradeBandwidth {
+		return nil, &progress.Error{Code: "upgrade_replacement_below_floor", Cause: fmt.Errorf("replacement measures %d Hz, under the %d Hz every replacement needs; original retained", result.Verification.BandwidthHz, minimumUpgradeBandwidth)}
+	}
+	if result.Verification.PeakDbFS == nil {
+		return nil, fmt.Errorf("fetch-track returned no usable signal measurement; original retained")
+	}
+	if *result.Verification.PeakDbFS <= silentUpgradePeakDbFS {
+		return nil, &progress.Error{Code: "upgrade_replacement_silent", Cause: fmt.Errorf("fetch-track returned silent audio; original retained")}
 	}
 	meets, err := meetsUpgradeBar(result.Verification.upgradeVerdict, upgradeMinimumHz(options.MinBandwidthKHz))
 	if err != nil {
@@ -172,7 +184,7 @@ func fetchUpgrade(ctx context.Context, runner sync.CommandRunner, query, work st
 	if !info.Mode().IsRegular() || info.Size() == 0 {
 		return nil, fmt.Errorf("downloaded audio is empty or not a regular file")
 	}
-	return &acquiredUpgrade{Path: path, BandwidthHz: result.Verification.BandwidthHz, MeetsBar: meets}, nil
+	return &acquiredUpgrade{Path: path, BandwidthHz: result.Verification.BandwidthHz, MeetsBar: meets, Reasons: result.Verification.LowQualityReasons}, nil
 }
 
 func outsideUpgradeDir(path string) bool {

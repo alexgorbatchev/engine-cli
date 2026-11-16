@@ -67,6 +67,9 @@ func fetchHelperCommand() *cobra.Command {
 		}
 		return json.NewEncoder(c.OutOrStdout()).Encode(map[string]any{"status": "success", "output_file": path, "verification": map[string]any{"bandwidth_hz": 20000, "peak_dbfs": -1, "min_bandwidth_hz": 19000, "meets_minimum": true, "low_quality_reasons": []string{}}})
 	}}
+	// Upgrades check the release before running it, as for the real tool.
+	root.Version = "1.12.0"
+	root.SetVersionTemplate("{{.Version}}\n")
 	root.PersistentFlags().Bool("json", false, "")
 	root.Flags().Bool("skip-metadata", false, "")
 	root.Flags().StringVar(&target, "progress-target", "", "")

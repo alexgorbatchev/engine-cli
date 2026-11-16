@@ -43,8 +43,15 @@ func TestVerifyMinimumBandwidthDefault(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := command.Flags().Lookup("min-bandwidth-khz").DefValue; got != want {
+		flag := command.Flags().Lookup("min-bandwidth-khz")
+		if got := flag.DefValue; got != want {
 			t.Fatalf("%s --min-bandwidth-khz default %s, want %s", path, got, want)
+		}
+		// Every result carries Fetch Track's verdict, which judges Opus by its
+		// average bitrate; Fetch Track flags audio below the minimum but never
+		// refuses or filters downloads by it.
+		if !strings.Contains(flag.Usage, "Opus averaging") || !strings.Contains(flag.Usage, "0 uses the default") || strings.Contains(flag.Usage, "accepted") {
+			t.Fatalf("%s --min-bandwidth-khz help %q", path, flag.Usage)
 		}
 	}
 }
