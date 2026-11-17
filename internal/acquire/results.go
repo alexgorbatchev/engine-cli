@@ -21,7 +21,7 @@ type Verification struct {
 	// LowQualityReasons names each failed criterion with a stable code:
 	// bandwidth_below_minimum when the cutoff is below MinBandwidthHz, and
 	// bitrate_below_minimum when the average bitrate is below MinBitrateBps or
-	// could not be measured (Opus needs 160 kbps at minimums of 19 kHz and
+	// could not be measured (Opus needs 145 kbps at minimums of 19 kHz and
 	// above, because its cutoff does not reflect its bitrate). Empty when the
 	// audio meets the minimum.
 	LowQualityReasons []string `json:"low_quality_reasons,omitempty"`

@@ -47,7 +47,7 @@ func TestTagUpdateLooksUpOnlyWhenRequested(t *testing.T) {
 func TestVerifyResultCarriesFetchTrackVerdict(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "mix.opus")
 	s, err := New(Config{LibraryDir: t.TempDir(), ToolRunner: func(context.Context, string, ...string) ([]byte, error) {
-		return []byte(`{"target":"` + target + `","status":"success","verification":{"duration_seconds":60.0065,"codec":"opus","bitrate_bps":107854,"bandwidth_hz":20200,"bandwidth_rating":"High Fidelity (>=19 kHz)","min_bandwidth_hz":19000,"min_bitrate_bps":160000,"meets_minimum":false,"low_quality_reasons":["bitrate_below_minimum"],"peak_dbfs":-7.05,"rms_dbfs":-20.73,"gain_offset_db":8.7,"status":"STATUS: Low audio quality detected."}}`), nil
+		return []byte(`{"target":"` + target + `","status":"success","verification":{"duration_seconds":60.0065,"codec":"opus","bitrate_bps":107854,"bandwidth_hz":20200,"bandwidth_rating":"High Fidelity (>=19 kHz)","min_bandwidth_hz":19000,"min_bitrate_bps":145000,"meets_minimum":false,"low_quality_reasons":["bitrate_below_minimum"],"peak_dbfs":-7.05,"rms_dbfs":-20.73,"gain_offset_db":8.7,"status":"STATUS: Low audio quality detected."}}`), nil
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestVerifyResultCarriesFetchTrackVerdict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"codec":"opus"`, `"bitrate_bps":107854`, `"min_bandwidth_hz":19000`, `"min_bitrate_bps":160000`, `"meets_minimum":false`, `"low_quality_reasons":["bitrate_below_minimum"]`} {
+	for _, want := range []string{`"codec":"opus"`, `"bitrate_bps":107854`, `"min_bandwidth_hz":19000`, `"min_bitrate_bps":145000`, `"meets_minimum":false`, `"low_quality_reasons":["bitrate_below_minimum"]`} {
 		if !strings.Contains(string(encoded), want) {
 			t.Errorf("verify result lacks %s: %s", want, encoded)
 		}

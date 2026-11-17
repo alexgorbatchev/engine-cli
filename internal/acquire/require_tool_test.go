@@ -23,11 +23,11 @@ func TestRequireTool(t *testing.T) {
 		{name: "outdated is refused", before: "1.11.0", code: "tool_outdated"},
 		{name: "missing is refused", code: "tool_unavailable"},
 		{name: "auto_install updates an outdated release", before: "1.11.0", autoInstall: true, method: "update"},
-		{name: "supported release passes", before: "1.12.0"},
+		{name: "supported release passes", before: "1.12.1"},
 		{name: "injected runner is not checked", before: "1.11.0", injected: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			f := newAutoInstallFixture(t, "fetch-track", tt.before, "1.12.0", nil)
+			f := newAutoInstallFixture(t, "fetch-track", tt.before, "1.12.1", nil)
 			c := Client{Installer: f.installer}
 			if tt.injected {
 				c.Runner = func(context.Context, string, ...string) ([]byte, error) {

@@ -177,7 +177,7 @@ Usage: `engine-cli track candidates <query> [flags]`.
 - `--help, -h` (bool; default `false`): help for candidates.
 - `--js-runtime` (string; default ``): JavaScript runtime used by the downloader.
 - `--json` (bool; default `false`): Print compact structured results.
-- `--min-bandwidth-khz` (float64; default `0`): Bandwidth in kHz below which downloads are flagged as low quality, as is Opus averaging below 160 kbps at 19 kHz and above; 0 uses the default.
+- `--min-bandwidth-khz` (float64; default `0`): Bandwidth in kHz below which downloads are flagged as low quality, as is Opus averaging below 145 kbps at 19 kHz and above; 0 uses the default.
 - `--no-cache` (bool; default `false`): Bypass cached results.
 - `--skip-metadata` (bool; default `false`): Skip online metadata lookup.
 - `--skip-verify` (bool; default `false`): Skip audio quality verification.
@@ -402,7 +402,7 @@ Usage: `engine-cli track fetch <query> [flags]`.
 - `--import` (bool; default `false`): Import successful downloads into the collection.
 - `--js-runtime` (string; default ``): JavaScript runtime used by the downloader.
 - `--json` (bool; default `false`): Print compact structured results.
-- `--min-bandwidth-khz` (float64; default `0`): Bandwidth in kHz below which downloads are flagged as low quality, as is Opus averaging below 160 kbps at 19 kHz and above; 0 uses the default.
+- `--min-bandwidth-khz` (float64; default `0`): Bandwidth in kHz below which downloads are flagged as low quality, as is Opus averaging below 145 kbps at 19 kHz and above; 0 uses the default.
 - `--no-cache` (bool; default `false`): Bypass cached results.
 - `--selection-token` (string; default ``): Persisted candidate selection token.
 - `--skip-metadata` (bool; default `false`): Skip online metadata lookup.
@@ -622,7 +622,7 @@ Fetch replacement audio while keeping track information and playlists
 
 Usage: `engine-cli track upgrade <id|path> [flags]`.
 
-Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. A replacement must measure at least 16 kHz. Audio meets the minimum when Fetch Track's verdict passes: its measured cutoff reaches the minimum bandwidth, and Opus also averages at least 160 kbps at minimums of 19 kHz and above. Audio that meets the minimum beats audio that does not, at any length. When both files meet it, only a replacement more than 1 s longer wins. When neither does, a file short only of the Opus bitrate floor counts as equal in quality to the other, so only a replacement more than 1 s longer wins; between other files below the minimum, a replacement at least 0.5 kHz higher wins at any length, one at least 0.5 kHz lower never wins, and otherwise only a replacement more than 1 s longer wins. Lengths within 1 s count as the same. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.
+Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. A replacement must measure at least 16 kHz. Audio meets the minimum when Fetch Track's verdict passes: its measured cutoff reaches the minimum bandwidth, and Opus also averages at least 145 kbps at minimums of 19 kHz and above. Audio that meets the minimum beats audio that does not, at any length. When both files meet it, only a replacement more than 1 s longer wins. When neither does, a file short only of the Opus bitrate floor counts as equal in quality to the other, so only a replacement more than 1 s longer wins; between other files below the minimum, a replacement at least 0.5 kHz higher wins at any length, one at least 0.5 kHz lower never wins, and otherwise only a replacement more than 1 s longer wins. Lengths within 1 s count as the same. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.
 
 - `--auto-install` (bool; default `false`): Install missing upstream dependencies.
 - `--candidate-url` (string; default ``): URL from the selected candidate set.
@@ -632,7 +632,7 @@ Uses Fetch Track CLI JSON download output to replace audio, retaining the origin
 - `--js-runtime` (string; default ``): JavaScript runtime used by the downloader.
 - `--json` (bool; default `false`): Print compact structured results.
 - `--keep-timing` (bool; default `false`): Keep saved cues, loops, and beat grids.
-- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz that counts as good enough (Opus averaging below 160 kbps falls short at 19 kHz and above, which matters for Opus originals): a replacement meeting it beats an original that does not, and when both meet it only length decides; Fetch Track also flags downloads below it; 0 uses the default.
+- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz that counts as good enough (Opus averaging below 145 kbps falls short at 19 kHz and above, which matters for Opus originals): a replacement meeting it beats an original that does not, and when both meet it only length decides; Fetch Track also flags downloads below it; 0 uses the default.
 - `--no-cache` (bool; default `false`): Bypass cached results.
 - `--query` (string; default ``): Search words instead of the saved artist and title.
 - `--selection-token` (string; default ``): Persisted candidate selection token.
@@ -646,11 +646,11 @@ Verify the spectral quality of remote, local, collection, or staged audio
 
 Usage: `engine-cli track verify [url|path|identifier] [flags]`.
 
-Reports Fetch Track's quality verdict. meets_minimum is true when the measured cutoff reaches the minimum bandwidth and, for Opus at minimums of 19 kHz and above, the average bitrate reaches 160 kbps. low_quality_reasons names each failed check: bandwidth_below_minimum or bitrate_below_minimum.
+Reports Fetch Track's quality verdict. meets_minimum is true when the measured cutoff reaches the minimum bandwidth and, for Opus at minimums of 19 kHz and above, the average bitrate reaches 145 kbps. low_quality_reasons names each failed check: bandwidth_below_minimum or bitrate_below_minimum.
 
 - `--auto-install` (bool; default `false`): Install missing verification dependencies.
 - `--help, -h` (bool; default `false`): help for verify.
 - `--json` (bool; default `false`): Print compact structured results.
-- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz below which audio is flagged as low quality, as is Opus averaging below 160 kbps at 19 kHz and above; 0 uses the default.
+- `--min-bandwidth-khz` (float64; default `19`): Bandwidth in kHz below which audio is flagged as low quality, as is Opus averaging below 145 kbps at 19 kHz and above; 0 uses the default.
 - `--staging-id` (string; default ``): Verify this staged item instead of a collection track.
 - `--target` (string; default ``): Verify this URL or local path.

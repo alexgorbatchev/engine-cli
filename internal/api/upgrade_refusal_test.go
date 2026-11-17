@@ -24,7 +24,7 @@ type upgradeFile struct {
 	duration  string
 }
 
-// verdict answers like Fetch Track 1.12.0 at the default 19 kHz minimum.
+// verdict answers like Fetch Track 1.12.1 at the default 19 kHz minimum.
 func (f upgradeFile) verdict(peak float64) map[string]any {
 	reasons := []string{}
 	if f.bandwidth < 19000 {

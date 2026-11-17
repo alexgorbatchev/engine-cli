@@ -17,11 +17,11 @@ func TestManagedToolSelection(t *testing.T) {
 		name, external, managed, want string
 		managedFirst                  bool
 	}{
-		{name: "trailing managed replaces outdated external", external: "1.0.0", managed: "1.12.0", want: "managed"},
-		{name: "unreadable external", external: "unknown", managed: "1.12.0", want: "managed"},
-		{name: "supported external retains precedence", external: "1.12.0", managed: "1.13.0", want: "external"},
-		{name: "supported external restores precedence", external: "1.12.0", managed: "1.13.0", want: "external", managedFirst: true},
-		{name: "missing external uses managed", managed: "1.12.0", want: "managed"},
+		{name: "trailing managed replaces outdated external", external: "1.0.0", managed: "1.12.1", want: "managed"},
+		{name: "unreadable external", external: "unknown", managed: "1.12.1", want: "managed"},
+		{name: "supported external retains precedence", external: "1.12.1", managed: "1.13.0", want: "external"},
+		{name: "supported external restores precedence", external: "1.12.1", managed: "1.13.0", want: "external", managedFirst: true},
+		{name: "missing external uses managed", managed: "1.12.1", want: "managed"},
 		{name: "unreadable managed cannot replace external", external: "1.0.0", managed: "unknown", want: "external"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestToolInstallationKeepsSharedManagedSelection(t *testing.T) {
 			external := t.TempDir()
 			marker := filepath.Join(t.TempDir(), "ran")
 			writeToolResult(t, external, "fetch-track", "1.0.0", marker, `{"source":"external"}`)
-			writeToolResult(t, managed, "fetch-track", "1.12.0", marker, `{"source":"managed"}`)
+			writeToolResult(t, managed, "fetch-track", "1.12.1", marker, `{"source":"managed"}`)
 			t.Setenv("PATH", strings.Join([]string{external, managed}, string(os.PathListSeparator)))
 			if err := UseManagedTools(t.Context()); err != nil {
 				t.Fatal(err)

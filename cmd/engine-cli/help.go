@@ -195,14 +195,14 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"engine-cli track upgrade": {
 		Summary:     "Fetch replacement audio and preserve curated metadata and playlist membership",
-		Description: "Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. A replacement must measure at least 16 kHz. Audio meets the minimum when Fetch Track's verdict passes: its measured cutoff reaches the minimum bandwidth, and Opus also averages at least 160 kbps at minimums of 19 kHz and above. Audio that meets the minimum beats audio that does not, at any length. When both files meet it, only a replacement more than 1 s longer wins. When neither does, a file short only of the Opus bitrate floor counts as equal in quality to the other, so only a replacement more than 1 s longer wins; between other files below the minimum, a replacement at least 0.5 kHz higher wins at any length, one at least 0.5 kHz lower never wins, and otherwise only a replacement more than 1 s longer wins. Lengths within 1 s count as the same. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.",
+		Description: "Uses Fetch Track CLI JSON download output to replace audio, retaining the original file and Track ID. A replacement must measure at least 16 kHz. Audio meets the minimum when Fetch Track's verdict passes: its measured cutoff reaches the minimum bandwidth, and Opus also averages at least 145 kbps at minimums of 19 kHz and above. Audio that meets the minimum beats audio that does not, at any length. When both files meet it, only a replacement more than 1 s longer wins. When neither does, a file short only of the Opus bitrate floor counts as equal in quality to the other, so only a replacement more than 1 s longer wins; between other files below the minimum, a replacement at least 0.5 kHz higher wins at any length, one at least 0.5 kHz lower never wins, and otherwise only a replacement more than 1 s longer wins. Lengths within 1 s count as the same. Extended mixes are permitted. Reanalyze the replacement in Engine DJ.",
 		Args:        []cobrahelptree.ArgSpec{{Name: "<id|path>"}},
 		MutatesDB:   true,
 		AutoBackup:  true,
 	},
 	"engine-cli track verify": {
 		Summary:     "Verify the spectral quality of remote, local, collection, or staged audio",
-		Description: "Reports Fetch Track's quality verdict. meets_minimum is true when the measured cutoff reaches the minimum bandwidth and, for Opus at minimums of 19 kHz and above, the average bitrate reaches 160 kbps. low_quality_reasons names each failed check: bandwidth_below_minimum or bitrate_below_minimum.",
+		Description: "Reports Fetch Track's quality verdict. meets_minimum is true when the measured cutoff reaches the minimum bandwidth and, for Opus at minimums of 19 kHz and above, the average bitrate reaches 145 kbps. low_quality_reasons names each failed check: bandwidth_below_minimum or bitrate_below_minimum.",
 		Args:        []cobrahelptree.ArgSpec{{Name: "[url|path|identifier]"}},
 	},
 	"engine-cli track move": {

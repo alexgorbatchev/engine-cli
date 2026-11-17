@@ -54,11 +54,11 @@ func TestAutoInstallProvidesSupportedToolBeforeRunning(t *testing.T) {
 		method      string
 		code        string
 	}{
-		{name: "missing without auto_install", after: "1.12.0", code: "tool_unavailable"},
-		{name: "outdated without auto_install", before: "1.5.0", after: "1.12.0", code: "tool_outdated"},
-		{name: "installs a missing tool", after: "1.12.0", autoInstall: true, method: "install"},
-		{name: "updates an outdated tool", before: "1.5.0", after: "1.12.0", autoInstall: true, method: "update"},
-		{name: "keeps a supported tool", before: "1.12.0", autoInstall: true},
+		{name: "missing without auto_install", after: "1.12.1", code: "tool_unavailable"},
+		{name: "outdated without auto_install", before: "1.5.0", after: "1.12.1", code: "tool_outdated"},
+		{name: "installs a missing tool", after: "1.12.1", autoInstall: true, method: "install"},
+		{name: "updates an outdated tool", before: "1.5.0", after: "1.12.1", autoInstall: true, method: "update"},
+		{name: "keeps a supported tool", before: "1.12.1", autoInstall: true},
 		{name: "download failure", before: "1.5.0", installErr: errors.New("connection refused"), autoInstall: true, method: "update", code: "tool_install_failed"},
 		{name: "latest release still unsupported", before: "1.5.0", after: "1.6.0", autoInstall: true, method: "update", code: "tool_outdated"},
 	}

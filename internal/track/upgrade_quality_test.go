@@ -41,10 +41,10 @@ func TestUpgradeRejectsIncompatibleAudio(t *testing.T) {
 	}
 }
 
-// fakeVerdict answers like Fetch Track 1.12.0 for a file measured at
+// fakeVerdict answers like Fetch Track 1.12.1 for a file measured at
 // bandwidthHz: it judges it against the --min-bandwidth-khz in args (19 kHz
 // when absent), and floorFails adds a failed codec bitrate floor, as for Opus
-// below 160 kbps.
+// below 145 kbps.
 func fakeVerdict(t *testing.T, args []string, bandwidthHz int, floorFails bool) map[string]any {
 	t.Helper()
 	minimum := 19000

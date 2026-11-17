@@ -64,7 +64,7 @@ func TestUpstreamBinaries(t *testing.T) {
 			t.Fatal(err)
 		}
 		v := result.Verification
-		if v == nil || v.Codec != "opus" || v.BandwidthHz < 19000 || v.MinBitrateBps != 160000 || v.MeetsMinimum == nil || *v.MeetsMinimum || !slices.Equal(v.LowQualityReasons, []string{"bitrate_below_minimum"}) {
+		if v == nil || v.Codec != "opus" || v.BandwidthHz < 19000 || v.MinBitrateBps != 145000 || v.MeetsMinimum == nil || *v.MeetsMinimum || !slices.Equal(v.LowQualityReasons, []string{"bitrate_below_minimum"}) {
 			t.Fatalf("96 kbps Opus verdict: %+v", v)
 		}
 	})

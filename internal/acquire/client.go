@@ -47,7 +47,7 @@ type TrackOptions struct {
 }
 
 // DefaultMinBandwidthKHz is the club playback bar for verification and
-// upgrades: MP3 at 224 kbps and above, Opus averaging 160 kbps or more, AAC
+// upgrades: MP3 at 224 kbps and above, Opus averaging 145 kbps or more, AAC
 // at 256 kbps and lossless audio reach it.
 const DefaultMinBandwidthKHz = 19.0
 

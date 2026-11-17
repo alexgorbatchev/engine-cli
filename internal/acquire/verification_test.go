@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-// Fetch Track 1.12.0 verify output for synthetic pink noise. The nominal
+// Fetch Track 1.12.1 verify output for synthetic pink noise. The nominal
 // 160 kbps VBR Opus encode averages 107.9 kbps, so it fails the Opus bitrate
 // floor at the 19 kHz default although its cutoff passes; FLAC reports no
 // bitrate.
 const (
-	opusBelowFloorOutput = `{"target":"/music/opus-vbr-160.opus","status":"success","verification":{"duration_seconds":60.0065,"codec":"opus","bitrate_bps":107854,"bandwidth_hz":20200,"bandwidth_rating":"High Fidelity (>=19 kHz)","min_bandwidth_hz":19000,"min_bitrate_bps":160000,"meets_minimum":false,"low_quality_reasons":["bitrate_below_minimum"],"peak_dbfs":-7.05,"rms_dbfs":-20.73,"gain_offset_db":8.7,"status":"STATUS: Low audio quality detected (Opus average bitrate 107.8 kbps is below 160 kbps)."}}`
+	opusBelowFloorOutput = `{"target":"/music/opus-vbr-160.opus","status":"success","verification":{"duration_seconds":60.0065,"codec":"opus","bitrate_bps":107854,"bandwidth_hz":20200,"bandwidth_rating":"High Fidelity (>=19 kHz)","min_bandwidth_hz":19000,"min_bitrate_bps":145000,"meets_minimum":false,"low_quality_reasons":["bitrate_below_minimum"],"peak_dbfs":-7.05,"rms_dbfs":-20.73,"gain_offset_db":8.7,"status":"STATUS: Low audio quality detected (Opus average bitrate 107.8 kbps is below 145 kbps)."}}`
 	losslessOutput       = `{"target":"/music/lossless.flac","status":"success","verification":{"duration_seconds":60,"codec":"flac","bitrate_bps":0,"bandwidth_hz":24000,"bandwidth_rating":"High Fidelity (>=19 kHz)","min_bandwidth_hz":19000,"meets_minimum":true,"low_quality_reasons":[],"peak_dbfs":-7.05,"rms_dbfs":-20.73,"gain_offset_db":8.7,"status":"STATUS: High fidelity audio suitable for mixing."}}`
 )
 
@@ -29,7 +29,7 @@ func TestVerifyReportsFetchTrackVerdict(t *testing.T) {
 			output: opusBelowFloorOutput,
 			want: map[string]any{
 				"codec": "opus", "bitrate_bps": 107854.0, "bandwidth_hz": 20200.0, "min_bandwidth_hz": 19000.0,
-				"min_bitrate_bps": 160000.0, "meets_minimum": false, "low_quality_reasons": []any{"bitrate_below_minimum"},
+				"min_bitrate_bps": 145000.0, "meets_minimum": false, "low_quality_reasons": []any{"bitrate_below_minimum"},
 			},
 		},
 		{

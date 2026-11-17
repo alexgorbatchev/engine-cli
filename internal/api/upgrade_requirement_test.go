@@ -60,7 +60,7 @@ func TestUpgradeRequiresSupportedFetchTrack(t *testing.T) {
 			if err := acquire.UseManagedTools(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			installer := &upgradeInstaller{script: fakeFetchTrack("1.12.0", updated)}
+			installer := &upgradeInstaller{script: fakeFetchTrack("1.12.1", updated)}
 			s.config.ToolInstaller = installer
 			body := `{"identifier":"1","keep_timing":true}`
 			if autoInstall {

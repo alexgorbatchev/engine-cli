@@ -182,7 +182,7 @@ func TestToolInspectionAndNativeRunner(t *testing.T) {
 		err       error
 		available bool
 		code      string
-	}{{"1.12.0\r\n", nil, true, ""}, {"", errors.New("missing"), false, "tool_unavailable"}, {"", nil, true, "tool_outdated"}} {
+	}{{"1.12.1\r\n", nil, true, ""}, {"", errors.New("missing"), false, "tool_unavailable"}, {"", nil, true, "tool_outdated"}} {
 		c := Client{Runner: func(_ context.Context, name string, args ...string) ([]byte, error) {
 			if reflect.DeepEqual(args, []string{"--json", "dependencies"}) {
 				return []byte(`{"status":"ok","dependencies":[],"changed":[]}`), nil
@@ -196,7 +196,7 @@ func TestToolInspectionAndNativeRunner(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		if r.Available != tc.available || r.ErrorCode != tc.code || (tc.code == "" && r.Version != "1.12.0") {
+		if r.Available != tc.available || r.ErrorCode != tc.code || (tc.code == "" && r.Version != "1.12.1") {
 			t.Fatalf("%+v", r)
 		}
 	}
@@ -207,7 +207,7 @@ func TestToolInspectionAndNativeRunner(t *testing.T) {
 	}
 	dir := t.TempDir()
 	script := filepath.Join(dir, "fetch-track")
-	if e := os.WriteFile(script, []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.12.0; exit 0; fi\nif [ \"$AGENT\" != 1 ]; then exit 8; fi\nprintf '{\"status\":\"ok\"}'\n"), 0700); e != nil {
+	if e := os.WriteFile(script, []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.12.1; exit 0; fi\nif [ \"$AGENT\" != 1 ]; then exit 8; fi\nprintf '{\"status\":\"ok\"}'\n"), 0700); e != nil {
 		t.Fatal(e)
 	}
 	t.Setenv("PATH", dir)

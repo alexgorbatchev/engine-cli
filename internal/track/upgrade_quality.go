@@ -122,7 +122,7 @@ type upgradeVerdict struct {
 
 // meetsUpgradeBar decides whether a file meets the bar: Fetch Track's verdict
 // at the request's minimum, which adds a per-codec bitrate floor where the
-// measured cutoff does not reflect quality (Opus averaging below 160 kbps at
+// measured cutoff does not reflect quality (Opus averaging below 145 kbps at
 // minimums of 19 kHz and above). It decides the bar for both files. A missing
 // verdict means a Fetch Track release older than the verdict, and neither it
 // nor one applied to another minimum can decide the bar.

@@ -27,7 +27,7 @@ var trackFetchFlags = []acquisitionFlag{
 	{"sources", "string", "Comma-separated sources: youtube, soundcloud, bandcamp"},
 	{"skip-verify", "bool", "Skip audio quality verification"}, {"skip-metadata", "bool", "Skip online metadata lookup"},
 	{"no-cache", "bool", "Bypass cached results"}, {"auto-install", "bool", "Install missing upstream dependencies"},
-	{"min-bandwidth-khz", "float", "Bandwidth in kHz below which downloads are flagged as low quality, as is Opus averaging below 160 kbps at 19 kHz and above; 0 uses the default"},
+	{"min-bandwidth-khz", "float", "Bandwidth in kHz below which downloads are flagged as low quality, as is Opus averaging below 145 kbps at 19 kHz and above; 0 uses the default"},
 	{"confirm-fingerprint", "bool", "Require fingerprint confirmation (explicit true or false)"},
 	{"js-runtime", "string", "JavaScript runtime used by the downloader"},
 }
@@ -61,7 +61,7 @@ func addAcquisitionCommands(root *cobra.Command) {
 		}
 		track.AddCommand(acquisitionCommand("track."+action, action+" <query>", "Find and acquire individual audio tracks", "query", flags))
 	}
-	track.AddCommand(acquisitionCommand("track.verify", "verify [url|path|identifier]", "Verify the spectral quality of remote, local, collection, or staged audio", "identifier", []acquisitionFlag{{"target", "string", "Verify this URL or local path"}, {"staging-id", "string", "Verify this staged item instead of a collection track"}, {"min-bandwidth-khz", "float", "Bandwidth in kHz below which audio is flagged as low quality, as is Opus averaging below 160 kbps at 19 kHz and above; 0 uses the default"}, {"auto-install", "bool", "Install missing verification dependencies"}}))
+	track.AddCommand(acquisitionCommand("track.verify", "verify [url|path|identifier]", "Verify the spectral quality of remote, local, collection, or staged audio", "identifier", []acquisitionFlag{{"target", "string", "Verify this URL or local path"}, {"staging-id", "string", "Verify this staged item instead of a collection track"}, {"min-bandwidth-khz", "float", "Bandwidth in kHz below which audio is flagged as low quality, as is Opus averaging below 145 kbps at 19 kHz and above; 0 uses the default"}, {"auto-install", "bool", "Install missing verification dependencies"}}))
 	tags := &cobra.Command{Use: "tags", Short: "Inspect and update tags embedded in audio files", Args: cobra.NoArgs}
 	targetFlags := []acquisitionFlag{{"staging-id", "string", "Select a staged item"}, {"staging-ids", "strings", "Select staged items; repeat or separate with commas"}, {"path", "string", "Select a local audio file"}, {"paths", "strings", "Select local audio paths; repeat or separate with commas"}}
 	tags.AddCommand(acquisitionCommand("track.tags.inspect", "inspect [path|identifier...]", "Inspect actual audio file tags", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"auto-install", "bool", "Install missing or outdated tag tools"})))
