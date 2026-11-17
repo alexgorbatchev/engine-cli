@@ -86,7 +86,13 @@ func TestRefreshAbsoluteMissingAndStatFailure(t *testing.T) {
 			if _, err := database.ExecContext(t.Context(), "INSERT INTO Track(id,path,title,fileBytes) VALUES(2,?,'Original',0)", path); err != nil {
 				t.Fatal(err)
 			}
-			report, err := SyncLibrary(t.Context(), database, media, refreshTags)
+			phases := map[string]bool{}
+			ctx := progress.WithReporter(t.Context(), func(e progress.Event) { phases[e.Phase] = true })
+			report, err := SyncLibrary(ctx, database, media, refreshTags)
+			// Refresh reports its own phase IDs, never the sync operation's.
+			if !phases["refresh"] || !phases["refresh.tracks"] || phases["sync.tracks"] {
+				t.Fatalf("refresh phases=%v", phases)
+			}
 			if report == nil || report.TotalDBTracks != 2 || report.UpdatedCount != 1 {
 				t.Fatalf("partial outcome lost: %+v error=%v", report, err)
 			}

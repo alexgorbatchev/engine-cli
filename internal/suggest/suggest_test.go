@@ -156,6 +156,10 @@ func TestSuggestionBatchesAndPreflight(t *testing.T) {
 		if err := json.Unmarshal(e.Result, &batch); err != nil {
 			t.Fatal(err)
 		}
+		// Each streamed batch carries the counts a progress line shows.
+		if e.Processed == nil || e.Total == nil || *e.Processed != batch.Processed || *e.Total != batch.Total {
+			t.Fatalf("batch event counts=%v/%v want %d/%d", e.Processed, e.Total, batch.Processed, batch.Total)
+		}
 		streamed = append(streamed, batch)
 	})
 	var consumed []Report

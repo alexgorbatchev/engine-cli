@@ -3,6 +3,7 @@ package acquire
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -77,9 +78,19 @@ func TestSharedMutationIncludesManagedAndPrivateCopies(t *testing.T) {
 		return base(ctx, tool, args...)
 	}
 	client.Installer = godeps.InstallerFunc(func(context.Context, string) error { installs++; return nil })
-	result, err := client.ChangeDependencies(t.Context(), "update", []string{"fetch-track"})
+	var phases []string
+	ctx := progress.WithReporter(t.Context(), func(e progress.Event) {
+		if e.Type == "phase_start" && e.Processed != nil {
+			phases = append(phases, fmt.Sprintf("%s %s %d/%d", e.Phase, e.Subphase, *e.Processed, *e.Total))
+		}
+	})
+	result, err := client.ChangeDependencies(ctx, "update", []string{"fetch-track"})
 	if err != nil || result.Status != "success" || installs != 1 || private != 1 || len(result.Receipts) != 2 {
 		t.Fatalf("result=%+v installs=%d private=%d err=%v", result, installs, private, err)
+	}
+	// A stable phase ID names the action; the dependency is its subphase, and each tool context counts.
+	if !slices.Equal(phases, []string{"tools.dependency.update fetch-track 0/2", "tools.dependency.update fetch-track 1/2"}) {
+		t.Fatalf("dependency phases=%v", phases)
 	}
 	if result.Receipts[0].Status != "success" || result.Receipts[1].Status != "current" {
 		t.Fatalf("actual receipts=%+v", result.Receipts)

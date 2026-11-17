@@ -57,14 +57,20 @@ func (c Client) ChangeDependencies(ctx context.Context, action string, names []s
 		result.ErrorCode = dependencyCheckIncomplete
 		failures = append(failures, &progress.Error{Code: dependencyCheckIncomplete, Cause: errors.New("dependency inspection could not establish every requiring tool context")})
 	}
+	total, done := 0, 0
+	for _, name := range selected {
+		total += len(dependencies[name].Contexts)
+	}
 	for _, name := range selected {
 		for _, observation := range dependencies[name].Contexts {
 			if err := ctx.Err(); err != nil {
 				result.finish(true)
 				return result, err
 			}
-			progress.Stage(ctx, "updating "+name+" for "+observation.Tool, 0)
+			// Stable phase IDs name the action; the dependency and its tool are details.
+			progress.Emit(ctx, progress.Event{Type: "phase_start", Phase: "tools.dependency." + action, Subphase: name, Message: name + " for " + observation.Tool, Processed: new(done), Total: new(total)})
 			receipt, err := c.changeDependency(ctx, action, name, observation)
+			done++
 			result.Receipts = append(result.Receipts, receipt)
 			if err != nil {
 				failures = append(failures, err)

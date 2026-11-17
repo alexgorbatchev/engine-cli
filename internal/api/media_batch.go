@@ -105,19 +105,24 @@ func (r *MediaBatchResult) Err() error {
 	return &progress.Error{Code: "batch_partial", Cause: fmt.Errorf("%d of %d files failed; inspect per-file results", r.Failed, len(r.Results))}
 }
 
+// mediaBatchPhases names each file batch's progress phase after its operation.
+var mediaBatchPhases = map[string]string{"inspect": "track.tags.inspect", "update": "track.tags.update", "artwork": "track.artwork.embed"}
+
 // A batch whose files partly fail still succeeds, keeping its siblings' results and undo; only a batch in which every
 // file fails fails the operation.
 func (s *Server) tagSelection(ctx context.Context, p mediaSelection, action string, opts acquire.TagOptions) (any, error) {
 	if !p.isBatch() {
 		return s.tagItem(ctx, p.field(), p.items()[0], action, opts)
 	}
-	batch := &MediaBatchResult{Status: "success", Results: make([]map[string]any, 0, len(p.items()))}
-	for _, item := range p.items() {
+	items := p.items()
+	batch := &MediaBatchResult{Status: "success", Results: make([]map[string]any, 0, len(items))}
+	for i, item := range items {
 		if err := ctx.Err(); err != nil {
 			batch.Status = "cancelled"
 			return batch, err
 		}
-		result, err := s.tagItem(ctx, p.field(), item, action, opts)
+		itemCtx := progress.Range(ctx, 10+85*float64(i)/float64(len(items)), 10+85*float64(i+1)/float64(len(items)))
+		result, err := s.tagItem(itemCtx, p.field(), item, action, opts)
 		entry := map[string]any{p.field(): item, "result": result}
 		if err != nil {
 			entry["error"] = err.Error()
@@ -127,6 +132,7 @@ func (s *Server) tagSelection(ctx context.Context, p mediaSelection, action stri
 			batch.Succeeded++
 		}
 		batch.Results = append(batch.Results, entry)
+		progress.Item(ctx, mediaBatchPhases[action], i+1, len(items))
 	}
 	switch {
 	case batch.Failed == len(batch.Results):

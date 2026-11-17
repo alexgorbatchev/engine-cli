@@ -82,7 +82,7 @@ func Run(ctx context.Context, library string, selection Selection, options acqui
 		if err != nil {
 			return result, &progress.Error{Code: "output_failed", Cause: err}
 		}
-		progress.Emit(ctx, progress.Event{Type: "result", Phase: "track.suggest", Percent: 95 * float64(result.Processed) / float64(result.Total), Result: data})
+		progress.Emit(ctx, progress.Event{Type: "result", Phase: "track.suggest", Percent: 95 * float64(result.Processed) / float64(result.Total), Processed: new(result.Processed), Total: new(result.Total), Result: data})
 		if onBatch != nil {
 			if err := onBatch(completed); err != nil {
 				return result, &progress.Error{Code: "output_failed", Cause: err}

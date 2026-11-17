@@ -14,6 +14,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
 )
 
@@ -133,8 +134,14 @@ func TestImportAndUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	var report *ImportReport
+	var counts [][2]int
 	entry, err := history.Run(ctx, lib, "staging.import", history.ScopeCollection, nil, func(ctx context.Context) error {
 		var err error
+		ctx = progress.WithReporter(ctx, func(e progress.Event) {
+			if e.Phase == "staging.import" && e.Processed != nil {
+				counts = append(counts, [2]int{*e.Processed, *e.Total})
+			}
+		})
 		report, err = s.Import(ctx, database, ImportOptions{IDs: []string{mix.ID}, ToPlaylist: "7", Runner: testaudio.Metadata(`{"format":{"tags":{"title":"Tagged"}}}`)})
 		return err
 	})
@@ -143,6 +150,10 @@ func TestImportAndUndo(t *testing.T) {
 	}
 	if len(report.Imported) != 1 || len(report.Failed) != 1 || report.Failed[0].ID != missing.ID {
 		t.Fatalf("report %+v", report)
+	}
+	// Failed items count as processed, so the progress line reaches every staged track.
+	if !reflect.DeepEqual(counts, [][2]int{{1, 2}, {2, 2}}) {
+		t.Fatalf("import progress counts=%v", counts)
 	}
 	encoded, err := json.Marshal(report)
 	if err != nil {

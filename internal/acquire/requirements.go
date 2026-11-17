@@ -115,7 +115,7 @@ func (c Client) requireTool(ctx context.Context, name string) error {
 	if !c.autoInstall {
 		return requirementError(r)
 	}
-	progress.Stage(ctx, "installing "+name, 0)
+	progress.Emit(ctx, progress.Event{Type: "phase_start", Phase: "tools.install", Subphase: name})
 	installer := c.managedTools()
 	install := installer.Install
 	if r.Installed {

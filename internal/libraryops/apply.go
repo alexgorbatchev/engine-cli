@@ -36,7 +36,7 @@ func aggregate(ctx context.Context, p *Plan) error {
 		if err := installMedia(ctx, file); err != nil {
 			return err
 		}
-		progress.Item(ctx, "aggregate media", i+1, len(p.Files))
+		progress.Item(ctx, "library.media.aggregate", i+1, len(p.Files))
 	}
 	d, err := collection(ctx, p.Path, false)
 	if err != nil {

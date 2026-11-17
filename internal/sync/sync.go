@@ -47,7 +47,7 @@ type SyncReport struct {
 
 // SyncLibrary synchronizes on-disk audio file tags and exact fileBytes into the SQLite database.
 func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, runnerOpt ...CommandRunner) (*SyncReport, error) {
-	progress.Stage(ctx, "sync", 10)
+	progress.Stage(ctx, "refresh", 10)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 	indexedPaths := make(map[string]bool)
 
 	for i, t := range tracks {
-		progress.Item(progress.Range(ctx, 10, 85), "sync.tracks", i, len(tracks))
+		progress.Item(progress.Range(ctx, 10, 85), "refresh.tracks", i, len(tracks))
 		if err := ctx.Err(); err != nil {
 			return report, err
 		}
@@ -180,7 +180,7 @@ func SyncLibrary(ctx context.Context, database *sql.DB, musicBaseDir string, run
 	}
 
 	// Scan musicBaseDir for unindexed audio files
-	progress.Stage(ctx, "sync.scan", 90)
+	progress.Stage(ctx, "refresh.scan", 90)
 	err = filepath.WalkDir(musicBaseDir, func(path string, d fs.DirEntry, walkErr error) error {
 		if err := ctx.Err(); err != nil {
 			return err

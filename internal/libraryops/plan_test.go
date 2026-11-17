@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 func fixture(t *testing.T, media string) string {
@@ -47,7 +48,16 @@ func TestAggregateProtectsSharedFilesAndUndo(t *testing.T) {
 		t.Fatalf("unsafe plan: %+v", plan)
 	}
 	opts.PlanToken = plan.PlanToken
-	entry, err := history.Run(ctx, source, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
+	var counts [][2]int
+	reported := progress.WithReporter(ctx, func(e progress.Event) {
+		if e.Phase == "library.media.aggregate" && e.Processed != nil {
+			counts = append(counts, [2]int{*e.Processed, *e.Total})
+		}
+	})
+	entry, err := history.Run(reported, source, "library.media.aggregate", history.ScopeCollection, nil, func(ctx context.Context) error { return Apply(ctx, opts, known) })
+	if len(counts) != 1 || counts[0] != [2]int{1, 1} {
+		t.Fatalf("aggregate progress counts=%v", counts)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

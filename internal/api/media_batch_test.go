@@ -262,7 +262,13 @@ func TestTagBatchPreservesOrderAndPerItemFailures(t *testing.T) {
 		s.operations[op.Name] = op
 	}
 	// One missing track leaves the batch partial: the operation succeeds and the failed file carries its code.
-	result, id, err := s.RunOperation(context.Background(), "track.tags.inspect", json.RawMessage(`{"identifiers":["1","999","1"]}`))
+	var counts [][2]int
+	ctx := progress.WithReporter(context.Background(), func(e progress.Event) {
+		if e.Phase == "track.tags.inspect" && e.Processed != nil {
+			counts = append(counts, [2]int{*e.Processed, *e.Total})
+		}
+	})
+	result, id, err := s.RunOperation(ctx, "track.tags.inspect", json.RawMessage(`{"identifiers":["1","999","1"]}`))
 	if err != nil || id != "" {
 		t.Fatalf("batch inspect: %s %v", id, err)
 	}
@@ -286,6 +292,10 @@ func TestTagBatchPreservesOrderAndPerItemFailures(t *testing.T) {
 	}
 	if err := result.(*MediaBatchResult).Err(); progress.ErrorCode(err) != "batch_partial" {
 		t.Fatalf("partial batch hid its failures from the CLI: %v", err)
+	}
+	// Every file, failed ones included, advances the progress line.
+	if !slices.Equal(counts, [][2]int{{1, 3}, {2, 3}, {3, 3}}) {
+		t.Fatalf("file batch progress counts=%v", counts)
 	}
 }
 

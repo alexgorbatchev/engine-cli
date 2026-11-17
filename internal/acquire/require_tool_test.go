@@ -35,12 +35,18 @@ func TestRequireTool(t *testing.T) {
 					return nil, nil
 				}
 			}
-			err := c.RequireTool(context.Background(), "fetch-track", tt.autoInstall)
+			var phases []string
+			ctx := progress.WithReporter(context.Background(), func(e progress.Event) { phases = append(phases, e.Phase+" "+e.Subphase) })
+			err := c.RequireTool(ctx, "fetch-track", tt.autoInstall)
 			if code := progress.ErrorCode(err); code != tt.code {
 				t.Fatalf("code=%q err=%v", code, err)
 			}
 			if f.installer.method != tt.method {
 				t.Fatalf("installer method %q, want %q", f.installer.method, tt.method)
+			}
+			// An install reports one stable phase ID, naming the tool as its subphase.
+			if installing := tt.method != ""; installing != (len(phases) == 1 && phases[0] == "tools.install fetch-track") {
+				t.Fatalf("install phases=%v", phases)
 			}
 			if f.ran() {
 				t.Fatal("requirement check ran the tool beyond --version")

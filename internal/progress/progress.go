@@ -32,6 +32,8 @@ type Event struct {
 	Step       int             `json:"step,omitempty"`
 	TotalSteps int             `json:"total_steps,omitempty"`
 	Percent    float64         `json:"percent"`
+	Processed  *int            `json:"processed,omitempty"`
+	Total      *int            `json:"total,omitempty"`
 	Message    string          `json:"message,omitempty"`
 	Source     *Source         `json:"source,omitempty"`
 	Candidate  json.RawMessage `json:"candidate,omitempty"`
@@ -153,11 +155,12 @@ func PublicError(err error) string {
 	return message
 }
 
-// Item reports completed items in the work portion after the safety backup.
+// Item reports completed items in the work portion after the safety backup,
+// with the processed and total counts clients show beside the phase.
 func Item(ctx context.Context, phase string, completed, total int) {
 	percent := 10.0
 	if total > 0 {
 		percent += 85 * float64(completed) / float64(total)
 	}
-	Emit(ctx, Event{Phase: phase, Percent: percent})
+	Emit(ctx, Event{Phase: phase, Percent: percent, Processed: &completed, Total: &total})
 }

@@ -62,6 +62,13 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 		return nil, err
 	}
 	report := &ImportReport{Imported: []Imported{}, Failed: []Failure{}}
+	tracks := 0
+	for _, item := range selected {
+		if item.Kind != "mix" {
+			tracks++
+		}
+	}
+	done := 0
 	for _, item := range selected {
 		if item.Kind == "mix" {
 			continue
@@ -78,8 +85,9 @@ func (s *Store) Import(ctx context.Context, d *sql.DB, opts ImportOptions) (*Imp
 		}
 		if err != nil {
 			report.Failed = append(report.Failed, Failure{ID: item.ID, Error: err.Error(), ErrorCode: progress.ErrorCode(err)})
-			continue
 		}
+		done++
+		progress.Item(ctx, "staging.import", done, tracks)
 	}
 	for _, item := range selected {
 		if item.Kind != "mix" {

@@ -494,10 +494,11 @@ Command results remain on stdout. Human CLI output displays the same overall per
 | `job_id` | Stable identifier for this operation, in CLI and HTTP events |
 | `sequence` | Increasing event number within the operation, starting at 1 |
 | `type` | `phase_start`, `progress`, `candidate_found`, `candidate_selected`, `smartlist_repair`, `complete`, `error`, or `cancelled`; HTTP adds `queued`, and acquisition can forward other Fetch Track event types such as `metadata_found` and `tagged` |
-| `phase` | Current operation or work phase |
+| `phase` | Stable phase ID: the operation name when it starts, then one of the IDs below. Never interpolated text; names of tools or files go in `subphase` or `message` |
 | `subphase` | Optional nested phase; during acquisition, Fetch Track's phase |
 | `step`, `total_steps` | Optional stage numbering; Fetch Track's values remain under `source` |
 | `percent` | Required overall completion, 0–100; monotonic within an operation |
+| `processed`, `total` | Optional item counts for the current phase: `processed` items of `total` finished, including failed items. Present on every item event of a batch phase, `processed` can be 0, and phase starts without items omit both |
 | `message` | Optional explanation |
 | `source` | Optional upstream event envelope plus `name: "fetch-track"`; retains upstream identity, sequence, timestamp, phase details, percentage, and payloads |
 | `candidate` | Optional candidate object forwarded from Fetch Track |
@@ -505,6 +506,29 @@ Command results remain on stdout. Human CLI output displays the same overall per
 | `result` | Optional result payload; Fetch Track's acquired artifact remains under `source.result` |
 | `error` | Optional string for failure or cancellation; HTTP job/status and request errors separately use `{code,message}` |
 | `error_code` | Stable code accompanying a string-valued failure; consumers map it to user-friendly guidance |
+
+Stable phase IDs, with the operations that report them. Phases marked with counts carry `processed` and `total` on their item events:
+
+| Phase ID | Operation | Counts |
+| --- | --- | --- |
+| The operation name, such as `track.add`, `track.rm`, `playlist.track.add`, `playlist.track.rm`, `playlist.track.move`, `track.tags.inspect`, `track.tags.update`, `track.artwork.embed`, `staging.import`, `track.suggest`, `track.duplicate.inspect`, `library.media.aggregate` | That operation's items: tracks, files, staged items, suggestion batches (`processed` tracks), compared tracks, or media files | Yes |
+| `analyze` | `track.analyze`, and `track.add` and `staging.import` with `analyze:true` | Yes |
+| `fingerprint`, `duplicate.compare` | `track.duplicate.scan`, audio duplicate listing | Yes |
+| `verify`, `verify.tracks`, `verify.memberships`, `verify.playlists` | `library.verify` | `verify.tracks`, `verify.playlists` |
+| `refresh`, `refresh.tracks`, `refresh.scan` | `library.refresh` | `refresh.tracks` |
+| `sync.compare`, `sync.backup`, `sync.tracks`, `sync.finalize` | `library.sync` | `sync.tracks` |
+| `artwork.normalize`, `artwork.tracks`, `artwork.database`, `artwork.database.items`, `artwork.cache`, `artwork.cache.items` | `track.artwork.normalize` | The `*.items` and `artwork.tracks` phases |
+| `artwork.prune`, `artwork.prune.database`, `artwork.prune.cache`, `artwork.prune.cache.items` | `library.prune` | `artwork.prune.database`, `artwork.prune.cache.items` |
+| `migrate.read`, `migrate.copy`, `migrate.xml` | `migrate.export` | `migrate.copy` |
+| `library.discover.locations` | `library.discover` | Yes |
+| `tools.dependency.install`, `tools.dependency.update` | `tools.dependencies.install`, `tools.dependencies.update`; `subphase` names the dependency | Yes, one item per tool context |
+| `tools.install` | Any request with `auto_install:true` that installs or updates a tool; `subphase` names the tool | No |
+| `resolve`, `acquire`, `verify`, `metadata`, `install`, `commit` | `track.upgrade`; `acquire` also for `track.fetch` and `mix.fetch`, with Fetch Track's or Fetch Mix's phase as `subphase` | No |
+| `backup`, `backup.root`, `backup.artwork`, `backup.saved` | `library.backup` | No |
+| `restore`, `restore.root`, `restore.artwork` | `library.restore` | No |
+| `library.smartlist-repair.apply` | Writes that repair saved Smartlists | No |
+
+Atomic batch writes (`track.batch.update`, `track.batch.find-replace`, `track.batch.capitalize`, custom-tag batches and reviewed imports) apply in one transaction and report no item counts.
 
 Percentages describe completed stages or items, not elapsed time. A phase may remain at the same percentage while it works. Only successful completion emits 100%; errors and cancellations retain the last percentage.
 
