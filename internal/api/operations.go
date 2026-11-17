@@ -30,6 +30,9 @@ type operation struct {
 	Parameters        map[string]string `json:"parameters"`
 	Required          []string          `json:"required"`
 	Limits            map[string]int    `json:"limits,omitempty"`
+	// HistoryParameters are optional fields every write accepts beside its own
+	// parameters; they describe the change on its history entry.
+	HistoryParameters []string `json:"history_parameters,omitempty"`
 	bind              func(json.RawMessage) (*boundOperation, error)
 	reduceResult      func(any, json.RawMessage) any
 	collectionRead    bool
@@ -46,6 +49,7 @@ type boundOperation struct {
 	installsTools      bool
 	collectionRead     bool
 	replacementLibrary string
+	metadata           history.Metadata
 }
 
 type parameterValidator interface{ validate() error }
@@ -83,6 +87,45 @@ func bindErrorCode(err error) string {
 		return code
 	}
 	return "invalid_parameters"
+}
+
+// historyParameters are the envelope fields a write request may carry for its
+// history entry (`history_source`, `group_id`).
+var historyParameters = []string{"group_id", "history_source"}
+
+// takeHistoryMetadata removes the history envelope from a write request so the
+// operation's own strict decoder sees only its parameters.
+func takeHistoryMetadata(raw json.RawMessage, values map[string]json.RawMessage) (json.RawMessage, history.Metadata, error) {
+	var meta history.Metadata
+	found := false
+	for _, key := range historyParameters {
+		value, ok := values[key]
+		if !ok {
+			continue
+		}
+		found = true
+		var text string
+		if string(value) != "null" {
+			if err := json.Unmarshal(value, &text); err != nil {
+				return nil, meta, fmt.Errorf("%s must be a string", key)
+			}
+		}
+		text = strings.TrimSpace(text)
+		if len(text) > 200 {
+			return nil, meta, fmt.Errorf("%s must be at most 200 characters", key)
+		}
+		if key == "group_id" {
+			meta.GroupID = text
+		} else {
+			meta.Source = text
+		}
+		delete(values, key)
+	}
+	if !found {
+		return raw, meta, nil
+	}
+	stripped, err := json.Marshal(values)
+	return stripped, meta, err
 }
 
 // define derives accepted JSON fields from the actual request type. The catalog
@@ -125,7 +168,12 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 	if v, ok := any(*new(P)).(operationLimiter); ok {
 		limits = v.operationLimits()
 	}
-	return operation{Name: name, Mutates: effect != "read", Effect: effect, ParameterEffects: parameterEffects, AdditionalEffects: additionalEffects, Parameters: params, Required: required, Limits: limits,
+	var envelope []string
+	// Only effects that record history describe their entry.
+	if effect == "collection" || effect == "staging" || effect == "filesystem" {
+		envelope = historyParameters
+	}
+	return operation{Name: name, Mutates: effect != "read", Effect: effect, ParameterEffects: parameterEffects, AdditionalEffects: additionalEffects, Parameters: params, Required: required, Limits: limits, HistoryParameters: envelope,
 		bind: func(raw json.RawMessage) (*boundOperation, error) {
 			var values map[string]json.RawMessage
 			if err := json.Unmarshal(raw, &values); err != nil || values == nil {
@@ -133,6 +181,13 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 			}
 			if err := checkLimits(values, limits); err != nil {
 				return nil, err
+			}
+			var meta history.Metadata
+			if envelope != nil {
+				var err error
+				if raw, meta, err = takeHistoryMetadata(raw, values); err != nil {
+					return nil, err
+				}
 			}
 			var p P
 			dec := json.NewDecoder(bytes.NewReader(raw))
@@ -189,7 +244,7 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 			if preview {
 				boundEffect = "read"
 			}
-			bound := &boundOperation{parameters: values, run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, replacementLibrary: sync.Destination, effect: boundEffect, paths: paths}
+			bound := &boundOperation{parameters: values, run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, replacementLibrary: sync.Destination, effect: boundEffect, paths: paths, metadata: meta}
 			if v, ok := any(p).(interface{ operationCollectionRead() bool }); ok {
 				bound.collectionRead = v.operationCollectionRead()
 			}
@@ -268,6 +323,7 @@ func (s *Server) execute(ctx context.Context, op operation, bound *boundOperatio
 			}
 		}
 		ctx = context.WithValue(ctx, mediaEffectKey{}, effect)
+		ctx = history.WithMetadata(ctx, bound.metadata)
 		if effect == "collection" && !bound.preview {
 			r, e := s.checkSystem(ctx, nil)
 			if e != nil {

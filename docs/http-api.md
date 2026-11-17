@@ -325,6 +325,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `library_busy` | Another connection, such as Engine DJ Desktop or another write, kept an Engine database busy or locked past its busy timeout. Nothing was changed; retry when it is free. |
 | `undo_conflict` | A non-forced undo found a later change to the same data. Nothing was undone; preview the undo to see the later changes. |
 | `batch_limit_exceeded` | A list parameter holds more items than the operation's catalog `limits` allow in one job. Nothing started; split the selection into jobs of at most that many items. |
+| `undo_plan_stale` | The library or its history changed after an undo was reviewed, so its `plan_token` no longer matches. Nothing was undone; review it again. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
 | `operation_failed` | Unclassified failure. Inspect current state before retrying. |
@@ -1009,6 +1010,33 @@ Cross-origin audio elements must set `crossorigin="anonymous"` so the browser se
 
 Successful collection and staged audio responses use `Cache-Control: private, no-cache`: only private clients may cache them, and every reuse must revalidate with the server. `HEAD` returns `Last-Modified` and the complete `Content-Length` without transferring audio. Clients may reuse derived waveform peaks when both validators match; changed or missing validators require fresh analysis. Conditional `GET` requests use native HTTP `If-Modified-Since` handling, including `304` for unchanged files. Collection and staged artwork use content-based ETags and `private, no-cache` as well. Error responses, metadata, and other API data retain `no-store`.
 
+### Undo history and reviewed undo
+
+`library.history` lists entries newest first. Besides `id`, `operation`, `scope`, `created`, `state` (`pending`, `complete`, `failed`, `recovered`), `undo_of` and the snapshot details, an entry carries:
+
+- `summary`, written when the operation completes, from the library before and after it: `tracks` and `playlists` it touched, `added_tracks`, `removed_tracks`, `added_playlists`, `removed_playlists`, `memberships` added or removed, up to 20 `track_names` and `playlist_names`, `fields` (each `{field, value?, uniform?}`: `uniform:true` with `value` when every changed row now holds that value, and without `value` when the field was cleared), `stores` for companion stores it changed (such as `tags`), `files` and `moves`. Field names are Engine's column names; bookkeeping columns such as `lastEditTime` are omitted, and binary columns such as `beatData` or `quickCues` report no value. Entries recorded before summaries existed, and pending entries, have none.
+- `undone_by`: the latest completed entry that undid it, derived on every read. An undo of an undo (Redo) appears as `undone_by` on the undo entry; an entry is live again when the entry that undid it was itself undone.
+- `undo_of_ids` on an undo that reversed several records, and `plan_token` on an undo applied from a review.
+- `source` and `group_id`, when the write request supplied them.
+
+Every operation whose effect records history (`collection`, `staging`, `filesystem`) lists `history_parameters:["group_id","history_source"]` in the catalog and accepts both as optional strings of at most 200 characters beside its own parameters. `history_source` labels where the change was made, such as the playlist being edited; `group_id` ties the batches of one run together so a client can undo them as one. Neither changes what the operation does.
+
+`library.undo` accepts `library?`, `id?` or `ids?` (not both), `exclude?`, `keep_later?`, `plan_token?`, `force?` and `dry_run?`. Several `ids` undo together, newest first, as one operation with one history entry; they must be completed, not yet undone, must not move the library, and must not change the same file.
+
+1. Submit `dry_run:true` to review. The dry run is a `read`: it writes neither the library nor its history, needs no Desktop check, takes no write slot and can be cancelled. It plans the undo with later changes kept and returns `{records, changes, conflicts, removes, restores, updates, files, moves, stores, database_wide?, blocked, coverage, plan_token}`:
+   - `records`: each record undone, newest first, with `id`, `operation`, `created`, `state`, `summary`, `source` and `group_id`.
+   - `changes`: one per row the undo changes, with `entity` (a selector `<table>:<key>`), `table`, `action` (`update`, `restore` for a row it brings back, `remove` for a row it deletes), `track_id` and `playlist_id` where they apply, `title`, `playlist` for memberships, and `fields` as `{field, from, to, binary?}` going from the current value to the restored one. Membership reordering is not listed.
+   - `removes`, `restores` and `updates`: counts of `tracks`, `playlists` and `memberships`. Undoing an import removes its tracks; a client names that effect before applying.
+   - `conflicts`: each later change the undo meets, with `kind` (`row`, `file`, `move` or `database`), the `record` it belongs to, `entity`, `table`, `track_id`, `playlist_id`, `title`, `path` for files, `fields` as `{field, from, to}` from the value the record wrote to the later value now in the library, and `later`, the newest history entry that changed it (absent when another application changed it). A `blocking` conflict (a moved file that changed, or a database-wide change) cannot be kept; `blocked` reports any.
+   - `coverage`: `{redo:true, changes}`; the undo records history, so Redo restores what it changes.
+   - `plan_token`: binds the records, the exclusions and the current state of every affected database and file.
+2. Apply with the same `id` or `ids` and `exclude`, and the `plan_token`. A reviewed apply keeps rows later changes touched, as the review showed. Any later write to an affected database or file refuses it with `undo_plan_stale` before backups or changes; review again. `force:true` overwrites the later changes instead (Undo anyway); it accepts the same token. An apply without a token (a direct undo) refuses conflicts with `undo_conflict` unless `keep_later` or `force` is set.
+3. `exclude` lists `entity` selectors to keep as they are now, or `<entity>#<field>` to keep one field. Exclusions apply to the Engine collection database; invalid selectors fail with `400`. Review and apply must use the same exclusions.
+
+A pending (interrupted) entry cannot be reviewed; recover it with `force:true` after inspecting it.
+
+`library.undo.status` takes `library?` and the `plan_token` of a reviewed apply whose response was lost. It returns `{state, history_id?}`: `applied` with the undo's history entry, `pending` while it runs or awaits recovery, `failed`, or `not_applied` when no undo applied that token.
+
 ### Bounded PCM generations
 
 `POST /v1/tracks/{id}/pcm` and `POST /v1/staging/{id}/pcm` prepare local audio for frame-addressed playback. The same routes are available under the selected `/v1/libraries/{library}` prefix. The body is exactly `{"sample_rate":48000}` or `{"sample_rate":44100}`, with `Content-Type: application/json`; additional fields are rejected. Clients cannot supply media paths or decoder arguments. The collection read barrier covers source resolution and opening a regular file, then releases before native decoding. Unix opens initially use native nonblocking flags so a FIFO cannot wait for a writer while holding that barrier; regular-file validation and restoring blocking mode operate on the retained descriptor. Staged opens retain the native root's path confinement. Preparing PCM does not modify the collection or create history.
@@ -1043,8 +1071,9 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `library.fixture.capture` | `before`, `after`, `out_dir` |
 | `library.discover` | `paths?` (array; omitted or empty uses automatic locations) |
 | `library.restore` | `path` |
-| `library.history` | `library?`; defaults to the server's configured library |
-| `library.undo` | `library?`, `id?`, `force?`, `dry_run?`; omitted ID selects latest in that library. A non-forced undo that a later change conflicts with fails with `undo_conflict` and changes nothing |
+| `library.history` | `library?`; defaults to the server's configured library; see undo history and reviewed undo |
+| `library.undo` | `library?`, `id?` or `ids?`, `exclude?`, `keep_later?`, `plan_token?`, `force?`, `dry_run?`; omitted IDs select the latest in that library. A non-forced, unreviewed undo that a later change conflicts with fails with `undo_conflict` and changes nothing; see undo history and reviewed undo |
+| `library.undo.status` | `library?`, `plan_token` |
 | `playlist.list` | `{}` |
 | `playlist.tree` | `{}`; see the playlist tree below |
 | `playlist.inspect`, `track.inspect` | Either `ids` (array of 1–500 positive numeric IDs) or `refs` (array of stable references) |

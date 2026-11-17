@@ -45,7 +45,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli library discover":                {Summary: "Discover current Engine DJ libraries in Music and attached local drives", Args: []cobrahelptree.ArgSpec{{Name: "[path...]"}}, Description: "Read-only, nonrecursive discovery. Optional paths replace automatic locations. Returns libraries and warnings; does not require a selected library."},
 	"engine-cli library create":                  {Summary: "Create a new native Engine library at an explicit path", Args: []cobrahelptree.ArgSpec{{Name: "<path>"}}, MutatesDB: true, Description: "Requires Engine DJ Desktop to be closed. Never replaces an existing Database2 directory. Records undo history in the new library; no pre-existing database needs a snapshot."},
 	"engine-cli library history":                 {Summary: "List retained operations and persistent identities of affected entities"},
-	"engine-cli library undo":                    {Summary: "Undo an operation; refuse conflicts unless --force is given", Args: []cobrahelptree.ArgSpec{{Name: "[id]"}}, MutatesDB: true, AutoBackup: true},
+	"engine-cli library undo":                    {Summary: "Review or undo operations; refuse conflicts unless --keep-later or --force is given", Args: []cobrahelptree.ArgSpec{{Name: "[id...]"}}, MutatesDB: true, AutoBackup: true},
 	"engine-cli track duplicate":                 {Summary: "Find, inspect, and reversibly merge duplicate candidates"},
 	"engine-cli track duplicate list":            {Summary: "List non-overlapping duplicate candidates by metadata or filename and duration"},
 	"engine-cli track duplicate scan":            {Summary: "Fingerprint audio and record a portable, reversible index", MutatesDB: true, AutoBackup: true},

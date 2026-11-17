@@ -137,7 +137,7 @@ func TestIntakeUndoSelectionRequiresHistoryOwnerBeforeReservation(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer writer.Close()
-	owner, err := ownUndo(ctx, lib, dir, entry.ID)
+	owner, err := ownUndo(ctx, lib, dir, []string{entry.ID})
 	if owner != nil {
 		owner.lease.Close()
 		t.Fatal("Undo selected a target while another History writer was active")

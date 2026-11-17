@@ -32,7 +32,7 @@ func TestUndoPreparationOwnsBackupBoundary(t *testing.T) {
 			}
 			called := false
 			backupErr := errors.New("backup failed")
-			opts := UndoOptions{DryRun: mode == "dry-run", Prepare: func(ctx context.Context) error {
+			opts := UndoOptions{Prepare: func(ctx context.Context) error {
 				called = true
 				dir, err := storeDir(lib)
 				if err != nil {
@@ -50,7 +50,11 @@ func TestUndoPreparationOwnsBackupBoundary(t *testing.T) {
 				}
 				return nil
 			}}
-			_, err = Undo(t.Context(), lib, entry.ID, opts)
+			if mode == "dry-run" {
+				_, err = ReviewUndo(t.Context(), lib, UndoRequest{IDs: []string{entry.ID}})
+			} else {
+				_, err = Undo(t.Context(), lib, entry.ID, opts)
+			}
 			wantErr := mode == "pending" || mode == "backup-failure"
 			if (err != nil) != wantErr {
 				t.Fatalf("Undo error = %v", err)

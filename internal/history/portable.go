@@ -15,6 +15,7 @@ func portableEntry(e Entry) Entry {
 		e.After = &s
 	}
 	e.Moves = slices.Clone(e.Moves)
+	e.UndoneBy = ""
 	relocateEntry(&e, ".")
 	return e
 }

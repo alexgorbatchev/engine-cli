@@ -72,11 +72,15 @@ func TestAPIUndoDatabaseConflictPreviewForceAndRedo(t *testing.T) {
 	if err := database.Close(); err != nil {
 		t.Fatal(err)
 	}
-	for _, preview := range []bool{false, true} {
-		expectUndoFailure(t, s, undoRequestBody(t, id, false, preview), "conflict")
-		assertUndoPlaylist(t, lib, "Later conflicting edit", true)
-		assertUndoPlaylist(t, lib, "Unrelated later edit", true)
+	expectUndoFailure(t, s, undoRequestBody(t, id, false, false), "conflict")
+	assertUndoPlaylist(t, lib, "Later conflicting edit", true)
+	// A dry run names the conflict instead of failing, and writes nothing.
+	review := undoReview(t, runAPIJob(t, s, "library.undo", undoRequestBody(t, id, false, true)))
+	if len(review.Conflicts) != 1 || review.Conflicts[0].Title != "Later conflicting edit" || review.Blocked {
+		t.Fatalf("review=%+v", review)
 	}
+	assertUndoPlaylist(t, lib, "Later conflicting edit", true)
+	assertUndoPlaylist(t, lib, "Unrelated later edit", true)
 	runAPIJob(t, s, "library.undo", undoRequestBody(t, id, true, true))
 	assertUndoPlaylist(t, lib, "Later conflicting edit", true)
 	undone := runAPIJob(t, s, "library.undo", undoRequestBody(t, id, true, false))
@@ -118,7 +122,11 @@ func TestAPIUndoMovedAudioConflict(t *testing.T) {
 	if err := os.WriteFile(moved, []byte("later audio edit"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	expectUndoFailure(t, s, undoRequestBody(t, id, false, true), "conflict")
+	expectUndoFailure(t, s, undoRequestBody(t, id, false, false), "conflict")
+	// A moved file cannot keep its later edit, so the review blocks keeping it.
+	if review := undoReview(t, runAPIJob(t, s, "library.undo", undoRequestBody(t, id, false, true))); !review.Blocked || len(review.Conflicts) != 1 || review.Conflicts[0].Kind != "move" {
+		t.Fatalf("review=%+v", review)
+	}
 	assertUndoFile(t, moved, "later audio edit")
 	if _, err := os.Stat(original); !os.IsNotExist(err) {
 		t.Fatalf("preview restored original: %v", err)

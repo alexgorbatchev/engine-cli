@@ -17,11 +17,12 @@ type undoOwnership struct {
 
 // Select before acquiring replacement ownership, then validate again under the
 // exclusive History owner. No reader lease survives into native acquisition.
-func ownUndo(ctx context.Context, lib, dir, id string) (*undoOwnership, error) {
-	target, err := observeUndoTarget(ctx, dir, id)
+func ownUndo(ctx context.Context, lib, dir string, ids []string) (*undoOwnership, error) {
+	targets, err := observeUndoTargets(ctx, dir, ids)
 	if err != nil {
 		return nil, err
 	}
+	target := targets[0]
 	paths := []string{lib}
 	if target.RelocationFrom != "" {
 		if _, err := os.Lstat(target.RelocationFrom); !os.IsNotExist(err) {
@@ -29,7 +30,7 @@ func ownUndo(ctx context.Context, lib, dir, id string) (*undoOwnership, error) {
 		}
 		paths = append(paths, target.RelocationFrom)
 	}
-	generation, err := json.Marshal(target)
+	generation, err := json.Marshal(targets)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func ownUndo(ctx context.Context, lib, dir, id string) (*undoOwnership, error) {
 	return &undoOwnership{lease: lease, generation: string(generation)}, nil
 }
 
-func observeUndoTarget(ctx context.Context, dir, id string) (target *Entry, err error) {
+func observeUndoTargets(ctx context.Context, dir string, ids []string) (targets []*Entry, err error) {
 	// Reject absent or invalid history before lock() can enroll storage. Reselect
 	// under its owner so the copied target reflects one complete publication.
 	if err := checkSmartlistRepair(dir); err != nil {
@@ -50,7 +51,7 @@ func observeUndoTarget(ctx context.Context, dir, id string) (target *Entry, err 
 	if err != nil {
 		return nil, err
 	}
-	if _, err := selectUndoTarget(all, id); err != nil {
+	if _, err := selectUndoTargets(all, ids); err != nil {
 		return nil, err
 	}
 	owner, err := lock(ctx, dir)
@@ -65,11 +66,11 @@ func observeUndoTarget(ctx context.Context, dir, id string) (target *Entry, err 
 	if err != nil {
 		return nil, err
 	}
-	return selectUndoTarget(all, id)
+	return selectUndoTargets(all, ids)
 }
 
-func (o *undoOwnership) validate(target *Entry) error {
-	generation, err := json.Marshal(target)
+func (o *undoOwnership) validate(targets []*Entry) error {
+	generation, err := json.Marshal(targets)
 	if err != nil {
 		return err
 	}
@@ -86,6 +87,9 @@ func selectUndoTarget(all []Entry, id string) (*Entry, error) {
 		e := &all[i]
 		if e.State == "complete" && e.UndoOf != "" && !undone[e.ID] {
 			undone[e.UndoOf] = true
+			for _, id := range e.UndoOfIDs {
+				undone[id] = true
+			}
 		}
 		if target == nil && (e.ID == id || (id == "" && e.UndoOf == "" && !undone[e.ID])) {
 			target = e

@@ -45,10 +45,23 @@ func TestUndoRefusesUnobservableDatabaseParent(t *testing.T) {
 					t.Fatalf("native Stat omitted path cause: %v", nativeErr)
 				}
 				prepared := false
-				result, err := Undo(t.Context(), lib, entry.ID, UndoOptions{DryRun: dryRun, Force: force, Prepare: func(context.Context) error {
-					prepared = true
-					return nil
-				}})
+				var result any
+				if dryRun {
+					review, reviewErr := ReviewUndo(t.Context(), lib, UndoRequest{IDs: []string{entry.ID}, Force: force})
+					if review != nil {
+						result = review
+					}
+					err = reviewErr
+				} else {
+					entry, applyErr := Undo(t.Context(), lib, entry.ID, UndoOptions{Force: force, Prepare: func(context.Context) error {
+						prepared = true
+						return nil
+					}})
+					if entry != nil {
+						result = entry
+					}
+					err = applyErr
+				}
 				if result != nil || !errors.Is(err, pathErr.Err) || prepared {
 					t.Fatalf("unobservable database reached Undo publication: result=%+v error=%v prepared=%t native=%v", result, err, prepared, nativeErr)
 				}

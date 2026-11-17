@@ -93,7 +93,7 @@ func TestUndoFileConflictAndPreview(t *testing.T) {
 	if _, err = Undo(ctx, lib, r.ID, UndoOptions{}); progress.ErrorCode(err) != UndoConflictCode {
 		t.Fatalf("file conflict refusal = %v, code %q", err, progress.ErrorCode(err))
 	}
-	if _, err = Undo(ctx, lib, r.ID, UndoOptions{Force: true, DryRun: true}); err != nil {
+	if _, err = ReviewUndo(ctx, lib, UndoRequest{IDs: []string{r.ID}, Force: true}); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(p)

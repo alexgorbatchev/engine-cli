@@ -54,7 +54,7 @@ func TestSmartlistPendingRepairBlocksHistory(t *testing.T) {
 		}},
 		{"undo", func() error { _, err := Undo(ctx, lib, entry.ID, UndoOptions{}); return err }},
 		{"forced undo", func() error { _, err := Undo(ctx, lib, entry.ID, UndoOptions{Force: true}); return err }},
-		{"preview", func() error { _, err := Undo(ctx, lib, entry.ID, UndoOptions{DryRun: true}); return err }},
+		{"preview", func() error { _, err := ReviewUndo(ctx, lib, UndoRequest{IDs: []string{entry.ID}}); return err }},
 		{"collect", func() error { return collect(dir, nil) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -24,20 +24,32 @@ import (
 type Entry struct {
 	RelocationFrom string `json:"relocation_from,omitempty"`
 	cleanup        func() error
-	ID             string     `json:"id"`
-	Operation      string     `json:"operation"`
-	Scope          Scope      `json:"scope"`
-	Created        time.Time  `json:"created"`
-	Library        string     `json:"library"`
-	LibraryID      string     `json:"library_id"`
-	State          string     `json:"state"`
-	Error          string     `json:"error,omitempty"`
-	ErrorCode      string     `json:"error_code,omitempty"`
-	UndoOf         string     `json:"undo_of,omitempty"`
-	Entities       []Entity   `json:"entities,omitempty"`
-	Moves          []fileMove `json:"moves,omitempty"`
-	Before         *snapshot  `json:"before"`
-	After          *snapshot  `json:"after,omitempty"`
+	ID             string    `json:"id"`
+	Operation      string    `json:"operation"`
+	Scope          Scope     `json:"scope"`
+	Created        time.Time `json:"created"`
+	Library        string    `json:"library"`
+	LibraryID      string    `json:"library_id"`
+	State          string    `json:"state"`
+	Error          string    `json:"error,omitempty"`
+	ErrorCode      string    `json:"error_code,omitempty"`
+	UndoOf         string    `json:"undo_of,omitempty"`
+	// UndoneBy names the latest completed entry that undid this one. It is
+	// derived on every read and never stored.
+	UndoneBy string   `json:"undone_by,omitempty"`
+	Summary  *Summary `json:"summary,omitempty"`
+	// Source is the caller's label for where the change was made, such as
+	// the playlist being edited; GroupID ties together one run's batches.
+	Source  string `json:"source,omitempty"`
+	GroupID string `json:"group_id,omitempty"`
+	// UndoOfIDs lists every record an undo of several records reversed;
+	// PlanToken is the reviewed plan it applied, for Check again.
+	UndoOfIDs []string   `json:"undo_of_ids,omitempty"`
+	PlanToken string     `json:"plan_token,omitempty"`
+	Entities  []Entity   `json:"entities,omitempty"`
+	Moves     []fileMove `json:"moves,omitempty"`
+	Before    *snapshot  `json:"before"`
+	After     *snapshot  `json:"after,omitempty"`
 }
 
 // Entry IDs are random, hex encoded, and name the entry and its work directory.
@@ -164,7 +176,12 @@ func List(lib string) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return listSmartlistSafeHistory(dir)
+	list, err := listSmartlistSafeHistory(dir)
+	if err != nil {
+		return nil, err
+	}
+	linkUndos(list)
+	return list, nil
 }
 
 func Run(ctx context.Context, lib, operation string, scope Scope, paths []string, run func(context.Context) error) (result *Entry, err error) {
@@ -249,7 +266,9 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 	if _, err := rand.Read(id[:]); err != nil {
 		return nil, err
 	}
-	e := &Entry{ID: hex.EncodeToString(id[:]), Operation: operation, Created: time.Now().UTC(), Library: lib, LibraryID: hex.EncodeToString(id[:]), State: "pending", UndoOf: undoOf, Scope: scope}
+	meta := metadataFrom(ctx)
+	details, _ := ctx.Value(undoDetailsKey{}).(undoDetails)
+	e := &Entry{ID: hex.EncodeToString(id[:]), Operation: operation, Created: time.Now().UTC(), Library: lib, LibraryID: hex.EncodeToString(id[:]), State: "pending", UndoOf: undoOf, Scope: scope, Source: meta.Source, GroupID: meta.GroupID, UndoOfIDs: details.ids, PlanToken: details.token}
 	previous, err := entries(dir)
 	if err != nil {
 		return nil, err
@@ -316,14 +335,36 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 	if err != nil {
 		return e, errors.Join(runErr, err)
 	}
+	e.Summary, err = summarize(finish, e)
+	if err != nil {
+		return e, errors.Join(runErr, err)
+	}
 	return e, errors.Join(runErr, writeEntry(dir, e))
 }
 
 type UndoOptions struct {
-	Force  bool
-	DryRun bool
+	Force bool
+	// IDs undoes several records together, newest first, as one operation.
+	IDs []string
+	// Exclude keeps reviewed rows, or fields of them, as they are now.
+	Exclude []string
+	// KeepLater leaves rows later changes touched as they are. An apply with a
+	// PlanToken keeps them too, as its review showed.
+	KeepLater bool
+	// PlanToken binds the apply to its review; a changed library or history
+	// refuses it with undo_plan_stale.
+	PlanToken string
 	// Prepare runs under the history owner after validation, before Undo captures its snapshot.
 	Prepare func(context.Context) error
+}
+
+type undoDetailsKey struct{}
+
+// undoDetails are recorded on an undo's own entry: every record it reverses
+// and the plan token it applied.
+type undoDetails struct {
+	ids   []string
+	token string
 }
 
 func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry, err error) {
@@ -332,14 +373,15 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 		return nil, err
 	}
 	abs := filepath.Dir(filepath.Dir(dir))
-	var ownership *undoOwnership
-	if !opts.DryRun {
-		ownership, err = ownUndo(ctx, abs, dir, id)
-		if err != nil {
-			return nil, err
-		}
-		defer func() { err = errors.Join(err, ownership.lease.Close()) }()
+	ids := opts.IDs
+	if len(ids) == 0 && id != "" {
+		ids = []string{id}
 	}
+	ownership, err := ownUndo(ctx, abs, dir, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, ownership.lease.Close()) }()
 	l, err := lock(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -357,15 +399,14 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	if err != nil {
 		return nil, err
 	}
-	target, err := selectUndoTarget(all, id)
+	targets, err := selectUndoTargets(all, ids)
 	if err != nil {
 		return nil, err
 	}
-	if ownership != nil {
-		if err := ownership.validate(target); err != nil {
-			return nil, err
-		}
+	if err := ownership.validate(targets); err != nil {
+		return nil, err
 	}
+	target := targets[0]
 	if target.RelocationFrom != "" {
 		if _, e := os.Lstat(target.RelocationFrom); !os.IsNotExist(e) {
 			return nil, undoConflict("undo conflict: previous library location is occupied")
@@ -381,19 +422,34 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 			return nil, err
 		}
 	}
-	plan, cleanup, err := prepareUndo(ctx, abs, dir, target, opts.Force)
+	req := UndoRequest{IDs: ids, Exclude: opts.Exclude, KeepLater: opts.KeepLater || opts.PlanToken != "", Force: opts.Force}
+	chain, err := prepareChain(ctx, abs, dir, targets, req, false)
 	if err != nil {
 		return nil, err
 	}
-	defer cleanup()
-	if opts.DryRun {
-		return target, nil
+	defer chain.cleanup()
+	if opts.PlanToken != "" {
+		token, err := planToken(targets, req, chain.plan)
+		if err != nil {
+			return nil, err
+		}
+		if token != opts.PlanToken {
+			return nil, &progress.Error{Code: UndoPlanStaleCode, Cause: errors.New("the library or its history changed after this undo was reviewed; review it again")}
+		}
 	}
 	if opts.Prepare != nil {
 		if err := opts.Prepare(ctx); err != nil {
 			return nil, err
 		}
 	}
+	details := undoDetails{token: opts.PlanToken}
+	if len(targets) > 1 {
+		for _, t := range targets {
+			details.ids = append(details.ids, t.ID)
+		}
+	}
+	ctx = context.WithValue(ctx, undoDetailsKey{}, details)
+	plan := chain.plan
 	entry, err := runLocked(ctx, abs, dir, "library.undo", target.ID, target.Scope, nil, func(ctx context.Context) error {
 		if err := plan.apply(ctx, filepath.Join(dir, "objects")); err != nil {
 			return err

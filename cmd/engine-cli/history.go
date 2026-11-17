@@ -75,16 +75,23 @@ func newHistoryCommand() *cobra.Command {
 }
 
 func newUndoCommand() *cobra.Command {
-	var force, dryRun bool
-	var statePath string
-	c := &cobra.Command{Use: "undo [id]", Short: "Undo a library operation, preserving unrelated later edits", Args: cobra.MaximumNArgs(1),
-		Long: "Undo the latest operation, or an operation ID from library history. Conflicts are refused unless --force is given. Use --dry-run to check first. Close Engine DJ before modifying the library. Forced undo also retains recovery history.",
+	var force, dryRun, keepLater bool
+	var statePath, planToken string
+	var exclude []string
+	c := &cobra.Command{Use: "undo [id...]", Short: "Undo a library operation, preserving unrelated later edits", Args: cobra.ArbitraryArgs,
+		Long: "Undo the latest operation, or operation IDs from library history; several IDs undo together, newest first, as one operation. Use --dry-run to review what the undo changes, the later edits it meets and a plan token, then apply the same IDs with --plan-token, which keeps those later edits. Conflicts are otherwise refused unless --keep-later or --force is given. Close Engine DJ before modifying the library. Forced undo also retains recovery history.",
 		RunE: func(c *cobra.Command, args []string) (err error) {
-			var store *state.Store
-			id := ""
-			if len(args) > 0 {
-				id = args[0]
+			if dryRun {
+				if planToken != "" {
+					return fmt.Errorf("--plan-token applies a reviewed undo; --dry-run returns a new one")
+				}
+				review, err := history.ReviewUndo(c.Context(), libDirFlag, history.UndoRequest{IDs: args, Exclude: exclude, KeepLater: keepLater, Force: force})
+				if err != nil {
+					return err
+				}
+				return printUndoReview(c, review)
 			}
+			var store *state.Store
 			prepare := func(ctx context.Context) error {
 				var err error
 				if statePath == "" {
@@ -105,7 +112,7 @@ func newUndoCommand() *cobra.Command {
 					err = errors.Join(err, store.Close())
 				}
 			}()
-			e, err := history.Undo(c.Context(), libDirFlag, id, history.UndoOptions{Force: force, DryRun: dryRun, Prepare: prepare})
+			e, err := history.Undo(c.Context(), libDirFlag, "", history.UndoOptions{IDs: args, Exclude: exclude, KeepLater: keepLater, PlanToken: planToken, Force: force, Prepare: prepare})
 			if err != nil {
 				return err
 			}
@@ -114,11 +121,62 @@ func newUndoCommand() *cobra.Command {
 					return err
 				}
 			}
-			_, err = fmt.Fprintf(c.OutOrStdout(), "operation_id: %s\ndry_run: %t\n", e.ID, dryRun)
+			_, err = fmt.Fprintf(c.OutOrStdout(), "operation_id: %s\ndry_run: false\n", e.ID)
 			return err
 		}}
 	c.Flags().BoolVar(&force, "force", false, "Restore prior values even when affected records or files have changed")
 	c.Flags().StringVar(&statePath, "state-db", "", "Persistent library preferences database")
-	c.Flags().BoolVar(&dryRun, "dry-run", false, "Check undo conflicts without changing the library")
+	c.Flags().BoolVar(&dryRun, "dry-run", false, "Review what the undo changes and the later edits it meets, without changing the library")
+	c.Flags().BoolVar(&keepLater, "keep-later", false, "Keep records that later edits changed as they are and undo the rest")
+	c.Flags().StringVar(&planToken, "plan-token", "", "Apply only if the library still matches the dry run that returned this token")
+	c.Flags().StringArrayVar(&exclude, "exclude", nil, "Reviewed entity to keep as it is now, as printed by --dry-run (repeatable)")
 	return c
+}
+
+// printUndoReview prints an undo's dry run as compact lines.
+func printUndoReview(c *cobra.Command, review *history.UndoReview) error {
+	out := c.OutOrStdout()
+	write := func(format string, args ...any) error {
+		_, err := fmt.Fprintf(out, format, args...)
+		return err
+	}
+	for _, record := range review.Records {
+		if err := write("record: %s operation: %s\n", record.ID, record.Operation); err != nil {
+			return err
+		}
+	}
+	if err := write("updates: tracks=%d playlists=%d\nrestores: tracks=%d playlists=%d memberships=%d\nremoves: tracks=%d playlists=%d memberships=%d\n",
+		review.Updates.Tracks, review.Updates.Playlists, review.Restores.Tracks, review.Restores.Playlists, review.Restores.Memberships,
+		review.Removes.Tracks, review.Removes.Playlists, review.Removes.Memberships); err != nil {
+		return err
+	}
+	for _, change := range review.Changes {
+		fields := make([]string, 0, len(change.Fields))
+		for _, field := range change.Fields {
+			fields = append(fields, field.Field)
+		}
+		if err := write("change: %s action: %s title: %q fields: %s\n", change.Entity, change.Action, change.Title, strings.Join(fields, ",")); err != nil {
+			return err
+		}
+	}
+	for _, file := range review.Files {
+		if err := write("file: %s action: %s\n", file.Path, file.Action); err != nil {
+			return err
+		}
+	}
+	for _, move := range review.Moves {
+		if err := write("move: %s -> %s\n", move.From, move.To); err != nil {
+			return err
+		}
+	}
+	for _, conflict := range review.Conflicts {
+		later := ""
+		if conflict.Later != nil {
+			later = conflict.Later.ID
+		}
+		if err := write("conflict: %s kind: %s title: %q later: %s blocking: %t\n", conflict.Entity, conflict.Kind, conflict.Title, later, conflict.Blocking); err != nil {
+			return err
+		}
+	}
+	return write("blocked: %t\nplan_token: %s\ndry_run: true\n", review.Blocked, review.PlanToken)
 }

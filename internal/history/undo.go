@@ -15,6 +15,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/intakecontrol"
 	"github.com/alexgorbatchev/engine-cli/internal/intakestate"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/watchcontrol"
 
 	"zombiezen.com/go/sqlite"
@@ -31,6 +32,41 @@ type undoPlan struct {
 }
 
 func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*undoPlan, func(), error) {
+	policy := refuseConflicts
+	if force {
+		policy = overwriteConflicts
+	}
+	return prepareUndoWith(ctx, lib, dir, e, prepareOptions{policy: policy})
+}
+
+// prepareOptions shape one record's undo plan. current maps a database path to
+// the image an earlier record of the same undo already produced, so several
+// records chain; conflicts collects every later change the undo meets.
+type prepareOptions struct {
+	policy     conflictPolicy
+	exclusions []exclusion
+	current    map[string]string
+	conflicts  *[]planConflict
+}
+
+// planConflict is one later change an undo plan met, in one record.
+type planConflict struct {
+	record   *Entry
+	database string
+	current  string
+	image    imageConflict
+	file     string
+	move     bool
+}
+
+func (o prepareOptions) record(c planConflict) {
+	if o.conflicts != nil {
+		*o.conflicts = append(*o.conflicts, c)
+	}
+}
+
+func prepareUndoWith(ctx context.Context, lib, dir string, e *Entry, opts prepareOptions) (*undoPlan, func(), error) {
+	force := opts.policy == overwriteConflicts
 	work, err := os.MkdirTemp("", "engine-undo-")
 	if err != nil {
 		return nil, nil, err
@@ -38,7 +74,22 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 	cleanup := func() { os.RemoveAll(work) }
 	p := &undoPlan{library: lib, databases: make(map[string]string), files: make(map[string]fileState), expectedDB: make(map[string]string), expectedFiles: make(map[string]fileState)}
 	fail := func(err error) (*undoPlan, func(), error) { cleanup(); return nil, nil, err }
-	if err = p.prepareMoves(e, force); err != nil {
+	moveForce := force
+	if opts.conflicts != nil {
+		// A moved file cannot keep a later edit, so a review reports the
+		// conflict as blocking and plans the move as Undo anyway would.
+		probe := &undoPlan{expectedFiles: map[string]fileState{}}
+		if err := probe.prepareMoves(e, false); err != nil {
+			if progress.ErrorCode(err) != UndoConflictCode {
+				return fail(err)
+			}
+			for _, m := range e.Moves {
+				opts.record(planConflict{record: e, file: m.To, move: true})
+			}
+			moveForce = true
+		}
+	}
+	if err = p.prepareMoves(e, moveForce); err != nil {
 		return fail(err)
 	}
 	for _, path := range changedKeys(e.Before.Files, e.After.Files) {
@@ -46,11 +97,19 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 		if err != nil {
 			return fail(err)
 		}
-		if current != e.After.Files[path] && !force {
-			return fail(undoConflict("undo conflict: file %s changed after this operation; inspect before using --force", path))
+		// Expect every affected file's current state, kept or not, so a plan
+		// token binds the same state whatever the apply does with conflicts.
+		p.expectedFiles[path] = current
+		if current != e.After.Files[path] {
+			opts.record(planConflict{record: e, file: path})
+			if opts.policy == keepConflicts {
+				continue
+			}
+			if !force {
+				return fail(undoConflict("undo conflict: file %s changed after this operation; inspect before using --force", path))
+			}
 		}
 		p.files[path] = e.Before.Files[path]
-		p.expectedFiles[path] = current
 		if state := p.files[path]; state.Hash != "" {
 			saved, err := fileHash(filepath.Join(dir, "objects", state.Hash))
 			if err != nil || saved.Hash != state.Hash {
@@ -86,36 +145,62 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 				return fail(fmt.Errorf("saved database %s is missing or damaged", saved.Path))
 			}
 		}
+		// An earlier record of the same undo may already have replaced this
+		// database; plan against that image instead of the live file.
+		source, chained := opts.current[path]
+		if !chained {
+			source = path
+		}
 		current := ""
-		if _, err := os.Stat(path); err == nil {
-			current, err = fingerprint(ctx, path)
-			if err != nil {
+		if source != "" {
+			if _, err := os.Stat(source); err == nil {
+				current, err = fingerprint(ctx, source)
+				if err != nil {
+					return fail(err)
+				}
+			} else if !os.IsNotExist(err) {
 				return fail(err)
 			}
-		} else if !os.IsNotExist(err) {
-			return fail(err)
 		}
 		p.expectedDB[path] = current
+		// Whole-database replacements cannot keep a later change: a review
+		// reports it as blocking and plans as Undo anyway would.
+		wholeForce := force || opts.conflicts != nil
 		if before.Hash == "" {
-			if current != after.Hash && !force {
-				return fail(undoConflict("undo conflict: database %s changed", path))
+			if current != after.Hash {
+				opts.record(planConflict{record: e, database: path, current: source, image: imageConflict{wide: true}})
+				if !wholeForce {
+					return fail(undoConflict("undo conflict: database %s changed", path))
+				}
 			}
 			p.databases[path] = ""
 			continue
 		}
 		image := filepath.Join(work, hashText(path)+".db")
 		if paired || current == "" || after.Hash == "" {
-			if current != after.Hash && !force {
-				return fail(undoConflict("undo conflict: database %s was replaced or removed", path))
+			if current != after.Hash {
+				opts.record(planConflict{record: e, database: path, current: source, image: imageConflict{wide: true}})
+				if !wholeForce {
+					return fail(undoConflict("undo conflict: database %s was replaced or removed", path))
+				}
 			}
 			if err = copyDatabase(ctx, before.Path, image); err != nil {
 				return fail(err)
 			}
 		} else {
-			if err = checkTrackIdentities(ctx, before.Path, after.Path, path); err != nil {
+			if err = checkTrackIdentities(ctx, before.Path, after.Path, source); err != nil {
 				return fail(err)
 			}
-			if err = restoreImage(ctx, path, before.Path, after.Path, image, force); err != nil {
+			var found []imageConflict
+			imageOpts := imageOptions{policy: opts.policy, conflicts: &found, review: opts.conflicts != nil}
+			if path == filepath.Join(lib, "Database2", "m.db") {
+				imageOpts.exclusions = opts.exclusions
+			}
+			err = restoreImageWith(ctx, source, before.Path, after.Path, image, imageOpts)
+			for _, c := range found {
+				opts.record(planConflict{record: e, database: path, current: source, image: c})
+			}
+			if err != nil {
 				return fail(err)
 			}
 		}

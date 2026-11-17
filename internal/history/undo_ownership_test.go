@@ -24,7 +24,7 @@ func TestUndoReplacementOwnershipAndTargetGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := ownUndo(ctx, lib, dir, "")
+	owner, err := ownUndo(ctx, lib, dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,14 +46,14 @@ func TestUndoReplacementOwnershipAndTargetGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.validate(latest); err == nil {
+	if err := owner.validate([]*Entry{latest}); err == nil {
 		t.Fatal("latest Undo silently changed after reservation selection")
 	}
 	explicit, err := selectUndoTarget(all, first.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := owner.validate(explicit); err != nil {
+	if err := owner.validate([]*Entry{explicit}); err != nil {
 		t.Fatalf("unchanged explicit operation refused: %v", err)
 	}
 }

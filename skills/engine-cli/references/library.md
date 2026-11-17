@@ -339,9 +339,18 @@ Plain and JSON summaries separate ordinary Smartlist additions/updates/removals,
 
 Undo a library operation, preserving unrelated later edits
 
-Usage: `engine-cli library undo [id] [flags]`.
+Usage: `engine-cli library undo [id...] [flags]`.
 
-Undo the latest operation, or an operation ID from library history. Conflicts are refused unless --force is given. Use --dry-run to check first. Close Engine DJ before modifying the library. Forced undo also retains recovery history.
+Undo the latest operation, or operation IDs from library history; several IDs undo together, newest first, as one operation. Use --dry-run to review what the undo changes, the later edits it meets and a plan token, then apply the same IDs with --plan-token, which keeps those later edits. Conflicts are otherwise refused unless --keep-later or --force is given. Close Engine DJ before modifying the library. Forced undo also retains recovery history.
+
+A dry run prints each record, counts of updated, restored and removed tracks,
+playlists and memberships, one `change:` line per row with its entity selector,
+the files and moves it restores, each `conflict:` with the later operation that
+made it, `blocked` (a conflict that keeping later edits cannot resolve, such as
+a moved file that changed), and `plan_token`. Pass a printed entity selector to
+`--exclude` to keep that row as it is now, or append `#<field>` to keep one
+field; the dry run must use the same exclusions as the apply. An outdated token
+fails with `undo_plan_stale` and changes nothing.
 
 Failed or cancelled operations that leave their captured state unchanged, with no
 recorded moves, relocation, or pending recovery, do not replace the latest undo
@@ -349,9 +358,12 @@ target. Partial database or file changes, recorded file moves, library relocatio
 and pending recovery retain their history records; inspect history before
 retrying or undoing a failed operation.
 
-- `--dry-run` (bool; default `false`): Check undo conflicts without changing the library.
+- `--dry-run` (bool; default `false`): Review what the undo changes and the later edits it meets, without changing the library.
+- `--exclude` (stringArray; default `[]`): Reviewed entity to keep as it is now, as printed by --dry-run (repeatable).
 - `--force` (bool; default `false`): Restore prior values even when affected records or files have changed.
 - `--help, -h` (bool; default `false`): help for undo.
+- `--keep-later` (bool; default `false`): Keep records that later edits changed as they are and undo the rest.
+- `--plan-token` (string; default ``): Apply only if the library still matches the dry run that returned this token.
 - `--state-db` (string; default ``): Persistent library preferences database.
 
 ## `engine-cli library verify`

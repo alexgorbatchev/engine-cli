@@ -193,7 +193,51 @@ func equalStrings(a, b []string) bool {
 	return true
 }
 
+// conflictPolicy decides what an undo does with a row a later change touched:
+// refuse the undo, keep the later change (leave the row as it is now), or
+// overwrite it with the value from before the undone operation.
+type conflictPolicy int
+
+const (
+	refuseConflicts conflictPolicy = iota
+	keepConflicts
+	overwriteConflicts
+)
+
+// imageConflict is one row whose inverse change met a later change.
+type imageConflict struct {
+	table string
+	key   []any
+	// wide reports a database-wide change, which has no rows to keep.
+	wide bool
+}
+
+// imageOptions shape one restoration image beyond the policy itself.
+type imageOptions struct {
+	policy     conflictPolicy
+	exclusions []exclusion
+	conflicts  *[]imageConflict
+	// review plans a database-wide conflict as Undo anyway would, so a review
+	// can report it instead of failing.
+	review bool
+}
+
+func (o imageOptions) record(c imageConflict) {
+	if o.conflicts != nil {
+		*o.conflicts = append(*o.conflicts, c)
+	}
+}
+
 func restoreImage(ctx context.Context, current, before, after, dst string, force bool) error {
+	policy := refuseConflicts
+	if force {
+		policy = overwriteConflicts
+	}
+	return restoreImageWith(ctx, current, before, after, dst, imageOptions{policy: policy})
+}
+
+func restoreImageWith(ctx context.Context, current, before, after, dst string, opts imageOptions) error {
+	force := opts.policy == overwriteConflicts
 	delta, err := changeset(ctx, before, after)
 	if err != nil {
 		return err
@@ -207,8 +251,11 @@ func restoreImage(ctx context.Context, current, before, after, dst string, force
 		if err != nil {
 			return err
 		}
-		if a != b && !force {
-			return undoConflict("database-wide undo conflicts with later changes; inspect history before using --force")
+		if a != b {
+			opts.record(imageConflict{wide: true})
+			if !force && !opts.review {
+				return undoConflict("database-wide undo conflicts with later changes; inspect history before using --force")
+			}
 		}
 		return copyDatabase(ctx, before, dst)
 	}
@@ -268,7 +315,20 @@ func restoreImage(ctx context.Context, current, before, after, dst string, force
 			conflict = e
 			return sqlite.ChangesetAbort
 		}
+		key, e := changeKey(it, op)
+		if e != nil {
+			conflict = e
+			return sqlite.ChangesetAbort
+		}
+		// Constraint and foreign-key conflicts are not later edits to keep.
+		if kind == sqlite.ChangesetData || kind == sqlite.ChangesetNotFound || kind == sqlite.ChangesetConflict {
+			opts.record(imageConflict{table: op.TableName, key: key})
+		}
 		conflict = undoConflict("undo conflict in %s (%s); inspect history before using --force", op.TableName, kind)
+		if opts.policy == keepConflicts && (kind == sqlite.ChangesetData || kind == sqlite.ChangesetNotFound || kind == sqlite.ChangesetConflict) {
+			conflict = nil
+			return sqlite.ChangesetOmit
+		}
 		if !force {
 			return sqlite.ChangesetAbort
 		}
@@ -292,6 +352,11 @@ func restoreImage(ctx context.Context, current, before, after, dst string, force
 	})
 	if err != nil {
 		return errors.Join(conflict, err)
+	}
+	if len(opts.exclusions) > 0 {
+		if err = keepExcluded(c, current, opts.exclusions); err != nil {
+			return err
+		}
 	}
 	for _, q := range triggers {
 		if err = sqlitex.ExecuteTransient(c, q, nil); err != nil {

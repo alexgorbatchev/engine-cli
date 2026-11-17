@@ -149,8 +149,9 @@ func TestInterruptedOperationRecovery(t *testing.T) {
 	if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); err == nil {
 		t.Fatal("recovered without force")
 	}
-	if _, err = Undo(ctx, lib, e.ID, UndoOptions{Force: true, DryRun: true}); err != nil {
-		t.Fatal(err)
+	// Engine cannot review a pending entry; only forced recovery applies it.
+	if _, err = ReviewUndo(ctx, lib, UndoRequest{IDs: []string{e.ID}, Force: true}); err == nil {
+		t.Fatal("reviewed a pending entry")
 	}
 	if _, err = Undo(ctx, lib, e.ID, UndoOptions{Force: true}); err != nil {
 		t.Fatal(err)

@@ -58,8 +58,8 @@ func TestSmartlistAmendedDeleteSelectiveUndo(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, previewErr := Undo(ctx, lib, deleted.ID, UndoOptions{DryRun: true})
-			if (previewErr != nil) != conflict {
+			undoReview, previewErr := ReviewUndo(ctx, lib, UndoRequest{IDs: []string{deleted.ID}})
+			if previewErr != nil || (len(undoReview.Conflicts) > 0) != conflict {
 				t.Fatalf("selective preview conflict=%v: %v", conflict, previewErr)
 			}
 			if hash, err := fingerprint(ctx, target); err != nil || hash != before {
