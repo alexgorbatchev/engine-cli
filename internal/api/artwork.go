@@ -56,10 +56,15 @@ func (s *Server) trackArtwork(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveArtworkContent(w http.ResponseWriter, r *http.Request, data []byte) {
+	serveRevalidatedContent(w, r, "artwork", data)
+}
+
+// serveRevalidatedContent lets only private clients cache a read, revalidating it against a content ETag each time.
+func serveRevalidatedContent(w http.ResponseWriter, r *http.Request, name string, data []byte) {
 	w.Header().Set("Cache-Control", "private, no-cache")
 	digest := sha256.Sum256(data)
 	w.Header().Set("ETag", `"`+hex.EncodeToString(digest[:])+`"`)
-	http.ServeContent(w, r, "artwork", time.Time{}, bytes.NewReader(data))
+	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(data))
 }
 
 // Engine stores cache-backed SHA-1 hashes as binary BLOBs as well as hexadecimal

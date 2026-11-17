@@ -181,6 +181,7 @@ fields; normal mutation guards, snapshots, and undo apply to that separate opera
 | `GET /v1/tracks/{id}/audio` | Original local audio; supports `HEAD` and HTTP byte ranges for seeking |
 | `GET /v1/tracks/{id}/beatgrid` | Saved Engine beat-grid anchors, or `{"grid":null}` when analysis is absent |
 | `GET /v1/tracks/{id}/performance` | Read-only saved hot cues and loops with native slots, names, colors, and positions in seconds |
+| `GET /v1/tracks/overviews?ids=1,2` | Engine's stored overview waveforms for 1–500 tracks in request order; see [Stored overview waveforms](#stored-overview-waveforms) |
 | `GET /v1/sessions` | Played sessions from Engine's play history, newest first; see [Play history](#play-history) |
 | `GET /v1/sessions/{id}` | One played session with its plays in recorded order |
 
@@ -259,6 +260,8 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `library_refresh_stat_failed` | Refresh could not inspect an audio file. Check its drive and access permissions, then review the partial result before retrying. This is not counted as a missing file. |
 | `library_refresh_scan_failed` | Refresh could not finish scanning the library folder. Restore access and review the partial result before retrying; earlier track updates remain saved. |
 | `library_unavailable` | The library could not be opened. Check the selected library and drive. |
+| `overview_unavailable` | Engine has not stored an overview waveform for this track; Engine DJ builds one when it analyzes or loads the track. Draw no preview. |
+| `invalid_overview` | The stored overview waveform is damaged or truncated. Draw no preview; analyzing the track in Engine DJ rewrites it. Nothing is changed by this read. |
 | `playlist_not_empty` | The folder contains ordinary child playlists or saved Smartlists. Inspect its contents before explicitly choosing recursive removal (`force:true` or `playlist rm --force`). Nothing is removed by this refusal. |
 | `smartlist_repair_stale` | The collection or retained history no longer matches the reviewed repair token. Preview again and review the current named actions before applying. |
 | `smartlist_repair_ambiguous` | Native saved-playlist identity or history is contradictory. Preserve the collection and history for investigation; names alone cannot select a repair target. |
@@ -461,6 +464,16 @@ The revision binds track origin identity, native performance bytes and row/table
 Encoding and validation run before the fresh Desktop check, snapshot, and undo history. Apply rechecks the captured state inside its database transaction. Successful writes are Desktop-protected, snapshotted, and undoable; their result comes from the committed edit without a separate post-commit read. A rejected or unreadable job observation must not be treated as permission to repeat an accepted write.
 
 The matching CLI commands are `engine-cli track cue inspect <tr|id|path>`, `track cue set <tr|id|path> --slot A --position 1.25 --name Intro --color '#FF0080' --revision <revision>`, and `track cue clear <tr|id|path> --slot A --revision <revision>`. Slots accept A–H case-insensitively. All three accept `--json`; human inspection includes exact source positions and the revision needed for an edit.
+
+## Stored overview waveforms
+
+`GET /v1/tracks/overviews?ids=4,1,9` returns the overview waveforms Engine DJ stored in `PerformanceData.overviewWaveFormData`, so a track list can draw Engine's own previews without one request per row. It is also available under `/v1/libraries/{key}`. `ids` takes 1–500 comma-separated positive track IDs and may repeat; any other parameter, or an unusable list, fails with `400 invalid_ids`. The read shares the collection read barrier, remains available while Desktop is running, and never builds, repairs, or writes an overview.
+
+```json
+{"overviews":[{"id":4,"entries":"CRIb..."},{"id":1,"error_code":"overview_unavailable"},{"id":9,"error_code":"track_not_found"}]}
+```
+
+`overviews` follows the requested order, each track once. `entries` is base64 for three bytes an entry (low, mid, and high, 0–255), normally 1024 entries spanning the track, decoded as Engine DJ 5.1.0 reads them: a Qt-compressed stream of two big-endian `int64` counts (the smaller one counts), a big-endian `float64` of samples an entry, the entries, and each band's highest. A track that is not in the library reports `track_not_found`, one Engine has not analyzed `overview_unavailable`, and a damaged stream `invalid_overview`; only an unreadable library fails the whole request. Engine's overview display averages the entries under each pixel column (at most 32), scales the bands by 0.3, 0.4, and 0.625, and stacks them from the bottom. Responses use `Cache-Control: private, no-cache` with a content ETag; a matching `If-None-Match` returns `304`.
 
 ## Shared progress fields
 

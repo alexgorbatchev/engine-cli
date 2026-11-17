@@ -152,6 +152,7 @@ func New(config Config) (*Server, error) {
 	s.mux.HandleFunc("GET /v1/staging/{id}/artwork", s.stagedMedia(true))
 	s.mux.HandleFunc("GET /v1/system/check", s.systemCheck)
 	s.mux.HandleFunc("GET /v1/tracks", s.collectionRead(s.batchDetails("track")))
+	s.mux.HandleFunc("GET /v1/tracks/overviews", s.collectionRead(s.trackOverviews))
 	s.mux.HandleFunc("GET /v1/playlists", s.collectionRead(s.batchDetails("playlist")))
 	s.mux.HandleFunc("POST /v1/operations/{operation}", s.submit)
 	s.mux.HandleFunc("GET /v1/jobs/{id}", s.status)

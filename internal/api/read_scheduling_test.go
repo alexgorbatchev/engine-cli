@@ -15,7 +15,7 @@ import (
 func TestDirectReadsWaitForRestore(t *testing.T) {
 	fixture, path := testAPI(t)
 	fixture.Close()
-	for _, route := range []string{"/v1/tracks/1", "/v1/tracks?ids=1", "/v1/playlists?ids=1", "/v1/tracks/1/artwork", "/v1/tracks/1/beatgrid", "/v1/tracks/1/audio", "/v1/staging", "/v1/staging/item/audio", "/v1/staging/item/artwork", "/v1/libraries", "/v1/library-preferences"} {
+	for _, route := range []string{"/v1/tracks/1", "/v1/tracks?ids=1", "/v1/playlists?ids=1", "/v1/tracks/1/artwork", "/v1/tracks/overviews?ids=1", "/v1/tracks/1/beatgrid", "/v1/tracks/1/audio", "/v1/staging", "/v1/staging/item/audio", "/v1/staging/item/artwork", "/v1/libraries", "/v1/library-preferences"} {
 		t.Run(route, func(t *testing.T) {
 			config := Config{LibraryDir: path, StatePath: filepath.Join(t.TempDir(), "state.db"), NoBackup: true}
 			synctest.Test(t, func(t *testing.T) {
