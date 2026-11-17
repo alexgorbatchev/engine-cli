@@ -210,3 +210,25 @@ func TestIdenticalDisplayedDatesRetainTheirOwnSource(t *testing.T) {
 		t.Fatal("duplicate source index accepted")
 	}
 }
+
+// Desktop saves these rules itself, so a value that does not follow its native
+// format means the row is damaged. Reading it any other way would show, and
+// match, a rule Desktop never saved.
+func TestDamagedSavedRulesAreRefused(t *testing.T) {
+	for _, saved := range []storedRule{
+		{Col: "title", Con: "=", Param: "Night"},
+		{Col: "title", Con: "=", Param: `'Night\'`},
+		{Col: "title", Con: "=", Param: `'Night\n'`},
+		{Col: "dateAdded", Con: "BETWEEN", Param: "1767225600"},
+		{Col: "dateAdded", Con: "<", Param: "1767225600 AND 1767312000"},
+		{Col: "dateAdded", Con: ">", Param: "1767225600 AND 1767312000"},
+		{Col: "dateAdded", Con: "LIKE", Param: "1767225600"},
+		{Col: "dateAdded", Con: "<", Param: "yesterday"},
+	} {
+		t.Run(saved.Col+" "+saved.Con+" "+saved.Param, func(t *testing.T) {
+			if rule, err := decodeRule(saved, time.UTC); err == nil {
+				t.Fatalf("decodeRule(%#v) = %#v, want the damaged rule refused", saved, rule)
+			}
+		})
+	}
+}
