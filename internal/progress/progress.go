@@ -73,7 +73,12 @@ func Enabled(ctx context.Context) bool {
 }
 
 // Range incorporates a child operation into a portion of its parent's work.
+// Without a parent observer it leaves reporting off, so children never open
+// progress streams nobody reads.
 func Range(ctx context.Context, start, end float64) context.Context {
+	if !Enabled(ctx) {
+		return ctx
+	}
 	return WithReporter(ctx, func(e Event) {
 		e.Percent = start + (end-start)*e.Percent/100
 		if e.Type == "complete" {

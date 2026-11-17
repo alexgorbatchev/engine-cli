@@ -92,7 +92,7 @@ func TestProgressMappingAndSanitization(t *testing.T) {
 }
 
 func TestProgressEnabledAndChildCompletion(t *testing.T) {
-	if Enabled(context.Background()) || Enabled(WithReporter(context.Background(), nil)) {
+	if Enabled(context.Background()) || Enabled(WithReporter(context.Background(), nil)) || Enabled(Range(context.Background(), 0, 50)) {
 		t.Fatal("reporting enabled without observer")
 	}
 	var events []Event
