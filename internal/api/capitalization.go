@@ -11,12 +11,6 @@ type capitalizationParams track.CapitalizationOptions
 
 func (p capitalizationParams) validate() error        { return track.CapitalizationOptions(p).Validate() }
 func (p capitalizationParams) operationPreview() bool { return p.DryRun }
-func (p capitalizationParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
 
 func (s *Server) capitalizationOperation() operation {
 	before := func(ctx context.Context, p capitalizationParams, _ *boundOperation) error {

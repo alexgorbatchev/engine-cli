@@ -12,13 +12,6 @@ type importRekordboxParams rekordbox.Options
 
 func (p importRekordboxParams) operationPreview() bool { return p.DryRun }
 
-func (p importRekordboxParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
-
 func (s *Server) importRekordboxOperation() operation {
 	before := func(ctx context.Context, p importRekordboxParams, bound *boundOperation) error {
 		_, err := s.database(ctx, func(d *sql.DB) (any, error) {

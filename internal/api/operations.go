@@ -141,6 +141,11 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 			if v, ok := any(p).(interface{ operationPreview() bool }); ok {
 				preview = v.operationPreview()
 			}
+			// A dry run only reads, whatever its apply would change, so it never
+			// waits behind writes or holds the collection from other readers.
+			if preview {
+				boundEffect = "read"
+			}
 			bound := &boundOperation{parameters: values, run: func(ctx context.Context) (any, error) { return run(ctx, p) }, preview: preview, library: library, replacementLibrary: sync.Destination, effect: boundEffect, paths: paths}
 			if v, ok := any(p).(interface{ operationCollectionRead() bool }); ok {
 				bound.collectionRead = v.operationCollectionRead()

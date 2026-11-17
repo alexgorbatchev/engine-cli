@@ -105,7 +105,35 @@ func TestAPIJobCapacityAndEviction(t *testing.T) {
 			t.Fatalf("oldest job retained: %d", w.Code)
 		}
 	})
+	t.Run("finished previews go first", func(t *testing.T) {
+		s, _ := testAPI(t)
+		s.operations["test.preview"] = define("test.preview", true, nil, func(context.Context, previewTestParams) (any, error) { return nil, nil })
+		finished := func(name, body string) string {
+			id := submitAPIJob(t, s, name, body)
+			if job := awaitAPIJob(t, s, id); job["state"] != "succeeded" {
+				t.Fatalf("%s failed=%+v", name, job)
+			}
+			return id
+		}
+		kept := finished("playlist.list", `{}`)
+		preview := finished("test.preview", `{"dry_run":true}`)
+		for range maxJobs - 1 {
+			finished("playlist.list", `{}`)
+		}
+		if w := requestAPI(t, s, http.MethodGet, "/v1/jobs/"+preview, ""); w.Code != http.StatusNotFound {
+			t.Fatalf("finished preview retained: %d", w.Code)
+		}
+		if w := requestAPI(t, s, http.MethodGet, "/v1/jobs/"+kept, ""); w.Code != http.StatusOK {
+			t.Fatalf("older finished job evicted before the preview: %d", w.Code)
+		}
+	})
 }
+
+type previewTestParams struct {
+	DryRun bool `json:"dry_run"`
+}
+
+func (p previewTestParams) operationPreview() bool { return p.DryRun }
 
 func TestAPIEventRetentionAndInvalidCursors(t *testing.T) {
 	s, _ := testAPI(t)

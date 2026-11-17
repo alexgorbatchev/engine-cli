@@ -11,13 +11,6 @@ type importPlaylistParams playlist.ImportOptions
 
 func (p importPlaylistParams) operationPreview() bool { return p.DryRun }
 
-func (p importPlaylistParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
-
 func (s *Server) importPlaylistOperation() operation {
 	before := func(ctx context.Context, p importPlaylistParams, _ *boundOperation) error {
 		if p.DryRun {

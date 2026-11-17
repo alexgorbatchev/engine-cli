@@ -11,13 +11,6 @@ type reorderPlaylistParams playlist.ReorderOptions
 
 func (p reorderPlaylistParams) operationPreview() bool { return p.DryRun }
 
-func (p reorderPlaylistParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
-
 func (s *Server) reorderPlaylistOperation() operation {
 	before := func(ctx context.Context, p reorderPlaylistParams, _ *boundOperation) error {
 		if p.DryRun {

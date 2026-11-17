@@ -111,12 +111,8 @@ func (p tagParams) selection() mediaSelection {
 	return mediaSelection{p.Identifier, p.StagingID, p.Path, p.Identifiers, p.StagingIDs, p.Paths}
 }
 func (p tagParams) operationPaths() []string { return p.selection().rawPaths() }
-func (p tagParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return p.selection().effect()
-}
+func (p tagParams) operationPreview() bool   { return p.DryRun }
+func (p tagParams) operationEffect() string  { return p.selection().effect() }
 func (p tagParams) options() acquire.TagOptions {
 	return acquire.TagOptions{Lookup: p.Lookup, Artist: p.Artist, Title: p.Title, Album: p.Album, Date: p.Date, Genre: p.Genre, Comment: p.Comment, Artwork: p.Artwork, SourceURL: p.SourceURL, Refresh: p.Refresh, DryRun: p.DryRun, NoCache: p.NoCache, AutoInstall: p.AutoInstall}
 }

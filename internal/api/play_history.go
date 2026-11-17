@@ -30,13 +30,6 @@ func (p importSessionParams) validate() error { return playhistory.ImportOptions
 
 func (p importSessionParams) operationPreview() bool { return p.DryRun }
 
-func (p importSessionParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
-
 // playHistory reads the plays every track record reports; nil when the library has no readable history.
 func (s *Server) playHistory(ctx context.Context, library db.Querier) (details.History, error) {
 	return playhistory.TrackCounts(ctx, s.config.LibraryDir, library)

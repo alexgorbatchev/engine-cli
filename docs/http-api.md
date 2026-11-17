@@ -204,7 +204,7 @@ curl -sS "http://127.0.0.1:8787/v1/jobs/$job_id"
 curl -sS -X POST "http://127.0.0.1:8787/v1/jobs/$job_id/cancel"
 ```
 
-Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`. Read jobs run concurrently with each other and with non-collection writes, such as staging fetches and tool installs.
+Jobs move from `queued` to `running`, then `succeeded`, `failed`, or `cancelled`. Read jobs run concurrently with each other and with non-collection writes, such as staging fetches and tool installs. Every dry run (`dry_run:true`) is scheduled as a read, whatever its apply would change: it never waits in the write queue, runs alongside other reads, and can be cancelled like any job.
 
 All writes run one at a time across opened libraries, including `library.backup`, `migrate.export`, `library.fixture.capture`, and requests with `auto_install:true`. Backup, export, and fixture capture retain their catalog `read` effect because they leave the source collection unchanged and create no source-library undo history.
 
@@ -532,7 +532,7 @@ Job status includes `created_at` (UTC RFC 3339 with fractional seconds), optiona
 
 `parameters` contains only supplied fields admitted by the operation catalog, preserving explicit false, zero, null and empty values without inventing defaults. `parameters_omitted`, when present, names withheld top-level fields. Capability tokens, credential-related fields (including nested keys), and fields containing URLs with user information, query strings or fragments are withheld entirely. Filtering affects observations only; the operation executes its original validated inputs. The same details appear in submission, status and cancellation responses.
 
-The server retains up to 128 jobs and 1,024 events per job in memory. It evicts completed jobs as needed and rejects submissions with `503` when all slots are active. Restarting clears job status and events. Durable library undo history is separate. An evicted or unknown job returns `404`.
+The server retains up to 128 jobs and 1,024 events per job in memory. When it needs a slot it evicts the oldest finished dry run first, then the oldest finished job, so previews never push finished writes out of retention; it rejects submissions with `503` when all slots are active. Restarting clears job status and events. Durable library undo history is separate. An evicted or unknown job returns `404`.
 
 ## Library-local custom tags
 

@@ -39,12 +39,6 @@ func (p tagValueUpdateParams) edit() tags.Edit {
 type tagDeleteParams tags.DeleteOptions
 
 func (p tagDeleteParams) operationPreview() bool { return p.DryRun }
-func (p tagDeleteParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
 
 type trackCustomTagsParams struct {
 	Track string `json:"track"`
@@ -58,22 +52,10 @@ type batchCustomTagsParams struct {
 type batchAssignCustomTagsParams tags.BatchOptions
 
 func (p batchAssignCustomTagsParams) operationPreview() bool { return p.DryRun }
-func (p batchAssignCustomTagsParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
 
 type tagReconcileParams tags.ReconcileOptions
 
 func (p tagReconcileParams) operationPreview() bool { return p.DryRun }
-func (p tagReconcileParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
 
 func (p assignCustomTagsParams) validate() error {
 	return tags.ValidateAssignment(tags.AssignmentEdit(p))

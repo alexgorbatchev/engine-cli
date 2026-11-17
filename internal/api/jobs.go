@@ -38,6 +38,7 @@ type job struct {
 	cancel       context.CancelFunc
 	terminal     *progress.Event
 	reduceResult func(any, json.RawMessage) any
+	preview      bool
 }
 
 func terminal(state string) bool {
@@ -97,7 +98,7 @@ func (s *Server) start(op operation, run *boundOperation) (Job, error) {
 		}
 	}()
 	parameters, omitted := jobParameters(op, run.parameters)
-	j := &job{view: Job{ID: id, Operation: op.Name, State: "queued", CreatedAt: time.Now().UTC(), Parameters: parameters, ParametersOmitted: omitted}, changed: make(chan struct{}), cancel: cancel, reduceResult: op.reduceResult}
+	j := &job{view: Job{ID: id, Operation: op.Name, State: "queued", CreatedAt: time.Now().UTC(), Parameters: parameters, ParametersOmitted: omitted}, changed: make(chan struct{}), cancel: cancel, reduceResult: op.reduceResult, preview: run.preview}
 	ctx = progress.WithJobReporter(ctx, id, func(e progress.Event) { s.record(j, e) })
 	// Initialize the event stream before publishing the job to request handlers.
 	progress.Emit(ctx, progress.Event{Type: "queued", Phase: op.Name})
@@ -106,19 +107,8 @@ func (s *Server) start(op operation, run *boundOperation) (Job, error) {
 	if s.closed {
 		return Job{}, fmt.Errorf("server is shutting down")
 	}
-	if len(s.jobs) >= maxJobs {
-		evicted := false
-		for i, id := range s.order {
-			if terminal(s.jobs[id].view.State) {
-				delete(s.jobs, id)
-				s.order = append(s.order[:i], s.order[i+1:]...)
-				evicted = true
-				break
-			}
-		}
-		if !evicted {
-			return Job{}, fmt.Errorf("job capacity reached; retry later")
-		}
+	if len(s.jobs) >= maxJobs && !s.evictFinished() {
+		return Job{}, fmt.Errorf("job capacity reached; retry later")
 	}
 	s.jobs[id] = j
 	s.order = append(s.order, id)
@@ -127,6 +117,32 @@ func (s *Server) start(op operation, run *boundOperation) (Job, error) {
 	started = true
 	go s.work(ctx, j, op, run)
 	return accepted, nil
+}
+
+// evictFinished frees one slot under s.mu, oldest first. Finished dry runs go
+// before every other finished job: a client replaces a preview with a fresh
+// one, while a finished write's result is what it reports to the person.
+func (s *Server) evictFinished() bool {
+	victim := -1
+	for i, id := range s.order {
+		j := s.jobs[id]
+		if !terminal(j.view.State) {
+			continue
+		}
+		if j.preview {
+			victim = i
+			break
+		}
+		if victim < 0 {
+			victim = i
+		}
+	}
+	if victim < 0 {
+		return false
+	}
+	delete(s.jobs, s.order[victim])
+	s.order = append(s.order[:victim], s.order[victim+1:]...)
+	return true
 }
 
 func (j *job) append(event progress.Event) {

@@ -11,12 +11,6 @@ type findReplaceParams track.FindReplaceOptions
 
 func (p findReplaceParams) validate() error        { return track.FindReplaceOptions(p).Validate() }
 func (p findReplaceParams) operationPreview() bool { return p.DryRun }
-func (p findReplaceParams) operationEffect() string {
-	if p.DryRun {
-		return "read"
-	}
-	return "collection"
-}
 
 func (s *Server) findReplaceOperation() operation {
 	before := func(ctx context.Context, p findReplaceParams, _ *boundOperation) error {
