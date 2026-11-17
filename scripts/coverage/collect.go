@@ -29,10 +29,10 @@ type collection struct {
 	Environment map[string]string   `json:"test_environment"`
 }
 
-// The native selections retain the established cross-platform qualification
-// suites. Older command fixtures require POSIX shells and run fully on Linux.
+// Linux and macOS run the complete suite. Windows keeps the established native
+// qualification suites: older command fixtures require POSIX shells.
 func testBatches(goos string) [][]string {
-	if goos == "linux" {
+	if goos != "windows" {
 		return [][]string{{"./..."}}
 	}
 	return [][]string{

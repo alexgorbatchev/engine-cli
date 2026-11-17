@@ -18,6 +18,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/api"
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testtemp"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +32,10 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 		os.Exit(0)
+	}
+	if err := testtemp.UsePhysical(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	os.Exit(m.Run())
 }

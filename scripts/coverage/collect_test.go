@@ -5,16 +5,18 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 )
 
 func TestCollectRunsRealTestsAndPublishesOnlySuccess(t *testing.T) {
-	// The tiny module exercises the complete Linux producer. Native selections
-	// belong to the application's package graph and run in the native CI jobs.
-	if runtime.GOOS != "linux" {
-		t.Skip("complete-suite producer runs on Linux")
+	// The tiny module exercises the complete-suite producer of Linux and macOS.
+	// Windows selections belong to the application's package graph and run in
+	// the native CI job.
+	if runtime.GOOS == "windows" {
+		t.Skip("complete-suite producer runs on Linux and macOS")
 	}
 	fixtureModule(t)
 	var out bytes.Buffer
@@ -59,6 +61,18 @@ func TestCollectRunsRealTestsAndPublishesOnlySuccess(t *testing.T) {
 	_, err = collect(ctx, ".tmp/cancelled", &out)
 	if err == nil {
 		t.Fatal("cancelled collection succeeded")
+	}
+}
+
+func TestLinuxAndMacOSRunTheCompleteSuite(t *testing.T) {
+	for _, goos := range []string{"linux", "darwin"} {
+		if got := testBatches(goos); !reflect.DeepEqual(got, [][]string{{"./..."}}) {
+			t.Fatalf("%s batches = %v, want the complete suite", goos, got)
+		}
+	}
+	windows := testBatches("windows")
+	if len(windows) < 2 || !reflect.DeepEqual(windows[0], []string{"-run", "^$", "./..."}) {
+		t.Fatalf("windows batches = %v, want every package compiled before its native qualification suites", windows)
 	}
 }
 

@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
+	"github.com/alexgorbatchev/engine-cli/internal/testtemp"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,6 +15,10 @@ import (
 func TestMain(m *testing.M) {
 	querySystem = func(context.Context, []string) (*systemcheck.Report, error) {
 		return &systemcheck.Report{Checks: map[string]systemcheck.Result{systemcheck.EngineDesktop: {Status: "ok", Running: new(false), PIDs: []int{}}}}, nil
+	}
+	if err := testtemp.UsePhysical(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	os.Exit(m.Run())
 }
