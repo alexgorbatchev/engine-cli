@@ -13,7 +13,8 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 )
 
-const maxBatchTracks = 500
+// MaxBatchTracks is the most tracks one batch tag read or edit accepts.
+const MaxBatchTracks = 500
 
 type BatchOptions struct {
 	Tracks    []string `json:"tracks"`
@@ -60,7 +61,7 @@ type batchTrack struct {
 }
 
 func resolveBatch(ctx context.Context, engine *sql.DB, selectors []string) ([]batchTrack, error) {
-	if len(selectors) == 0 || len(selectors) > maxBatchTracks {
+	if len(selectors) == 0 || len(selectors) > MaxBatchTracks {
 		return nil, failure("tag_tracks_invalid", "select between one and 500 tracks")
 	}
 	result := []batchTrack{}

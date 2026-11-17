@@ -68,7 +68,7 @@ func TestBatchCountsResolvedSelectionAndRejectsInvalidSelectors(t *testing.T) {
 	if err != nil || inspected.Categories[0].Values[0].SelectedTracks != 2 {
 		t.Fatalf("selected assignment counts=%+v error=%v", inspected, err)
 	}
-	for _, selectors := range [][]string{nil, {" "}, make([]string, maxBatchTracks+1)} {
+	for _, selectors := range [][]string{nil, {" "}, make([]string, MaxBatchTracks+1)} {
 		_, err := InspectBatch(ctx, engine, library, selectors)
 		requireCode(t, err, "tag_tracks_invalid")
 	}

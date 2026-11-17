@@ -72,7 +72,7 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	}
 	run, err := op.bind(raw)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_parameters", err.Error())
+		writeError(w, http.StatusBadRequest, bindErrorCode(err), err.Error())
 		return
 	}
 	j, err := s.start(op, run)

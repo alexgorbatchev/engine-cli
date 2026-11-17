@@ -29,6 +29,7 @@ type operation struct {
 	AdditionalEffects []string          `json:"additional_effects,omitempty"`
 	Parameters        map[string]string `json:"parameters"`
 	Required          []string          `json:"required"`
+	Limits            map[string]int    `json:"limits,omitempty"`
 	bind              func(json.RawMessage) (*boundOperation, error)
 	reduceResult      func(any, json.RawMessage) any
 	collectionRead    bool
@@ -48,6 +49,41 @@ type boundOperation struct {
 }
 
 type parameterValidator interface{ validate() error }
+
+// operationLimiter names the most items each list parameter accepts in one job.
+type operationLimiter interface{ operationLimits() map[string]int }
+
+// batchLimitExceeded refuses a list larger than the operation's catalog limit,
+// so clients can split the selection instead of showing a generic refusal.
+const batchLimitExceeded = "batch_limit_exceeded"
+
+// itemLimits gives every named list parameter the same maximum.
+func itemLimits(limit int, parameters ...string) map[string]int {
+	limits := make(map[string]int, len(parameters))
+	for _, name := range parameters {
+		limits[name] = limit
+	}
+	return limits
+}
+
+func checkLimits(values map[string]json.RawMessage, limits map[string]int) error {
+	for name, limit := range limits {
+		var items []json.RawMessage
+		if json.Unmarshal(values[name], &items) == nil && len(items) > limit {
+			return &progress.Error{Code: batchLimitExceeded, Cause: fmt.Errorf("%s accepts at most %d items in one job", name, limit)}
+		}
+	}
+	return nil
+}
+
+// bindErrorCode keeps request validation under invalid_parameters, except for
+// refusals clients act on differently.
+func bindErrorCode(err error) string {
+	if code := progress.ErrorCode(err); code == batchLimitExceeded {
+		return code
+	}
+	return "invalid_parameters"
+}
 
 // define derives accepted JSON fields from the actual request type. The catalog
 // and strict decoder therefore describe the same operation contract.
@@ -85,11 +121,18 @@ func defineChecked[P any](name, effect string, required []string, before func(co
 	if name == "staging.retry" {
 		additionalEffects = []string{"system"}
 	}
-	return operation{Name: name, Mutates: effect != "read", Effect: effect, ParameterEffects: parameterEffects, AdditionalEffects: additionalEffects, Parameters: params, Required: required,
+	var limits map[string]int
+	if v, ok := any(*new(P)).(operationLimiter); ok {
+		limits = v.operationLimits()
+	}
+	return operation{Name: name, Mutates: effect != "read", Effect: effect, ParameterEffects: parameterEffects, AdditionalEffects: additionalEffects, Parameters: params, Required: required, Limits: limits,
 		bind: func(raw json.RawMessage) (*boundOperation, error) {
 			var values map[string]json.RawMessage
 			if err := json.Unmarshal(raw, &values); err != nil || values == nil {
 				return nil, fmt.Errorf("request must be a JSON object")
+			}
+			if err := checkLimits(values, limits); err != nil {
+				return nil, err
 			}
 			var p P
 			dec := json.NewDecoder(bytes.NewReader(raw))

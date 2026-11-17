@@ -172,7 +172,7 @@ fields; normal mutation guards, snapshots, and undo apply to that separate opera
 
 | Request | Response |
 | --- | --- |
-| `GET /v1/operations` | Operation names, parameter types, required fields, and whether each operation changes the library |
+| `GET /v1/operations` | Operation names, parameter types, required fields, whether each operation changes the library, and `limits`: the most items each list parameter accepts in one job |
 | `POST /v1/operations/{operation}` | `202` with a job object and a `Location` header pointing to its status |
 | `GET /v1/jobs/{id}` | Current state, latest progress, and result or error |
 | `GET /v1/jobs/{id}/events` | Server-sent events, including retained events followed by live events |
@@ -185,7 +185,7 @@ fields; normal mutation guards, snapshots, and undo apply to that separate opera
 | `GET /v1/sessions` | Played sessions from Engine's play history, newest first; see [Play history](#play-history) |
 | `GET /v1/sessions/{id}` | One played session with its plays in recorded order |
 
-Every operation, including reads, runs as a job. Submit a JSON object with `Content-Type: application/json`; use `{}` when there are no parameters. Unknown fields and missing required parameters are rejected before the job starts. Requests are limited to 1 MiB.
+Every operation, including reads, runs as a job. Submit a JSON object with `Content-Type: application/json`; use `{}` when there are no parameters. Unknown fields and missing required parameters are rejected before the job starts. Requests are limited to 1 MiB. A list parameter longer than its catalog `limits` entry, for example 501 `identifiers` for `track.batch.update`, is refused with `400` and `batch_limit_exceeded`, so a client can split the selection into consecutive jobs; other invalid requests use `invalid_parameters`.
 
 ```sh
 curl -sS http://127.0.0.1:8787/v1/operations
@@ -324,6 +324,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `llm_response_invalid` | A batch failed identity or metadata checks. Completed earlier suggestions remain available; review them before retrying unfinished work. |
 | `library_busy` | Another connection, such as Engine DJ Desktop or another write, kept an Engine database busy or locked past its busy timeout. Nothing was changed; retry when it is free. |
 | `undo_conflict` | A non-forced undo found a later change to the same data. Nothing was undone; preview the undo to see the later changes. |
+| `batch_limit_exceeded` | A list parameter holds more items than the operation's catalog `limits` allow in one job. Nothing started; split the selection into jobs of at most that many items. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
 | `operation_failed` | Unclassified failure. Inspect current state before retrying. |
