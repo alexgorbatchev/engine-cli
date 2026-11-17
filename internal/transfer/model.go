@@ -44,7 +44,7 @@ type Options struct {
 	PlanToken   string            `json:"plan_token"`
 	NoBackup    bool              `json:"-"`
 	// CheckMutation supplies the CLI or HTTP process observation at the mutation
-	// boundary. Direct callers use the same native system check by default.
+	// boundary. Applying without it is refused: Desktop cannot be confirmed closed.
 	CheckMutation func(context.Context) error `json:"-"`
 }
 type Summary struct {

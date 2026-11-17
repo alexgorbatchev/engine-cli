@@ -11,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/importsource"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func transferImports(t *testing.T, path string) importsource.State {
@@ -31,7 +32,7 @@ func TestSyncImportMappingReusesActualDestinationOrigin(t *testing.T) {
 	put(t, filepath.Join(source, "two.mp3"), "other audio")
 	put(t, filepath.Join(destination, "existing.mp3"), "same audio")
 	seedTransferImports(t, source)
-	opts := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
+	opts := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
 	result, err := Run(t.Context(), opts)
 	if err != nil || result.Summary.TracksReused != 1 {
 		t.Fatalf("reuse=%+v error=%v", result, err)
@@ -58,7 +59,7 @@ func TestSyncImportEvidenceRetainedByMirrorAndRemovedTrack(t *testing.T) {
 	put(t, filepath.Join(destination, "two.mp3"), "two")
 	before := seedTransferImports(t, destination)
 	execSQL(t, d, "DELETE FROM Track WHERE id=2")
-	result, err := Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, NoBackup: true})
+	result, err := Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, NoBackup: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +79,7 @@ func TestSyncImportRevisionAndMappingConflict(t *testing.T) {
 	put(t, filepath.Join(source, "one.mp3"), "one")
 	put(t, filepath.Join(source, "two.mp3"), "two")
 	before := seedTransferImports(t, source)
-	opts := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	opts := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	preview, err := Run(t.Context(), opts)
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +134,7 @@ func TestSyncImportPublicationFailureRetainsRecovery(t *testing.T) {
 	}
 	defer archive.Close()
 	execSQL(t, archive, "CREATE TRIGGER reject_import_publication BEFORE INSERT ON Document BEGIN SELECT RAISE(ABORT,'publication refused'); END")
-	_, err = Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
+	_, err = Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
 	if progress.ErrorCode(err) != "history_recovery_required" {
 		t.Fatalf("failed publication lost pending recovery: %v", err)
 	}
@@ -180,7 +181,7 @@ func TestSyncImportSourceScopeAndUndo(t *testing.T) {
 				put(t, filepath.Join(source, name), name)
 			}
 			before := seedTransferImports(t, source)
-			o := Options{Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true, NoBackup: true}
 			if root {
 				o.Scope = Scope{Root: true}
 			}

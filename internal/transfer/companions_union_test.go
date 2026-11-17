@@ -8,6 +8,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/colors"
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSyncSelectedColorsAndImportEvidenceTogether(t *testing.T) {
@@ -24,7 +25,7 @@ INSERT INTO PlaylistEntity(listId,trackId,databaseUuid,nextEntityId) VALUES(1,1,
 	if _, err := colors.Replace(t.Context(), source, transferColors(t, source).Revision(), want); err != nil {
 		t.Fatal(err)
 	}
-	opts := Options{Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, NoBackup: true, DryRun: true}
+	opts := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, NoBackup: true, DryRun: true}
 	preview, err := Run(t.Context(), opts)
 	if err != nil || !preview.Applicable {
 		t.Fatalf("preview=%+v error=%v", preview, err)

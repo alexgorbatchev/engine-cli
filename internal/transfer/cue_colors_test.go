@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 	"github.com/nateranda/djtools/engine"
 	"github.com/nateranda/djtools/lib"
 )
@@ -32,7 +33,7 @@ func TestSyncPreservesNativeHotCueColors(t *testing.T) {
 		}
 	}
 	execSQL(t, s, "UPDATE PerformanceData SET beatData=?,quickCues=? WHERE trackId=1", beat, cues)
-	opts := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	opts := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	preview, err := Run(context.Background(), opts)
 	if err != nil {
 		t.Fatal(err)

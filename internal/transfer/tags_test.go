@@ -11,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func transferTags(t *testing.T, lib string) tags.State {
@@ -57,7 +58,7 @@ func TestSyncCompanionPublicationFailureRetainsRecoverableHistory(t *testing.T) 
 	if _, err := companionDB.Exec("CREATE TRIGGER reject_publication BEFORE INSERT ON Category BEGIN SELECT RAISE(ABORT,'synthetic publication failure'); END"); err != nil {
 		t.Fatal(err)
 	}
-	_, err = Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
+	_, err = Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
 	if progress.ErrorCode(err) != "history_recovery_required" {
 		t.Fatalf("cross-file failure did not preserve pending recovery: %v", err)
 	}
@@ -95,7 +96,7 @@ func TestSyncCustomTagsScopeAndUndo(t *testing.T) {
 				}
 			}
 			seedTransferTags(t, source)
-			o := Options{Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true, NoBackup: true}
 			if root {
 				o.Scope = Scope{Root: true}
 			}
@@ -140,7 +141,7 @@ func TestSyncTagRevisionInvalidatesExactPlan(t *testing.T) {
 		}
 	}
 	seedTransferTags(t, source)
-	o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	preview, err := Run(context.Background(), o)
 	if err != nil {
 		t.Fatal(err)
@@ -166,7 +167,7 @@ func TestSyncDistinctTaxonomyNameCollisionIsConflict(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	report, err := Run(context.Background(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, Conflict: "source"})
+	report, err := Run(context.Background(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, Conflict: "source"})
 	if err != nil || report.Applicable {
 		t.Fatalf("same-name identities silently collapsed: %+v %v", report, err)
 	}
@@ -188,7 +189,7 @@ func TestSyncUnavailableAssignmentsRequireExplicitReconciliation(t *testing.T) {
 	seedTransferTags(t, source)
 	before := transferTags(t, source)
 	execSQL(t, s, "DELETE FROM Track WHERE id=1")
-	_, err := Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true})
+	_, err := Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true})
 	if progress.ErrorCode(err) != "tag_assignments_stale" {
 		t.Fatalf("unavailable assignments did not direct reviewed reconciliation: %v", err)
 	}
@@ -208,7 +209,7 @@ func TestCustomTagsReverseSyncAndSubsequentForward(t *testing.T) {
 		put(t, filepath.Join(source, name), name)
 	}
 	seedTransferTags(t, source)
-	forward := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
+	forward := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
 	if _, err := Run(t.Context(), forward); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +219,7 @@ func TestCustomTagsReverseSyncAndSubsequentForward(t *testing.T) {
 	if _, err := tags.EditCategory(t.Context(), destination, tags.Edit{ID: "mood", Name: "Energy", Revision: transferTags(t, destination).Revision()}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Run(t.Context(), Options{Source: destination, Destination: source, Scope: Scope{Root: true}, NoBackup: true}); err != nil {
+	if _, err := Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: destination, Destination: source, Scope: Scope{Root: true}, NoBackup: true}); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := transferTags(t, source).Revision(), transferTags(t, destination).Revision(); got != want {
@@ -246,7 +247,7 @@ func TestRootMirrorControlsDestinationOnlyTaxonomy(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := transferTags(t, destination)
-	options := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
+	options := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
 	if _, err := Run(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}

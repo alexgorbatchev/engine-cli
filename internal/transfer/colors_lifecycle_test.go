@@ -7,6 +7,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/colors"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestRootColorMirrorPreservesAndRemovesOnlyReviewedTracks(t *testing.T) {
@@ -18,7 +19,7 @@ func TestRootColorMirrorPreservesAndRemovesOnlyReviewedTracks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
+	options := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
 	if _, err := Run(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +73,7 @@ func TestDestinationColorChangeInvalidatesReviewedSync(t *testing.T) {
 		execSQL(t, engine, `INSERT INTO Track(title,path,filename) VALUES('One','one.mp3','one.mp3')`)
 		put(t, filepath.Join(fixture.path, "one.mp3"), fixture.uuid+" audio")
 	}
-	options := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	options := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	preview, err := Run(t.Context(), options)
 	if err != nil || !preview.Applicable {
 		t.Fatalf("review=%+v error=%v", preview, err)

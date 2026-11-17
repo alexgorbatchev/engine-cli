@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistRepairRemovesUnprovableNativeGraph(t *testing.T) {
@@ -99,7 +100,7 @@ func TestSmartlistRepairRemovesUnprovableNativeGraph(t *testing.T) {
 					t.Fatalf("unproven chain borrowed original deletion Undo: %+v", row)
 				}
 			}
-			result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken)
+			result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed)
 			if err != nil || result.Removed != tc.removed || result.AmendedDeletes != tc.amended || result.Reconnected != 0 || result.UndoID != "" {
 				t.Fatalf("unprovable graph apply=%+v error=%v", result, err)
 			}

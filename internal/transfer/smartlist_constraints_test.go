@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistNativeNameConstraints(t *testing.T) {
@@ -46,7 +47,7 @@ func TestSmartlistNativeNameConstraints(t *testing.T) {
 						expected["local-saved"] = savedRows(t, d)["local-saved"]
 					}
 					beforeSource, beforeDestination := syncFileManifest(t, source), syncFileManifest(t, destination)
-					o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}, {SourceID: 13, DestinationID: 49}}, Conflict: policy, Mirror: mirror, NoBackup: true, DryRun: true}
+					o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}, {SourceID: 13, DestinationID: 49}}, Conflict: policy, Mirror: mirror, NoBackup: true, DryRun: true}
 					preview, err := Run(t.Context(), o)
 					blocked := tc.collision && !mirror
 					if err != nil || preview == nil || preview.Applicable == blocked {
@@ -90,7 +91,7 @@ func TestSmartlistNameCollisionAfterParentMapping(t *testing.T) {
 			execSQL(t, s, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(12,'Source',0,0),(13,'A',12,14),(14,'B',12,0); INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('source-saved','Filters','Source;','Source;A;','','{}')`)
 			execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'Local',0,0),(49,'A',48,50),(50,'B',48,0); INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('local-saved','Filters','Local;','Local;B;','','{}')`)
 			beforeSource, beforeDestination := syncFileManifest(t, source), syncFileManifest(t, destination)
-			o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}, {SourceID: 13, DestinationID: 49}, {SourceID: 14, DestinationID: 50}}, Conflict: policy, NoBackup: true, DryRun: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}, {SourceID: 13, DestinationID: 49}, {SourceID: 14, DestinationID: 50}}, Conflict: policy, NoBackup: true, DryRun: true}
 			preview, err := Run(t.Context(), o)
 			if err != nil || preview == nil || preview.Applicable || !slices.ContainsFunc(preview.Conflicts, func(c Change) bool { return c.Code == "sync_smartlist_constraint_conflict" }) {
 				t.Fatalf("mapped collision escaped preview: %+v, %v", preview, err)
@@ -119,7 +120,7 @@ func TestSmartlistObservedConstraintPolicy(t *testing.T) {
 			execSQL(t, d, strings.Replace(schema, "UNIQUE (title, parentPlaylistPath)", "UNIQUE (title, parentPlaylistPath) ON CONFLICT "+policy, 1))
 			execSQL(t, s, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(12,'A',0,13),(13,'B',0,0); INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('source-saved','Filters','','A;','','{}')`)
 			execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'A',0,49),(49,'B',0,0); INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('local-saved','Filters','','B;','','local')`)
-			o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}, {SourceID: 13, DestinationID: 49}}, NoBackup: true, DryRun: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}, {SourceID: 13, DestinationID: 49}}, NoBackup: true, DryRun: true}
 			preview, err := Run(t.Context(), o)
 			if err != nil || preview == nil || preview.Applicable || !slices.ContainsFunc(preview.Conflicts, func(c Change) bool { return c.Code == "sync_smartlist_constraint_conflict" }) {
 				t.Fatalf("native conflict policy silently discarded a planned row: %+v, %v", preview, err)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistAmendedDeleteSelectiveUndo(t *testing.T) {
@@ -20,7 +22,7 @@ func TestSmartlistAmendedDeleteSelectiveUndo(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken); err != nil || result == nil || result.AmendedDeletes != 1 {
+			if result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed); err != nil || result == nil || result.AmendedDeletes != 1 {
 				t.Fatalf("amend original deletion: %+v %v", result, err)
 			}
 			all, err := List(lib)
@@ -46,7 +48,7 @@ func TestSmartlistAmendedDeleteSelectiveUndo(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken); err != nil || result == nil || result.Removed != 1 {
+				if result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed); err != nil || result == nil || result.Removed != 1 {
 					t.Fatalf("second repair: %+v %v", result, err)
 				}
 				recordSmartlistMutation(t, lib, database, "playlist.rename", `UPDATE Playlist SET title='Later Sets' WHERE id=2`)

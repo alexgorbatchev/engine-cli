@@ -12,7 +12,9 @@ import (
 
 // ApplySmartlistRepair owns its stronger rollback boundary; generic history.Run
 // deliberately records partial failures and must not wrap this publication.
-func ApplySmartlistRepair(ctx context.Context, lib, token string) (result *SmartlistRepairResult, err error) {
+// checkMutation is the caller's fresh Engine DJ Desktop check; without it the
+// repair is refused.
+func ApplySmartlistRepair(ctx context.Context, lib, token string, checkMutation func(context.Context) error) (result *SmartlistRepairResult, err error) {
 	dir, err := storeDir(lib)
 	if err != nil {
 		return nil, err
@@ -28,7 +30,7 @@ func ApplySmartlistRepair(ctx context.Context, lib, token string) (result *Smart
 	if review.Reconnected+review.Removed == 0 {
 		return &SmartlistRepairResult{SmartlistRepairReview: *review}, nil
 	}
-	if err := allowSmartlistRepair(ctx); err != nil {
+	if err := systemcheck.CheckMutation(ctx, checkMutation); err != nil {
 		return nil, err
 	}
 	owner, err := lock(ctx, dir)
@@ -100,13 +102,15 @@ func publishSmartlistTargets(ctx context.Context, lib string, prepared *smartlis
 
 // RecoverSmartlistRepair never rolls a partial repair forward. All original
 // evidence and every allowed target state are validated before its first write.
-func RecoverSmartlistRepair(ctx context.Context, lib string) (result *SmartlistRepairRecovery, err error) {
+// checkMutation is the caller's fresh Engine DJ Desktop check; without it the
+// recovery is refused.
+func RecoverSmartlistRepair(ctx context.Context, lib string, checkMutation func(context.Context) error) (result *SmartlistRepairRecovery, err error) {
 	dir, err := storeDir(lib)
 	if err != nil {
 		return nil, err
 	}
 	lib = filepath.Dir(filepath.Dir(dir))
-	if err := allowSmartlistRepair(ctx); err != nil {
+	if err := systemcheck.CheckMutation(ctx, checkMutation); err != nil {
 		return nil, err
 	}
 	owner, err := lock(ctx, dir)
@@ -162,14 +166,6 @@ func finishSmartlistJournal(dir, terminal string) error {
 		return errors.Join(err, writeAtomic(pending, data))
 	}
 	return nil
-}
-
-func allowSmartlistRepair(ctx context.Context) error {
-	report, err := systemcheck.Run(ctx, []string{systemcheck.EngineDesktop})
-	if err != nil {
-		return err
-	}
-	return systemcheck.AllowMutation(report)
 }
 
 func smartlistRepairStale() error {

@@ -89,3 +89,19 @@ func TestMutationDecision(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCheckMutationRequiresTheCallersCheck(t *testing.T) {
+	var e *Error
+	if err := CheckMutation(context.Background(), nil); !errors.As(err, &e) || e.Code != "engine_desktop_unknown" {
+		t.Fatalf("missing check did not refuse: %v", err)
+	}
+	refusal := errors.New("refused by the caller")
+	calls := 0
+	check := func(context.Context) error { calls++; return refusal }
+	if err := CheckMutation(context.Background(), check); !errors.Is(err, refusal) || calls != 1 {
+		t.Fatalf("caller's refusal not returned: %v calls=%d", err, calls)
+	}
+	if err := CheckMutation(context.Background(), func(context.Context) error { calls++; return nil }); err != nil || calls != 2 {
+		t.Fatalf("caller's approval not honored: %v calls=%d", err, calls)
+	}
+}

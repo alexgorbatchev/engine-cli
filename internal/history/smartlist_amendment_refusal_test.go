@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistUnprovableHistoricalOrderDoesNotBorrowDeleteUndo(t *testing.T) {
@@ -27,7 +29,7 @@ func TestSmartlistUnprovableHistoricalOrderDoesNotBorrowDeleteUndo(t *testing.T)
 	if err != nil || review.Removed != 1 || review.AmendedDeletes != 0 {
 		t.Fatalf("unprovable historical order borrowed deletion: %+v %v", review, err)
 	}
-	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken)
+	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed)
 	if err != nil || result.Removed != 1 || result.AmendedDeletes != 0 || result.UndoID != "" {
 		t.Fatalf("unprovable removal borrowed Undo: %+v %v", result, err)
 	}

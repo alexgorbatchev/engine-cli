@@ -8,6 +8,7 @@ import (
 
 	acoustic "github.com/alexgorbatchev/engine-cli/internal/fingerprint"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestReuseIndependentImport(t *testing.T) {
@@ -21,7 +22,7 @@ func TestReuseIndependentImport(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	r, err := Run(context.Background(), o)
 	if err != nil || !r.Applicable || r.Summary.TracksAdded != 0 || r.Summary.FilesCopied != 0 || r.Summary.TracksReused != 1 {
 		t.Fatalf("preview: %+v %v", r, err)
@@ -106,7 +107,7 @@ func TestSyncAcousticCandidates(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			r, err := Run(ctx, Options{Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true})
+			r, err := Run(ctx, Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true})
 			if mode == "damaged" {
 				if err == nil {
 					t.Fatal("ignored damaged index")

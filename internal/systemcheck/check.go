@@ -81,6 +81,16 @@ func run(ctx context.Context, checks []string, snapshot func(context.Context) ([
 	return &Report{CheckedAt: time.Now().UTC(), Platform: runtime.GOOS, Checks: map[string]Result{EngineDesktop: r}}, nil
 }
 
+// CheckMutation runs the caller's fresh Engine DJ Desktop check before a library
+// mutation. Library packages never observe the machine themselves; without a
+// check they cannot confirm Desktop is closed, so the mutation is refused.
+func CheckMutation(ctx context.Context, check func(context.Context) error) error {
+	if check == nil {
+		return AllowMutation(nil)
+	}
+	return check(ctx)
+}
+
 // AllowMutation checks a freshly obtained report, not a cached UI observation.
 func AllowMutation(r *Report) error {
 	if r == nil {

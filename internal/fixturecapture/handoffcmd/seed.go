@@ -14,8 +14,10 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 )
 
+var querySystem = systemcheck.Run
+
 func absentDesktop(ctx context.Context) error {
-	r, err := systemcheck.Run(ctx, []string{systemcheck.EngineDesktop})
+	r, err := querySystem(ctx, []string{systemcheck.EngineDesktop})
 	if err != nil {
 		return err
 	}

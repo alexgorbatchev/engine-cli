@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestCopyMediaFailuresPreserveDestination(t *testing.T) {
@@ -106,7 +108,7 @@ func TestMirrorConflictPolicy(t *testing.T) {
 			dest, d := library(t, "dest")
 			execSQL(t, s, "INSERT INTO Track(title,path,filename) VALUES('Original','song.mp3','song.mp3')")
 			put(t, filepath.Join(source, "song.mp3"), "audio")
-			o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
 			if _, err := Run(context.Background(), o); err != nil {
 				t.Fatal(err)
 			}
@@ -144,12 +146,12 @@ func TestSyncAfterReverseUsesNewestBaseline(t *testing.T) {
 	dest, d := library(t, "dest")
 	execSQL(t, s, "INSERT INTO Track(title,path,filename) VALUES('Original','song.mp3','song.mp3')")
 	put(t, filepath.Join(source, "song.mp3"), "audio")
-	forward := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
+	forward := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
 	if _, err := Run(context.Background(), forward); err != nil {
 		t.Fatal(err)
 	}
 	execSQL(t, d, "UPDATE Track SET title='USB edit'")
-	if _, err := Run(context.Background(), Options{Source: dest, Destination: source, Scope: Scope{Root: true}, NoBackup: true}); err != nil {
+	if _, err := Run(context.Background(), Options{CheckMutation: testdesktop.AllowClosed, Source: dest, Destination: source, Scope: Scope{Root: true}, NoBackup: true}); err != nil {
 		t.Fatal(err)
 	}
 	execSQL(t, s, "UPDATE Track SET title='Next local edit'")
@@ -165,7 +167,7 @@ func TestSyncAfterReverseUsesNewestBaseline(t *testing.T) {
 func TestSyncRejectsSharedIdentityAndPreservesSourceMedia(t *testing.T) {
 	source, s := library(t, "same")
 	dest, d := library(t, "same")
-	o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true}
 	if _, err := Run(context.Background(), o); err == nil {
 		t.Fatal("accepted cloned library identity")
 	}

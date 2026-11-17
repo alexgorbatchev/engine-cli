@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistPublicationReconnectHasOwnExactUndo(t *testing.T) {
@@ -17,7 +18,7 @@ func TestSmartlistPublicationReconnectHasOwnExactUndo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken)
+	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed)
 	if err != nil || result == nil || !result.Applied || result.UndoID == "" || result.Reconnected != 1 {
 		t.Fatalf("reconnect publication: %+v %v", result, err)
 	}
@@ -46,7 +47,7 @@ func TestSmartlistPublicationAmendsOriginalDeleteWithoutChangingOriginalImages(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken)
+	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed)
 	if err != nil || result == nil || !result.Applied || result.UndoID != "" || result.AmendedDeletes != 1 {
 		t.Fatalf("deletion repair: %+v %v", result, err)
 	}
@@ -71,7 +72,7 @@ func TestSmartlistPublicationUnknownRemovalNoUndoAndHealthyNoEnrollment(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := ApplySmartlistRepair(ctx, lib, healthy.PlanToken)
+	result, err := ApplySmartlistRepair(ctx, lib, healthy.PlanToken, testdesktop.AllowClosed)
 	if err != nil || result.Applied {
 		t.Fatalf("healthy repair wrote: %+v %v", result, err)
 	}
@@ -85,10 +86,10 @@ func TestSmartlistPublicationUnknownRemovalNoUndoAndHealthyNoEnrollment(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := ApplySmartlistRepair(ctx, lib, healthy.PlanToken); got != nil || progress.ErrorCode(err) != "smartlist_repair_stale" {
+	if got, err := ApplySmartlistRepair(ctx, lib, healthy.PlanToken, testdesktop.AllowClosed); got != nil || progress.ErrorCode(err) != "smartlist_repair_stale" {
 		t.Fatalf("stale consent accepted: %+v %v", got, err)
 	}
-	result, err = ApplySmartlistRepair(ctx, lib, review.PlanToken)
+	result, err = ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed)
 	if err != nil || !result.Applied || result.UndoID != "" || result.Removed != 1 {
 		t.Fatalf("unknown removal: %+v %v", result, err)
 	}
@@ -109,7 +110,7 @@ func TestSmartlistPublicationReconnectUndoNeverResurrectsUnknownRemoval(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken)
+	result, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed)
 	if err != nil || result == nil || result.Reconnected != 1 || result.Removed != 1 || result.UndoID == "" {
 		t.Fatalf("mixed repair: %+v %v", result, err)
 	}

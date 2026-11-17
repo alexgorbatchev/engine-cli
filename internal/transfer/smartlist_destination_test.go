@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func savedRows(t *testing.T, database *sql.DB) map[string]row {
@@ -39,7 +40,7 @@ func TestSmartlistMappedFinalPaths(t *testing.T) {
 				execSQL(t, s, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(12,'Source',0,0); INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('saved','Saved','Source;',NULL,NULL,x'0001ff')`)
 				execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'Local',0,0)`)
 				before := savedRows(t, s)
-				o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}}, Conflict: policy, Mirror: mirror, NoBackup: true, DryRun: true}
+				o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}}, Conflict: policy, Mirror: mirror, NoBackup: true, DryRun: true}
 				preview, err := Run(t.Context(), o)
 				if err != nil {
 					t.Fatal(err)
@@ -82,7 +83,7 @@ func TestSmartlistDestinationOnlyFollowsMappedAncestor(t *testing.T) {
 	destination, d := library(t, "destination")
 	execSQL(t, s, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(12,'Renamed',0,0)`)
 	execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'Old',0,0),(49,'Child',48,0); INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('kept','Kept','Old;Child;',NULL,NULL,' { "opaque": true } ')`)
-	o := Options{Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{12}}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}}, Conflict: "source", NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{12}}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 48}}, Conflict: "source", NoBackup: true}
 	if _, err := Run(t.Context(), o); err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +102,7 @@ func TestSmartlistMergedAnchorCollisionRefuses(t *testing.T) {
 			execSQL(t, s, `INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('source-saved','Source','','','','{}')`)
 			execSQL(t, d, `INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('local-saved','Local','','','','local')`)
 			before := savedRows(t, d)
-			r, err := Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Conflict: policy, NoBackup: true})
+			r, err := Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Conflict: policy, NoBackup: true})
 			if err == nil || r == nil || r.Applicable || len(r.Conflicts) == 0 || !reflect.DeepEqual(before, savedRows(t, d)) {
 				t.Fatalf("ambiguous merged chain was accepted: %+v, %v", r, err)
 			}

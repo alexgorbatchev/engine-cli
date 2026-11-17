@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 	"modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
@@ -131,7 +132,7 @@ func TestVerificationManifestRequiresReadableMatchingSeedEvidence(t *testing.T) 
 		})
 		t.Run("repair-state-evidence", func(t *testing.T) {
 			lib := filepath.Join(root, f.Name)
-			result, err := history.ApplySmartlistRepair(t.Context(), lib, f.Review.PlanToken)
+			result, err := history.ApplySmartlistRepair(t.Context(), lib, f.Review.PlanToken, testdesktop.AllowClosed)
 			if err != nil || !result.Applied || result.UndoID == "" {
 				t.Fatalf("native reconnect repair: %+v %v", result, err)
 			}

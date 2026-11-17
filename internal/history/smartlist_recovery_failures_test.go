@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistRecoveryRejectsUntrustedStateBeforeAnyRestore(t *testing.T) {
@@ -50,7 +51,7 @@ func TestSmartlistRecoveryRejectsUntrustedStateBeforeAnyRestore(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := RecoverSmartlistRepair(ctx, lib)
+			result, err := RecoverSmartlistRepair(ctx, lib, testdesktop.AllowClosed)
 			if result != nil || progress.ErrorCode(err) != "smartlist_repair_pending" {
 				t.Fatalf("untrusted recovery returned %+v, %v", result, err)
 			}
@@ -75,7 +76,7 @@ func TestSmartlistRecoveryRetainsIntentUntilRollbackMarkerIsDurable(t *testing.T
 	if err := os.Mkdir(terminal, 0700); err != nil {
 		t.Fatal(err)
 	}
-	result, err := RecoverSmartlistRepair(ctx, lib)
+	result, err := RecoverSmartlistRepair(ctx, lib, testdesktop.AllowClosed)
 	if result != nil || progress.ErrorCode(err) != "smartlist_repair_pending" {
 		t.Fatalf("failed terminal publication reported success: %+v %v", result, err)
 	}
@@ -90,14 +91,14 @@ func TestSmartlistRecoveryRetainsIntentUntilRollbackMarkerIsDurable(t *testing.T
 	if err := os.Remove(terminal); err != nil {
 		t.Fatal(err)
 	}
-	result, err = RecoverSmartlistRepair(ctx, lib)
+	result, err = RecoverSmartlistRepair(ctx, lib, testdesktop.AllowClosed)
 	if err != nil || result == nil || !result.RolledBack || result.RestoredTargets != len(prepared.journal.Images) {
 		t.Fatalf("rollback retry: %+v %v", result, err)
 	}
 	if _, err := os.Lstat(filepath.Join(prepared.dir, smartlistJournalName)); !os.IsNotExist(err) {
 		t.Fatalf("successful rollback retained pending marker: %v", err)
 	}
-	if result, err := RecoverSmartlistRepair(ctx, lib); err != nil || result == nil || result.RolledBack {
+	if result, err := RecoverSmartlistRepair(ctx, lib, testdesktop.AllowClosed); err != nil || result == nil || result.RolledBack {
 		t.Fatalf("terminal recovery was not idempotent: %+v %v", result, err)
 	}
 }

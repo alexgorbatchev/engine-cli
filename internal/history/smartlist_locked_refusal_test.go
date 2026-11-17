@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistLockedPlannerRefusesInvalidCurrentEvidence(t *testing.T) {
@@ -95,11 +97,11 @@ func TestSmartlistPublicRepairRejectsUnavailableLibraries(t *testing.T) {
 			if result, err := PreviewSmartlistRepair(context.Background(), lib); result != nil || err == nil {
 				t.Fatalf("preview unavailable library: %+v %v", result, err)
 			}
-			if result, err := ApplySmartlistRepair(context.Background(), lib, "reviewed"); result != nil || err == nil {
+			if result, err := ApplySmartlistRepair(context.Background(), lib, "reviewed", testdesktop.AllowClosed); result != nil || err == nil {
 				t.Fatalf("apply unavailable library: %+v %v", result, err)
 			}
 			if kind != "missing database" {
-				if result, err := RecoverSmartlistRepair(context.Background(), lib); result != nil || err == nil {
+				if result, err := RecoverSmartlistRepair(context.Background(), lib, testdesktop.AllowClosed); result != nil || err == nil {
 					t.Fatalf("recover unavailable library: %+v %v", result, err)
 				}
 			}

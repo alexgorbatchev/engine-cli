@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistNullableHealthyRepairDoesNotWrite(t *testing.T) {
@@ -24,7 +25,7 @@ func TestSmartlistNullableHealthyRepairDoesNotWrite(t *testing.T) {
 	if err != nil || review == nil || review.Removed != 0 || review.Reconnected != 0 {
 		t.Fatalf("healthy nullable preview: %+v %v", review, err)
 	}
-	if _, err := ApplySmartlistRepair(ctx, lib, review.PlanToken); err != nil {
+	if _, err := ApplySmartlistRepair(ctx, lib, review.PlanToken, testdesktop.AllowClosed); err != nil {
 		t.Fatal(err)
 	}
 	if after, err := fingerprint(ctx, source); err != nil || after != before {

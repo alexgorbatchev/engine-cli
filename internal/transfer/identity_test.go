@@ -7,6 +7,7 @@ import (
 
 	libraryidentity "github.com/alexgorbatchev/engine-cli/internal/identity"
 	"github.com/alexgorbatchev/engine-cli/internal/sidecar"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 // Registering a library replaces the Engine UUID it was synced under with its
@@ -26,7 +27,7 @@ func TestRegistrationKeepsSyncBaseline(t *testing.T) {
 			dest, d := library(t, "dest")
 			execSQL(t, s, "INSERT INTO Track(title,path,filename) VALUES('Original','song.mp3','song.mp3')")
 			put(t, filepath.Join(source, "song.mp3"), "audio")
-			o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
 			if _, err := Run(ctx, o); err != nil {
 				t.Fatal(err)
 			}
@@ -62,12 +63,12 @@ func TestRegistrationKeepsReverseSyncBaseline(t *testing.T) {
 	dest, d := library(t, "dest")
 	execSQL(t, s, "INSERT INTO Track(title,path,filename) VALUES('Original','song.mp3','song.mp3')")
 	put(t, filepath.Join(source, "song.mp3"), "audio")
-	forward := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
+	forward := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
 	if _, err := Run(ctx, forward); err != nil {
 		t.Fatal(err)
 	}
 	execSQL(t, d, "UPDATE Track SET title='USB edit'")
-	if _, err := Run(ctx, Options{Source: dest, Destination: source, Scope: Scope{Root: true}, NoBackup: true}); err != nil {
+	if _, err := Run(ctx, Options{CheckMutation: testdesktop.AllowClosed, Source: dest, Destination: source, Scope: Scope{Root: true}, NoBackup: true}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := libraryidentity.Register(ctx, d, dest, false); err != nil {
@@ -93,7 +94,7 @@ func TestRegisteredCopies(t *testing.T) {
 	if err := sidecar.WriteJSON(ctx, libraryidentity.Path(dest), r); err != nil {
 		t.Fatal(err)
 	}
-	o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	if _, err := Run(ctx, o); err == nil {
 		t.Fatal("accepted duplicate instance identity")
 	}

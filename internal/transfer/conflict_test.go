@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSyncConflictReverseAndStalePreview(t *testing.T) {
@@ -14,7 +16,7 @@ func TestSyncConflictReverseAndStalePreview(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "song.mp3"), []byte("audio"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
 	if _, err := Run(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +30,7 @@ func TestSyncConflictReverseAndStalePreview(t *testing.T) {
 	if err != nil || !r.Applicable || r.Summary.TracksUpdated != 0 {
 		t.Fatalf("destination edit: %+v %v", r, err)
 	}
-	reverse := Options{Source: dest, Destination: source, Scope: Scope{Root: true}, NoBackup: true}
+	reverse := Options{CheckMutation: testdesktop.AllowClosed, Source: dest, Destination: source, Scope: Scope{Root: true}, NoBackup: true}
 	if _, err = Run(context.Background(), reverse); err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +65,7 @@ func TestSyncMirrorRetainsSharedTracks(t *testing.T) {
 	source, s := library(t, "source")
 	dest, d := library(t, "dest")
 	execSQL(t, s, `INSERT INTO Playlist(title,parentListId,nextListId) VALUES('Set',0,0)`)
-	o := Options{Source: source, Destination: dest, Scope: Scope{PlaylistIDs: []int64{1}}, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{PlaylistIDs: []int64{1}}, NoBackup: true}
 	if _, err := Run(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}

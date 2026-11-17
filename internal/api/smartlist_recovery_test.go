@@ -15,6 +15,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func smartlistAPIRows(t *testing.T, d *sql.DB) []byte {
@@ -67,7 +68,7 @@ func TestSmartlistAPIRepairChild(t *testing.T) {
 	if lib == "" {
 		return
 	}
-	if _, err := history.ApplySmartlistRepair(t.Context(), lib, os.Getenv("ENGINE_API_SMARTLIST_TOKEN")); err != nil {
+	if _, err := history.ApplySmartlistRepair(t.Context(), lib, os.Getenv("ENGINE_API_SMARTLIST_TOKEN"), testdesktop.AllowClosed); err != nil {
 		t.Fatal(err)
 	}
 }

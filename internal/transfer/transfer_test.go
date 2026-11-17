@@ -3,12 +3,14 @@ package transfer
 import (
 	"context"
 	"database/sql"
-	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/db/dbtest"
-	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/db/dbtest"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func library(t *testing.T, uuid string) (string, *sql.DB) {
@@ -34,7 +36,7 @@ func TestSyncPreviewApplyUndo(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "song.mp3"), []byte("audio bytes"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	o := Options{Source: source, Destination: dest, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true}
 	r, err := Run(context.Background(), o)
 	if err != nil {
 		t.Fatal(err)

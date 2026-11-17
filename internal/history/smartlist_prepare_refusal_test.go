@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistPreparationRejectsChangedSourcesBeforeIntent(t *testing.T) {
@@ -80,7 +82,7 @@ func TestSmartlistRecoveryRetainsMalformedPendingEvidence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := RecoverSmartlistRepair(ctx, lib)
+			result, err := RecoverSmartlistRepair(ctx, lib, testdesktop.AllowClosed)
 			if result != nil || err == nil {
 				t.Fatalf("unsafe recovery accepted: %+v %v", result, err)
 			}

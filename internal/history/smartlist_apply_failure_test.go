@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 	"zombiezen.com/go/sqlite"
 	"zombiezen.com/go/sqlite/sqlitex"
 )
@@ -41,7 +42,7 @@ func TestSmartlistApplyRollsBackAfterActualPublication(t *testing.T) {
 	}
 	done := make(chan outcome, 1)
 	go func() {
-		result, err := ApplySmartlistRepair(publication, lib, review.PlanToken)
+		result, err := ApplySmartlistRepair(publication, lib, review.PlanToken, testdesktop.AllowClosed)
 		done <- outcome{result, err}
 	}()
 	joined := false

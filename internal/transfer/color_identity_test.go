@@ -6,6 +6,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/colors"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSyncColorsReuseDestinationOriginAndResolveConflict(t *testing.T) {
@@ -24,7 +25,7 @@ func TestSyncColorsReuseDestinationOriginAndResolveConflict(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Conflict: choice, DryRun: true, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Conflict: choice, DryRun: true, NoBackup: true}
 			preview, err := Run(t.Context(), o)
 			if err != nil {
 				t.Fatal(err)
@@ -63,7 +64,7 @@ func TestSyncColorsRefusesUnavailableOriginsWithoutPruning(t *testing.T) {
 	if _, err := colors.Replace(t.Context(), source, transferColors(t, source).Revision(), state); err != nil {
 		t.Fatal(err)
 	}
-	_, err := Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true})
+	_, err := Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true})
 	if progress.ErrorCode(err) != "color_assignments_stale" || transferColors(t, source).Revision() != state.Revision() {
 		t.Fatalf("unavailable origin was not retained/rejected: %v", err)
 	}

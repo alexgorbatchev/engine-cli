@@ -9,6 +9,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestMirrorRemovalAndUndo(t *testing.T) {
@@ -19,7 +20,7 @@ func TestMirrorRemovalAndUndo(t *testing.T) {
 	if err := os.WriteFile(file, []byte("original"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	r, err := Run(context.Background(), Options{Source: source, Destination: dest, Scope: Scope{Root: true}, Mirror: true, NoBackup: true})
+	r, err := Run(context.Background(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, Mirror: true, NoBackup: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,7 @@ func TestSyncArtworkAndSmartlist(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "Artwork", hash+".jpg"), []byte("artwork"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, NoBackup: true}
 	r, err := Run(context.Background(), o)
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +95,7 @@ func TestSyncInvalidRequests(t *testing.T) {
 		{"missing mapping", func(o *Options) { o.PlaylistMap = []PlaylistMapping{{SourceID: 1, DestinationID: 1}} }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true}
 			tt.change(&o)
 			if _, err := Run(context.Background(), o); err == nil {
 				t.Fatal("accepted invalid request")
@@ -103,11 +104,11 @@ func TestSyncInvalidRequests(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := Run(ctx, Options{Source: source, Destination: dest, Scope: Scope{Root: true}}); err == nil {
+	if _, err := Run(ctx, Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}}); err == nil {
 		t.Fatal("ignored cancellation")
 	}
 	execSQL(t, s, "UPDATE Information SET schemaVersionMajor=99")
-	if _, err := Run(context.Background(), Options{Source: source, Destination: dest, Scope: Scope{Root: true}}); err == nil {
+	if _, err := Run(context.Background(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}}); err == nil {
 		t.Fatal("accepted unknown schema")
 	}
 }
@@ -124,7 +125,7 @@ func TestSyncMissingMediaAndConflictPolicies(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, Conflict: policy, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, Conflict: policy, NoBackup: true}
 			r, err := Run(context.Background(), o)
 			if policy == "error" {
 				if err == nil || r.Applicable {
@@ -164,7 +165,7 @@ func TestSyncBackupAndPrepareRemoval(t *testing.T) {
 	dest, d := library(t, "dest")
 	execSQL(t, s, "INSERT INTO Track(title,path,filename) VALUES('Track','song.mp3','song.mp3');INSERT INTO PreparelistEntity(trackId,trackNumber) VALUES(1,0)")
 	put(t, filepath.Join(source, "song.mp3"), "audio")
-	o := Options{Source: source, Destination: dest, Scope: Scope{Root: true}}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}}
 	if _, err := Run(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +198,7 @@ func TestMirrorRefusesExternalAudioDeletion(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "external.mp3")
 	put(t, file, "keep external audio")
 	execSQL(t, d, "INSERT INTO Track(title,path,filename) VALUES('External',?,'external.mp3')", file)
-	r, err := Run(context.Background(), Options{Source: source, Destination: dest, Scope: Scope{Root: true}, Mirror: true, DryRun: true})
+	r, err := Run(context.Background(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, Mirror: true, DryRun: true})
 	if err != nil || r.Applicable {
 		t.Fatalf("external removal %+v %v", r, err)
 	}
@@ -210,7 +211,7 @@ func TestPreparelistAdditiveSyncRetainsDestinationEntries(t *testing.T) {
 	execSQL(t, d, "INSERT INTO Track(title,path,filename) VALUES('Destination','other.mp3','other.mp3');INSERT INTO PreparelistEntity(trackId,trackNumber) VALUES(1,0)")
 	put(t, filepath.Join(source, "song.mp3"), "source audio")
 	put(t, filepath.Join(dest, "other.mp3"), "destination audio")
-	opts := Options{Source: source, Destination: dest, Scope: Scope{Root: true}, Conflict: "source", NoBackup: true}
+	opts := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, Conflict: "source", NoBackup: true}
 	if _, err := Run(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +223,7 @@ func TestPreparelistAdditiveSyncRetainsDestinationEntries(t *testing.T) {
 		t.Fatalf("unchanged additive sync %+v %v", r, err)
 	}
 	execSQL(t, s, "INSERT INTO PreparelistEntity(trackId,trackNumber) VALUES(999,1)")
-	if _, err := Run(context.Background(), Options{Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true}); err == nil {
+	if _, err := Run(context.Background(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: dest, Scope: Scope{Root: true}, DryRun: true}); err == nil {
 		t.Fatal("accepted missing prepared track")
 	}
 }

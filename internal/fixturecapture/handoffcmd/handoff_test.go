@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func capturedGolden(t *testing.T) golden {
@@ -33,7 +34,7 @@ func capturedGolden(t *testing.T) golden {
 func nativeBinary(t *testing.T) inputs {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), "engine-cli")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-p=1", "-o", binary, "../../../cmd/engine-cli")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-p=1", testdesktopBuildTags, "-o", binary, "../../../cmd/engine-cli")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("build native CLI: %v\n%s", err, output)
@@ -68,7 +69,7 @@ func TestNativeHandoffRepairRelocationAndUndo(t *testing.T) {
 	repaired := make(map[string]*history.SmartlistRepairResult)
 	for _, f := range m.Fixtures {
 		lib := filepath.Join(original, f.Name)
-		result, err := history.ApplySmartlistRepair(t.Context(), lib, f.Review.PlanToken)
+		result, err := history.ApplySmartlistRepair(t.Context(), lib, f.Review.PlanToken, testdesktop.AllowClosed)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +84,7 @@ func TestNativeHandoffRepairRelocationAndUndo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		again, err := history.ApplySmartlistRepair(t.Context(), lib, review.PlanToken)
+		again, err := history.ApplySmartlistRepair(t.Context(), lib, review.PlanToken, testdesktop.AllowClosed)
 		if err != nil || again.Applied || again.UndoID != "" {
 			t.Fatalf("not idempotent: %+v %v", again, err)
 		}

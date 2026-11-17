@@ -14,6 +14,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/intakelease"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func savedRename(t *testing.T, lib string, database *sql.DB, uuid, title string) {
@@ -53,7 +54,7 @@ func TestSmartlistSyncProjectionPreservesSourceAndDestinationUndo(t *testing.T) 
 	savedRename(t, source, s, "source-saved", "Source")
 	savedRename(t, destination, d, "dest-saved", "Destination")
 	before := syncFileManifest(t, source)
-	o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	preview, err := Run(t.Context(), o)
 	if err != nil || !preview.Applicable || preview.Summary.SourceSmartlistsReconnected != 1 {
 		t.Fatalf("preview: %+v %v", preview, err)
@@ -105,7 +106,7 @@ func TestSmartlistSyncStaleEvidenceRefusesBeforeRepairAndBackup(t *testing.T) {
 			destination, d := library(t, "destination")
 			savedRename(t, source, s, "source-saved", "Source")
 			savedRename(t, destination, d, "dest-saved", "Destination")
-			o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true}
 			preview, err := Run(t.Context(), o)
 			if err != nil {
 				t.Fatal(err)
@@ -156,7 +157,7 @@ func TestSyncSourceRecoveryCheckedBeforeDestinationOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	_, err = Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
+	_, err = Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
 	if progress.ErrorCode(err) != "history_recovery_required" {
 		t.Fatalf("destination owner preceded source observation: %v", err)
 	}

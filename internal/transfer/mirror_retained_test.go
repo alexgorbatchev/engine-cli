@@ -10,6 +10,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestMirrorPreservesMappedChildOfRemovedParent(t *testing.T) {
@@ -17,7 +18,7 @@ func TestMirrorPreservesMappedChildOfRemovedParent(t *testing.T) {
 	destination, d := library(t, "destination")
 	execSQL(t, s, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(12,'Moved',0,0)`)
 	execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'Old',0,0),(49,'Moved',48,0)`)
-	o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 49}}, Mirror: true, Conflict: "source", NoBackup: true, DryRun: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, PlaylistMap: []PlaylistMapping{{SourceID: 12, DestinationID: 49}}, Mirror: true, Conflict: "source", NoBackup: true, DryRun: true}
 	preview, err := Run(t.Context(), o)
 	if err != nil || !preview.Applicable {
 		t.Fatalf("preview: %+v, %v", preview, err)
@@ -58,7 +59,7 @@ func TestMirrorRetainedDescendantsMembershipOrderAndUndo(t *testing.T) {
 	put(t, filepath.Join(source, "song.mp3"), "audio")
 	execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'Old',0,53),(49,'Moved',48,51),(50,'Nested',49,0),(51,'Deleted',48,0),(52,'Moved too',51,0),(53,'Following',0,0)`)
 	before := mirrorNativeRows(t, d)
-	o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}, {13, 53}, {14, 50}, {15, 52}}}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}, {13, 53}, {14, 50}, {15, 52}}}
 	applied, err := Run(t.Context(), o)
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +94,7 @@ func TestMirrorRetainedChildRejectedWriteRollsBack(t *testing.T) {
 	execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'Old',0,0),(49,'Moved',48,0);
  CREATE TRIGGER refuse_move BEFORE UPDATE ON Playlist WHEN NEW.id=49 AND NEW.parentListId=0 BEGIN SELECT RAISE(ABORT,'refused final move'); END`)
 	before := mirrorNativeRows(t, d)
-	_, err := Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}}})
+	_, err := Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}}})
 	if err == nil {
 		t.Fatal("rejected write succeeded")
 	}
@@ -110,7 +111,7 @@ func TestMirrorRetainedChildConflictPolicies(t *testing.T) {
 			execSQL(t, s, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(12,'Moved',0,0)`)
 			execSQL(t, d, `INSERT INTO Playlist(id,title,parentListId,nextListId) VALUES(48,'Old',0,0),(49,'Moved',48,0)`)
 			before := mirrorNativeRows(t, d)
-			o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: policy, NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}}}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: policy, NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}}}
 			result, err := Run(t.Context(), o)
 			if err == nil || result == nil || result.Applicable {
 				t.Fatalf("invalid retained-parent plan accepted: %+v %v", result, err)
@@ -137,7 +138,7 @@ func TestMirrorRetainedChildCancellationRollsBack(t *testing.T) {
 			cancel()
 		}
 	})
-	_, err := Run(ctx, Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}}})
+	_, err := Run(ctx, Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true, PlaylistMap: []PlaylistMapping{{12, 49}}})
 	if !reached || !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation not reached: %t %v", reached, err)
 	}
@@ -150,7 +151,7 @@ func TestMirrorRetainedChildPersistsNewAncestors(t *testing.T) {
 	source, s := library(t, "source")
 	destination, d := library(t, "destination")
 	execSQL(t, s, `INSERT INTO Playlist(id,title,parentListId,nextListId,isPersisted) VALUES(12,'Old',0,14,1),(13,'Child',12,0,1),(14,'Target',0,0,1)`)
-	o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, Mirror: true, Conflict: "source", NoBackup: true}
 	if _, err := Run(t.Context(), o); err != nil {
 		t.Fatal(err)
 	}

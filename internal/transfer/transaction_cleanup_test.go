@@ -9,6 +9,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 	"modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
@@ -50,7 +51,7 @@ func TestSyncFailedNativeTransactionReleasesWriter(t *testing.T) {
 					t.Fatalf("reader observed uncommitted rows: %d %v", count, err)
 				}
 			})
-			o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true}
 			_, err := Run(ctx, o)
 			if !reached || err == nil {
 				t.Fatalf("transaction failure was not reached: reached=%t error=%v", reached, err)

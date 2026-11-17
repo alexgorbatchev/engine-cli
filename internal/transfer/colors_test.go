@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/db"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func transferColors(t *testing.T, library string) colors.State {
@@ -34,7 +35,7 @@ func TestSyncColorsScopeClearAndUndo(t *testing.T) {
 			if _, err := colors.Replace(t.Context(), source, transferColors(t, source).Revision(), before); err != nil {
 				t.Fatal(err)
 			}
-			o := Options{Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{PlaylistIDs: []int64{1}}, DryRun: true, NoBackup: true}
 			wantCount := 1
 			if root {
 				o.Scope, wantCount = Scope{Root: true}, 2
@@ -99,7 +100,7 @@ func TestSyncColorRevisionInvalidatesPlan(t *testing.T) {
 	destination, _ := library(t, "destination")
 	execSQL(t, s, `INSERT INTO Track(title,path,filename) VALUES('One','one.mp3','one.mp3')`)
 	put(t, filepath.Join(source, "one.mp3"), "audio")
-	o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 	preview, err := Run(t.Context(), o)
 	if err != nil {
 		t.Fatal(err)
@@ -138,7 +139,7 @@ func TestSyncColorPublicationFailureRetainsRecovery(t *testing.T) {
 	}
 	defer c.Close()
 	execSQL(t, c, `CREATE TRIGGER deny_color BEFORE INSERT ON TrackColor BEGIN SELECT RAISE(ABORT,'publication denied'); END`)
-	_, err = Run(t.Context(), Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
+	_, err = Run(t.Context(), Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true})
 	if progress.ErrorCode(err) != "history_recovery_required" {
 		t.Fatalf("publication failure lost pending recovery: %v", err)
 	}

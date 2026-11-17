@@ -74,7 +74,8 @@ func TestSmartlistRepairAPIReviewAndApply(t *testing.T) {
 	}
 	job := runAPIJob(t, s, "library.smartlist-repair.apply", string(smartlistRepairBody(t, review.PlanToken)))
 	result := job["result"].(map[string]any)
-	if result["applied"] != true || result["removed"] != float64(1) || result["plan_token"] != review.PlanToken || checks != 1 || job["history_id"] != nil {
+	// The job's guard, then the repair's own fresh check before publication.
+	if result["applied"] != true || result["removed"] != float64(1) || result["plan_token"] != review.PlanToken || checks != 2 || job["history_id"] != nil {
 		t.Fatalf("repair result/guard/history: %+v checks=%d", job, checks)
 	}
 	if err := d.QueryRow(`SELECT COUNT(*) FROM Smartlist WHERE listUuid='broken'`).Scan(&rows); err != nil || rows != 0 {

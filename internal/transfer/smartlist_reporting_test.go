@@ -3,6 +3,8 @@ package transfer
 import (
 	"reflect"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistOmissionAndPreparationAreDistinct(t *testing.T) {
@@ -11,7 +13,7 @@ func TestSmartlistOmissionAndPreparationAreDistinct(t *testing.T) {
 	execSQL(t, s, `INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('source-broken','Source broken','Missing;',NULL,NULL,'source rules')`)
 	execSQL(t, d, `INSERT INTO Smartlist(listUuid,title,parentPlaylistPath,nextPlaylistPath,nextListUuid,rules) VALUES('destination-broken','Destination broken','Missing;',NULL,NULL,'destination rules')`)
 	before := savedRows(t, s)
-	o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true, DryRun: true}
+	o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, NoBackup: true, DryRun: true}
 	preview, err := Run(t.Context(), o)
 	if err != nil || !preview.Applicable {
 		t.Fatalf("preview %+v, %v", preview, err)

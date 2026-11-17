@@ -16,10 +16,10 @@ func (s *Server) smartlistRepairOperations() []operation {
 			return operationResult(history.PreviewSmartlistRepair(ctx, s.config.LibraryDir))
 		}),
 		define("library.smartlist-repair.apply", true, []string{"plan_token"}, func(ctx context.Context, p smartlistRepairApplyParams) (any, error) {
-			return operationResult(history.ApplySmartlistRepair(ctx, s.config.LibraryDir, p.PlanToken))
+			return operationResult(history.ApplySmartlistRepair(ctx, s.config.LibraryDir, p.PlanToken, s.writeGuard))
 		}),
 		define("library.smartlist-repair.recover", true, nil, func(ctx context.Context, _ emptyParams) (any, error) {
-			return operationResult(history.RecoverSmartlistRepair(ctx, s.config.LibraryDir))
+			return operationResult(history.RecoverSmartlistRepair(ctx, s.config.LibraryDir, s.writeGuard))
 		}),
 	}
 }

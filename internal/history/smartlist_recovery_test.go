@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 func TestSmartlistRecoveryRollsBackKilledPublisher(t *testing.T) {
@@ -74,7 +76,7 @@ func TestSmartlistRecoveryRollsBackKilledPublisher(t *testing.T) {
 			if _, err := List(lib); err == nil {
 				t.Fatal("pending publication exposed history")
 			}
-			recovery, err := RecoverSmartlistRepair(ctx, lib)
+			recovery, err := RecoverSmartlistRepair(ctx, lib, testdesktop.AllowClosed)
 			if err != nil || recovery == nil || !recovery.RolledBack || recovery.RestoredTargets != 2 {
 				t.Fatalf("recovery: %+v %v", recovery, err)
 			}

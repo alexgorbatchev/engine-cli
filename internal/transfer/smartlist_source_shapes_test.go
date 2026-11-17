@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/testdesktop"
 )
 
 type sourceSmartlistShape struct {
@@ -55,7 +56,7 @@ func TestSmartlistSyncDamagedSourceShapes(t *testing.T) {
 			destination, database := library(t, "destination")
 			beforeSource := syncFileManifest(t, source)
 			beforeDestination := syncFileManifest(t, destination)
-			o := Options{Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
+			o := Options{CheckMutation: testdesktop.AllowClosed, Source: source, Destination: destination, Scope: Scope{Root: true}, DryRun: true, NoBackup: true}
 			preview, err := Run(t.Context(), o)
 			if err != nil || preview == nil || !preview.Applicable || preview.PlanToken == "" || preview.OperationID != "" {
 				t.Fatalf("preview: %+v, %v", preview, err)

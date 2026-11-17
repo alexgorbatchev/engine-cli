@@ -71,16 +71,7 @@ func applySync(ctx context.Context, o Options, source *collection) (report *Repo
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, lease.Close()) }()
-	if o.CheckMutation != nil {
-		err = o.CheckMutation(ctx)
-	} else {
-		var observed *systemcheck.Report
-		observed, err = systemcheck.Run(ctx, nil)
-		if err == nil {
-			err = systemcheck.AllowMutation(observed)
-		}
-	}
-	if err != nil {
+	if err := systemcheck.CheckMutation(ctx, o.CheckMutation); err != nil {
 		return nil, err
 	}
 	database, err := openLibrary(o.Destination, true)
