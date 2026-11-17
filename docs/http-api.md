@@ -1017,7 +1017,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `library.discover` | `paths?` (array; omitted or empty uses automatic locations) |
 | `library.restore` | `path` |
 | `library.history` | `library?`; defaults to the server's configured library |
-| `library.undo` | `library?`, `id?`, `force?`, `dry_run?`; omitted ID selects latest in that library |
+| `library.undo` | `library?`, `id?`, `force?`, `dry_run?`; omitted ID selects latest in that library. A non-forced undo that a later change conflicts with fails with `undo_conflict` and changes nothing |
 | `playlist.list` | `{}` |
 | `playlist.tree` | `{}`; see the playlist tree below |
 | `playlist.inspect`, `track.inspect` | Either `ids` (array of 1–500 positive numeric IDs) or `refs` (array of stable references) |

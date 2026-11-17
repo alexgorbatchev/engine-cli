@@ -3,6 +3,7 @@ package history
 import (
 	"bytes"
 	"context"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"os"
 	"path/filepath"
 	"testing"
@@ -99,8 +100,8 @@ func TestUndoDatabasePresenceConflicts(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); err == nil {
-				t.Fatal("accepted replacement conflict")
+			if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); progress.ErrorCode(err) != UndoConflictCode {
+				t.Fatalf("replacement conflict refusal = %v, code %q", err, progress.ErrorCode(err))
 			}
 			if _, err = Undo(ctx, lib, e.ID, UndoOptions{Force: true}); err != nil {
 				t.Fatal(err)

@@ -47,7 +47,7 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 			return fail(err)
 		}
 		if current != e.After.Files[path] && !force {
-			return fail(fmt.Errorf("undo conflict: file %s changed after this operation; inspect before using --force", path))
+			return fail(undoConflict("undo conflict: file %s changed after this operation; inspect before using --force", path))
 		}
 		p.files[path] = e.Before.Files[path]
 		p.expectedFiles[path] = current
@@ -98,7 +98,7 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 		p.expectedDB[path] = current
 		if before.Hash == "" {
 			if current != after.Hash && !force {
-				return fail(fmt.Errorf("undo conflict: database %s changed", path))
+				return fail(undoConflict("undo conflict: database %s changed", path))
 			}
 			p.databases[path] = ""
 			continue
@@ -106,7 +106,7 @@ func prepareUndo(ctx context.Context, lib, dir string, e *Entry, force bool) (*u
 		image := filepath.Join(work, hashText(path)+".db")
 		if paired || current == "" || after.Hash == "" {
 			if current != after.Hash && !force {
-				return fail(fmt.Errorf("undo conflict: database %s was replaced or removed", path))
+				return fail(undoConflict("undo conflict: database %s was replaced or removed", path))
 			}
 			if err = copyDatabase(ctx, before.Path, image); err != nil {
 				return fail(err)

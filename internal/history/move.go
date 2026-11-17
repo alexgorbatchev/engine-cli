@@ -114,13 +114,13 @@ func (p *undoPlan) prepareMoves(e *Entry, force bool) error {
 			continue
 		} // An interrupted rename did not consume its source.
 		if from.Hash != "" && from != e.After.Files[m.From] && !force {
-			return fmt.Errorf("undo conflict: move source %s has been recreated", m.From)
+			return undoConflict("undo conflict: move source %s has been recreated", m.From)
 		}
 		if to.Hash == "" {
 			return fmt.Errorf("cannot undo move: destination %s is missing", m.To)
 		}
 		if to != m.State && !force {
-			return fmt.Errorf("undo conflict: moved file %s changed", m.To)
+			return undoConflict("undo conflict: moved file %s changed", m.To)
 		}
 		p.expectedFiles[m.From] = from
 		p.expectedFiles[m.To] = to

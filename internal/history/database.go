@@ -208,7 +208,7 @@ func restoreImage(ctx context.Context, current, before, after, dst string, force
 			return err
 		}
 		if a != b && !force {
-			return fmt.Errorf("database-wide undo conflicts with later changes; inspect history before using --force")
+			return undoConflict("database-wide undo conflicts with later changes; inspect history before using --force")
 		}
 		return copyDatabase(ctx, before, dst)
 	}
@@ -268,7 +268,7 @@ func restoreImage(ctx context.Context, current, before, after, dst string, force
 			conflict = e
 			return sqlite.ChangesetAbort
 		}
-		conflict = fmt.Errorf("undo conflict in %s (%s); inspect history before using --force", op.TableName, kind)
+		conflict = undoConflict("undo conflict in %s (%s); inspect history before using --force", op.TableName, kind)
 		if !force {
 			return sqlite.ChangesetAbort
 		}

@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"errors"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"os"
 	"path/filepath"
 	"sync"
@@ -123,8 +124,12 @@ func TestMoveUndoConflicts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); err == nil {
+			_, err = Undo(ctx, lib, e.ID, UndoOptions{})
+			if err == nil {
 				t.Fatal("accepted conflict")
+			}
+			if (scenario == "edited" || scenario == "recreated source") && progress.ErrorCode(err) != UndoConflictCode {
+				t.Fatalf("conflict refusal = %v, code %q", err, progress.ErrorCode(err))
 			}
 			u, err := Undo(ctx, lib, e.ID, UndoOptions{Force: true})
 			if scenario != "edited" && scenario != "recreated source" {

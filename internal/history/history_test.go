@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"database/sql"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,8 +54,8 @@ func TestUndoPreservesLaterChangesAndForce(t *testing.T) {
 				if _, err = d.Exec("UPDATE Track SET title='Conflict'"); err != nil {
 					t.Fatal(err)
 				}
-				if _, err = Undo(ctx, lib, record.ID, UndoOptions{}); err == nil {
-					t.Fatal("accepted conflict")
+				if _, err = Undo(ctx, lib, record.ID, UndoOptions{}); progress.ErrorCode(err) != UndoConflictCode {
+					t.Fatalf("conflict refusal = %v, code %q", err, progress.ErrorCode(err))
 				}
 			}
 			if _, err = Undo(ctx, lib, record.ID, UndoOptions{Force: force}); err != nil {
@@ -89,8 +90,8 @@ func TestUndoFileConflictAndPreview(t *testing.T) {
 	if err = os.WriteFile(p, []byte("external replacement"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = Undo(ctx, lib, r.ID, UndoOptions{}); err == nil {
-		t.Fatal("accepted file conflict")
+	if _, err = Undo(ctx, lib, r.ID, UndoOptions{}); progress.ErrorCode(err) != UndoConflictCode {
+		t.Fatalf("file conflict refusal = %v, code %q", err, progress.ErrorCode(err))
 	}
 	if _, err = Undo(ctx, lib, r.ID, UndoOptions{Force: true, DryRun: true}); err != nil {
 		t.Fatal(err)

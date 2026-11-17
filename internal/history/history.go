@@ -368,7 +368,7 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	}
 	if target.RelocationFrom != "" {
 		if _, e := os.Lstat(target.RelocationFrom); !os.IsNotExist(e) {
-			return nil, fmt.Errorf("undo conflict: previous library location is occupied")
+			return nil, undoConflict("undo conflict: previous library location is occupied")
 		}
 	}
 	recovered := target.After == nil
