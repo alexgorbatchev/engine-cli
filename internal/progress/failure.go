@@ -47,5 +47,8 @@ func ErrorCode(err error) string {
 	if errors.As(err, &exit) {
 		return "tool_failed"
 	}
+	if isLibraryBusy(err) {
+		return LibraryBusyCode
+	}
 	return "operation_failed"
 }

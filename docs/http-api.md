@@ -322,6 +322,8 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `output_invalid` | agent-ask-cli rejected the harness response, or Engine received an invalid wrapper result. Retry or choose another model. |
 | `output_failed` | The wrapper or CLI could not write a batch result. Check the output destination; results already delivered remain valid. |
 | `llm_response_invalid` | A batch failed identity or metadata checks. Completed earlier suggestions remain available; review them before retrying unfinished work. |
+| `library_busy` | Another connection, such as Engine DJ Desktop or another write, kept an Engine database busy or locked past its busy timeout. Nothing was changed; retry when it is free. |
+| `undo_conflict` | A non-forced undo found a later change to the same data. Nothing was undone; preview the undo to see the later changes. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
 | `operation_failed` | Unclassified failure. Inspect current state before retrying. |
