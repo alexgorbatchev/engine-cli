@@ -327,6 +327,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `metadata_edit_stale` | The tracks or the edit changed since the reviewed `track.batch.update` plan. Review again before applying; nothing was changed. |
 | `metadata_edit_unchanged` | The reviewed `track.batch.update` plan changes nothing: the tracks already have these values. Nothing was changed. |
 | `batch_limit_exceeded` | A list parameter holds more items than the operation's catalog `limits` allow in one job. Nothing started; split the selection into jobs of at most that many items. |
+| `restore_plan_stale` | The backup, the library's history or its companion stores changed after a restore was reviewed, so its `plan_token` no longer matches. Nothing was restored; review it again. |
 | `undo_plan_stale` | The library or its history changed after an undo was reviewed, so its `plan_token` no longer matches. Nothing was undone; review it again. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
@@ -1045,6 +1046,19 @@ A pending (interrupted) entry cannot be reviewed; recover it with `force:true` a
 
 `library.undo.status` takes `library?` and the `plan_token` of a reviewed apply whose response was lost. It returns `{state, history_id?}`: `applied` with the undo's history entry, `pending` while it runs or awaits recovery, `failed`, or `not_applied` when no undo applied that token.
 
+### Labelled backups and restore review
+
+`library.backup` accepts `out_dir?`, `label?` (at most 120 characters, no control characters) and `reason?`. It writes a `backup.json` record into the backup with its label, reason, `kind` (`manual`) and creation time, and, for a person's backup, `history_head`: the newest history entry when it was taken. Engine's automatic backup before each write records `kind: "automatic"` and is placed by time. Cancelling stops the backup without publishing a partial folder.
+
+`library.backups` accepts `out_dir?` and returns `{backups, kept_audio}`. `backups` lists every backup newest first, each with `path`, `name`, `timestamp`, `dbFiles`, `artFiles`, `sizeBytes`, `label`, `reason`, `kind` (empty for backups written before records existed), `history_head`, `precedes` (for an automatic backup, the history entry recorded within two minutes after it: the change it was taken before) and `readable` (whether it holds a database a restore could use). `kept_audio` is `{files, bytes}`: the audio copies Engine's history store keeps so Undo can put them back, such as originals rewritten by tag writes or removed with their tracks, each stored copy counted once.
+
+`library.restore` accepts `path`, `dry_run?` and `plan_token?`.
+
+1. Submit `dry_run:true` to review. The dry run is a read: it changes nothing and needs no Desktop check. It returns `{backup, contents, rolls_back, keeps_artwork, removes_stores, audio_unchanged, undoable, plan_token}`: the backup as `library.backups` lists it; `contents` as `{databases, artwork_files, stores}`; `rolls_back`, the history entries recorded after the backup, newest first, each with `id`, `operation`, `created`, `state` and `summary`; `keeps_artwork`, the artwork files the library has now that the backup lacks, which restore leaves in place; `removes_stores`, companion stores the library has now that the backup records as absent, which restore removes; `audio_unchanged: true`, since restore never changes audio files; and `undoable: true`, since the restore records history.
+2. Apply with the same `path` and the `plan_token`. The token binds the backup's files, the library's history and its companion stores; if any changed, the restore fails with `restore_plan_stale` before Engine's automatic backup or any change. A restore without a token runs as before.
+
+An unreadable or missing backup fails the review and the restore with `backup_unavailable`.
+
 ### Bounded PCM generations
 
 `POST /v1/tracks/{id}/pcm` and `POST /v1/staging/{id}/pcm` prepare local audio for frame-addressed playback. The same routes are available under the selected `/v1/libraries/{library}` prefix. The body is exactly `{"sample_rate":48000}` or `{"sample_rate":44100}`, with `Content-Type: application/json`; additional fields are rejected. Clients cannot supply media paths or decoder arguments. The collection read barrier covers source resolution and opening a regular file, then releases before native decoding. Unix opens initially use native nonblocking flags so a FIFO cannot wait for a writer while holding that barrier; regular-file validation and restoring blocking mode operate on the retained descriptor. Staged opens retain the native root's path confinement. Preparing PCM does not modify the collection or create history.
@@ -1075,10 +1089,11 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `migrate.import` | `path`, `name`, `missing_media?`, `conflicts?`, `allow_unsupported?`, `dry_run?`, `plan_token?`; see the reviewed Rekordbox import contract below |
 | `library.verify`, `library.refresh`, `library.prune` | `{}` |
 | `library.sync` | `source`, `destination`, `scope`, `playlist_map?`, `dry_run?`, `mirror?`, `conflict?`, `media?`, `plan_token?` |
-| `library.backup`, `library.backups` | `out_dir?` |
+| `library.backup` | `out_dir?`, `label?`, `reason?`; see labelled backups and restore review |
+| `library.backups` | `out_dir?`; returns `{backups, kept_audio}` |
 | `library.fixture.capture` | `before`, `after`, `out_dir` |
 | `library.discover` | `paths?` (array; omitted or empty uses automatic locations) |
-| `library.restore` | `path` |
+| `library.restore` | `path`, `dry_run?`, `plan_token?`; see labelled backups and restore review |
 | `library.history` | `library?`; defaults to the server's configured library; see undo history and reviewed undo |
 | `library.undo` | `library?`, `id?` or `ids?`, `exclude?`, `keep_later?`, `plan_token?`, `force?`, `dry_run?`; omitted IDs select the latest in that library. A non-forced, unreviewed undo that a later change conflicts with fails with `undo_conflict` and changes nothing; see undo history and reviewed undo |
 | `library.undo.status` | `library?`, `plan_token` |

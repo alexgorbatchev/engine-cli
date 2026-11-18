@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
-	"github.com/alexgorbatchev/engine-cli/internal/backup"
 	"github.com/alexgorbatchev/engine-cli/internal/discovery"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
@@ -59,15 +58,6 @@ func (s *Server) libraryOperations() []operation {
 				return systemcheck.AllowMutation(r)
 			}
 			return transfer.Run(ctx, p)
-		}),
-		define("library.backup", false, nil, func(ctx context.Context, p directoryParams) (any, error) {
-			return backup.CreateBackup(ctx, s.config.LibraryDir, p.OutDir)
-		}),
-		define("library.backups", false, nil, func(ctx context.Context, p directoryParams) (any, error) {
-			return backup.ListBackups(s.config.LibraryDir, p.OutDir)
-		}),
-		define("library.restore", true, []string{"path"}, func(ctx context.Context, p pathParams) (any, error) {
-			return nil, backup.RestoreBackup(ctx, p.Path, s.config.LibraryDir)
 		}),
 		define("library.prune", true, nil, func(ctx context.Context, _ emptyParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {

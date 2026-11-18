@@ -7,9 +7,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
@@ -21,6 +23,17 @@ type BackupInfo struct {
 	DBFiles   int       `json:"dbFiles"`
 	ArtFiles  int       `json:"artFiles"`
 	SizeBytes int64     `json:"sizeBytes"`
+	// Label, Reason and Kind come from the backup's own record; backups written
+	// before records existed list with an empty Kind.
+	Label  string `json:"label,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Kind   string `json:"kind,omitempty"`
+	// HistoryHead is the newest history entry when a person's backup was taken.
+	HistoryHead string `json:"history_head,omitempty"`
+	// Precedes is the history entry an automatic backup was taken before.
+	Precedes string `json:"precedes,omitempty"`
+	// Readable reports whether the backup holds a database a restore could use.
+	Readable bool `json:"readable"`
 }
 
 // GetDefaultBackupDir keeps snapshots beside their source library.
@@ -37,10 +50,23 @@ func GetDefaultBackupDir(lib string) (string, error) {
 
 // CreateBackup creates an atomic timestamped snapshot of Engine DJ databases and Artwork cache.
 func CreateBackup(ctx context.Context, engineLibDir, outDir string) (*BackupInfo, error) {
-	return createBackup(ctx, engineLibDir, outDir, true)
+	return CreateBackupWith(ctx, engineLibDir, outDir, Options{Kind: KindManual})
 }
 
-func createBackup(ctx context.Context, engineLibDir, outDir string, artwork bool) (*BackupInfo, error) {
+// CreateBackupWith creates a person's backup with its label and reason. It
+// records the newest history entry so the backup has a place in the timeline.
+func CreateBackupWith(ctx context.Context, engineLibDir, outDir string, opts Options) (*BackupInfo, error) {
+	opts.Label = strings.TrimSpace(opts.Label)
+	if err := ValidateLabel(opts.Label); err != nil {
+		return nil, err
+	}
+	if opts.Kind == "" {
+		opts.Kind = KindManual
+	}
+	return createBackup(ctx, engineLibDir, outDir, true, opts)
+}
+
+func createBackup(ctx context.Context, engineLibDir, outDir string, artwork bool, opts Options) (*BackupInfo, error) {
 	progress.Stage(ctx, "backup", 0)
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -119,6 +145,19 @@ func createBackup(ctx context.Context, engineLibDir, outDir string, artwork bool
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	meta := metadata{Version: 1, Label: opts.Label, Reason: opts.Reason, Kind: opts.Kind, Created: timestamp}
+	// An automatic backup runs under the history owner, which a history read
+	// would wait for; it is placed by time instead.
+	if opts.Kind == KindManual {
+		if entries, err := history.List(engineLibDir); err == nil && len(entries) > 0 {
+			meta.HistoryHead = entries[0].ID
+		}
+	}
+	metaBytes, err := writeMetadata(ctx, staging, meta)
+	if err != nil {
+		return nil, err
+	}
+	totalSize += metaBytes
 	if err := os.Rename(staging, targetDir); err != nil {
 		return nil, fmt.Errorf("publishing backup snapshot: %w", err)
 	}
@@ -126,12 +165,17 @@ func createBackup(ctx context.Context, engineLibDir, outDir string, artwork bool
 	progress.Stage(ctx, "backup.saved", 95)
 
 	return &BackupInfo{
-		Path:      targetDir,
-		Name:      backupName,
-		Timestamp: timestamp,
-		DBFiles:   dbCount,
-		ArtFiles:  artCount,
-		SizeBytes: totalSize,
+		Path:        targetDir,
+		Name:        backupName,
+		Timestamp:   timestamp,
+		DBFiles:     dbCount,
+		ArtFiles:    artCount,
+		SizeBytes:   totalSize,
+		Label:       meta.Label,
+		Reason:      meta.Reason,
+		Kind:        meta.Kind,
+		HistoryHead: meta.HistoryHead,
+		Readable:    dbCount > 0,
 	}, nil
 }
 
@@ -190,7 +234,7 @@ func AutoBackupIfNeeded(ctx context.Context, engineLibDir string, noBackup bool)
 	if noBackup {
 		return nil, nil
 	}
-	info, err := createBackup(progress.Range(ctx, 0, 10), engineLibDir, "", false)
+	info, err := createBackup(progress.Range(ctx, 0, 10), engineLibDir, "", false, Options{Kind: KindAutomatic})
 	if err == nil {
 		progress.Stage(ctx, "backup.saved", 10)
 	}
@@ -234,7 +278,7 @@ func ListBackups(lib, backupBaseDir string) ([]BackupInfo, error) {
 						totalSize += info.Size()
 						if strings.HasSuffix(strings.ToLower(d.Name()), ".db") {
 							dbCount++
-						} else if path != filepath.Join(fullPath, companionFolder, companionManifest) {
+						} else if path != filepath.Join(fullPath, companionFolder, companionManifest) && path != filepath.Join(fullPath, metadataName) {
 							artCount++
 						}
 					}
@@ -242,23 +286,35 @@ func ListBackups(lib, backupBaseDir string) ([]BackupInfo, error) {
 				return nil
 			})
 
-			info, _ := e.Info()
-			ts := time.Now()
-			if info != nil {
-				ts = info.ModTime()
+			meta, hasMeta := readMetadata(fullPath)
+			ts, named := folderTime(e.Name())
+			if hasMeta {
+				ts = meta.Created
+			} else if !named {
+				ts = time.Now()
+				if info, _ := e.Info(); info != nil {
+					ts = info.ModTime()
+				}
 			}
 
 			results = append(results, BackupInfo{
-				Path:      fullPath,
-				Name:      e.Name(),
-				Timestamp: ts,
-				DBFiles:   dbCount,
-				ArtFiles:  artCount,
-				SizeBytes: totalSize,
+				Path:        fullPath,
+				Name:        e.Name(),
+				Timestamp:   ts,
+				DBFiles:     dbCount,
+				ArtFiles:    artCount,
+				SizeBytes:   totalSize,
+				Label:       meta.Label,
+				Reason:      meta.Reason,
+				Kind:        meta.Kind,
+				HistoryHead: meta.HistoryHead,
+				Readable:    dbCount > 0,
 			})
 		}
 	}
 
+	// Newest first, as the Backups timeline reads them.
+	sort.SliceStable(results, func(i, j int) bool { return results[i].Timestamp.After(results[j].Timestamp) })
 	return results, nil
 }
 

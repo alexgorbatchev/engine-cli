@@ -646,3 +646,8 @@ func laterFileChange(all []Entry, record *Entry, path string) *ReviewRecord {
 	}
 	return nil
 }
+
+// RecordOf names an entry the way reviews do: its operation, time, state and summary.
+func RecordOf(e *Entry) ReviewRecord {
+	return reviewRecord(e)
+}

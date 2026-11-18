@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
@@ -225,7 +226,7 @@ Automatically saves a safety backup of your library before making changes unless
 
 func newLibraryBackupCommand() *cobra.Command {
 	var listBackups bool
-	var outDirFlag string
+	var outDirFlag, label, reason string
 
 	cmd := &cobra.Command{
 		Use:   "backup [path]",
@@ -272,14 +273,18 @@ By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optiona
 				if agent.IsAgentMode() {
 					result = fmt.Appendf(result, "count: %d\n", len(backups))
 					for _, b := range backups {
-						result = fmt.Appendf(result, "backup: %s | timestamp: %s | size_bytes: %d\n", b.Path, b.Timestamp.Format("2006-01-02T15:04:05Z"), b.SizeBytes)
+						result = fmt.Appendf(result, "backup: %s | timestamp: %s | size_bytes: %d | kind: %s | label: %s\n", b.Path, b.Timestamp.Format("2006-01-02T15:04:05Z"), b.SizeBytes, b.Kind, b.Label)
 					}
 					return nil
 				}
 
 				result = fmt.Appendf(result, "Available Backups in %s:\n", destDir)
 				for _, b := range backups {
-					result = fmt.Appendf(result, "  - %s (%s, %d bytes)\n", b.Path, b.Timestamp.Format("2006-01-02 15:04:05"), b.SizeBytes)
+					name := b.Label
+					if name == "" {
+						name = b.Kind
+					}
+					result = fmt.Appendf(result, "  - %s (%s, %d bytes) %s\n", b.Path, b.Timestamp.Format("2006-01-02 15:04:05"), b.SizeBytes, name)
 				}
 				return nil
 			}
@@ -289,7 +294,7 @@ By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optiona
 					return err
 				}
 			}
-			info, err := backup.CreateBackup(cmd.Context(), libDirFlag, destDir)
+			info, err := backup.CreateBackupWith(cmd.Context(), libDirFlag, destDir, backup.Options{Label: label, Reason: reason, Kind: backup.KindManual})
 			if err != nil {
 				return err
 			}
@@ -314,18 +319,26 @@ By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optiona
 	}
 
 	cmd.Flags().BoolVar(&listBackups, "list", false, "List available backup snapshots without creating a new backup")
+	cmd.Flags().StringVar(&label, "label", "", "Name for this backup, such as \"Before cleanup\"")
+	cmd.Flags().StringVar(&reason, "reason", "", "Why this backup was made")
 	cmd.Flags().StringVarP(&outDirFlag, "out-dir", "o", "", "Destination directory for backup snapshots (default: <lib-dir>/.engine-cli/backups)")
 
 	return cmd
 }
 
 func newLibraryRestoreCommand() *cobra.Command {
-	return &cobra.Command{
+	var dryRun bool
+	var planToken string
+	c := &cobra.Command{
 		Use:   "restore <path>",
 		Short: "Restore your Engine DJ library from a previous backup snapshot",
 		Long: `Restore your Engine DJ SQLite databases and Artwork/ cache from a previous backup snapshot directory.
 
 Close Engine DJ before restoring.
+
+Use --dry-run to review the restore first: what the backup holds, the later changes it rolls back, the newer
+artwork it keeps, the companion stores it removes and a plan token. Apply with --plan-token to refuse a backup
+or library that changed since the review. Restore never changes audio files.
 
 Arguments:
   <path>   The full path to the backup snapshot folder. Use 'engine-cli library backup --list' to find snapshots.`,
@@ -336,6 +349,23 @@ Arguments:
 			var result []byte
 			defer func() { err = errors.Join(err, writeLibraryResult(cmd, result)) }()
 			snapshotPath := args[0]
+			if dryRun {
+				if planToken != "" {
+					return fmt.Errorf("--plan-token applies a reviewed restore; --dry-run returns a new one")
+				}
+				review, err := backup.ReviewRestore(cmd.Context(), snapshotPath, libDirFlag)
+				if err != nil {
+					return err
+				}
+				result = fmt.Appendf(result, "backup: %s\nlabel: %s\ndatabases: %d\nartwork_files: %d\nrolls_back: %d\nkeeps_artwork: %d\nremoves_stores: %s\naudio_unchanged: true\nplan_token: %s\ndry_run: true\n",
+					review.Backup.Path, review.Backup.Label, review.Contents.Databases, review.Contents.ArtworkFiles, len(review.RollsBack), review.KeepsArtwork, strings.Join(review.RemovesStores, ","), review.PlanToken)
+				return nil
+			}
+			if planToken != "" {
+				if err := backup.CheckRestorePlan(cmd.Context(), snapshotPath, libDirFlag, planToken); err != nil {
+					return err
+				}
+			}
 			bkInfo, err := backup.AutoBackupIfNeeded(cmd.Context(), libDirFlag, noBackupFlag)
 			if err != nil {
 				return fmt.Errorf("automatic safety backup before restore: %w", err)
@@ -377,6 +407,9 @@ Arguments:
 			return nil
 		},
 	}
+	c.Flags().BoolVar(&dryRun, "dry-run", false, "Review what the restore rolls back, keeps and removes without changing the library")
+	c.Flags().StringVar(&planToken, "plan-token", "", "Restore only if the backup and library still match the dry run that returned this token")
+	return c
 }
 
 func newLibraryPruneCommand() *cobra.Command {

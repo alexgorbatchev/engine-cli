@@ -66,9 +66,13 @@ By default, backups are saved in <lib-dir>/.engine-cli/backups, or to an optiona
 
 Captures each database's committed SQLite content, including WAL pages, independently into Database2/*.db and Root/*.db, copies Artwork/*, then atomically publishes a unique timestamped snapshot directory in the library’s .engine-cli/backups directory or custom path.
 
+Each backup records its label, reason, kind and creation time in backup.json. The list prints them newest first.
+
 - `--help, -h` (bool; default `false`): help for backup.
+- `--label` (string; default ``): Name for this backup, such as "Before cleanup".
 - `--list` (bool; default `false`): List available backup snapshots without creating a new backup.
 - `--out-dir, -o` (string; default ``): Destination directory for backup snapshots (default: <lib-dir>/.engine-cli/backups).
+- `--reason` (string; default ``): Why this backup was made.
 
 ## `engine-cli library create`
 
@@ -251,12 +255,19 @@ Restore your Engine DJ SQLite databases and Artwork/ cache from a previous backu
 
 Close Engine DJ before restoring.
 
+Use --dry-run to review the restore first: what the backup holds, the later changes it rolls back, the newer
+artwork it keeps, the companion stores it removes and a plan token. Apply with --plan-token to refuse a backup
+or library that changed since the review. Restore never changes audio files.
+
 Arguments:
   <path>   The full path to the backup snapshot folder. Use 'engine-cli library backup --list' to find snapshots.
 
 Overwrites target Engine Library databases and Artwork/ cache with files from specified snapshot directory.
+An outdated plan token fails with `restore_plan_stale` and changes nothing.
 
+- `--dry-run` (bool; default `false`): Review what the restore rolls back, keeps and removes without changing the library.
 - `--help, -h` (bool; default `false`): help for restore.
+- `--plan-token` (string; default ``): Restore only if the backup and library still match the dry run that returned this token.
 
 ## `engine-cli library smartlist-repair`
 
