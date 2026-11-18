@@ -3,6 +3,7 @@ package main
 import (
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
@@ -39,5 +40,30 @@ func TestBulkMetadataCommand(t *testing.T) {
 	}
 	if _, err := executeCommand("-l", lib, "--no-backup", "track", "batch", "update", "1", "999", "--title", "Missing"); err == nil {
 		t.Fatal("accepted missing track")
+	}
+}
+
+func TestBulkMetadataCommandReviewsBeforeApplying(t *testing.T) {
+	t.Setenv("AGENT", "0")
+	lib := createTestLibrary(t)
+	plan := runJSON(t, lib, "track", "batch", "update", "1", "--genre", "House", "--dry-run", "--json")
+	token, _ := plan["plan_token"].(string)
+	if token == "" || plan["can_apply"] != true || plan["changed_fields"] != float64(1) {
+		t.Fatal(plan)
+	}
+	review, err := executeCommand("-l", lib, "--no-backup", "track", "batch", "update", "1", "999", "--genre", "House", "--dry-run")
+	if err != nil || !strings.Contains(review, `Track 1, genre: (empty) -> "House"`) || !strings.Contains(review, "Not in this library: 999") || !strings.Contains(review, "Cannot apply") {
+		t.Fatalf("review=%s err=%v", review, err)
+	}
+	entries, err := history.List(lib)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("review recorded history: %v %v", entries, err)
+	}
+	applied, err := executeCommand("-l", lib, "--no-backup", "track", "batch", "update", "1", "--genre", "House", "--plan-token", token)
+	if err != nil || !strings.Contains(applied, "Updated 1 fields across 1 tracks") {
+		t.Fatalf("apply=%s err=%v", applied, err)
+	}
+	if _, err := executeCommand("-l", lib, "--no-backup", "track", "batch", "update", "1", "--genre", "Techno", "--plan-token", token); err == nil {
+		t.Fatal("applied a stale review")
 	}
 }

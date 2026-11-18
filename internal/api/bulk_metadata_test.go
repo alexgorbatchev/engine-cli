@@ -42,7 +42,9 @@ func TestBulkMetadataAndUndo(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("entries=%v error=%v", entries, err)
 	}
-	if !reflect.DeepEqual(job["result"], decodeJSON(t, `{"track_ids":[2,1]}`)) {
+	result := job["result"].(map[string]any)
+	second := map[string]any{"track_id": float64(2), "title": "Second", "changes": decodeJSON(t, `[{"field":"artist","before":"Other","after":"Together"},{"field":"year","before":null,"after":2026},{"field":"rating_stars","before":null,"after":4}]`)}
+	if !reflect.DeepEqual(result["track_ids"], decodeJSON(t, `[2,1]`)) || !reflect.DeepEqual(result["tracks"].([]any)[0], second) {
 		t.Fatalf("result=%+v", job)
 	}
 	var count int
@@ -120,5 +122,33 @@ func TestBulkMetadataValidation(t *testing.T) {
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("body=%s status=%d response=%s", body, w.Code, w.Body)
 		}
+	}
+}
+
+// A dry run reviews per-track changes without a snapshot or history; an apply bound to its token records one undo,
+// and a stale token is refused before any snapshot or history entry.
+func TestBulkMetadataReviewBindsApply(t *testing.T) {
+	s, lib := testAPI(t)
+	s.config.NoBackup = false
+	preview := runAPIJob(t, s, "track.batch.update", `{"identifiers":["1"],"genre":"House","dry_run":true}`)
+	plan := preview["result"].(map[string]any)
+	if preview["history_id"] != nil || plan["can_apply"] != true || plan["changed_fields"] != float64(1) {
+		t.Fatalf("preview=%+v", preview)
+	}
+	if snapshots, err := backup.ListBackups(lib, ""); err != nil || len(snapshots) != 0 {
+		t.Fatalf("preview snapshots=%v error=%v", snapshots, err)
+	}
+	token := plan["plan_token"].(string)
+	applied := runAPIJob(t, s, "track.batch.update", `{"identifiers":["1"],"genre":"House","plan_token":"`+token+`"}`)
+	if applied["history_id"] == nil || !reflect.DeepEqual(applied["result"].(map[string]any)["track_ids"], decodeJSON(t, `[1]`)) {
+		t.Fatalf("applied=%+v", applied)
+	}
+	stale := awaitAPIJob(t, s, submitAPIJob(t, s, "track.batch.update", `{"identifiers":["1"],"genre":"Techno","plan_token":"`+token+`"}`))
+	if stale["state"] != "failed" || stale["error"].(map[string]any)["code"] != "metadata_edit_stale" || stale["history_id"] != nil {
+		t.Fatalf("stale=%+v", stale)
+	}
+	entries, err := history.List(lib)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("entries=%v error=%v", entries, err)
 	}
 }

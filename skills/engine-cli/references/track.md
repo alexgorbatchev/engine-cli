@@ -156,15 +156,19 @@ Usage: `engine-cli track batch update <tr|id|path...> [flags]`.
 - `--artist` (string; default ``): Update the track's artist.
 - `--comment` (string; default ``): Update the track's comment.
 - `--composer` (string; default ``): Update the track's composer.
+- `--dry-run` (bool; default `false`): Review each track's changes without changing the collection.
 - `--genre` (string; default ``): Update the track's genre.
 - `--help, -h` (bool; default `false`): help for update.
-- `--json` (bool; default `false`): Print the edited track IDs as JSON.
+- `--json` (bool; default `false`): Print the review or the per-track changes as JSON.
 - `--key` (string; default ``): Musical key in Camelot (8A), Open Key (1m), or by name (Am, F#m, Bb); none clears it.
 - `--label` (string; default ``): Update the track's label.
+- `--plan-token` (string; default ``): Apply only the exact reviewed plan; without it the edit applies at once.
 - `--rating` (int64; default `0`): Star rating from 0 (unrated) to 5.
 - `--remixer` (string; default ``): Update the track's remixer.
 - `--title` (string; default ``): Update the track's title.
 - `--year` (int64; default `0`): Release year (0 clears the year).
+
+Review first with `--dry-run`: it lists each changed field as before -> after, names selectors that match no track, and prints a plan token. Applying with identical options and `--plan-token` writes exactly that review and refuses with `metadata_edit_stale` once the tracks change. Without a token the edit applies at once. Only changed fields are written; one undo restores the batch.
 
 ## `engine-cli track candidates`
 
