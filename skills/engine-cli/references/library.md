@@ -352,7 +352,7 @@ Undo a library operation, preserving unrelated later edits
 
 Usage: `engine-cli library undo [id...] [flags]`.
 
-Undo the latest operation, or operation IDs from library history; several IDs undo together, newest first, as one operation. Use --dry-run to review what the undo changes, the later edits it meets and a plan token, then apply the same IDs with --plan-token, which keeps those later edits. Conflicts are otherwise refused unless --keep-later or --force is given. Close Engine DJ before modifying the library. Forced undo also retains recovery history.
+Undo the latest operation, or operation IDs from library history; several IDs undo together, newest first, as one operation. Use --dry-run to review what the undo changes, the later edits it meets and a plan token, then apply the same IDs with --plan-token, which keeps those later edits. Conflicts are otherwise refused unless --keep-later or --force is given. While an interrupted operation awaits recovery, every other undo is refused; review the newest interrupted operation's recovery with its ID and --dry-run, then apply it with --force. Close Engine DJ before modifying the library. Forced undo also retains recovery history.
 
 A dry run prints each record, counts of updated, restored and removed tracks,
 playlists and memberships, one `change:` line per row with its entity selector,

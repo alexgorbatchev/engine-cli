@@ -69,7 +69,7 @@ func resolveSmartlistEvidence(ctx context.Context, path string, current *db.Smar
 	for i := len(previous) - 1; i >= 0; i-- {
 		entry := previous[i]
 		if entry.After == nil {
-			return nil, &progress.Error{Code: "history_recovery_required", Cause: fmt.Errorf("operation %s is incomplete", entry.ID)}
+			return nil, &progress.Error{Code: RecoveryRequiredCode, Cause: fmt.Errorf("operation %s is incomplete", entry.ID)}
 		}
 		if entry.Scope != ScopeCollection {
 			continue

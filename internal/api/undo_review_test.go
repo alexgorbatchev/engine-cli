@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -205,4 +206,54 @@ func TestAPIUndoReviewReportsRemovalsAndRunsWhileDesktopRuns(t *testing.T) {
 		t.Fatalf("playlist review=%+v", playlist)
 	}
 	expectUndoCode(t, s, reviewRequest(t, map[string]any{"id": created}), "engine_desktop_running")
+}
+
+func interruptHistoryEntry(t *testing.T, lib, id string) {
+	t.Helper()
+	path := filepath.Join(lib, ".engine-cli", "history", id+".json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var entry map[string]any
+	if err := json.Unmarshal(data, &entry); err != nil {
+		t.Fatal(err)
+	}
+	delete(entry, "after")
+	entry["state"] = "pending"
+	if data, err = json.Marshal(entry); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAPIUndoWaitsForInterruptedEntryRecovery(t *testing.T) {
+	s, lib := testAPI(t)
+	addSummaryTrack(t, lib)
+	earlier := historyIdentity(t, runAPIJob(t, s, "track.update", `{"identifier":"1","comment":"earlier"}`))
+	interrupted := historyIdentity(t, runAPIJob(t, s, "track.update", `{"identifier":"2","genre":"House"}`))
+	interruptHistoryEntry(t, lib, interrupted)
+	for _, body := range []map[string]any{
+		{"id": earlier},
+		{"id": earlier, "dry_run": true},
+		{"id": earlier, "force": true},
+		{"ids": []string{interrupted, earlier}, "force": true},
+		{"id": interrupted},
+	} {
+		expectUndoCode(t, s, reviewRequest(t, body), "history_recovery_required")
+	}
+	review := undoReview(t, runAPIJob(t, s, "library.undo", reviewRequest(t, map[string]any{"id": interrupted, "dry_run": true})))
+	if len(review.Records) != 1 || review.Records[0].State != "pending" || len(review.Changes) != 1 || review.Changes[0].TrackID != 2 || review.PlanToken == "" {
+		t.Fatalf("recovery review=%+v", review)
+	}
+	if trackGenre(t, lib, 2) != "House" {
+		t.Fatal("recovery review changed the library")
+	}
+	runAPIJob(t, s, "library.undo", reviewRequest(t, map[string]any{"id": interrupted, "force": true, "plan_token": review.PlanToken}))
+	if trackGenre(t, lib, 2) != "Techno" {
+		t.Fatal("recovery did not restore the genre")
+	}
+	runAPIJob(t, s, "library.undo", reviewRequest(t, map[string]any{"id": earlier}))
 }

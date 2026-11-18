@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
 func TestUndoPreservesExactRealValues(t *testing.T) {
@@ -146,12 +148,13 @@ func TestInterruptedOperationRecovery(t *testing.T) {
 	if _, err = Run(ctx, lib, "blocked", ScopeCollection, nil, func(context.Context) error { t.Fatal("ran pending operation"); return nil }); err == nil {
 		t.Fatal("accepted pending")
 	}
-	if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); err == nil {
-		t.Fatal("recovered without force")
+	if _, err = Undo(ctx, lib, e.ID, UndoOptions{}); progress.ErrorCode(err) != RecoveryRequiredCode {
+		t.Fatalf("recovery without force = %v, code %q", err, progress.ErrorCode(err))
 	}
-	// Engine cannot review a pending entry; only forced recovery applies it.
-	if _, err = ReviewUndo(ctx, lib, UndoRequest{IDs: []string{e.ID}, Force: true}); err == nil {
-		t.Fatal("reviewed a pending entry")
+	// A pending entry's review reads what recovery restores; only forced recovery applies it.
+	review, err := ReviewUndo(ctx, lib, UndoRequest{IDs: []string{e.ID}})
+	if err != nil || len(review.Changes) != 1 || review.Records[0].State != "pending" {
+		t.Fatalf("recovery review = %+v, %v", review, err)
 	}
 	if _, err = Undo(ctx, lib, e.ID, UndoOptions{Force: true}); err != nil {
 		t.Fatal(err)

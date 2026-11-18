@@ -79,7 +79,7 @@ func newUndoCommand() *cobra.Command {
 	var statePath, planToken string
 	var exclude []string
 	c := &cobra.Command{Use: "undo [id...]", Short: "Undo a library operation, preserving unrelated later edits", Args: cobra.ArbitraryArgs,
-		Long: "Undo the latest operation, or operation IDs from library history; several IDs undo together, newest first, as one operation. Use --dry-run to review what the undo changes, the later edits it meets and a plan token, then apply the same IDs with --plan-token, which keeps those later edits. Conflicts are otherwise refused unless --keep-later or --force is given. Close Engine DJ before modifying the library. Forced undo also retains recovery history.",
+		Long: "Undo the latest operation, or operation IDs from library history; several IDs undo together, newest first, as one operation. Use --dry-run to review what the undo changes, the later edits it meets and a plan token, then apply the same IDs with --plan-token, which keeps those later edits. Conflicts are otherwise refused unless --keep-later or --force is given. While an interrupted operation awaits recovery, every other undo is refused; review the newest interrupted operation's recovery with its ID and --dry-run, then apply it with --force. Close Engine DJ before modifying the library. Forced undo also retains recovery history.",
 		RunE: func(c *cobra.Command, args []string) (err error) {
 			if dryRun {
 				if planToken != "" {

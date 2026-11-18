@@ -152,7 +152,7 @@ func selectUndoTargets(all []Entry, ids []string) ([]*Entry, error) {
 			return nil, err
 		}
 		if target.After == nil {
-			return nil, fmt.Errorf("operation %s was interrupted; recover it on its own", target.ID)
+			return nil, &progress.Error{Code: RecoveryRequiredCode, Cause: fmt.Errorf("operation %s was interrupted; recover it on its own", target.ID)}
 		}
 		if target.RelocationFrom != "" {
 			return nil, fmt.Errorf("operation %s moved the library; undo it on its own", target.ID)
@@ -271,7 +271,10 @@ func planToken(targets []*Entry, req UndoRequest, plan *undoPlan) (string, error
 
 // ReviewUndo is an undo's dry run. It reads the library and history without
 // writing either, plans the undo as it would apply with later changes kept,
-// and reports every later change it meets.
+// and reports every later change it meets. While an entry awaits recovery it
+// reviews only that entry's recovery, which needs no force: the plan restores
+// the entry's before-snapshot over the library as it is now, as the forced
+// apply will, and its token binds that apply.
 func ReviewUndo(ctx context.Context, lib string, req UndoRequest) (*UndoReview, error) {
 	dir, err := storeDir(lib)
 	if err != nil {
@@ -294,8 +297,17 @@ func ReviewUndo(ctx context.Context, lib string, req UndoRequest) (*UndoReview, 
 	if err != nil {
 		return nil, err
 	}
+	if err := refuseWhileInterrupted(all, targets); err != nil {
+		return nil, err
+	}
 	if targets[0].After == nil {
-		return nil, fmt.Errorf("operation %s was interrupted; --force recovers changes since its snapshot", targets[0].ID)
+		target, cleanup, err := recoveryTarget(ctx, abs, targets[0])
+		if err != nil {
+			return nil, err
+		}
+		defer cleanup()
+		targets = []*Entry{target}
+		req.Force = true
 	}
 	chain, err := prepareChain(ctx, abs, dir, targets, req, true)
 	if err != nil {

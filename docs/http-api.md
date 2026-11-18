@@ -328,6 +328,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `metadata_edit_unchanged` | The reviewed `track.batch.update` plan changes nothing: the tracks already have these values. Nothing was changed. |
 | `batch_limit_exceeded` | A list parameter holds more items than the operation's catalog `limits` allow in one job. Nothing started; split the selection into jobs of at most that many items. |
 | `restore_plan_stale` | The backup, the library's history or its companion stores changed after a restore was reviewed, so its `plan_token` no longer matches. Nothing was restored; review it again. |
+| `history_recovery_required` | An interrupted history entry awaits recovery, or this operation was interrupted and its own pending entry is the job's `history_id`. Engine refuses every other write and every other undo, dry runs included, until the pending entry is recovered with `library.undo` and `force:true`; that entry's own dry run reviews what recovery restores. |
 | `undo_plan_stale` | The library or its history changed after an undo was reviewed, so its `plan_token` no longer matches. Nothing was undone; review it again. |
 | `timed_out` | The operation exceeded its deadline. Check the connection and retry. |
 | `cancelled` | Work was cancelled. Completed changes may remain. |
@@ -1042,7 +1043,7 @@ Every operation whose effect records history (`collection`, `staging`, `filesyst
 2. Apply with the same `id` or `ids` and `exclude`, and the `plan_token`. A reviewed apply keeps rows later changes touched, as the review showed. Any later write to an affected database or file refuses it with `undo_plan_stale` before backups or changes; review again. `force:true` overwrites the later changes instead (Undo anyway); it accepts the same token. An apply without a token (a direct undo) refuses conflicts with `undo_conflict` unless `keep_later` or `force` is set.
 3. `exclude` lists `entity` selectors to keep as they are now, or `<entity>#<field>` to keep one field. Exclusions apply to the Engine collection database; invalid selectors fail with `400`. Review and apply must use the same exclusions.
 
-A pending (interrupted) entry cannot be reviewed; recover it with `force:true` after inspecting it.
+While any entry is pending (interrupted), `library.undo` refuses every other undo with `history_recovery_required`, dry runs and `force:true` included, as every other write is refused: recovery restores the pending entry's before-snapshot, so a change recorded after it would be reverted silently. Several `ids` that include a pending entry are refused the same way. Only the newest pending entry's own `id` passes; an older pending entry waits until the newer one is recovered, because recovering the newer one afterwards would put back what the older recovery removed. Its dry run needs no `force`: it reviews the recovery as a read against the library as it is now, with the entry's `state` `pending` in `records`, the changes recovery makes, and a `plan_token`. Recover with the same `id`, `force:true` and that token; an apply without `force` fails with `history_recovery_required`.
 
 `library.undo.status` takes `library?` and the `plan_token` of a reviewed apply whose response was lost. It returns `{state, history_id?}`: `applied` with the undo's history entry, `pending` while it runs or awaits recovery, `failed`, or `not_applied` when no undo applied that token.
 
@@ -1095,7 +1096,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `library.discover` | `paths?` (array; omitted or empty uses automatic locations) |
 | `library.restore` | `path`, `dry_run?`, `plan_token?`; see labelled backups and restore review |
 | `library.history` | `library?`; defaults to the server's configured library; see undo history and reviewed undo |
-| `library.undo` | `library?`, `id?` or `ids?`, `exclude?`, `keep_later?`, `plan_token?`, `force?`, `dry_run?`; omitted IDs select the latest in that library. A non-forced, unreviewed undo that a later change conflicts with fails with `undo_conflict` and changes nothing; see undo history and reviewed undo |
+| `library.undo` | `library?`, `id?` or `ids?`, `exclude?`, `keep_later?`, `plan_token?`, `force?`, `dry_run?`; omitted IDs select the latest in that library. A non-forced, unreviewed undo that a later change conflicts with fails with `undo_conflict` and changes nothing. While an entry is pending, every undo but the newest pending entry's review and forced recovery fails with `history_recovery_required`; see undo history and reviewed undo |
 | `library.undo.status` | `library?`, `plan_token` |
 | `playlist.list` | `{}` |
 | `playlist.tree` | `{}`; see the playlist tree below |

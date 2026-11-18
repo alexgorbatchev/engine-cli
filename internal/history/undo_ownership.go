@@ -66,7 +66,15 @@ func observeUndoTargets(ctx context.Context, dir string, ids []string) (targets 
 	if err != nil {
 		return nil, err
 	}
-	return selectUndoTargets(all, ids)
+	if targets, err = selectUndoTargets(all, ids); err != nil {
+		return nil, err
+	}
+	// Refuse before taking the library from its intake owners; Undo checks again
+	// under its own History owner.
+	if err := refuseWhileInterrupted(all, targets); err != nil {
+		return nil, err
+	}
+	return targets, nil
 }
 
 func (o *undoOwnership) validate(targets []*Entry) error {

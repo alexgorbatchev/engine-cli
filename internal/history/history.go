@@ -220,7 +220,7 @@ func RunPrepared(ctx context.Context, lib string, options RunOptions, run func(c
 	}
 	for _, e := range previous {
 		if e.After == nil {
-			return nil, &progress.Error{Code: "history_recovery_required", Cause: fmt.Errorf("operation %s was interrupted; inspect it and use library undo %s --force to recover", e.ID, e.ID)}
+			return nil, recoveryRequired(e.ID)
 		}
 	}
 	repairToken := ""
@@ -292,7 +292,7 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 	recoveryRequired := r.recoveryRequired
 	r.mu.Unlock()
 	if recoveryRequired {
-		return e, &progress.Error{Code: "history_recovery_required", Cause: errors.Join(runErr, fmt.Errorf("operation %s has an incomplete cross-file publication; inspect it and use library undo %s --force to recover", e.ID, e.ID))}
+		return e, &progress.Error{Code: RecoveryRequiredCode, Cause: errors.Join(runErr, fmt.Errorf("operation %s has an incomplete cross-file publication; inspect it and use library undo %s --force to recover", e.ID, e.ID))}
 	}
 	lib, dir = e.Library, r.dir
 	work = filepath.Join(dir, e.ID)
@@ -304,10 +304,10 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 		engineBefore := before.Databases[filepath.Join(lib, "Database2", "m.db")]
 		if engineBefore.Path != "" {
 			if err := tags.ReconcileRemoved(finish, lib, engineBefore.Path); err != nil {
-				return e, &progress.Error{Code: "history_recovery_required", Cause: errors.Join(runErr, fmt.Errorf("reconciling custom tags; operation %s remains pending for recovery: %w", e.ID, err))}
+				return e, &progress.Error{Code: RecoveryRequiredCode, Cause: errors.Join(runErr, fmt.Errorf("reconciling custom tags; operation %s remains pending for recovery: %w", e.ID, err))}
 			}
 			if err := colors.ReconcileRemoved(finish, lib, engineBefore.Path); err != nil {
-				return e, &progress.Error{Code: "history_recovery_required", Cause: errors.Join(runErr, fmt.Errorf("reconciling track colors; operation %s remains pending for recovery: %w", e.ID, err))}
+				return e, &progress.Error{Code: RecoveryRequiredCode, Cause: errors.Join(runErr, fmt.Errorf("reconciling track colors; operation %s remains pending for recovery: %w", e.ID, err))}
 			}
 		}
 	}
@@ -406,6 +406,9 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	if err := ownership.validate(targets); err != nil {
 		return nil, err
 	}
+	if err := refuseWhileInterrupted(all, targets); err != nil {
+		return nil, err
+	}
 	target := targets[0]
 	if target.RelocationFrom != "" {
 		if _, e := os.Lstat(target.RelocationFrom); !os.IsNotExist(e) {
@@ -415,7 +418,7 @@ func Undo(ctx context.Context, lib, id string, opts UndoOptions) (result *Entry,
 	recovered := target.After == nil
 	if recovered {
 		if !opts.Force {
-			return nil, fmt.Errorf("operation %s was interrupted; --force recovers changes since its snapshot", target.ID)
+			return nil, &progress.Error{Code: RecoveryRequiredCode, Cause: fmt.Errorf("operation %s was interrupted; --force recovers changes since its snapshot", target.ID)}
 		}
 		target.After, err = captureAfter(ctx, abs, target.Scope, filepath.Join(dir, target.ID, "recovered"), target.Before)
 		if err != nil {

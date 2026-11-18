@@ -70,7 +70,7 @@ func projectSmartlists(ctx context.Context, lib string, tx db.Reader) (*Smartlis
 	}
 	for _, pending := range previous {
 		if pending.After == nil {
-			return nil, &progress.Error{Code: "history_recovery_required", Cause: fmt.Errorf("operation %s is incomplete", pending.ID)}
+			return nil, &progress.Error{Code: RecoveryRequiredCode, Cause: fmt.Errorf("operation %s is incomplete", pending.ID)}
 		}
 	}
 	evidence, err := resolveSmartlistEvidence(ctx, filepath.Join(lib, "Database2", "m.db"), inventory, previous)

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-08-23 22:20
-last_modified: 2026-11-15 14:55
+last_modified: 2026-11-18 16:30
 status: current
 ---
 
@@ -75,7 +75,7 @@ The test for everything this CLI writes: close the app, open the library in Engi
 - **Fingerprint Audio:** `bin/engine-cli track duplicate scan [--ids <ids> | --refs <refs>] [--json]`; fingerprints are SHA-256 keyed in `.engine-cli/fingerprints/index.json`, use full audio through Go Chromaprint and FFmpeg decoding, and participate in undo. Audio listing only reads cached evidence.
 - **Merge Duplicates:** `bin/engine-cli track duplicate merge <id...> --keep <id> [--performance-from <id>]`
 - **Inspect Undo History:** `bin/engine-cli library history`
-- **Undo an Operation:** `bin/engine-cli library undo [id...] [--dry-run] [--exclude <entity>] [--keep-later] [--plan-token <token>] [--force]`; review with `--dry-run` (changes with current and restored values, later edits named with the change that made them, a plan token), then apply the same IDs with `--plan-token`, which keeps those later edits. HTTP `library.undo` shares the contract; its dry run is a read. Several IDs undo together as one operation. `library.undo.status` reports whether a reviewed plan token was applied.
+- **Undo an Operation:** `bin/engine-cli library undo [id...] [--dry-run] [--exclude <entity>] [--keep-later] [--plan-token <token>] [--force]`; review with `--dry-run` (changes with current and restored values, later edits named with the change that made them, a plan token), then apply the same IDs with `--plan-token`, which keeps those later edits. HTTP `library.undo` shares the contract; its dry run is a read. Several IDs undo together as one operation. While an entry is pending (interrupted), every other undo, dry runs and `--force` included, fails with `history_recovery_required`; the newest pending entry's `--dry-run` reviews its recovery as a read and `--force` with its plan token applies it. `library.undo.status` reports whether a reviewed plan token was applied.
 
 ## Verification and delivery
 

@@ -5866,6 +5866,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <ul>
           <li>A completed history entry records changed entities and reversible file moves. Database-only changes do not back up unrelated audio or artwork.</li>
           <li>Undo checks for conflicting later edits and refuses by default. An explicit force override permits conflict recovery; dry-run previews remain read-only.</li>
+          <li>While any entry is pending, Undo refuses every other undo, dry runs and force included, with history_recovery_required, as RunPrepared refuses other writes: forced recovery restores the pending entry’s before-snapshot, so a later change would be reverted silently. Only the newest pending entry passes; its dry run reviews its recovery as a read against a temporary capture of the live library, and its plan token binds the forced apply.</li>
         </ul>
       </div>
 
