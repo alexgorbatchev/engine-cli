@@ -412,10 +412,10 @@ The grid keeps a saved grid's sample rate, because saved cues and loops are posi
 Up to four tracks analyze concurrently. Each track's results are written in its own transaction as soon as they are ready, after rechecking that Engine DJ Desktop is closed; when Desktop starts, the job fails before its next write. One safety snapshot and one undo record cover every track written, including the tracks written before a failure or cancellation; a failed or cancelled job's result still lists the tracks it wrote. Per-track analysis failures are reported in the result rather than failing the job:
 
 ```json
-{"tracks":[{"track_id":5,"title":"Night Drive","bpm":{"status":"written","bpm":124.0065},"key":{"status":"written","key":23},"grid":{"status":"written","bpm":124.0065}},{"track_id":6,"title":"Ambient Intro","bpm":{"status":"failed","error":{"code":"no_beat","message":"…"}},"grid":{"status":"locked"}}]}
+{"tracks":[{"track_id":5,"title":"Night Drive","before":{"bpm":122,"key":null,"grid_bpm":null},"bpm":{"status":"written","bpm":124.0065},"key":{"status":"written","key":23},"grid":{"status":"written","bpm":124.0065}},{"track_id":6,"title":"Ambient Intro","before":{"bpm":null,"key":5,"grid_bpm":96},"bpm":{"status":"failed","error":{"code":"no_beat","message":"…"}},"grid":{"status":"locked"}}]}
 ```
 
-Tracks appear in request order after aliases are deduplicated, with the display title read before analysis: the title, or the filename without its extension. Only selected analyses appear. `status` is `written`, `kept` (`missing_only` found a value), `locked`, or `failed` with an `error` code: `no_beat`, `no_key`, `audio_too_short`, `audio_unavailable`, or `analysis_failed`. Written grids report `tempo_markers` when the analysis found tempo changes.
+Tracks appear in request order after aliases are deduplicated, with the display title read before analysis: the title, or the filename without its extension. Only selected analyses appear. `status` is `written`, `kept` (`missing_only` found a value), `locked`, or `failed` with an `error` code: `no_beat`, `no_key`, `audio_too_short`, `audio_unavailable`, or `analysis_failed`. Written grids report `tempo_markers` when the analysis found tempo changes. Every track also reports `before`: its analyzed BPM (`bpmAnalyzed` above zero), key index (zero or above) and the saved grid's whole-grid tempo (`grid_bpm`) read before analysis, each `null` when the track had none. A written outcome therefore reads as before and after; a kept or locked one keeps its `before` value.
 
 `track.add` and `staging.import` require native FFprobe to decode an audio frame before moving or installing the source or adding its collection record. A stream declaration alone is insufficient; empty, malformed, unreadable, and non-audio files are refused with `track_not_audio`. Valid silent audio is accepted. An unavailable FFprobe returns `tool_unavailable`; cancellation remains cancellation. Refused staged items retain their source and remain available for review or removal. The admission probe reads the first second relative to the selected audio's initial timestamp, not the entire recording; it does not certify that every later frame is intact.
 
@@ -996,7 +996,7 @@ Mutation results report what the operation changed, not the changed tracks. Engi
 | Operation | Result |
 | --- | --- |
 | `track.update`, `PUT /v1/tracks/{id}`, `track.grid.update` | `{"track_id":5}` |
-| `track.analyze` | `{"tracks":[{"track_id":5,"bpm":{"status":"written","bpm":124.0065}}]}`; see track analysis above |
+| `track.analyze` | `{"tracks":[{"track_id":5,"before":{"bpm":null,"key":null,"grid_bpm":null},"bpm":{"status":"written","bpm":124.0065}}]}`; see track analysis above |
 | `track.batch.update` | `{"track_ids":[5],"changed_fields":1,"tracks":[{"track_id":5,"title":"Night Drive","changes":[{"field":"artist","before":"DJ","after":"Various artists"}]}]}`; see collection editing above |
 | `track.add` | `[{"track_id":7,"path":"Music/song.mp3","playlist_id":2,"moved":true}]`; `path` is the stored path, `playlist_id` is omitted without `to_playlist`, and `analysis` reports `analyze:true` per track |
 | `track.rm` | `[{"track_id":5}]` |

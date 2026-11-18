@@ -95,11 +95,21 @@ type AnalysisOutcome struct {
 	Error        *AnalysisError `json:"error,omitempty"`
 }
 
+// AnalysisValues are a track's saved analysis values; null means it has none: no analyzed BPM, no key, or no usable
+// beat grid. GridBPM is the saved grid's whole-grid tempo.
+type AnalysisValues struct {
+	BPM     *float64 `json:"bpm"`
+	Key     *int64   `json:"key"`
+	GridBPM *float64 `json:"grid_bpm"`
+}
+
 // AnalyzedTrack reports every requested analysis of one track. Title is the display title read before analysis: the
-// track's title, or its filename without one.
+// track's title, or its filename without one. Before holds the values read before analysis, so a written outcome
+// reads as before and after.
 type AnalyzedTrack struct {
 	TrackID int64            `json:"track_id"`
 	Title   string           `json:"title"`
+	Before  AnalysisValues   `json:"before"`
 	BPM     *AnalysisOutcome `json:"bpm,omitempty"`
 	Key     *AnalysisOutcome `json:"key,omitempty"`
 	Grid    *AnalysisOutcome `json:"grid,omitempty"`
@@ -236,6 +246,21 @@ type savedAnalysis struct {
 	trackRate float64
 }
 
+// values reports what analysis would replace, with the same meaning missing-only analysis gives a kept value.
+func (s savedAnalysis) values(hasGrid bool) AnalysisValues {
+	var v AnalysisValues
+	if s.bpm.Valid && s.bpm.Float64 > 0 {
+		v.BPM = &s.bpm.Float64
+	}
+	if s.key.Valid && s.key.Int64 >= 0 {
+		v.Key = &s.key.Int64
+	}
+	if hasGrid {
+		v.GridBPM = new(engine.BeatGridBPM(s.beatData.SampleRate, s.beatData.Adjusted))
+	}
+	return v
+}
+
 func readSavedAnalysis(ctx context.Context, d *sql.DB, libDir string, id int64) (savedAnalysis, error) {
 	var saved savedAnalysis
 	var path, title, filename sql.NullString
@@ -276,8 +301,8 @@ func prepareAnalysis(ctx context.Context, d *sql.DB, libDir string, id int64, s 
 	if err != nil {
 		return nil, err
 	}
-	plan := &analysisPlan{trackID: id, selected: s, outcome: AnalyzedTrack{TrackID: id, Title: saved.title}}
 	hasGrid := saved.beatData != nil && engine.ValidateBeatAnchors(saved.beatData.Adjusted) == nil
+	plan := &analysisPlan{trackID: id, selected: s, outcome: AnalyzedTrack{TrackID: id, Title: saved.title, Before: saved.values(hasGrid)}}
 	wantBPM := s.BPM && !(s.MissingOnly && saved.bpm.Valid && saved.bpm.Float64 > 0)
 	wantKey := s.Key && !(s.MissingOnly && saved.key.Valid && saved.key.Int64 >= 0)
 	wantGrid := s.Grid && !saved.locked.Bool && !(s.MissingOnly && hasGrid)

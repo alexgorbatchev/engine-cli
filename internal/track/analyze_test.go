@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/analysis"
@@ -122,6 +124,13 @@ func TestAnalyzeWritesTempoKeyAndGridAndReportsFailuresPerTrack(t *testing.T) {
 	if song.Title != "song" || report.Tracks[1].Title != "silence" {
 		t.Fatalf("titles=%q %q", song.Title, report.Tracks[1].Title)
 	}
+	// Each track reports the values analysis replaced, null where it had none.
+	if before := song.Before; before.BPM == nil || *before.BPM != 90.5 || before.Key == nil || *before.Key != 4 || before.GridBPM != nil {
+		t.Fatalf("song before=%+v", before)
+	}
+	if encoded, err := json.Marshal(report.Tracks[1]); err != nil || !strings.Contains(string(encoded), `"before":{"bpm":null,"key":null,"grid_bpm":null}`) {
+		t.Fatalf("silence JSON %s: %v", encoded, err)
+	}
 	if song.TrackID != 1 || song.BPM.Status != AnalysisWritten || math.Abs(song.BPM.BPM-120) > 0.05 || song.Grid.Status != AnalysisWritten || song.Grid.TempoMarkers != 0 || song.Key.Status != AnalysisWritten || *song.Key.Key != 1 {
 		t.Fatalf("song=%+v bpm=%+v key=%+v grid=%+v", song, song.BPM, song.Key, song.Grid)
 	}
@@ -201,6 +210,9 @@ func TestAnalyzePreservesUnselectedAndExistingValues(t *testing.T) {
 		if o.Status != AnalysisKept {
 			t.Fatalf("outcome=%+v", o)
 		}
+	}
+	if grid := report.Tracks[0].Before.GridBPM; grid == nil || math.Abs(*grid-120) > 1e-9 {
+		t.Fatalf("saved grid tempo before analysis=%v", grid)
 	}
 }
 
