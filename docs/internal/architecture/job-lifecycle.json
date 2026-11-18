@@ -175,7 +175,7 @@
       "items": [
         "Status and SSE remain available while collection access is blocked. Last-Event-ID resumes retained events; an expired cursor requires status refresh and a fresh stream.",
         "Terminal status, result, history ID, and terminal event are published together under the server mutex. Validated suggestion batches update retained results before terminal completion. Failed or cancelled operations can retain partial results and an undo record.",
-        "The server retains at most 128 jobs and 1024 events per job. When capacity is reached, admission evicts an older terminal job or refuses the request; restarting the server loses job state."
+        "The server retains at most 128 jobs and 1024 events per job. When capacity is reached, admission evicts the oldest terminal dry run first, then an older terminal job, or refuses the request; restarting the server loses job state."
       ]
     },
     {
@@ -271,6 +271,16 @@
         "A successful sync returns the comparison report and its destination History operation ID when an entry was created. Preview and protected no-op have no new operation ID. Errors retain an available report and History ID; cancellation still selects the existing cancelled terminal state.",
         "The current generic API collection precheck also checks pending Smartlist repair in the configured library before transfer runs. That separate guard can reject sync between other libraries; destination ownership inside transfer does not remove this existing API limitation.",
         "Committed source evidence d3de75b98ba479484d49b0779087f080cb641820: internal/api/intake_lifecycle.go:161–209; internal/api/jobs.go:155–209; internal/api/operations.go:230–283; internal/transfer/run.go:17–39; internal/transfer/run.go:151–155. Historical source pins and existing graph topology remain unchanged."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Previews, batch limits and item counts",
+      "items": [
+        "The shared bind schedules every dry run as a read, whatever its apply would change: it never takes the write gate, shares collection access with other readers, and cancels like any job.",
+        "The operation catalog publishes limits, the most items each list parameter accepts in one job. Bind refuses a longer list before a job exists, with HTTP 400 and batch_limit_exceeded.",
+        "Progress phases are stable IDs. Item events of batch phases carry processed and total counts, failed items included; a range without a parent observer leaves progress off.",
+        "Committed source evidence 6ff19b8: internal/api/operations.go (bind), internal/api/jobs.go (evictFinished); 41a6341: internal/api/limits.go, internal/api/operations.go (checkLimits); 1529216: internal/progress/progress.go (Item, Range), internal/api/media_batch.go, internal/staging/import.go. No new scheduler state or durable job storage is introduced."
       ]
     }
   ]

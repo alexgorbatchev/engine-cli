@@ -308,8 +308,9 @@
       "title": "Bulk metadata \u2014 after the pinned revision",
       "items": [
         "track.batch.update accepts 1\u2013500 selectors and common scalar metadata. The ordinary collection-write path supplies Desktop protection, one safety snapshot, and one history record.",
-        "EditMetadataBatch resolves every selector before writing, deduplicates aliases in first-seen order, and saves all fields in one transaction. Missing selectors or failed writes leave the collection unchanged. The result contains track_ids without rereading committed entities.",
-        "The CLI exposes the same edit as track batch update. One undo restores the entire edit. This behavior was committed in 07441d1 after the source revision pinned above."
+        "dry_run reviews the edit in a read-only transaction: each track's changed fields before and after, selectors that name no track, and a plan token binding identities, paths, edit times and current values. An apply with the token is refused before snapshots with metadata_edit_stale or metadata_edit_unchanged; an apply without one writes at once. Every apply plans again inside its write transaction and writes only changed fields.",
+        "The result reports track_ids and each changed track's per-field before and after values from the applied plan, without rereading committed entities. The CLI runs the same operation as track batch update with --dry-run and --plan-token; one undo restores the entire edit.",
+        "Committed source evidence 3e70367: internal/track/bulk_metadata.go; internal/api/bulk_metadata.go; cmd/engine-cli/bulk_metadata.go. Analysis results report each track's values before analysis from 40396fe: internal/track/analyze.go. Historical graph and source pins remain unchanged."
       ]
     },
     {
