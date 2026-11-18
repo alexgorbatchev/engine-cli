@@ -1,0 +1,5 @@
+name = "engine-cli"
+
+[services.architecture]
+serve = "docs/internal/architecture"
+host = "engine-cli-archify"

@@ -1,7 +1,5 @@
 set dotenv-load := false
 
-export ENGINE_DEV_HOST_SUFFIX := env("ENGINE_DEV_HOST_SUFFIX", ".localhost")
-
 # Default recipe: list available recipes
 default:
     @just --list
@@ -83,6 +81,10 @@ architecture:
         node "$ARCHIFY_CLI" finalize "$kind" "$candidate" "${candidate%.json}.html" --repo-root . --quality showcase --out-dir "$review_dir/$name" --json
     done
 
-# Serve the architecture index and diagrams over local HTTPS (Ctrl-C stops serving)
-architecture-serve:
-    devhost serve --dir docs/internal/architecture --domain "engine-cli-archify${ENGINE_DEV_HOST_SUFFIX}"
+# Serve the architecture index and diagrams in the background
+[positional-arguments]
+architecture-serve *args:
+    devhost start --detach "$@"
+
+architecture-stop:
+    devhost stop

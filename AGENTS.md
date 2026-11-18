@@ -15,7 +15,7 @@ Enable a better user experience than Engine DJ Desktop, not a parity port. Treat
 The test for everything this CLI writes: close the app, open the library in Engine DJ Desktop, and it must work. Verify written data against the recovered schema and Desktop-written fixtures. Data that fails this test is a bug: fix the cause and repair affected libraries, rather than flagging it or working around it.
 
 ## Commands
-- **Architecture:** [diagram index](docs/internal/architecture/index.md); `just architecture` regenerates the diagrams with `ARCHIFY_CLI` pointing to Archify 3.2.1-dev.4's `bin/archify.mjs`. `just architecture-serve` serves the index through devhost at `https://engine-cli-archify.localhost`; `ENGINE_DEV_HOST_SUFFIX` overrides the hostname suffix.
+- **Architecture:** [diagram index](docs/internal/architecture/index.md); `just architecture` regenerates the diagrams with `ARCHIFY_CLI` pointing to Archify 3.2.1-dev.4's `bin/archify.mjs`. `just architecture-serve` serves the index at the URL printed by devhost. Use `just architecture-serve --local` to force local routing and `just architecture-stop` to stop serving.
 - **Build Local Binary:** `just build` (compiles to `bin/engine-cli`)
 - **Maintainer Desktop Fixtures:** [native repair handoff procedure](docs/internal/references/desktop-repair-handoff.md); `just desktop-repair-handoff` requires a clean committed native macOS checkout and explicit reviewed source/golden revisions. It is not a public CLI command or Desktop acceptance result.
 - **Run CLI with Arguments:** `just run [args...]`

@@ -1,6 +1,6 @@
 ---
 created_on: 2026-10-25 08:41
-last_modified: 2026-11-11 06:37
+last_modified: 2026-11-17 16:18
 status: current
 ---
 
@@ -54,11 +54,11 @@ The batch custom-tag cards cite committed Engine CLI `8e33df9d106215b5fd9723c828
 
 The overview’s custom-tag filtering card cites committed Engine CLI [716327b](https://github.com/alexgorbatchev/engine-cli/commit/716327b379a737aafd13f3808f8faa75424be4be). The [library-wide read](https://github.com/alexgorbatchev/engine-cli/blob/716327b379a737aafd13f3808f8faa75424be4be/internal/tags/collection.go#L10-L63) returns taxonomy and current-origin assignments at one companion revision through the [collection-read operation](https://github.com/alexgorbatchev/engine-cli/blob/716327b379a737aafd13f3808f8faa75424be4be/internal/api/tag_assignments.go#L10-L20). Unassigned tracks and unavailable origins are omitted from the track array; unavailable counts remain explicit. Reads do not enroll companion storage or create mutation artifacts. Historical and batch-write evidence pins remain unchanged; diagram review does not advance the UI integration revision. Uncommitted working-tree changes are outside this review.
 
-1. Install [devhost](https://alexgorbatchev.github.io/devhost/) with its native `serve` command. Follow its HTTPS setup instructions if certificate trust has not been configured; that step can require an interactive terminal.
-2. From this repository, run `just architecture-serve`. Open the URL devhost prints; the default is `https://engine-cli-archify.localhost`.
-3. Stop serving with Ctrl-C. Devhost removes this session's routes and leaves its shared Caddy proxy running.
+1. Install [devhost](https://alexgorbatchev.github.io/devhost/) with support for native serve services. For local routing, complete its HTTPS setup and run `devhost caddy start`.
+2. From this repository, run `just architecture-serve` and open the URL devhost prints. Devhost uses the configured relay automatically. Run `just architecture-serve --local` to force local routing, which defaults to `https://engine-cli-archify.localhost`.
+3. Run `just architecture-stop` to stop serving. Devhost removes the stack's routes and leaves its shared Caddy proxy running.
 
-Devhost serves this Markdown index and the generated HTML directly. No Bun server or Archify installation is needed to view the committed diagrams. Set `ENGINE_DEV_HOST_SUFFIX` in the invoking environment to use another hostname suffix; that hostname must resolve to the development machine. Workstation-specific hostnames belong in local environment configuration, never tracked files. Each concurrent viewing session needs a distinct hostname.
+Devhost serves this Markdown index and the generated HTML directly. No Bun server or Archify installation is needed to view the committed diagrams.
 
 The generated HTML also opens as standalone files. The diagram source links are local-only because the pinned repository identity uses SSH.
 
