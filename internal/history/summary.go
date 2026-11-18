@@ -25,19 +25,21 @@ type SummaryField struct {
 // counts, display names and changed fields, read from the library before and
 // after it. Engine writes it when the operation completes.
 type Summary struct {
-	Tracks           int            `json:"tracks"`
-	Playlists        int            `json:"playlists"`
-	AddedTracks      int            `json:"added_tracks,omitempty"`
-	RemovedTracks    int            `json:"removed_tracks,omitempty"`
-	AddedPlaylists   int            `json:"added_playlists,omitempty"`
-	RemovedPlaylists int            `json:"removed_playlists,omitempty"`
-	Memberships      int            `json:"memberships,omitempty"`
-	TrackNames       []string       `json:"track_names,omitempty"`
-	PlaylistNames    []string       `json:"playlist_names,omitempty"`
-	Fields           []SummaryField `json:"fields,omitempty"`
-	Stores           []string       `json:"stores,omitempty"`
-	Files            int            `json:"files,omitempty"`
-	Moves            int            `json:"moves,omitempty"`
+	Tracks           int `json:"tracks"`
+	Playlists        int `json:"playlists"`
+	AddedTracks      int `json:"added_tracks,omitempty"`
+	RemovedTracks    int `json:"removed_tracks,omitempty"`
+	AddedPlaylists   int `json:"added_playlists,omitempty"`
+	RemovedPlaylists int `json:"removed_playlists,omitempty"`
+	Memberships      int `json:"memberships,omitempty"`
+	// TrackIDs lists every changed track's library ID, uncapped, so a track's history can be found.
+	TrackIDs      []int64        `json:"track_ids,omitempty"`
+	TrackNames    []string       `json:"track_names,omitempty"`
+	PlaylistNames []string       `json:"playlist_names,omitempty"`
+	Fields        []SummaryField `json:"fields,omitempty"`
+	Stores        []string       `json:"stores,omitempty"`
+	Files         int            `json:"files,omitempty"`
+	Moves         int            `json:"moves,omitempty"`
 }
 
 // changeTally collects the tracks, playlists and fields a set of row changes touch.
@@ -195,6 +197,7 @@ func summarize(ctx context.Context, e *Entry) (*Summary, error) {
 	}
 	tracks, lists := sortedIDs(tally.tracks), sortedIDs(tally.playlists)
 	summary.Tracks, summary.Playlists = len(tracks), len(lists)+len(tally.smartlists)
+	summary.TrackIDs = tracks
 	summary.AddedTracks, summary.RemovedTracks = tally.addedTracks, tally.removedTracks
 	summary.AddedPlaylists, summary.RemovedPlaylists = tally.addedLists, tally.removedLists
 	summary.Memberships = tally.memberships

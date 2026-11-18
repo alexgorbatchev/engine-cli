@@ -62,6 +62,10 @@ func TestAPIHistorySummaryNamesTracksFieldsAndUniformValues(t *testing.T) {
 	if summary["tracks"] != float64(2) || summary["playlists"] != float64(0) {
 		t.Fatalf("summary counts=%+v", summary)
 	}
+	// Every changed track's library ID, so a track's history can be found however many tracks a change touched.
+	if ids, _ := summary["track_ids"].([]any); len(ids) != 2 || ids[0] != float64(1) || ids[1] != float64(2) {
+		t.Fatalf("summary track ids=%+v", summary["track_ids"])
+	}
 	names, _ := summary["track_names"].([]any)
 	if len(names) != 2 || names[0] != "Curated title" || names[1] != "Ritual Shadows" {
 		t.Fatalf("summary names=%+v", summary["track_names"])
