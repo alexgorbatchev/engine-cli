@@ -65,6 +65,12 @@ func addAcquisitionCommands(root *cobra.Command) {
 	tags := &cobra.Command{Use: "tags", Short: "Inspect and update tags embedded in audio files", Args: cobra.NoArgs}
 	targetFlags := []acquisitionFlag{{"staging-id", "string", "Select a staged item"}, {"staging-ids", "strings", "Select staged items; repeat or separate with commas"}, {"path", "string", "Select a local audio file"}, {"paths", "strings", "Select local audio paths; repeat or separate with commas"}}
 	tags.AddCommand(acquisitionCommand("track.tags.inspect", "inspect [path|identifier...]", "Inspect actual audio file tags", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"auto-install", "bool", "Install missing or outdated tag tools"})))
+	tags.AddCommand(acquisitionCommand("track.tags.edit", "edit", "Review and write per-file embedded tag values in place, bound to a reviewed plan", "", []acquisitionFlag{
+		{"edits", "json", `JSON array of {"identifier":"12","title":"…"}; a missing field is kept and "" clears it`},
+		{"dry-run", "bool", "Review each file's before and after values without writing"},
+		{"plan-token", "string", "Write only the review that returned this token"},
+		{"auto-install", "bool", "Install missing or outdated tag tools"},
+	}))
 	tags.AddCommand(acquisitionCommand("track.tags.update", "update [path|identifier...]", "Update embedded tags while preserving original audio and collection metadata", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), tagFlags...)))
 	track.AddCommand(tags)
 	artwork, _, _ := track.Find([]string{"artwork"})
@@ -137,8 +143,13 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 			command.Args = cobra.ArbitraryArgs
 		}
 	}
+	jsonFlags := map[string]bool{}
 	for _, flag := range flags {
 		switch flag.kind {
+		case "json":
+			// A JSON value, such as an array of objects, passed through as structured parameters.
+			jsonFlags[flag.name] = true
+			command.Flags().String(flag.name, "", flag.description)
 		case "bool":
 			command.Flags().Bool(flag.name, false, flag.description)
 		case "float":
@@ -196,6 +207,13 @@ func acquisitionCommand(operation, use, short, positional string, flags []acquis
 				value, err = c.Flags().GetStringSlice(flag.Name)
 			default:
 				value, err = c.Flags().GetString(flag.Name)
+				if err == nil && jsonFlags[flag.Name] {
+					var raw json.RawMessage
+					if err = json.Unmarshal([]byte(value.(string)), &raw); err != nil {
+						err = fmt.Errorf("--%s must be JSON: %w", flag.Name, err)
+					}
+					value = raw
+				}
 			}
 			if err != nil {
 				flagErr = err

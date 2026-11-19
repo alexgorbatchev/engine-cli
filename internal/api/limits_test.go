@@ -34,6 +34,7 @@ func TestCatalogPublishesBatchLimits(t *testing.T) {
 		"track.tags.inspect":              media,
 		"track.tags.update":               media,
 		"track.artwork.embed":             media,
+		"track.tags.edit":                 {"edits": 200},
 		"track.suggest":                   {"tracks": 500, "playlists": 500},
 		"track.inspect":                   {"ids": 500, "refs": 500},
 		"playlist.inspect":                {"ids": 500, "refs": 500},

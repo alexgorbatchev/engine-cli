@@ -136,6 +136,7 @@ func New(config Config) (*Server, error) {
 	ops = append(ops, s.acquisitionOperations()...)
 	ops = append(ops, s.mediaOperations()...)
 	ops = append(ops, s.tagCopiesOperation())
+	ops = append(ops, s.tagEditOperation())
 	ops = append(ops, s.toolOperations()...)
 	for _, op := range ops {
 		s.operations[op.Name] = op
