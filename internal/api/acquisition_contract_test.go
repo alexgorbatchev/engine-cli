@@ -646,7 +646,19 @@ func TestTrackCandidatesReportCollectionMatches(t *testing.T) {
 	if err := os.Remove(filepath.Join(lib, "Database2", "m.db")); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.RunOperation(context.Background(), "track.candidates", json.RawMessage(`{"query":"Artist - Curated title"}`)); progress.ErrorCode(err) != "library_not_found" {
-		t.Fatalf("missing library: %v", err)
+	// A library folder without a collection yet still searches, with nothing to match.
+	result, _, err = s.RunOperation(context.Background(), "track.candidates", json.RawMessage(`{"query":"Artist - Curated title"}`))
+	if err != nil {
+		t.Fatalf("library without a collection: %v", err)
+	}
+	raw, _ = json.Marshal(result)
+	if !strings.Contains(string(raw), `"collection_matches":[]`) || !strings.Contains(string(raw), `"candidate_matches":{}`) {
+		t.Fatalf("library without a collection: %s", raw)
+	}
+	if err := os.Mkdir(filepath.Join(lib, "Database2", "m.db"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.RunOperation(context.Background(), "track.candidates", json.RawMessage(`{"query":"Artist - Curated title"}`)); err == nil {
+		t.Fatal("ignored an unreadable collection")
 	}
 }

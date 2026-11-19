@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
 	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
@@ -121,13 +122,17 @@ func (s *Server) acquisitionOperations() []operation {
 			if err != nil {
 				return nil, err
 			}
+			matches := candidateMatches{query: []duplicate.CollectionMatch{}, candidates: map[string][]duplicate.CollectionMatch{}}
 			matched, err := s.database(ctx, func(d *sql.DB) (any, error) {
 				return matchCandidates(ctx, d, p.Query, r.Result.Candidates)
 			})
-			if err != nil {
+			// A library folder without a collection yet holds nothing to match.
+			if err != nil && progress.ErrorCode(err) != "library_not_found" {
 				return nil, err
 			}
-			matches := matched.(candidateMatches)
+			if err == nil {
+				matches = matched.(candidateMatches)
+			}
 			return map[string]any{"selection_token": r.SelectionToken, "result": r.Result, "parameters": p, "collection_matches": matches.query, "candidate_matches": matches.candidates}, nil
 		}),
 		defineEffect("track.fetch", "staging", []string{"query"}, func(ctx context.Context, p fetchParams) (any, error) {
