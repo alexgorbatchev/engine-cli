@@ -18,6 +18,10 @@ func TestUpdateFileTags(t *testing.T) {
 			if err := os.WriteFile(original, []byte("original"), 0600); err != nil {
 				t.Fatal(err)
 			}
+			// The rewritten file keeps the original's mode, here one the temp file would not get.
+			if err := os.Chmod(original, 0640); err != nil {
+				t.Fatal(err)
+			}
 			if _, err := d.Exec(`INSERT INTO Track(id,title,artist,path,rating,isAnalyzed) VALUES(1,'Old','Artist','original.mp3',80,1); CREATE TABLE PerformanceData(trackId INTEGER,quickCues BLOB); INSERT INTO PerformanceData VALUES(1,x'1234')`); err != nil {
 				t.Fatal(err)
 			}
@@ -59,12 +63,21 @@ func TestUpdateFileTags(t *testing.T) {
 				t.Fatal(err)
 			}
 			tagged, err := db.GetTrackByID(context.Background(), d, r.TrackID)
-			if err != nil || tagged.Title.String != "New" || tagged.Album.String != "Album" || tagged.Rating.Int64 != 80 || !tagged.IsAnalyzed.Bool || tagged.PathString() == "original.mp3" || r.Path != tagged.PathString() {
+			if err != nil || tagged.Title.String != "New" || tagged.Album.String != "Album" || tagged.Rating.Int64 != 80 || !tagged.IsAnalyzed.Bool || tagged.PathString() != "original.mp3" || r.Path != "original.mp3" || tagged.FileBytes.Int64 != int64(len("tagged")) {
 				t.Fatalf("result=%+v track=%+v error=%v", r, tagged, err)
 			}
+			// The write lands in place: same path, same mode, and no second copy beside it.
 			data, err := os.ReadFile(original)
-			if err != nil || string(data) != "original" {
+			if err != nil || string(data) != "tagged" {
 				t.Fatalf("original=%q error=%v", data, err)
+			}
+			info, err := os.Stat(original)
+			if err != nil || info.Mode().Perm() != 0640 {
+				t.Fatalf("mode=%v error=%v", info, err)
+			}
+			audio, err := filepath.Glob(filepath.Join(lib, "*.mp3"))
+			if err != nil || len(audio) != 1 {
+				t.Fatalf("audio files=%v error=%v", audio, err)
 			}
 			var cues []byte
 			if err := d.QueryRow(`SELECT quickCues FROM PerformanceData WHERE trackId=1`).Scan(&cues); err != nil || len(cues) != 2 {

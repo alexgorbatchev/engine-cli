@@ -245,12 +245,36 @@ func TestRawCollectionMutationSnapshotsMetadataAndUndo(t *testing.T) {
 	if title := read(); title != "After" {
 		t.Fatalf("collection metadata not updated: %s", title)
 	}
+	// The tag write lands in place: the file keeps its path and mode, and no copy is left beside it.
+	assertOnlyFile := func(want string) {
+		t.Helper()
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != want {
+			t.Fatalf("file=%q want %q: %v", data, want, err)
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Mode().Perm() != 0600 {
+			t.Fatalf("mode=%v %v", info, err)
+		}
+		if audio, _ := filepath.Glob(filepath.Join(lib, "*.mp3")); len(audio) != 1 {
+			t.Fatalf("audio files %v", audio)
+		}
+		var stored string
+		if _, err := s.database(context.Background(), func(d *sql.DB) (any, error) {
+			return nil, d.QueryRow("SELECT path FROM Track WHERE id=1").Scan(&stored)
+		}); err != nil || stored != "song.mp3" {
+			t.Fatalf("stored path %q %v", stored, err)
+		}
+	}
+	assertOnlyFile("tagged")
 	if _, err := history.Undo(context.Background(), lib, id, history.UndoOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if title := read(); title != "Curated title" {
 		t.Fatalf("collection undo failed: %s", title)
 	}
+	// Undo restores the previous bytes at the same path.
+	assertOnlyFile("original")
 }
 
 func TestTagBatchPreservesOrderAndPerItemFailures(t *testing.T) {

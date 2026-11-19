@@ -173,9 +173,17 @@ func TestFileTagsFailuresRetainOriginalAndDatabase(t *testing.T) {
 				}
 			}
 			if scenario != "missing audio" {
+				// Only a successful write replaces the bytes, in place; every failure keeps the original.
+				want := "original"
+				if scenario == "artwork only" || scenario == "artwork success" {
+					want = "tagged"
+				}
 				data, err := os.ReadFile(original)
-				if err != nil || string(data) != "original" {
-					t.Fatalf("original altered: %q %v", data, err)
+				if err != nil || string(data) != want {
+					t.Fatalf("original=%q want %q: %v", data, want, err)
+				}
+				if audio, _ := filepath.Glob(filepath.Join(lib, "*.mp3")); len(audio) != 1 {
+					t.Fatalf("left a second audio file: %v", audio)
 				}
 			}
 			if scenario != "closed database" && scenario != "closed before commit" {
@@ -186,8 +194,8 @@ func TestFileTagsFailuresRetainOriginalAndDatabase(t *testing.T) {
 				if title != "Old" {
 					t.Fatalf("curated title changed: %q", title)
 				}
-				if scenario != "artwork only" && scenario != "artwork success" && path != "original.mp3" {
-					t.Fatalf("failed/preview operation changed path: %q", path)
+				if path != "original.mp3" {
+					t.Fatalf("operation changed the stored path: %q", path)
 				}
 			}
 		})

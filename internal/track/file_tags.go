@@ -25,14 +25,16 @@ type FileTagOptions struct {
 }
 type FileTagResult struct {
 	TrackID int64 `json:"track_id"`
-	// Path is the installed audio file, reported once the collection points to it.
+	// Path is the stored path the collection points to once the write commits.
+	// Writes happen in place, so it names the same file as before.
 	Path         string             `json:"path,omitempty"`
 	OriginalPath string             `json:"original_path"`
 	Result       *acquire.TagResult `json:"result"`
 }
 
-// UpdateFileTags retains the original file and only publishes a verified stream-copy
-// output. The caller owns the Desktop guard, snapshot, and history transaction.
+// UpdateFileTags publishes a verified stream-copy output over the original file in
+// place, keeping its path, name, mode and owner; history keeps the original bytes.
+// The caller owns the Desktop guard, snapshot, and history transaction.
 func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts FileTagOptions) (*FileTagResult, error) {
 	t, err := db.FindTrack(ctx, d, identifier)
 	if err != nil {
@@ -42,6 +44,10 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 		return nil, fmt.Errorf("track not found")
 	}
 	original, err := originalUpgradePath(t, lib)
+	if err != nil {
+		return nil, err
+	}
+	before, err := os.Stat(original)
 	if err != nil {
 		return nil, err
 	}
@@ -99,21 +105,7 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 			return report, err
 		}
 	}
-	installed, err := installUpgrade(ctx, path, original)
-	if err != nil {
-		return report, err
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			_ = os.Remove(installed)
-		}
-	}()
-	stored := installed
-	if rel, err := filepath.Rel(lib, installed); err == nil && !outsideUpgradeDir(rel) {
-		stored = rel
-	}
-	info, err := os.Stat(installed)
+	info, err := os.Stat(path)
 	if err != nil {
 		return report, err
 	}
@@ -122,8 +114,8 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 		return report, err
 	}
 	defer tx.Rollback()
-	columns := []string{"path=?", "filename=?", "fileBytes=?", "lastEditTime=?"}
-	values := []any{stored, filepath.Base(stored), info.Size(), time.Now().UTC().Format(time.RFC3339Nano)}
+	columns := []string{"fileBytes=?", "lastEditTime=?"}
+	values := []any{info.Size(), time.Now().UTC().Format(time.RFC3339Nano)}
 	if !opts.ArtworkOnly {
 		tags := map[string]string{}
 		for _, stream := range probe.Streams {
@@ -172,11 +164,15 @@ func UpdateFileTags(ctx context.Context, d *sql.DB, lib, identifier string, opts
 	if count != 1 {
 		return report, fmt.Errorf("track changed while tagging; retry")
 	}
+	// The file is replaced only once the row is ready to commit, so a refused
+	// update leaves both alone; a failed commit after it stays undoable.
+	if err := publishInPlace(ctx, path, original, before); err != nil {
+		return report, err
+	}
 	if err := tx.Commit(); err != nil {
 		return report, err
 	}
-	committed = true
-	report.Path = stored
+	report.Path = t.PathString()
 	return report, nil
 }
 

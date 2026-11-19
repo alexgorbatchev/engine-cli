@@ -2,7 +2,6 @@ package track
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,34 +57,9 @@ func UpdateUnmanagedFileTags(ctx context.Context, path string, opts FileTagOptio
 	if err := VerifyAudioPreserved(ctx, opts.Runner, original, output); err != nil {
 		return result, err
 	}
-	after, err := os.Stat(original)
-	if err != nil {
-		return result, err
-	}
-	if !os.SameFile(before, after) || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
-		return result, fmt.Errorf("audio changed while tagging; original retained")
-	}
-	if err := ctx.Err(); err != nil {
-		return result, err
-	}
-	installed, err := installUpgrade(ctx, output, original)
-	if err != nil {
-		return result, err
-	}
-	defer os.Remove(installed) // Published by rename; remove only an unpublished copy.
-	if err := os.Chmod(installed, before.Mode().Perm()); err != nil {
-		return result, err
-	}
-	if err := ctx.Err(); err != nil {
-		return result, err
-	}
-	if err := os.Rename(installed, original); err != nil {
+	if err := publishInPlace(ctx, output, original, before); err != nil {
 		return result, err
 	}
 	result.Results[0].OutputFile = original
-	dir, err := os.Open(filepath.Dir(original))
-	if err != nil {
-		return result, err
-	}
-	return result, errors.Join(dir.Sync(), dir.Close())
+	return result, nil
 }
