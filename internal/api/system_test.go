@@ -87,3 +87,17 @@ func TestSystemCheckAndGuard(t *testing.T) {
 		t.Fatalf("wrote history or backup: %v", err)
 	}
 }
+
+func TestSystemVolumesListsDrivesWithFreeSpace(t *testing.T) {
+	s, _ := testAPI(t)
+	job := runAPIJob(t, s, "system.volumes", `{}`)
+	result := job["result"].(map[string]any)
+	list, ok := result["volumes"].([]any)
+	if !ok || len(list) == 0 {
+		t.Fatalf("volumes=%+v", result)
+	}
+	first := list[len(list)-1].(map[string]any)
+	if first["path"] == "" || first["name"] == "" || first["free_bytes"] == nil {
+		t.Fatalf("volume=%+v", first)
+	}
+}

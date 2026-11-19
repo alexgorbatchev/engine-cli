@@ -1128,6 +1128,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `playlist.tree` | `{}`; see the playlist tree below |
 | `playlist.inspect`, `track.inspect` | Either `ids` (array of 1–500 positive numeric IDs) or `refs` (array of stable references) |
 | `system.check` | `checks?` (array; omitted or empty runs all supported checks) |
+| `system.volumes` | `{}`; returns `{volumes:[{path,name,removable,free_bytes}]}`: attached drives first by name, then the system volume; `free_bytes` is `null` when unreadable. macOS lists `/` and drives under `/Volumes`, Linux `/` and drives under `/media`, `/run/media` and `/mnt`, Windows fixed and removable drive letters with their labels |
 | `playlist.create` | `name`, `parent?`, `folder?` |
 | `playlist.import` | `path`, `name`, `parent?`, `unique_name?`, `encoding?`, `skip_missing?`, `dry_run?`, `plan_token?`; see the reviewed import contract below |
 | `playlist.export` | `identifier` and `path`, or `folder` with `identifiers?`, `tracks?`, `name?` and `source?`; `encoding?`, `path_mode?`, `skip_unavailable?`, `dry_run?`, `plan_token?`; see the reviewed export contract below |

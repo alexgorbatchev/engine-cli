@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
+	"github.com/alexgorbatchev/engine-cli/internal/volumes"
 	"net/http"
 	"strings"
 )
@@ -23,7 +24,11 @@ type checkParams struct {
 func (p checkParams) validate() error { return systemcheck.Validate(p.Checks) }
 
 func (s *Server) systemOperations() []operation {
-	return []operation{define("system.check", false, nil, func(ctx context.Context, p checkParams) (any, error) { return s.checkSystem(ctx, p.Checks) })}
+	return []operation{
+		define("system.check", false, nil, func(ctx context.Context, p checkParams) (any, error) { return s.checkSystem(ctx, p.Checks) }),
+		// Drives an export can write to, by name, with their free space.
+		define("system.volumes", false, nil, func(ctx context.Context, _ emptyParams) (any, error) { return volumes.List(ctx) }),
+	}
 }
 
 func (s *Server) systemCheck(w http.ResponseWriter, r *http.Request) {

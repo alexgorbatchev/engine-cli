@@ -19,3 +19,12 @@ Usage: `engine-cli system check [flags]`.
 - `--checks` (stringSlice; default `[]`): Checks to run (comma-separated or repeatable); default: engine_desktop.
 - `--help, -h` (bool; default `false`): help for check.
 - `--json` (bool; default `false`): Print structured results for UI consumers.
+
+## `engine-cli system volumes`
+
+List the drives on this computer with their free space
+
+Usage: `engine-cli system volumes [flags]`.
+
+- `--help, -h` (bool; default `false`): help for volumes.
+- `--json` (bool; default `false`): Print compact structured results.
