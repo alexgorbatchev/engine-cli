@@ -1,12 +1,15 @@
 package api
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
+	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
 
@@ -118,7 +121,14 @@ func (s *Server) acquisitionOperations() []operation {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"selection_token": r.SelectionToken, "result": r.Result, "parameters": p}, nil
+			matched, err := s.database(ctx, func(d *sql.DB) (any, error) {
+				return matchCandidates(ctx, d, p.Query, r.Result.Candidates)
+			})
+			if err != nil {
+				return nil, err
+			}
+			matches := matched.(candidateMatches)
+			return map[string]any{"selection_token": r.SelectionToken, "result": r.Result, "parameters": p, "collection_matches": matches.query, "candidate_matches": matches.candidates}, nil
 		}),
 		defineEffect("track.fetch", "staging", []string{"query"}, func(ctx context.Context, p fetchParams) (any, error) {
 			request := acquisition.TrackRequest{Query: p.Query, Options: p.options()}
@@ -160,6 +170,33 @@ func (s *Server) acquisitionOperations() []operation {
 		}),
 	}
 }
+
+type candidateMatches struct {
+	query      []duplicate.CollectionMatch
+	candidates map[string][]duplicate.CollectionMatch
+}
+
+// matchCandidates reports the collection tracks a search names and, by
+// candidate URL, those each candidate matches. A candidate title without
+// "Artist - Title" takes its artist from the channel or uploader.
+func matchCandidates(ctx context.Context, d *sql.DB, query string, candidates []acquire.Candidate) (candidateMatches, error) {
+	index, err := duplicate.ReadCollectionIndex(ctx, d)
+	if err != nil {
+		return candidateMatches{}, err
+	}
+	result := candidateMatches{query: index.MatchQuery(query), candidates: map[string][]duplicate.CollectionMatch{}}
+	for _, candidate := range candidates {
+		artist, title := duplicate.SplitArtistTitle(candidate.Title)
+		if artist == "" {
+			artist = strings.TrimSuffix(cmp.Or(candidate.Channel, candidate.Uploader), " - Topic")
+		}
+		if matches := index.Match(artist, title, candidate.Duration); len(matches) > 0 && candidate.WebpageURL != "" {
+			result.candidates[candidate.WebpageURL] = matches
+		}
+	}
+	return result, nil
+}
+
 func (s *Server) importAcquisition(ctx context.Context, id, playlist string, result any) (any, error) {
 	imported, err := s.database(ctx, func(d *sql.DB) (any, error) {
 		return staging.New(s.config.LibraryDir).Import(ctx, d, staging.ImportOptions{IDs: []string{id}, ToPlaylist: playlist, Runner: s.config.ToolRunner})
