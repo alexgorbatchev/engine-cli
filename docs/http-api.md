@@ -541,9 +541,12 @@ Stable phase IDs, with the operations that report them. Phases marked with count
 | `tools.dependency.install`, `tools.dependency.update` | `tools.dependencies.install`, `tools.dependencies.update`; `subphase` names the dependency | Yes, one item per tool context |
 | `tools.install` | Any request with `auto_install:true` that installs or updates a tool; `subphase` names the tool | No |
 | `resolve`, `acquire`, `verify`, `metadata`, `install`, `commit` | `track.upgrade`; `acquire` also for `track.fetch` and `mix.fetch`, with Fetch Track's or Fetch Mix's phase as `subphase` | No |
+| `staging.import` | `track.fetch` and `mix.fetch` with `import:true`, after the download | Yes |
 | `backup`, `backup.root`, `backup.artwork`, `backup.saved` | `library.backup` | No |
 | `restore`, `restore.root`, `restore.artwork` | `library.restore` | No |
 | `library.smartlist-repair.apply` | Writes that repair saved Smartlists | No |
+
+During `acquire`, a track fetch's `subphase` is one of Fetch Track's stable phase IDs: `dependencies` (checking its own tools), `search`, `download`, `verify` (checking the downloaded audio), `metadata` (tagging) and `complete`. Map them to labels and treat any other value as generic work; `message` is upstream text and is never a label. A fetch waiting behind a collection write reports the HTTP `queued` event until it starts.
 
 Atomic batch writes (`track.batch.update`, `track.batch.find-replace`, `track.batch.capitalize`, custom-tag batches and reviewed imports) apply in one transaction and report no item counts.
 
