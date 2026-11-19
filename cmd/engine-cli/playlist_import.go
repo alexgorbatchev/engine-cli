@@ -21,6 +21,6 @@ func printPlaylistImportPlan(command *cobra.Command, plan *playlist.ImportPlan) 
 		_, err := fmt.Fprintln(output, "Not applicable: resolve unmatched entries or explicitly review with --skip-missing; at least one matched track is required.")
 		return err
 	}
-	_, err := fmt.Fprintf(output, "Plan token: %s\nApply using the same path, name, parent, encoding and skip policy with --plan-token.\n", plan.PlanToken)
+	_, err := fmt.Fprintf(output, "Plan token: %s\nApply using the same path, name, parent, encoding, skip and name policies with --plan-token.\n", plan.PlanToken)
 	return err
 }

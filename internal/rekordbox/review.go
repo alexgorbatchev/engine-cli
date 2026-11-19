@@ -20,6 +20,8 @@ const (
 type Entry struct {
 	SourceID string `json:"source_id"`
 	Path     string `json:"path"`
+	Title    string `json:"title,omitempty"`
+	Artist   string `json:"artist,omitempty"`
 	Status   string `json:"status"`
 	TrackID  int64  `json:"track_id,omitempty"`
 }
@@ -27,11 +29,15 @@ type Entry struct {
 // Review describes a new-root import, including source-only preservation and
 // every missing or conflicting record. The token authorizes only this plan.
 type Review struct {
-	Path                string     `json:"path"`
+	Path string `json:"path"`
+	// Name is the exact name the new root takes; RequestedName differs when unique_name numbered a taken name.
 	Name                string     `json:"name"`
+	RequestedName       string     `json:"requested_name"`
+	ParentID            int64      `json:"parent_id"`
 	DocumentID          string     `json:"document_id"`
 	MissingMedia        string     `json:"missing_media"`
 	Conflicts           string     `json:"conflicts"`
+	Ambiguous           string     `json:"ambiguous"`
 	AllowUnsupported    bool       `json:"allow_unsupported"`
 	AssignedMarkerColor string     `json:"assigned_marker_color"`
 	Entries             []Entry    `json:"entries"`
@@ -42,14 +48,18 @@ type Review struct {
 	RetainedCount       int        `json:"retained_count"`
 	MissingCount        int        `json:"missing_count"`
 	ConflictCount       int        `json:"conflict_count"`
-	AlreadyImported     bool       `json:"already_imported"`
-	CanApply            bool       `json:"can_apply"`
-	PlanToken           string     `json:"plan_token"`
+	// StaleCount counts records whose saved mapping no longer resolves; they always block the import.
+	StaleCount      int    `json:"stale_count"`
+	AlreadyImported bool   `json:"already_imported"`
+	CanApply        bool   `json:"can_apply"`
+	PlanToken       string `json:"plan_token"`
 }
 
 type reviewInput struct {
 	source      source
 	options     Options
+	name        string
+	parentID    int64
 	libraryUUID string
 	libraryPath string
 	archive     importsource.State
@@ -68,10 +78,10 @@ func buildReview(in reviewInput) (Review, error) {
 		return Review{}, err
 	}
 	warnings := append(sourceWarnings(in.source), hierarchyWarnings(nodes)...)
-	p := Review{Path: in.options.Path, Name: in.options.Name, DocumentID: in.source.document.ID, MissingMedia: in.options.MissingMedia, Conflicts: in.options.Conflicts, AllowUnsupported: in.options.AllowUnsupported, AssignedMarkerColor: importedMarkerColor, Entries: slices.Clone(in.entries), Playlists: nodes, Warnings: warnings}
+	p := Review{Path: in.options.Path, Name: in.name, RequestedName: in.options.Name, ParentID: in.parentID, DocumentID: in.source.document.ID, MissingMedia: in.options.MissingMedia, Conflicts: in.options.Conflicts, Ambiguous: in.options.Ambiguous, AllowUnsupported: in.options.AllowUnsupported, AssignedMarkerColor: importedMarkerColor, Entries: slices.Clone(in.entries), Playlists: nodes, Warnings: warnings}
 	countReview(&p)
 	p.AlreadyImported = reviewArchiveTracks(in.source, in.archive, in.native).complete
-	p.CanApply = !p.AlreadyImported && p.ConflictCount == 0 && (p.MissingCount == 0 || in.options.MissingMedia == policySkip) && (p.ReuseCount == 0 || in.options.Conflicts == policyReuse) && (len(p.Warnings) == 0 || in.options.AllowUnsupported)
+	p.CanApply = !p.AlreadyImported && p.StaleCount == 0 && (p.ConflictCount == 0 || in.options.Ambiguous == policySkip) && (p.MissingCount == 0 || in.options.MissingMedia == policySkip) && (p.ReuseCount == 0 || in.options.Conflicts == policyReuse) && (len(p.Warnings) == 0 || in.options.AllowUnsupported)
 	p.PlanToken, err = reviewFingerprint(in, p)
 	if err != nil {
 		return Review{}, err
@@ -115,8 +125,10 @@ func countReview(p *Review) {
 			p.RetainedCount++
 		case statusMissing:
 			p.MissingCount++
-		case statusConflict, statusStale:
+		case statusConflict:
 			p.ConflictCount++
+		case statusStale:
+			p.StaleCount++
 		}
 	}
 }

@@ -68,6 +68,7 @@ Usage: `engine-cli playlist import <path> [flags]`.
 - `--parent` (string; default ``): Destination parent playlist ID or opaque reference; omitted uses the collection root.
 - `--plan-token` (string; default ``): Apply the exact reviewed plan; required without --dry-run.
 - `--skip-missing` (bool; default `false`): Explicitly omit reviewed missing, unregistered, or ambiguous entries.
+- `--unique-name` (bool; default `false`): Import under the first free "Name (N)" when the name is taken under the parent.
 
 ## `engine-cli playlist inspect`
 

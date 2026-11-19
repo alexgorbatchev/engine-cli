@@ -9,6 +9,7 @@ type preparation struct {
 	extents     map[string]audioExtent
 	options     Options
 	library     string
+	parentID    int64
 }
 
 // prepareReview consumes already captured identities and authoritative decoded
@@ -26,7 +27,7 @@ func prepareReview(request preparation) (reviewInput, Review, error) {
 	if err != nil {
 		return reviewInput{}, Review{}, err
 	}
-	in := reviewInput{source: request.source, options: request.options, libraryUUID: request.destination.uuid, libraryPath: request.library, archive: request.destination.archive, entries: entries, prepared: prepared, native: request.destination.tracks, files: mediaObservation{document: request.files.document, source: maps.Clone(request.files.source), native: maps.Clone(request.files.native)}}
+	in := reviewInput{source: request.source, options: request.options, name: request.destination.name, parentID: request.parentID, libraryUUID: request.destination.uuid, libraryPath: request.library, archive: request.destination.archive, entries: entries, prepared: prepared, native: request.destination.tracks, files: mediaObservation{document: request.files.document, source: maps.Clone(request.files.source), native: maps.Clone(request.files.native)}}
 	review, err := buildReview(in)
 	if err != nil {
 		return reviewInput{}, Review{}, err

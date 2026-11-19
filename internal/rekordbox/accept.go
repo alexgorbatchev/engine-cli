@@ -42,10 +42,16 @@ func acceptReview(in reviewInput, archive importsource.State, token string) (nat
 			disposition.retained = track
 		case statusMissing:
 			disposition.omit = true
+		case statusConflict:
+			// Only an explicitly reviewed skip policy reaches here; buildReview refuses otherwise.
+			disposition.omit = in.options.Ambiguous == policySkip
+			if !disposition.omit {
+				return nativePlan{}, importError(reviewCode, "source track has no applicable reviewed disposition")
+			}
 		default:
 			return nativePlan{}, importError(reviewCode, "source track has no applicable reviewed disposition")
 		}
 		tracks[entry.SourceID] = disposition
 	}
-	return nativePlan{source: in.source, name: in.options.Name, archive: archive, tracks: tracks}, nil
+	return nativePlan{source: in.source, name: in.name, parentID: in.parentID, archive: archive, tracks: tracks}, nil
 }

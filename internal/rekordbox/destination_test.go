@@ -19,7 +19,7 @@ func TestDestinationReviewRequiresNewRootAndRetainsNativeIdentity(t *testing.T) 
 	if _, err := db.CreatePlaylist(ctx, d, "Reviewed root", parent, true); err != nil {
 		t.Fatal(err)
 	}
-	uuid, err := destinationIdentity(ctx, d, "Reviewed root")
+	uuid, _, err := destinationIdentity(ctx, d, importTarget{name: "Reviewed root"})
 	if err != nil || uuid == "" {
 		t.Fatalf("nested name blocked independent new root: %q, %v", uuid, err)
 	}
@@ -38,7 +38,7 @@ func TestDestinationReviewRequiresNewRootAndRetainsNativeIdentity(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer tx.Rollback()
-	if got, err := destinationIdentity(ctx, tx, "Reviewed root"); got != "" || progress.ErrorCode(err) != targetCode {
+	if got, _, err := destinationIdentity(ctx, tx, importTarget{name: "Reviewed root"}); got != "" || progress.ErrorCode(err) != targetCode {
 		t.Fatalf("colliding root became append target: %q, %v", got, err)
 	}
 }
@@ -66,7 +66,7 @@ func TestDestinationReviewRefusesUnavailableNativeEvidence(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			got, err := destinationIdentity(ctx, d, "New root")
+			got, _, err := destinationIdentity(ctx, d, importTarget{name: "New root"})
 			if err == nil || got != "" {
 				t.Fatalf("unavailable destination evidence accepted: %q, %v", got, err)
 			}

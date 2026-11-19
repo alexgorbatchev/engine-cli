@@ -353,3 +353,42 @@ func TestImportOpaqueParentAndUnavailableCollection(t *testing.T) {
 		t.Fatal("closed collection apply succeeded")
 	}
 }
+
+func TestImportUniqueNameTakesTheFreeSiblingName(t *testing.T) {
+	root, source := importFixture(t)
+	d, err := db.Open(filepath.Join(root, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	ctx := context.Background()
+	crates, err := db.CreatePlaylist(ctx, d, "Crates", 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.CreatePlaylist(ctx, d, "set", crates, false); err != nil {
+		t.Fatal(err)
+	}
+	opts := ImportOptions{Path: source, Name: "set", Parent: fmt.Sprint(crates), SkipMissing: true}
+	if _, err := PreviewImport(ctx, d, root, opts); progress.ErrorCode(err) != "playlist_import_target" {
+		t.Fatalf("taken name without unique_name: %v", err)
+	}
+	opts.UniqueName = true
+	plan, err := PreviewImport(ctx, d, root, opts)
+	if err != nil || plan.Name != "set (2)" || plan.RequestedName != "set" || plan.ParentID != crates {
+		t.Fatalf("free name review: %+v %v", plan, err)
+	}
+	opts.PlanToken = plan.PlanToken
+	result, err := ApplyImport(ctx, d, root, opts)
+	if err != nil || result.Name != "set (2)" {
+		t.Fatalf("free name apply: %+v %v", result, err)
+	}
+	var title string
+	if err := d.QueryRow("SELECT title FROM Playlist WHERE id=? AND parentListId=?", result.PlaylistID, crates).Scan(&title); err != nil || title != "set (2)" {
+		t.Fatalf("stored name %q: %v", title, err)
+	}
+	// The reviewed free name is now taken, so the same plan cannot apply again.
+	if _, err := ApplyImport(ctx, d, root, opts); progress.ErrorCode(err) != "playlist_import_stale" {
+		t.Fatalf("replayed free-name plan: %v", err)
+	}
+}

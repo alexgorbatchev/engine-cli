@@ -54,6 +54,7 @@ func newPlaylistCommand() *cobra.Command {
 		{"parent", "string", "Destination parent playlist ID or opaque reference; omitted uses the collection root"},
 		{"encoding", "string", "File encoding: utf-8 (default), windows-1252, or iso-8859-1; M3U8 requires utf-8"},
 		{"skip-missing", "bool", "Explicitly omit reviewed missing, unregistered, or ambiguous entries"},
+		{"unique-name", "bool", "Import under the first free \"Name (N)\" when the name is taken under the parent"},
 		{"dry-run", "bool", "Review ordered entries without changing the collection"},
 		{"plan-token", "string", "Apply the exact reviewed plan; required without --dry-run"},
 	}))

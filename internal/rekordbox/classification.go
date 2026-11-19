@@ -47,6 +47,9 @@ func classifyEntries(src source, destination destinationObservation, files media
 	for i, selector := range src.selectors {
 		file := files.source[selector]
 		entry := Entry{SourceID: selector, Path: file.path}
+		if i < len(src.xml.Collection.Tracks) {
+			entry.Title, entry.Artist = src.xml.Collection.Tracks[i].Name, src.xml.Collection.Tracks[i].Artist
+		}
 		switch {
 		case stale[selector]:
 			entry.Status = statusStale

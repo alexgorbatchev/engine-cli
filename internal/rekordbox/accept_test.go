@@ -17,7 +17,7 @@ func TestAcceptReviewPreservesExactDispositionsAndRefusesStaleConsent(t *testing
 		t.Fatal(err)
 	}
 	archive := importsource.State{}
-	in := reviewInput{source: src, options: Options{Path: "/source.xml", Name: "New root", MissingMedia: policySkip, Conflicts: policyReuse}, libraryPath: "/library", libraryUUID: "library", archive: archive, entries: []Entry{{SourceID: "id:1", Status: statusNew}, {SourceID: "id:2", Status: statusExisting, TrackID: 91}, {SourceID: "id:3", Status: statusMissing}}, prepared: map[string]preparedTrack{"id:1": p}, native: []nativeTrack{{id: 91, path: "/existing.wav", origin: nativeOrigin{uuid: "origin", id: 4}}}}
+	in := reviewInput{source: src, options: Options{Path: "/source.xml", Name: "New root", MissingMedia: policySkip, Conflicts: policyReuse}, name: "New root", libraryPath: "/library", libraryUUID: "library", archive: archive, entries: []Entry{{SourceID: "id:1", Status: statusNew}, {SourceID: "id:2", Status: statusExisting, TrackID: 91}, {SourceID: "id:3", Status: statusMissing}}, prepared: map[string]preparedTrack{"id:1": p}, native: []nativeTrack{{id: 91, path: "/existing.wav", origin: nativeOrigin{uuid: "origin", id: 4}}}}
 	review, err := buildReview(in)
 	if err != nil {
 		t.Fatal(err)

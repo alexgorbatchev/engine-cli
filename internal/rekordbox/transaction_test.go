@@ -25,12 +25,12 @@ func TestWriteCurrentReviewRechecksNativeEvidenceBeforeInsertion(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			uuid, err := destinationIdentity(ctx, d, "Imported")
+			uuid, name, err := destinationIdentity(ctx, d, importTarget{name: "Imported"})
 			if err != nil {
 				t.Fatal(err)
 			}
 			archive := importsource.State{}
-			in := reviewInput{source: src, options: Options{Name: "Imported", Conflicts: policyReuse}, libraryUUID: uuid, libraryPath: "/library", archive: archive, entries: []Entry{{SourceID: "id:1", Status: statusExisting, TrackID: id}}, native: tracks}
+			in := reviewInput{source: src, options: Options{Name: "Imported", Conflicts: policyReuse}, name: name, libraryUUID: uuid, libraryPath: "/library", archive: archive, entries: []Entry{{SourceID: "id:1", Status: statusExisting, TrackID: id}}, native: tracks}
 			review, err := buildReview(in)
 			if err != nil {
 				t.Fatal(err)

@@ -9,12 +9,15 @@ import (
 )
 
 type destinationRequest struct {
-	library, name string
-	source        source
+	library string
+	target  importTarget
+	source  source
 }
 
 type destinationObservation struct {
-	uuid    string
+	uuid string
+	// name is the exact name the new root takes under the target parent.
+	name    string
 	tracks  []nativeTrack
 	archive importsource.State
 	review  archiveReview
@@ -39,7 +42,7 @@ func observeDestinationLocked(ctx context.Context, d *sql.DB, request destinatio
 		return destinationObservation{}, err
 	}
 	defer tx.Rollback()
-	uuid, err := destinationIdentity(ctx, tx, request.name)
+	uuid, name, err := destinationIdentity(ctx, tx, request.target)
 	if err != nil {
 		return destinationObservation{}, err
 	}
@@ -47,5 +50,5 @@ func observeDestinationLocked(ctx context.Context, d *sql.DB, request destinatio
 	if err != nil {
 		return destinationObservation{}, err
 	}
-	return destinationObservation{uuid: uuid, tracks: tracks, archive: archive, review: reviewArchiveTracks(request.source, archive, tracks)}, nil
+	return destinationObservation{uuid: uuid, name: name, tracks: tracks, archive: archive, review: reviewArchiveTracks(request.source, archive, tracks)}, nil
 }

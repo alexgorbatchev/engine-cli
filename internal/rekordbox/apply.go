@@ -16,10 +16,11 @@ type trackDisposition struct {
 }
 
 type nativePlan struct {
-	source  source
-	name    string
-	archive importsource.State
-	tracks  map[string]trackDisposition
+	source   source
+	name     string
+	parentID int64
+	archive  importsource.State
+	tracks   map[string]trackDisposition
 }
 
 type nativeResult struct {
@@ -40,7 +41,7 @@ func writeReviewed(ctx context.Context, tx *sql.Tx, plan nativePlan) (nativeResu
 	if err != nil {
 		return nativeResult{}, err
 	}
-	if _, err := destinationIdentity(ctx, tx, plan.name); err != nil {
+	if _, _, err := destinationIdentity(ctx, tx, importTarget{name: plan.name, parentID: plan.parentID}); err != nil {
 		return nativeResult{}, err
 	}
 	tracks, result, err := writeDispositions(ctx, tx, plan)
@@ -51,7 +52,7 @@ func writeReviewed(ctx context.Context, tx *sql.Tx, plan nativePlan) (nativeResu
 	if err != nil {
 		return nativeResult{}, err
 	}
-	result.rootID, err = db.CreatePlaylist(ctx, tx, plan.name, 0, true)
+	result.rootID, err = db.CreatePlaylist(ctx, tx, plan.name, plan.parentID, true)
 	if err != nil {
 		return nativeResult{}, err
 	}

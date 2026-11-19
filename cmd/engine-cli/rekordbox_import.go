@@ -4,9 +4,12 @@ import "github.com/spf13/cobra"
 
 func newRekordboxImportCommand() *cobra.Command {
 	flags := []acquisitionFlag{
-		{"name", "string", "Required name for a new destination playlist root; existing roots are never replaced"},
+		{"name", "string", "Required name for a new destination playlist root; existing playlists are never replaced"},
 		{"missing-media", "string", "Missing audio policy: reject (default) or explicitly reviewed skip"},
 		{"conflicts", "string", "Existing audio policy: reject (default) or explicitly reviewed reuse"},
+		{"ambiguous", "string", "Ambiguous match policy: reject (default) or explicitly reviewed skip for records that match more than one file or track"},
+		{"parent", "string", "Destination parent playlist ID or opaque reference; omitted creates a top-level root"},
+		{"unique-name", "bool", "Import under the first free \"Name (N)\" when the name is taken under the parent"},
 		{"allow-unsupported", "bool", "Accept reviewed source-only fields preserved in the original XML archive"},
 		{"dry-run", "bool", "Review without creating snapshots, history or import storage"},
 		{"plan-token", "string", "Apply only the exact reviewed source, destination and policies"},

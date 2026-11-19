@@ -18,7 +18,7 @@ type reviewedWrite struct {
 // companion publication; no decoding or independent commit happens here.
 func writeCurrentReview(ctx context.Context, tx *sql.Tx, request reviewedWrite) (nativeResult, error) {
 	in := request.input
-	uuid, err := destinationIdentity(ctx, tx, in.options.Name)
+	uuid, name, err := destinationIdentity(ctx, tx, importTarget{name: in.options.Name, parentID: in.parentID, unique: in.options.UniqueName})
 	if err != nil {
 		return nativeResult{}, err
 	}
@@ -26,7 +26,7 @@ func writeCurrentReview(ctx context.Context, tx *sql.Tx, request reviewedWrite) 
 	if err != nil {
 		return nativeResult{}, err
 	}
-	in.libraryUUID, in.native = uuid, tracks
+	in.libraryUUID, in.name, in.native = uuid, name, tracks
 	plan, err := acceptReview(in, request.archive, request.token)
 	if err != nil {
 		return nativeResult{}, err

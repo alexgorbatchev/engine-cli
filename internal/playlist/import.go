@@ -29,8 +29,10 @@ type ImportOptions struct {
 	Parent      string `json:"parent"`
 	Encoding    string `json:"encoding"`
 	SkipMissing bool   `json:"skip_missing"`
-	DryRun      bool   `json:"dry_run"`
-	PlanToken   string `json:"plan_token"`
+	// UniqueName imports under the first free "Name (N)" when Name is taken under the parent, instead of refusing.
+	UniqueName bool   `json:"unique_name"`
+	DryRun     bool   `json:"dry_run"`
+	PlanToken  string `json:"plan_token"`
 }
 
 // ImportEntry retains source order and explains every omitted membership.
@@ -44,9 +46,12 @@ type ImportEntry struct {
 }
 
 // ImportPlan is a read-only review; its token binds the exact resolved inputs.
+// Name is the exact name the new playlist takes; RequestedName differs when
+// unique_name numbered a taken name.
 type ImportPlan struct {
 	Path            string        `json:"path"`
 	Name            string        `json:"name"`
+	RequestedName   string        `json:"requested_name"`
 	ParentID        int64         `json:"parent_id"`
 	Encoding        string        `json:"encoding"`
 	SkipMissing     bool          `json:"skip_missing"`
@@ -61,6 +66,7 @@ type ImportPlan struct {
 // ImportResult reports committed changes without a fallible post-commit entity read.
 type ImportResult struct {
 	PlaylistID     int64   `json:"playlist_id"`
+	Name           string  `json:"name"`
 	TrackIDs       []int64 `json:"track_ids"`
 	ImportedCount  int     `json:"imported_count"`
 	DuplicateCount int     `json:"duplicate_count"`
@@ -99,7 +105,7 @@ func importPlan(ctx context.Context, d db.Executor, root string, opts ImportOpti
 	if encoding == "" {
 		encoding = m3uUTF8
 	}
-	plan := &ImportPlan{Path: source.path, Name: name, ParentID: parentID, Encoding: encoding, SkipMissing: opts.SkipMissing, Entries: source.entries, TrackIDs: []int64{}}
+	plan := &ImportPlan{Path: source.path, Name: name, RequestedName: strings.TrimSpace(opts.Name), ParentID: parentID, Encoding: encoding, SkipMissing: opts.SkipMissing, Entries: source.entries, TrackIDs: []int64{}}
 	matchImportEntries(plan, byPath)
 	plan.PlanToken, err = importFingerprint(ctx, d, root, plan, source.bytes)
 	return plan, err
@@ -122,11 +128,14 @@ func importDestination(ctx context.Context, d db.Executor, opts ImportOptions) (
 			return "", 0, playlistFileError("playlist_import_target", "parent playlist no longer exists")
 		}
 	}
-	var collision int
-	if err := d.QueryRowContext(ctx, "SELECT COUNT(*) FROM Playlist WHERE parentListId=? AND title=?", parentID, name).Scan(&collision); err != nil {
+	free, err := db.FreePlaylistName(ctx, d, parentID, name)
+	if err != nil {
 		return "", 0, err
 	}
-	if collision != 0 {
+	if free != name && opts.UniqueName {
+		return free, parentID, nil
+	}
+	if free != name {
 		return "", 0, playlistFileError("playlist_import_target", "a playlist with this name already exists in the destination")
 	}
 	return name, parentID, nil
@@ -276,7 +285,7 @@ func ApplyImport(ctx context.Context, d *sql.DB, root string, opts ImportOptions
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &ImportResult{PlaylistID: id, TrackIDs: plan.TrackIDs, ImportedCount: len(plan.TrackIDs), DuplicateCount: plan.DuplicateCount, SkippedCount: plan.UnresolvedCount}, nil
+	return &ImportResult{PlaylistID: id, Name: plan.Name, TrackIDs: plan.TrackIDs, ImportedCount: len(plan.TrackIDs), DuplicateCount: plan.DuplicateCount, SkippedCount: plan.UnresolvedCount}, nil
 }
 
 func resolveImportParent(ctx context.Context, d *sql.DB, opts ImportOptions) (ImportOptions, error) {

@@ -29,7 +29,7 @@ func TestObserveDestinationReadsNativeAndCompanionWithoutEnrollment(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := destinationRequest{library: root, name: "Reviewed root", source: src}
+	request := destinationRequest{library: root, target: importTarget{name: "Reviewed root"}, source: src}
 	got, err := observeDestination(ctx, d, request)
 	if err != nil || got.uuid == "" || len(got.tracks) != 1 || got.tracks[0].id != id || got.review.complete || len(got.archive.Documents) != 0 {
 		t.Fatalf("wrong native/passive observation: %+v, %v", got, err)

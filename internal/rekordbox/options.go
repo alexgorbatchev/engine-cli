@@ -19,13 +19,19 @@ const (
 // Options binds a new-root import to explicitly reviewed omission/reuse policies.
 // Reuse preserves the existing Engine track's metadata and performance data.
 type Options struct {
-	Path             string `json:"path"`
-	Name             string `json:"name"`
-	MissingMedia     string `json:"missing_media"`
-	Conflicts        string `json:"conflicts"`
+	Path         string `json:"path"`
+	Name         string `json:"name"`
+	MissingMedia string `json:"missing_media"`
+	Conflicts    string `json:"conflicts"`
+	// Ambiguous is reject (the default) or skip for source records that match more than one file or track.
+	Ambiguous        string `json:"ambiguous"`
 	AllowUnsupported bool   `json:"allow_unsupported"`
-	DryRun           bool   `json:"dry_run"`
-	PlanToken        string `json:"plan_token"`
+	// Parent is a numeric playlist ID or an opaque playlist reference; empty or 0 creates a top-level root.
+	Parent string `json:"parent"`
+	// UniqueName imports under the first free "Name (N)" when Name is taken under the parent, instead of refusing.
+	UniqueName bool   `json:"unique_name"`
+	DryRun     bool   `json:"dry_run"`
+	PlanToken  string `json:"plan_token"`
 }
 
 func normalizeOptions(opts Options) (Options, error) {
@@ -38,6 +44,12 @@ func normalizeOptions(opts Options) (Options, error) {
 	}
 	if opts.Conflicts == "" {
 		opts.Conflicts = policyReject
+	}
+	if opts.Ambiguous == "" {
+		opts.Ambiguous = policyReject
+	}
+	if opts.Ambiguous != policyReject && opts.Ambiguous != policySkip {
+		return Options{}, importError(invalidCode, "ambiguous-match policy must be reject or skip")
 	}
 	if opts.MissingMedia != policyReject && opts.MissingMedia != policySkip {
 		return Options{}, importError(invalidCode, "missing-media policy must be reject or skip")

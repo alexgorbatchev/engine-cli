@@ -32,10 +32,13 @@ Usage: `engine-cli migrate import <path> [flags]`.
 Review with --dry-run, then apply the same options with --plan-token. Audio remains at its current paths. The original XML and source mappings are preserved with the library; one undo reverses the import. Close Engine DJ before applying.
 
 - `--allow-unsupported` (bool; default `false`): Accept reviewed source-only fields preserved in the original XML archive.
+- `--ambiguous` (string; default ``): Ambiguous match policy: reject (default) or explicitly reviewed skip for records that match more than one file or track.
 - `--conflicts` (string; default ``): Existing audio policy: reject (default) or explicitly reviewed reuse.
 - `--dry-run` (bool; default `false`): Review without creating snapshots, history or import storage.
 - `--help, -h` (bool; default `false`): help for import.
 - `--json` (bool; default `false`): Print compact structured results.
 - `--missing-media` (string; default ``): Missing audio policy: reject (default) or explicitly reviewed skip.
-- `--name` (string; default ``): Required name for a new destination playlist root; existing roots are never replaced.
+- `--name` (string; default ``): Required name for a new destination playlist root; existing playlists are never replaced.
+- `--parent` (string; default ``): Destination parent playlist ID or opaque reference; omitted creates a top-level root.
 - `--plan-token` (string; default ``): Apply only the exact reviewed source, destination and policies.
+- `--unique-name` (bool; default `false`): Import under the first free "Name (N)" when the name is taken under the parent.

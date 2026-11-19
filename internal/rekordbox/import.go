@@ -26,7 +26,11 @@ func Prepare(ctx context.Context, d *sql.DB, library string, opts Options) (*Pre
 	if err != nil {
 		return nil, fmt.Errorf("resolving import destination: %w", err)
 	}
-	request, err := capturePreparation(ctx, d, library, opts)
+	parentID, err := resolveParent(ctx, d, opts.Parent)
+	if err != nil {
+		return nil, err
+	}
+	request, err := capturePreparation(ctx, d, library, opts, parentID)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +50,12 @@ func Prepare(ctx context.Context, d *sql.DB, library string, opts Options) (*Pre
 	return p, nil
 }
 
-func capturePreparation(ctx context.Context, d *sql.DB, library string, opts Options) (preparation, error) {
+func capturePreparation(ctx context.Context, d *sql.DB, library string, opts Options, parentID int64) (preparation, error) {
 	src, document, err := readDocument(ctx, opts.Path)
 	if err != nil {
 		return preparation{}, err
 	}
-	destination, err := observeDestination(ctx, d, destinationRequest{library: library, name: opts.Name, source: src})
+	destination, err := observeDestination(ctx, d, destinationRequest{library: library, target: importTarget{name: opts.Name, parentID: parentID, unique: opts.UniqueName}, source: src})
 	if err != nil {
 		return preparation{}, err
 	}
@@ -67,7 +71,7 @@ func capturePreparation(ctx context.Context, d *sql.DB, library string, opts Opt
 	if err != nil {
 		return preparation{}, err
 	}
-	return preparation{source: src, destination: destination, files: files, extents: extents, options: opts, library: library}, nil
+	return preparation{source: src, destination: destination, files: files, extents: extents, options: opts, library: library, parentID: parentID}, nil
 }
 
 // Review returns a new projection; callers cannot mutate the prepared write.
