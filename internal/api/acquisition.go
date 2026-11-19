@@ -113,7 +113,7 @@ func (s *Server) acquisitionService() acquisition.Service {
 }
 func (s *Server) acquisitionOperations() []operation {
 	return []operation{
-		defineEffect("track.candidates", "staging", []string{"query"}, func(ctx context.Context, p trackLookupParams) (any, error) {
+		defineEffect("track.candidates", "read", []string{"query"}, func(ctx context.Context, p trackLookupParams) (any, error) {
 			r, err := s.acquisitionService().TrackCandidates(ctx, acquisition.TrackRequest{Query: p.Query, Options: p.options()})
 			if err != nil {
 				return nil, err
@@ -137,7 +137,7 @@ func (s *Server) acquisitionOperations() []operation {
 		defineEffect("mix.inspect", "read", []string{"query"}, func(ctx context.Context, p mixLookupParams) (any, error) {
 			return s.acquisitionService().InspectMix(ctx, acquisition.MixRequest{Query: p.Query, Options: p.options()}, false)
 		}),
-		defineEffect("mix.candidates", "staging", []string{"query"}, func(ctx context.Context, p mixLookupParams) (any, error) {
+		defineEffect("mix.candidates", "read", []string{"query"}, func(ctx context.Context, p mixLookupParams) (any, error) {
 			r, err := s.acquisitionService().MixCandidates(ctx, acquisition.MixRequest{Query: p.Query, Options: p.options()})
 			if err != nil {
 				return nil, err

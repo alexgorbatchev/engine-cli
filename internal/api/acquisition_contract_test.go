@@ -15,6 +15,7 @@ import (
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
@@ -42,21 +43,33 @@ func TestAcquisitionSelectionBoundToOriginalRequest(t *testing.T) {
 				s.operations[op.Name] = op
 			}
 			result, historyID, err := s.RunOperation(context.Background(), kind+".candidates", json.RawMessage(`{"query":"Original","sources":"youtube"}`))
-			if err != nil || historyID == "" {
-				t.Fatalf("candidates: %v %s", err, historyID)
+			// A search is a read: it records no undo history.
+			if err != nil || historyID != "" {
+				t.Fatalf("candidates: %v %q", err, historyID)
+			}
+			if effect := s.operations[kind+".candidates"].Effect; effect != "read" {
+				t.Fatalf("candidates effect %q", effect)
 			}
 			response := result.(map[string]any)
 			token := response["selection_token"].(string)
-			for _, change := range []map[string]any{
-				{"query": "Changed"}, {"sources": "bandcamp"}, {"candidate_url": "https://example.test/unlisted"}, {"selection_token": "bad"},
+			for _, change := range []struct {
+				parameters map[string]any
+				code       string
+			}{
+				{map[string]any{"query": "Changed"}, "selection_mismatch"},
+				{map[string]any{"sources": "bandcamp"}, "selection_mismatch"},
+				{map[string]any{"candidate_url": "https://example.test/unlisted"}, "candidate_not_listed"},
+				{map[string]any{"selection_token": "bad"}, "invalid_selection_token"},
+				{map[string]any{"selection_token": strings.Repeat("0", 64)}, "selection_expired"},
 			} {
 				parameters := map[string]any{"query": "Original", "sources": "youtube", "selection_token": token, "candidate_url": "https://example.test/allowed"}
-				for key, value := range change {
+				for key, value := range change.parameters {
 					parameters[key] = value
 				}
 				raw, _ := json.Marshal(parameters)
-				if _, _, err := s.RunOperation(context.Background(), kind+".fetch", raw); err == nil {
-					t.Fatalf("accepted mismatched selection %s", raw)
+				_, _, err := s.RunOperation(context.Background(), kind+".fetch", raw)
+				if code := progress.ErrorCode(err); code != change.code {
+					t.Fatalf("selection %s: code %q, want %q (%v)", raw, code, change.code, err)
 				}
 			}
 			if calls != 1 {
