@@ -292,7 +292,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `session_import_target` | The new name or parent is invalid, or that parent already contains a playlist with the explicitly chosen name. |
 | `session_import_stale` | The reviewed plan no longer matches the session, selected options, or collection. Review again before applying. |
 | `session_import_unresolved` | No played track is in the library, or plays of missing tracks remain without explicit skip permission. Review with `skip_missing:true`. |
-| `playlist_export_target` | Choose an existing playlist and a new absolute destination in an existing server folder. |
+| `playlist_export_target` | Choose an existing playlist and a new absolute destination in an existing server folder, or for a folder export an existing folder with existing playlists, or tracks and a name. |
 | `playlist_export_exists` | The destination already exists, including a directory or symbolic link. Choose a new filename; nothing is overwritten. |
 | `playlist_export_format` | The destination is not M3U/M3U8 or a media path cannot be represented unambiguously. |
 | `playlist_export_encoding` | The selected encoding cannot represent the metadata or media paths. M3U8 requires UTF-8. |
@@ -302,6 +302,7 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `playlist_reorder_view` | The shown rows, selected rows, direction or drop gap no longer match the saved playlist order. Refresh and select the tracks again. |
 | `playlist_reorder_stale` | The reviewed library, playlist, membership identities or move changed. Review the current order again before applying. |
 | `playlist_reorder_unchanged` | The reviewed move does not change the order. Choose a different position for the selected tracks. |
+| `playlist_export_source` | The `source` library folder holds no readable Engine library. Choose a library on this computer. |
 | `playlist_export_unavailable` | Unavailable memberships remain without explicit reviewed skip permission. |
 | `playlist_export_stale` | The reviewed options, destination, membership order, metadata, or media availability changed. Review again. |
 | `playlist_export_write` | Creating, writing, syncing, or closing the new file failed. Inspect the destination before retrying; cleanup is best-effort. |
@@ -1129,7 +1130,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `system.check` | `checks?` (array; omitted or empty runs all supported checks) |
 | `playlist.create` | `name`, `parent?`, `folder?` |
 | `playlist.import` | `path`, `name`, `parent?`, `unique_name?`, `encoding?`, `skip_missing?`, `dry_run?`, `plan_token?`; see the reviewed import contract below |
-| `playlist.export` | `identifier`, `path`, `encoding?`, `path_mode?`, `skip_unavailable?`, `dry_run?`, `plan_token?`; see the reviewed export contract below |
+| `playlist.export` | `identifier` and `path`, or `folder` with `identifiers?`, `tracks?`, `name?` and `source?`; `encoding?`, `path_mode?`, `skip_unavailable?`, `dry_run?`, `plan_token?`; see the reviewed export contract below |
 | `session.list` | `{}`; see play history below |
 | `session.inspect` | `session` (positive numeric session ID) |
 | `session.import` | `session`, `name?`, `parent?`, `skip_missing?`, `dry_run?`, `plan_token?`; see play history below |
@@ -1229,6 +1230,8 @@ If unresolved entries are intentionally omitted, include `--skip-missing` in bot
 
 The preview also returns `playlist_title`, `skip_unavailable`, `unavailable_count`, `can_apply`, and `plan_token`. Output uses extended M3U headers and metadata. UTF-8 is the default and the only encoding accepted for `.m3u8`; `.m3u` additionally accepts explicit `windows-1252` or `iso-8859-1`. Encoding is strict, without replacement characters. Metadata line breaks are flattened; invalid or ambiguous path lines are rejected. The default `path_mode:"absolute"` writes absolute server media paths; `"relative"` writes paths relative to the destination folder with forward slashes and an explicit `./` prefix when needed to distinguish comments or URI schemes. Relative paths cannot cross Windows volumes. POSIX filenames containing literal backslashes, control characters, invalid UTF-8, or surrounding whitespace are rejected. Moving a relative export without its media layout breaks its references.
 
+A folder export writes several files under one review. Submit `folder`, an existing server folder, instead of `identifier` and `path`, with `identifiers` (one file per listed playlist), `tracks` with `name` (one file of those tracks in that order, as for a selection or a Smartlist), or neither (one file per playlist that has tracks). `source` names another library folder on this computer, opened read-only, so a library that is not open exports through an open library's endpoint. Each file is named after its playlist (`.m3u8`, or `.m3u` with another encoding), with characters a file name cannot hold replaced by `-`; a name that exists in the folder or is taken by another file of the export becomes `"Name (N)"`, so nothing is replaced. The preview returns `source`, `folder`, `encoding`, `path_mode`, `skip_unavailable`, the source library's regular playlist `playlists` tree (`id`, `title`, `track_count`, `included`, `children`), `files` (each with `playlist_id`, `title`, the final `name`, the `requested_name`, `path`, `entries`, `exported_count` and `unavailable_count`), `file_count`, `exported_count`, `unavailable_count`, `can_apply` (something to export, and unavailable media skipped or absent) and `plan_token`. Without `path_mode` a folder export writes relative paths when every available track sits on the folder's volume and absolute paths otherwise, with `path_mode_reason` `same_volume` or `other_volume`. Apply returns `folder`, `files` (one single-file result each), `file_count`, `exported_count` and `skipped_count`; a failure keeps the files already written and returns them with the error.
+
 Export retains catalog effect `read` because it never modifies Engine data. Preview uses the collection read barrier; application also enters the shared write scheduler for its output file. Both remain available while Desktop is running and create no snapshot, history record, or undo entry. Native exclusive creation through an open destination directory supports filesystems such as FAT/exFAT without hard-link publication. The new file can be visible while being written; a successful response follows writing, syncing, and closing. Failures and cancellation attempt to remove only the created file when its identity still matches. Cleanup is best-effort and cannot guarantee rollback if the destination is concurrently changed.
 
 The CLI shares the same review and application:
@@ -1236,6 +1239,7 @@ The CLI shares the same review and application:
 ```sh
 engine-cli playlist export 3 --path /Music/set.m3u8 --dry-run
 engine-cli playlist export 3 --path /Music/set.m3u8 --plan-token <reviewed-token>
+engine-cli playlist export --folder /Volumes/DJ_USB/Playlists --identifiers 3,4 --dry-run
 ```
 
 Keep `--encoding`, `--path-mode`, and `--skip-unavailable` identical between review and apply. Human output lists ordered review entries and counts; `--json` emits the structured HTTP plan or result.

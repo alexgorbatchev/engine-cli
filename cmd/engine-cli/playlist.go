@@ -41,10 +41,15 @@ func newPlaylistCommand() *cobra.Command {
 	plCmd.AddCommand(newPlaylistMoveCommand())
 	plCmd.AddCommand(newPlaylistTrackCommand())
 	plCmd.AddCommand(newPlaylistReorderCommand())
-	plCmd.AddCommand(acquisitionCommand("playlist.export", "export <id|ref>", "Review and export a playlist to a new server-local M3U file", "identifier", []acquisitionFlag{
-		{"path", "string", "New server-local M3U/M3U8 destination; parent must exist and existing files are never replaced"},
+	plCmd.AddCommand(acquisitionCommand("playlist.export", "export [<id|ref>]", "Review and export playlists to new server-local M3U files", "identifier", []acquisitionFlag{
+		{"path", "string", "New server-local M3U/M3U8 destination for one playlist; parent must exist and existing files are never replaced"},
+		{"folder", "string", "Existing server-local folder for one file per playlist; taken names become \"Name (N)\""},
+		{"identifiers", "strings", "Playlists a --folder export writes, one file each (empty: every playlist with tracks)"},
+		{"tracks", "strings", "Track IDs a --folder export writes as one file named by --name"},
+		{"name", "string", "File and playlist name for a --tracks export"},
+		{"source", "string", "Another library folder on this computer to export from (empty: this library)"},
 		{"encoding", "string", "File encoding: utf-8 (default), windows-1252, or iso-8859-1; M3U8 requires utf-8"},
-		{"path-mode", "string", "Media paths: absolute (default), or relative to the destination directory"},
+		{"path-mode", "string", "Media paths: absolute, or relative to the destination directory (default: absolute; a --folder export chooses relative when the music shares its volume)"},
 		{"skip-unavailable", "bool", "Explicitly omit reviewed unavailable media; no copying or acquisition"},
 		{"dry-run", "bool", "Review saved membership order and output without creating files"},
 		{"plan-token", "string", "Export the exact reviewed plan; required without --dry-run"},

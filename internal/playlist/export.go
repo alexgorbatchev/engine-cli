@@ -19,14 +19,22 @@ const (
 )
 
 // ExportOptions creates a new server-local file without modifying the source collection.
+// A single-file export takes Identifier and Path. A folder export takes Folder and
+// Identifiers (one file each), Tracks with Name (one file), or neither (every
+// playlist with tracks), read from Source, another library on this computer, when set.
 type ExportOptions struct {
-	Identifier      string `json:"identifier"`
-	Path            string `json:"path"`
-	Encoding        string `json:"encoding"`
-	PathMode        string `json:"path_mode"`
-	SkipUnavailable bool   `json:"skip_unavailable"`
-	DryRun          bool   `json:"dry_run"`
-	PlanToken       string `json:"plan_token"`
+	Identifier      string   `json:"identifier"`
+	Path            string   `json:"path"`
+	Source          string   `json:"source"`
+	Folder          string   `json:"folder"`
+	Identifiers     []string `json:"identifiers"`
+	Tracks          []string `json:"tracks"`
+	Name            string   `json:"name"`
+	Encoding        string   `json:"encoding"`
+	PathMode        string   `json:"path_mode"`
+	SkipUnavailable bool     `json:"skip_unavailable"`
+	DryRun          bool     `json:"dry_run"`
+	PlanToken       string   `json:"plan_token"`
 }
 
 // ExportEntry describes one saved membership, including unavailable media.
