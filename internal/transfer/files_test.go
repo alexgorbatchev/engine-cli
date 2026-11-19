@@ -69,9 +69,6 @@ func TestStreamAndFilesystemErrors(t *testing.T) {
 	if _, _, err = fileHash(context.Background(), dir); err == nil {
 		t.Fatal("hashed directory")
 	}
-	if _, err = availableSpace(filepath.Join(dir, "missing")); err == nil {
-		t.Fatal("accepted missing volume")
-	}
 	if err = safeDestination(dir, filepath.Join(dir, "..", "outside")); destinationCode(err) != "sync_destination_escapes" {
 		t.Fatalf("accepted external target: %v", err)
 	}

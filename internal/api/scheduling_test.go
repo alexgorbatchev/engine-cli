@@ -24,7 +24,7 @@ func startSchedulingJob(t *testing.T, s *Server, name, body string, release <-ch
 	started := make(chan struct{})
 	// Export is already source-read-only; retain its real preview bit because it
 	// determines whether output-file publication enters the shared write queue.
-	if name != "playlist.export" {
+	if name != "playlist.export" && name != "migrate.export" {
 		bound.preview = true
 	}
 	bound.before = nil
@@ -91,6 +91,8 @@ func TestJobScheduling(t *testing.T) {
 		{"write behind backup", schedulingRequest{"library.backup", `{}`}, write, false},
 		{"read during backup", schedulingRequest{"library.backup", `{}`}, read, true},
 		{"export in write queue", write, schedulingRequest{"migrate.export", `{}`}, false},
+		{"Rekordbox export review is a concurrent read", write, schedulingRequest{"migrate.export", `{"dry_run":true}`}, true},
+		{"Rekordbox export review runs during an export", schedulingRequest{"migrate.export", `{}`}, schedulingRequest{"migrate.export", `{"dry_run":true}`}, true},
 		{"write behind export", schedulingRequest{"migrate.export", `{}`}, write, false},
 		{"auto install in write queue", write, schedulingRequest{"track.verify", `{"target":"song.mp3","auto_install":true}`}, false},
 		{"explicit false does not queue", write, schedulingRequest{"track.verify", `{"target":"song.mp3","auto_install":false}`}, true},

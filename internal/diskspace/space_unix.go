@@ -1,10 +1,10 @@
 //go:build darwin || linux
 
-package transfer
+package diskspace
 
 import "golang.org/x/sys/unix"
 
-func availableSpace(path string) (uint64, error) {
+func Available(path string) (uint64, error) {
 	var s unix.Statfs_t
 	if err := unix.Statfs(path, &s); err != nil {
 		return 0, err

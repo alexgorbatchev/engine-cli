@@ -27,7 +27,7 @@ For agent usage, run `engine-cli skill` for installation instructions or read th
 # How It Works
 
 - Scans your Engine DJ library directory on internal storage or external USB/SD drives.
-- Use `engine-cli migrate export` to copy the selected library into `./rekordbox`, or choose paths with `--source` and `--target`. Export runs unattended in every mode and leaves the source databases and audio unchanged.
+- Use `engine-cli migrate export` to copy the selected library into `./rekordbox`, or choose paths with `--source` and `--target`. Add `--dry-run` to see every track the export copies or leaves out, and why, then apply that review with `--plan-token`; `--playlists` or `--tracks` with `--name` export part of the library. Export runs unattended in every mode and leaves the source databases and audio unchanged.
 - Inspects SQLite database tables to detect corrupt file paths, size discrepancies, and missing artwork.
 - Imports audio files and links them to playlists while maintaining linked-list playback order.
 - Normalizes non-square album covers to 1:1 square dimensions without re-encoding your audio files.

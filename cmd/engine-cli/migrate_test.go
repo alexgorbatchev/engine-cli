@@ -171,3 +171,41 @@ func TestMigrateCLIStreamsIntermediateProgress(t *testing.T) {
 		t.Fatalf("incomplete progress: phases=%v bytes=%v percent=%v", phases, sawBytes, previous)
 	}
 }
+
+func TestMigrateExportReviewsBeforeApplying(t *testing.T) {
+	source := migrationLibrary(t)
+	target := filepath.Join(t.TempDir(), "usb")
+	run := func(args ...string) (string, error) {
+		c := newRootCommand()
+		var out bytes.Buffer
+		c.SetOut(&out)
+		c.SetErr(io.Discard)
+		c.SetArgs(append([]string{"-l", source, "migrate", "export", "--target", target}, args...))
+		err := c.Execute()
+		return out.String(), err
+	}
+	human, err := run("--dry-run")
+	if err != nil || !strings.Contains(human, "exported: 1 (5 bytes, 0 already present)") || !strings.Contains(human, "Plan token: ") {
+		t.Fatalf("review=%q err=%v", human, err)
+	}
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
+		t.Fatal("review wrote output")
+	}
+	encoded, err := run("--dry-run", "--json")
+	var plan migrate.Plan
+	if err != nil || json.Unmarshal([]byte(encoded), &plan) != nil || plan.PlanToken == "" {
+		t.Fatalf("json review=%q err=%v", encoded, err)
+	}
+	if _, err := run("--plan-token", "other"); progress.ErrorCode(err) != "migrate_export_plan_stale" {
+		t.Fatalf("stale apply: %v", err)
+	}
+	if out, err := run("--plan-token", plan.PlanToken); err != nil || !strings.Contains(out, "exported: 1 of 1") {
+		t.Fatalf("apply=%q err=%v", out, err)
+	}
+	if out, err := run("--dry-run", "--tracks", "1", "--name", "Picks", "--playlists", "1"); err == nil {
+		t.Fatalf("mixed scope accepted: %q", out)
+	}
+	if out, err := run("--dry-run", "--tracks", "9", "--name", "Picks"); err == nil {
+		t.Fatalf("unknown track accepted: %q", out)
+	}
+}

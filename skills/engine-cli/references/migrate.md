@@ -16,12 +16,17 @@ Copy Engine DJ audio and export Rekordbox XML
 
 Usage: `engine-cli migrate export [flags]`.
 
-Runs unattended; writes Contents/, rekordbox.xml, and .sync_state.json under the target. --source defaults to --lib-dir; --target defaults to ./rekordbox. --json prints the HTTP result format.
+Runs unattended; writes Contents/, rekordbox.xml, and .sync_state.json under the target. --source defaults to --lib-dir; --target defaults to ./rekordbox. --dry-run reviews every in-scope track as exported or left out with its reason; --plan-token applies only that review. --json prints the HTTP result format.
 
+- `--dry-run` (bool; default `false`): Review what the export copies and leaves out without writing anything.
 - `--help, -h` (bool; default `false`): help for export.
 - `--json` (bool; default `false`): Print the migration result as JSON.
+- `--name` (string; default ``): Playlist name for a --tracks export.
+- `--plan-token` (string; default ``): Export only the exact reviewed plan; refused when the library or scope changed.
+- `--playlists` (stringSlice; default `[]`): Export only these playlist IDs (folders keep their place; empty: the whole library).
 - `--source, -s` (string; default ``): Source Engine Library directory (empty: --lib-dir).
 - `--target, -t` (string; default ``): Rekordbox output directory (empty: ./rekordbox).
+- `--tracks` (stringSlice; default `[]`): Export only these track IDs, under the playlist named by --name.
 
 ## `engine-cli migrate import`
 

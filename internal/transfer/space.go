@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/companion"
+	"github.com/alexgorbatchev/engine-cli/internal/diskspace"
 )
 
 func (p *plan) checkSpace() error {
-	available, err := availableSpace(p.destination.Path)
+	available, err := diskspace.Available(p.destination.Path)
 	if err != nil {
 		return err
 	}

@@ -153,3 +153,28 @@ func TestMigrationSSEStreamsIntermediateProgress(t *testing.T) {
 		t.Fatalf("incomplete SSE: %s", w.Body.String())
 	}
 }
+
+func TestMigrationAPIReviewsBeforeApplyingTheReviewedPlan(t *testing.T) {
+	s, _ := testAPI(t)
+	s.config.LibraryDir = migrationSource(t)
+	target := t.TempDir()
+	review := runAPIJob(t, s, "migrate.export", `{"target":`+string(mustJSON(t, target))+`,"dry_run":true}`)
+	plan := review["result"].(map[string]any)
+	token, _ := plan["plan_token"].(string)
+	if token == "" || plan["can_apply"] != true || plan["export_count"] != float64(1) {
+		t.Fatalf("plan=%+v", plan)
+	}
+	if entries, err := os.ReadDir(target); err != nil || len(entries) != 0 {
+		t.Fatalf("review wrote output: %v %v", entries, err)
+	}
+	id := submitAPIJob(t, s, "migrate.export", `{"target":`+string(mustJSON(t, target))+`,"plan_token":"other"}`)
+	job := awaitAPIJob(t, s, id)
+	failure, _ := job["error"].(map[string]any)
+	if job["state"] != "failed" || failure["code"] != "migrate_export_plan_stale" {
+		t.Fatalf("stale apply=%+v", job)
+	}
+	applied := runAPIJob(t, s, "migrate.export", `{"target":`+string(mustJSON(t, target))+`,"plan_token":"`+token+`"}`)
+	if result := applied["result"].(map[string]any); result["exported"] != float64(1) {
+		t.Fatalf("apply=%+v", applied)
+	}
+}

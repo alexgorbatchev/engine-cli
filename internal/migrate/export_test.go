@@ -75,7 +75,7 @@ func TestExportPreservesSourceAudioAndPerformanceData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.Copied != 1 || report.Unavailable != 2 || report.Total != 3 || report.Failed != 0 {
+	if report.Copied != 1 || report.Exported != 1 || len(report.LeftOut) != 2 || report.LeftOut[0].Status != StatusUnavailable || report.LeftOut[1].Status != StatusStreaming || report.Total != 1 || report.Failed != 0 {
 		t.Fatalf("report=%+v", report)
 	}
 	doc, err := rbxml.OpenDocument(report.XML)
