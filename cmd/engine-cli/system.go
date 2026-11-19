@@ -34,7 +34,7 @@ func newSystemCommand() *cobra.Command {
 	}}
 	c.Flags().StringSliceVar(&checks, "checks", nil, "Checks to run (comma-separated or repeatable); default: engine_desktop")
 	c.Flags().BoolVar(&asJSON, "json", false, "Print structured results for UI consumers")
-	group.AddCommand(c, acquisitionCommand("system.volumes", "volumes", "List the drives on this computer with their free space", "", nil))
+	group.AddCommand(c)
 	return group
 }
 

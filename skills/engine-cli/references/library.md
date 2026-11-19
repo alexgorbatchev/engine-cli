@@ -269,6 +269,25 @@ An outdated plan token fails with `restore_plan_stale` and changes nothing.
 - `--help, -h` (bool; default `false`): help for restore.
 - `--plan-token` (string; default ``): Restore only if the backup and library still match the dry run that returned this token.
 
+## `engine-cli library tag-copies`
+
+Usage: `engine-cli library tag-copies [flags]`.
+
+Fold the copies that tag and artwork edits made before they wrote in place. Accepts no positional arguments and inherits the root library selection and protection flags.
+
+- `--help, -h` (bool; default `false`): display the command subtree.
+
+## `engine-cli library tag-copies repair`
+
+Usage: `engine-cli library tag-copies repair [flags]`.
+
+Find tracks stored as `<name>-upgraded-<digits>.<ext>` and fold each back to `<name>.<ext>`. Run `--dry-run` first: it reads only and returns `folds` (each with `track_id`, `title`, stored `from` and `to`, `replaces_original` and the unused intermediate copies it `removes`), `skipped` with a reason code (`tag_copy_audio_differs` for Upgrade audio replacements, `tag_copy_original_in_use`, `tag_copy_missing`), `can_apply` and `plan_token`. Only copies whose compressed audio matches the original fold. Then apply with `--plan-token`: a changed library refuses with `tag_copies_stale`, an empty plan with `tag_copies_none`. Close Desktop first. One Undo restores every copy, original and stored path.
+
+- `--dry-run` (bool; default `false`): review without changing anything.
+- `--help, -h` (bool; default `false`): help for repair.
+- `--json` (bool; default `false`): print the structured result to stdout.
+- `--plan-token` (string; default ``): apply only the review that returned this token.
+
 ## `engine-cli library smartlist-repair`
 
 Usage: `engine-cli library smartlist-repair [flags]`.

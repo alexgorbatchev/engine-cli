@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/db"
-	"github.com/alexgorbatchev/engine-cli/internal/playlist"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 )
@@ -87,33 +86,5 @@ func TestPlaylistExportFailureHasNoResult(t *testing.T) {
 	failure := job["error"].(map[string]any)
 	if failure["code"] != "playlist_export_exists" {
 		t.Fatalf("lost safe export code: %v", job)
-	}
-}
-
-func TestPlaylistFolderExportReviewsAndAppliesThroughTheAPI(t *testing.T) {
-	s, root, _ := apiImportFixture(t)
-	d, err := db.Open(filepath.Join(root, "Database2", "m.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.AddTrackToPlaylist(context.Background(), d, 1, 1); err != nil {
-		t.Fatal(err)
-	}
-	d.Close()
-	folder := t.TempDir()
-	raw, _ := json.Marshal(map[string]any{"folder": folder, "source": root, "dry_run": true})
-	result, _, err := s.RunOperation(context.Background(), "playlist.export", raw)
-	plan, ok := result.(*playlist.ExportFolderPlan)
-	if err != nil || !ok || plan.FileCount != 1 || !plan.CanApply {
-		t.Fatalf("folder review=%+v err=%v", result, err)
-	}
-	raw, _ = json.Marshal(map[string]any{"folder": folder, "source": root, "plan_token": plan.PlanToken})
-	result, _, err = s.RunOperation(context.Background(), "playlist.export", raw)
-	if written, ok := result.(*playlist.ExportFolderResult); err != nil || !ok || written.FileCount != 1 {
-		t.Fatalf("folder apply=%+v err=%v", result, err)
-	}
-	raw, _ = json.Marshal(map[string]any{"folder": folder, "identifier": "1", "dry_run": true})
-	if result, _, err := s.RunOperation(context.Background(), "playlist.export", raw); result != nil || progress.ErrorCode(err) != "playlist_export_target" {
-		t.Fatalf("mixed modes=%+v err=%v", result, err)
 	}
 }

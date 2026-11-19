@@ -41,23 +41,18 @@ Inserts a new record into Playlist table in Database2/m.db under optional parent
 
 ## `engine-cli playlist export`
 
-Review and export playlists to new server-local M3U files
+Review and export a playlist to a new server-local M3U file
 
-Usage: `engine-cli playlist export [<id|ref>] [flags]`.
+Usage: `engine-cli playlist export <id|ref> [flags]`.
 
 - `--dry-run` (bool; default `false`): Review saved membership order and output without creating files.
 - `--encoding` (string; default ``): File encoding: utf-8 (default), windows-1252, or iso-8859-1; M3U8 requires utf-8.
-- `--folder` (string; default ``): Existing server-local folder for one file per playlist; taken names become "Name (N)".
 - `--help, -h` (bool; default `false`): help for export.
-- `--identifiers` (stringSlice; default `[]`): Playlists a --folder export writes, one file each (empty: every playlist with tracks).
 - `--json` (bool; default `false`): Print compact structured results.
-- `--name` (string; default ``): File and playlist name for a --tracks export.
-- `--path` (string; default ``): New server-local M3U/M3U8 destination for one playlist; parent must exist and existing files are never replaced.
-- `--path-mode` (string; default ``): Media paths: absolute, or relative to the destination directory (default: absolute; a --folder export chooses relative when the music shares its volume).
+- `--path` (string; default ``): New server-local M3U/M3U8 destination; parent must exist and existing files are never replaced.
+- `--path-mode` (string; default ``): Media paths: absolute (default), or relative to the destination directory.
 - `--plan-token` (string; default ``): Export the exact reviewed plan; required without --dry-run.
 - `--skip-unavailable` (bool; default `false`): Explicitly omit reviewed unavailable media; no copying or acquisition.
-- `--source` (string; default ``): Another library folder on this computer to export from (empty: this library).
-- `--tracks` (stringSlice; default `[]`): Track IDs a --folder export writes as one file named by --name.
 
 ## `engine-cli playlist import`
 
