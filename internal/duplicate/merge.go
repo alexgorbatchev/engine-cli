@@ -11,8 +11,25 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/fingerprint"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/identity"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/tags"
 )
+
+// Stable codes for merge selections refused before anything is written, so clients explain each one.
+const (
+	MergeNothingSelectedCode = "merge_nothing_selected"
+	MergeKeeperMissingCode   = "merge_keeper_missing"
+	MergeTrackMissingCode    = "merge_track_missing"
+	MergeTrackRepeatedCode   = "merge_track_repeated"
+	MergeNotDuplicateCode    = "merge_not_duplicate"
+	MergeIdentityMissingCode = "merge_identity_missing"
+	MergeTimingOutsideCode   = "merge_timing_outside_group"
+)
+
+// refused classifies a merge selection Engine will not apply; nothing has been written yet.
+func refused(code, format string, args ...any) error {
+	return &progress.Error{Code: code, Cause: fmt.Errorf(format, args...)}
+}
 
 type MergeOptions struct {
 	Keep               int64    `json:"keep"`
@@ -171,10 +188,10 @@ func resolveMerge(ctx context.Context, d *sql.DB, o MergeOptions) (MergeOptions,
 func selection(ctx context.Context, lib string, tracks []Track, opts MergeOptions) (*MergeResult, error) {
 	keep, err := lookup(tracks, opts.Keep)
 	if err != nil {
-		return nil, err
+		return nil, refused(MergeKeeperMissingCode, "keeper track %d is no longer in the collection", opts.Keep)
 	}
 	if len(opts.Remove) == 0 {
-		return nil, fmt.Errorf("select at least one duplicate track to remove")
+		return nil, refused(MergeNothingSelectedCode, "select at least one duplicate track to remove")
 	}
 	allowed := make(map[int64]bool)
 	for _, group := range groupTracks(tracks, "all") {
@@ -194,12 +211,13 @@ func selection(ctx context.Context, lib string, tracks []Track, opts MergeOption
 	result := &MergeResult{Kept: keep}
 	for _, id := range opts.Remove {
 		if seen[id] {
-			return nil, fmt.Errorf("track %d is selected more than once or is the keeper", id)
+			return nil, refused(MergeTrackRepeatedCode, "track %d is selected more than once or is the keeper", id)
 		}
 		seen[id] = true
 		tr, err := lookup(tracks, id)
 		if err != nil {
-			return nil, err
+			// A track merged or removed since the scan is no longer in the collection.
+			return nil, refused(MergeTrackMissingCode, "track %d is no longer in the collection", id)
 		}
 		if !allowed[id] {
 			match, err := audioCandidate(ctx, lib, keep, tr)
@@ -207,19 +225,19 @@ func selection(ctx context.Context, lib string, tracks []Track, opts MergeOption
 				return nil, err
 			}
 			if !match {
-				return nil, fmt.Errorf("track %d is not a duplicate candidate of track %d; scan audio before merging recordings with different metadata", id, opts.Keep)
+				return nil, refused(MergeNotDuplicateCode, "track %d is not a duplicate candidate of track %d; scan audio before merging recordings with different metadata", id, opts.Keep)
 			}
 		}
 		if tr.originID <= 0 || tr.originUUID == "" {
-			return nil, fmt.Errorf("track %d has no persistent Engine identity", id)
+			return nil, refused(MergeIdentityMissingCode, "track %d has no persistent Engine identity", id)
 		}
 		result.Removed = append(result.Removed, tr)
 	}
 	if keep.originID <= 0 || keep.originUUID == "" {
-		return nil, fmt.Errorf("keeper has no persistent Engine identity")
+		return nil, refused(MergeIdentityMissingCode, "keeper has no persistent Engine identity")
 	}
 	if opts.PerformanceFrom != 0 && !seen[opts.PerformanceFrom] {
-		return nil, fmt.Errorf("performance source must be one of the selected tracks")
+		return nil, refused(MergeTimingOutsideCode, "performance source must be one of the selected tracks")
 	}
 	return result, nil
 }

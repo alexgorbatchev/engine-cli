@@ -326,6 +326,13 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `undo_conflict` | A non-forced undo found a later change to the same data. Nothing was undone; preview the undo to see the later changes. |
 | `metadata_edit_stale` | The tracks or the edit changed since the reviewed `track.batch.update` plan. Review again before applying; nothing was changed. |
 | `metadata_edit_unchanged` | The reviewed `track.batch.update` plan changes nothing: the tracks already have these values. Nothing was changed. |
+| `merge_nothing_selected` | A `track.duplicate.merge` names no track to remove. Nothing was changed. |
+| `merge_keeper_missing` | The track to keep is no longer in the collection, for example because it was merged or removed since the scan. Nothing was changed; scan again. |
+| `merge_track_missing` | A track to remove is no longer in the collection, for example because it was already merged. Nothing was changed; scan again. |
+| `merge_track_repeated` | A track is listed more than once, or as both the keeper and a track to remove. Nothing was changed. |
+| `merge_not_duplicate` | A track to remove is not a duplicate candidate of the keeper by metadata or audio fingerprint. Nothing was changed; scan audio before merging recordings with different metadata. |
+| `merge_identity_missing` | The keeper or a track to remove has no persistent Engine identity to carry over. Nothing was changed. |
+| `merge_timing_outside_group` | `performance_from` names a track outside the merge; the cues, loops and grid must come from the keeper or a track being merged. Nothing was changed. |
 | `batch_limit_exceeded` | A list parameter holds more items than the operation's catalog `limits` allow in one job. Nothing started; split the selection into jobs of at most that many items. |
 | `restore_plan_stale` | The backup, the library's history or its companion stores changed after a restore was reviewed, so its `plan_token` no longer matches. Nothing was restored; review it again. |
 | `history_recovery_required` | An interrupted history entry awaits recovery, or this operation was interrupted and its own pending entry is the job's `history_id`. Engine refuses every other write and every other undo, dry runs included, until the pending entry is recovered with `library.undo` and `force:true`; that entry's own dry run reviews what recovery restores. |

@@ -2,6 +2,7 @@ package duplicate
 
 import (
 	"context"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"testing"
 )
 
@@ -51,11 +52,27 @@ func TestMergeOriginReferencesAndRollback(t *testing.T) {
 }
 
 func TestMergeRejectsInvalidSelection(t *testing.T) {
-	for _, opts := range []MergeOptions{{Keep: 1}, {Keep: 1, Remove: []int64{1}}, {Keep: 1, Remove: []int64{2, 2}}, {Keep: 999, Remove: []int64{2}}, {Keep: 1, Remove: []int64{999}}, {Keep: 1, Remove: []int64{5}}, {Keep: 1, Remove: []int64{2}, PerformanceFrom: 3}} {
+	for _, tc := range []struct {
+		opts MergeOptions
+		code string
+	}{
+		{MergeOptions{Keep: 1}, MergeNothingSelectedCode},
+		{MergeOptions{Keep: 1, Remove: []int64{1}}, MergeTrackRepeatedCode},
+		{MergeOptions{Keep: 1, Remove: []int64{2, 2}}, MergeTrackRepeatedCode},
+		{MergeOptions{Keep: 999, Remove: []int64{2}}, MergeKeeperMissingCode},
+		{MergeOptions{Keep: 1, Remove: []int64{999}}, MergeTrackMissingCode},
+		{MergeOptions{Keep: 1, Remove: []int64{5}}, MergeNotDuplicateCode},
+		{MergeOptions{Keep: 1, Remove: []int64{2}, PerformanceFrom: 3}, MergeTimingOutsideCode},
+	} {
 		d := library(t)
 		seed(t, d)
-		if _, err := Merge(context.Background(), d, opts); err == nil {
-			t.Fatalf("accepted %+v", opts)
+		_, err := Merge(context.Background(), d, tc.opts)
+		if err == nil {
+			t.Fatalf("accepted %+v", tc.opts)
+		}
+		// Each refusal carries a stable code so clients can explain it, never Engine's own text.
+		if code := progress.ErrorCode(err); code != tc.code {
+			t.Fatalf("%+v: code %q, want %q (%v)", tc.opts, code, tc.code, err)
 		}
 	}
 }
