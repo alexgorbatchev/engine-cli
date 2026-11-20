@@ -77,4 +77,24 @@ func TestTagEditReviewsAsAReadAndWritesTheReviewOnce(t *testing.T) {
 	if _, _, err := s.RunOperation(ctx, "track.tags.edit", json.RawMessage(`{"edits":[]}`)); err == nil {
 		t.Fatal("accepted an empty edit")
 	}
+	// Taking the file's title into track info is the same reviewed write, and one undo restores it.
+	takes := `"edits":[{"identifier":"1","take":["title"]}]`
+	review, _, err = s.RunOperation(ctx, "track.tags.edit", json.RawMessage(`{`+takes+`,"dry_run":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan = review.(*track.TagEditPlan)
+	if plan.ChangedTracks != 1 || plan.Files[0].TrackChanges[0] != (track.TagChange{Field: "title", Before: "Curated title", After: "Before"}) {
+		t.Fatalf("take plan %+v", plan)
+	}
+	_, id, err = s.RunOperation(ctx, "track.tags.edit", json.RawMessage(`{`+takes+`,"plan_token":"`+plan.PlanToken+`"}`))
+	if err != nil || id == "" || title() != "Before" {
+		t.Fatalf("take %v history %q title %q", err, id, title())
+	}
+	if data, _ := os.ReadFile(path); string(data) != "original" {
+		t.Fatalf("taking a value wrote the file: %q", data)
+	}
+	if _, err := history.Undo(ctx, lib, id, history.UndoOptions{}); err != nil || title() != "Curated title" {
+		t.Fatalf("undo take %v title %q", err, title())
+	}
 }

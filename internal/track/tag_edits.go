@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
@@ -25,15 +27,18 @@ var TagEditFields = []string{"title", "artist", "album", "genre", "date", "comme
 
 // TagEdit is one file's requested values. A nil field is left alone; an empty
 // string clears it. Each file carries its own values, so one Title is never
-// written to several files.
+// written to several files. Take names fields whose file value is copied into
+// the track's own info instead, such as the file's artist into the track's
+// artist; a field is either set in the file or taken from it, never both.
 type TagEdit struct {
-	Identifier string  `json:"identifier"`
-	Title      *string `json:"title,omitempty"`
-	Artist     *string `json:"artist,omitempty"`
-	Album      *string `json:"album,omitempty"`
-	Genre      *string `json:"genre,omitempty"`
-	Date       *string `json:"date,omitempty"`
-	Comment    *string `json:"comment,omitempty"`
+	Identifier string   `json:"identifier"`
+	Title      *string  `json:"title,omitempty"`
+	Artist     *string  `json:"artist,omitempty"`
+	Album      *string  `json:"album,omitempty"`
+	Genre      *string  `json:"genre,omitempty"`
+	Date       *string  `json:"date,omitempty"`
+	Comment    *string  `json:"comment,omitempty"`
+	Take       []string `json:"take,omitempty"`
 }
 
 func (e TagEdit) value(field string) *string {
@@ -67,9 +72,12 @@ type TagEditFile struct {
 	Title      string      `json:"title,omitempty"`
 	Path       string      `json:"path,omitempty"`
 	Changes    []TagChange `json:"changes"`
-	Error      string      `json:"error,omitempty"`
-	ErrorCode  string      `json:"error_code,omitempty"`
-	observed   string
+	// TrackChanges are the track info values taken from the file, track
+	// before and file value after, named by track field.
+	TrackChanges []TagChange `json:"track_changes"`
+	Error        string      `json:"error,omitempty"`
+	ErrorCode    string      `json:"error_code,omitempty"`
+	observed     string
 }
 
 // TagEditPlan is Engine's review of a reviewed tag edit: each file's before
@@ -79,6 +87,7 @@ type TagEditPlan struct {
 	ChangedFiles  int           `json:"changed_files"`
 	ChangedFields int           `json:"changed_fields"`
 	ClearedFields int           `json:"cleared_fields"`
+	ChangedTracks int           `json:"changed_tracks"`
 	CanApply      bool          `json:"can_apply"`
 	PlanToken     string        `json:"plan_token"`
 }
@@ -90,11 +99,13 @@ type TagEditResult struct {
 	Failed    int           `json:"failed"`
 	TrackIDs  []int64       `json:"track_ids"`
 	Files     []TagEditFile `json:"files"`
+	// UpdatedTracks counts the tracks whose own info took file values.
+	UpdatedTracks int `json:"updated_tracks"`
 }
 
 // Err fails the job only when every file failed, so completed files stay undoable.
 func (r *TagEditResult) Err() error {
-	if r.Failed > 0 && r.Succeeded == 0 {
+	if r.Failed > 0 && r.Succeeded == 0 && r.UpdatedTracks == 0 {
 		return &progress.Error{Code: "batch_failed", Cause: fmt.Errorf("all %d files failed; inspect per-file results", r.Failed)}
 	}
 	return nil
@@ -127,8 +138,61 @@ func ValidateTagEdits(edits []TagEdit) error {
 		if date := edit.Date; date != nil && *date != "" && !validTagDate(*date) {
 			return &progress.Error{Code: "invalid_tag_date", Cause: fmt.Errorf("date %q must be YYYY, YYYY-MM or YYYY-MM-DD", *date)}
 		}
+		for i, field := range edit.Take {
+			if !slices.Contains(TagEditFields, field) {
+				return fmt.Errorf("take names unknown field %q", field)
+			}
+			if slices.Contains(edit.Take[:i], field) {
+				return fmt.Errorf("take names %q twice", field)
+			}
+			if edit.value(field) != nil {
+				return fmt.Errorf("track %q both sets and takes %s; choose one", edit.Identifier, field)
+			}
+		}
 	}
 	return nil
+}
+
+// trackField is the track info column a file field is taken into: the file's
+// date becomes the track's year.
+func trackField(field string) string {
+	if field == "date" {
+		return "year"
+	}
+	return field
+}
+
+// trackValue reads a track's own value for a file field, as review text.
+func trackValue(t *db.Track, field string) string {
+	switch field {
+	case "title":
+		return t.Title.String
+	case "artist":
+		return t.Artist.String
+	case "album":
+		return t.Album.String
+	case "genre":
+		return t.Genre.String
+	case "comment":
+		return t.Comment.String
+	default:
+		if !t.Year.Valid || t.Year.Int64 == 0 {
+			return ""
+		}
+		return strconv.FormatInt(t.Year.Int64, 10)
+	}
+}
+
+// takenValue is the track info value a file value becomes: the year of a
+// YYYY, YYYY-MM or YYYY-MM-DD date, and every other field as it is.
+func takenValue(field, value string) (string, error) {
+	if field != "date" || value == "" {
+		return value, nil
+	}
+	if !validTagDate(value) {
+		return "", &progress.Error{Code: "invalid_tag_date", Cause: fmt.Errorf("the file's date %q is not YYYY, YYYY-MM or YYYY-MM-DD", value)}
+	}
+	return value[:4], nil
 }
 
 func validTagDate(date string) bool {
@@ -161,13 +225,16 @@ func PreviewTagEdits(ctx context.Context, d *sql.DB, edits []TagEdit, opts TagEd
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		file := TagEditFile{Identifier: edit.Identifier, Changes: []TagChange{}}
+		file := TagEditFile{Identifier: edit.Identifier, Changes: []TagChange{}, TrackChanges: []TagChange{}}
 		if err := planTagEdit(ctx, d, client, edit, opts, &file); err != nil {
 			// A missing tool fails the whole review: no file can be read.
 			if code := progress.ErrorCode(err); code == "tool_unavailable" || code == "tool_outdated" || code == "tool_install_failed" {
 				return nil, err
 			}
-			file.Error, file.ErrorCode, file.Changes = err.Error(), progress.ErrorCode(err), []TagChange{}
+			file.Error, file.ErrorCode, file.Changes, file.TrackChanges = err.Error(), progress.ErrorCode(err), []TagChange{}, []TagChange{}
+		}
+		if len(file.TrackChanges) > 0 {
+			plan.ChangedTracks++
 		}
 		if len(file.Changes) > 0 {
 			plan.ChangedFiles++
@@ -181,7 +248,7 @@ func PreviewTagEdits(ctx context.Context, d *sql.DB, edits []TagEdit, opts TagEd
 		plan.Files = append(plan.Files, file)
 		progress.Item(ctx, "track.tags.edit", i+1, len(edits))
 	}
-	plan.CanApply = plan.ChangedFiles > 0
+	plan.CanApply = plan.ChangedFiles > 0 || plan.ChangedTracks > 0
 	token, err := tagEditToken(plan)
 	if err != nil {
 		return nil, err
@@ -225,6 +292,18 @@ func planTagEdit(ctx context.Context, d *sql.DB, client acquire.Client, edit Tag
 			file.Changes = append(file.Changes, TagChange{Field: field, Before: current[field], After: *value})
 		}
 	}
+	for _, field := range TagEditFields {
+		if !slices.Contains(edit.Take, field) {
+			continue
+		}
+		after, err := takenValue(field, current[field])
+		if err != nil {
+			return err
+		}
+		if before := trackValue(t, field); before != after {
+			file.TrackChanges = append(file.TrackChanges, TagChange{Field: trackField(field), Before: before, After: after})
+		}
+	}
 	return nil
 }
 
@@ -232,13 +311,14 @@ func planTagEdit(ctx context.Context, d *sql.DB, client acquire.Client, edit Tag
 // read, so a file that changes after review makes the write refuse.
 func tagEditToken(plan *TagEditPlan) (string, error) {
 	type bound struct {
-		Identifier string      `json:"identifier"`
-		Observed   string      `json:"observed"`
-		Changes    []TagChange `json:"changes"`
+		Identifier   string      `json:"identifier"`
+		Observed     string      `json:"observed"`
+		Changes      []TagChange `json:"changes"`
+		TrackChanges []TagChange `json:"track_changes"`
 	}
 	files := make([]bound, len(plan.Files))
 	for i, file := range plan.Files {
-		files[i] = bound{file.Identifier, file.observed, file.Changes}
+		files[i] = bound{file.Identifier, file.observed, file.Changes, file.TrackChanges}
 	}
 	data, err := json.Marshal(files)
 	if err != nil {
@@ -329,11 +409,56 @@ func ApplyTagEdits(ctx context.Context, d *sql.DB, edits []TagEdit, token string
 		done++
 		progress.Item(ctx, "track.tags.edit", done, changed)
 	}
+	if err := takeTrackValues(ctx, d, plan, result); err != nil {
+		return result, err
+	}
 	if result.Failed > 0 {
 		result.Status = "partial"
-		if result.Succeeded == 0 {
+		if result.Succeeded == 0 && result.UpdatedTracks == 0 {
 			result.Status = "failed"
 		}
 	}
 	return result, result.Err()
+}
+
+// takeTrackValues writes the reviewed track info values taken from files, in
+// one transaction after the file writes, skipping files whose write failed.
+func takeTrackValues(ctx context.Context, d *sql.DB, plan *TagEditPlan, result *TagEditResult) error {
+	failed := map[string]bool{}
+	for _, file := range result.Files {
+		if file.ErrorCode != "" || file.Error != "" {
+			failed[file.Identifier] = true
+		}
+	}
+	tx, err := d.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, file := range plan.Files {
+		if len(file.TrackChanges) == 0 || failed[file.Identifier] {
+			continue
+		}
+		update := metadataUpdate{ID: file.TrackID}
+		for _, change := range file.TrackChanges {
+			update.Columns = append(update.Columns, change.Field+" = ?")
+			if change.Field == "year" {
+				year := int64(0)
+				if change.After != "" {
+					year, _ = strconv.ParseInt(change.After, 10, 64)
+				}
+				update.Values = append(update.Values, year)
+			} else {
+				update.Values = append(update.Values, change.After)
+			}
+		}
+		if err := saveMetadata(ctx, tx, update); err != nil {
+			return err
+		}
+		result.UpdatedTracks++
+		if !slices.Contains(result.TrackIDs, file.TrackID) {
+			result.TrackIDs = append(result.TrackIDs, file.TrackID)
+		}
+	}
+	return tx.Commit()
 }

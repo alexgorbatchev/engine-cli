@@ -66,7 +66,7 @@ func addAcquisitionCommands(root *cobra.Command) {
 	targetFlags := []acquisitionFlag{{"staging-id", "string", "Select a staged item"}, {"staging-ids", "strings", "Select staged items; repeat or separate with commas"}, {"path", "string", "Select a local audio file"}, {"paths", "strings", "Select local audio paths; repeat or separate with commas"}}
 	tags.AddCommand(acquisitionCommand("track.tags.inspect", "inspect [path|identifier...]", "Inspect actual audio file tags", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"auto-install", "bool", "Install missing or outdated tag tools"})))
 	tags.AddCommand(acquisitionCommand("track.tags.edit", "edit", "Review and write per-file embedded tag values in place, bound to a reviewed plan", "", []acquisitionFlag{
-		{"edits", "json", `JSON array of {"identifier":"12","title":"…"}; a missing field is kept and "" clears it`},
+		{"edits", "json", `JSON array of {"identifier":"12","title":"…","take":["artist"]}; a missing field is kept, "" clears it, and take copies file values into track info`},
 		{"dry-run", "bool", "Review each file's before and after values without writing"},
 		{"plan-token", "string", "Write only the review that returned this token"},
 		{"auto-install", "bool", "Install missing or outdated tag tools"},
