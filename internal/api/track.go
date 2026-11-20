@@ -54,7 +54,12 @@ type removeTrackParams struct {
 type moveTrackParams struct {
 	Identifier  string `json:"identifier"`
 	Destination string `json:"destination"`
+	DryRun      bool   `json:"dry_run"`
+	PlanToken   string `json:"plan_token"`
 }
+
+func (p moveTrackParams) operationPreview() bool { return p.DryRun }
+
 type relocateParams struct {
 	From string `json:"from"`
 	To   string `json:"to"`
@@ -169,8 +174,11 @@ func (s *Server) trackOperations() []operation {
 				})
 			})
 		}),
-		define("track.move", true, []string{"identifier", "destination"}, func(ctx context.Context, p moveTrackParams) (any, error) {
+		defineChecked("track.move", "collection", []string{"identifier", "destination"}, s.checkMove, func(ctx context.Context, p moveTrackParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
+				if p.DryRun {
+					return track.PlanMove(ctx, d, s.config.LibraryDir, p.Identifier, p.Destination, s.sharedLookup)
+				}
 				t, err := track.MoveTrackFile(ctx, d, s.config.LibraryDir, p.Identifier, p.Destination)
 				if err != nil {
 					return nil, err
