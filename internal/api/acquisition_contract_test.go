@@ -14,7 +14,10 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
+	"github.com/alexgorbatchev/engine-cli/internal/db"
+	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
 	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 	"github.com/alexgorbatchev/engine-cli/internal/systemcheck"
 	"github.com/alexgorbatchev/engine-cli/internal/testaudio"
@@ -42,21 +45,33 @@ func TestAcquisitionSelectionBoundToOriginalRequest(t *testing.T) {
 				s.operations[op.Name] = op
 			}
 			result, historyID, err := s.RunOperation(context.Background(), kind+".candidates", json.RawMessage(`{"query":"Original","sources":"youtube"}`))
-			if err != nil || historyID == "" {
-				t.Fatalf("candidates: %v %s", err, historyID)
+			// A search is a read: it records no undo history.
+			if err != nil || historyID != "" {
+				t.Fatalf("candidates: %v %q", err, historyID)
+			}
+			if effect := s.operations[kind+".candidates"].Effect; effect != "read" {
+				t.Fatalf("candidates effect %q", effect)
 			}
 			response := result.(map[string]any)
 			token := response["selection_token"].(string)
-			for _, change := range []map[string]any{
-				{"query": "Changed"}, {"sources": "bandcamp"}, {"candidate_url": "https://example.test/unlisted"}, {"selection_token": "bad"},
+			for _, change := range []struct {
+				parameters map[string]any
+				code       string
+			}{
+				{map[string]any{"query": "Changed"}, "selection_mismatch"},
+				{map[string]any{"sources": "bandcamp"}, "selection_mismatch"},
+				{map[string]any{"candidate_url": "https://example.test/unlisted"}, "candidate_not_listed"},
+				{map[string]any{"selection_token": "bad"}, "invalid_selection_token"},
+				{map[string]any{"selection_token": strings.Repeat("0", 64)}, "selection_expired"},
 			} {
 				parameters := map[string]any{"query": "Original", "sources": "youtube", "selection_token": token, "candidate_url": "https://example.test/allowed"}
-				for key, value := range change {
+				for key, value := range change.parameters {
 					parameters[key] = value
 				}
 				raw, _ := json.Marshal(parameters)
-				if _, _, err := s.RunOperation(context.Background(), kind+".fetch", raw); err == nil {
-					t.Fatalf("accepted mismatched selection %s", raw)
+				_, _, err := s.RunOperation(context.Background(), kind+".fetch", raw)
+				if code := progress.ErrorCode(err); code != change.code {
+					t.Fatalf("selection %s: code %q, want %q (%v)", raw, code, change.code, err)
 				}
 			}
 			if calls != 1 {
@@ -578,5 +593,72 @@ func TestFailedAcquisitionJobsRetainStagingReports(t *testing.T) {
 				t.Fatalf("missing failed staged item: %+v", result)
 			}
 		})
+	}
+}
+
+func TestTrackCandidatesReportCollectionMatches(t *testing.T) {
+	s, lib := testAPI(t)
+	database, err := db.Open(filepath.Join(lib, "Database2", "m.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("UPDATE Track SET length=200, fileType='mp3', bitrate=320000 WHERE id=1; INSERT INTO Track(id,title,artist,length,path) VALUES(2,'Curated title (Radio Edit)','Artist',150,'edit.mp3')"); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s.config.ToolRunner = func(context.Context, string, ...string) ([]byte, error) {
+		return []byte(`{"status":"candidates","candidates":[
+			{"title":"Artist - Curated title (Official Audio)","duration":201,"webpage_url":"https://example.test/same"},
+			{"title":"Curated title","channel":"Artist - Topic","duration":420,"webpage_url":"https://example.test/topic"},
+			{"title":"Unrelated","duration":200,"webpage_url":"https://example.test/other"}]}`), nil
+	}
+	for _, op := range s.acquisitionOperations() {
+		s.operations[op.Name] = op
+	}
+	result, historyID, err := s.RunOperation(context.Background(), "track.candidates", json.RawMessage(`{"query":"Artist - Curated title"}`))
+	if err != nil || historyID != "" {
+		t.Fatalf("candidates: %v %q", err, historyID)
+	}
+	raw, _ := json.Marshal(result)
+	var response struct {
+		CollectionMatches []duplicate.CollectionMatch            `json:"collection_matches"`
+		CandidateMatches  map[string][]duplicate.CollectionMatch `json:"candidate_matches"`
+	}
+	if err := json.Unmarshal(raw, &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.CollectionMatches) != 2 || response.CollectionMatches[0].TrackID != 1 || response.CollectionMatches[1].TrackID != 2 {
+		t.Fatalf("query matches %+v", response.CollectionMatches)
+	}
+	same := response.CandidateMatches["https://example.test/same"]
+	if len(same) != 2 || !same[0].SameLength || same[1].SameLength || same[0].Format != "mp3" || same[0].Bitrate != 320000 {
+		t.Fatalf("same-length candidate %+v", same)
+	}
+	topic := response.CandidateMatches["https://example.test/topic"]
+	if len(topic) != 2 || topic[0].SameLength || topic[1].SameLength {
+		t.Fatalf("channel artist candidate %+v", topic)
+	}
+	if _, ok := response.CandidateMatches["https://example.test/other"]; ok || len(response.CandidateMatches) != 2 {
+		t.Fatalf("candidate matches %+v", response.CandidateMatches)
+	}
+	if err := os.Remove(filepath.Join(lib, "Database2", "m.db")); err != nil {
+		t.Fatal(err)
+	}
+	// A library folder without a collection yet still searches, with nothing to match.
+	result, _, err = s.RunOperation(context.Background(), "track.candidates", json.RawMessage(`{"query":"Artist - Curated title"}`))
+	if err != nil {
+		t.Fatalf("library without a collection: %v", err)
+	}
+	raw, _ = json.Marshal(result)
+	if !strings.Contains(string(raw), `"collection_matches":[]`) || !strings.Contains(string(raw), `"candidate_matches":{}`) {
+		t.Fatalf("library without a collection: %s", raw)
+	}
+	if err := os.Mkdir(filepath.Join(lib, "Database2", "m.db"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.RunOperation(context.Background(), "track.candidates", json.RawMessage(`{"query":"Artist - Curated title"}`)); err == nil {
+		t.Fatal("ignored an unreadable collection")
 	}
 }

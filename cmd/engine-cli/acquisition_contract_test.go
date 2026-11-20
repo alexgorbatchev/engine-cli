@@ -50,7 +50,7 @@ func TestAcquisitionCLIExplicitDefaultsAndDecimals(t *testing.T) {
 				t.Fatalf("CLI %s %v calls=%d", out, err, calls)
 			}
 			// stderr operation_id is deliberately separate from machine JSON stdout.
-			start := strings.Index(out, "{\"parameters\"")
+			start := strings.Index(out, "{\"candidate_matches\"")
 			if start < 0 {
 				t.Fatalf("missing JSON response %s", out)
 			}

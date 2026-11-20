@@ -6,14 +6,29 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
-	"github.com/alexgorbatchev/engine-cli/internal/history"
+	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/sidecar"
 )
+
+// Selections are acquisition state, not library changes: searching records no
+// history, and the newest selections are kept for a bounded time.
+const (
+	selectionRetention   = 24 * time.Hour
+	maxRetainedSelection = 200
+)
+
+func selectionError(code, message string) error {
+	return &progress.Error{Code: code, Cause: errors.New(message)}
+}
 
 type Selection[T any] struct {
 	SelectionToken string `json:"selection_token"`
@@ -42,10 +57,40 @@ func (s Service) saveSelection(ctx context.Context, kind string, request any, ur
 	if err := sidecar.WriteJSON(ctx, path, selectionRecord{Kind: kind, Request: data, URLs: urls}); err != nil {
 		return "", err
 	}
-	if err := history.Created(ctx, path); err != nil {
-		return "", err
-	}
+	s.pruneSelections(time.Now(), token)
 	return token, nil
+}
+
+// pruneSelections removes selections older than the retention period and all
+// but the newest retained ones. Pruning is best effort: a failure to remove an
+// old selection never fails the search that produced a new one.
+func (s Service) pruneSelections(now time.Time, keep string) {
+	entries, err := os.ReadDir(s.selectionDirectory())
+	if err != nil {
+		return
+	}
+	type selectionFile struct {
+		name     string
+		modified time.Time
+	}
+	var files []selectionFile
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || entry.Name() == keep+".json" {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, selectionFile{name: entry.Name(), modified: info.ModTime()})
+	}
+	slices.SortFunc(files, func(a, b selectionFile) int { return b.modified.Compare(a.modified) })
+	for index, file := range files {
+		if index < maxRetainedSelection-1 && now.Sub(file.modified) < selectionRetention {
+			continue
+		}
+		_ = os.Remove(filepath.Join(s.selectionDirectory(), file.name))
+	}
 }
 func (s Service) ValidateSelection(ctx context.Context, token, kind string, request any, url string) error {
 	if err := ctx.Err(); err != nil {
@@ -53,34 +98,40 @@ func (s Service) ValidateSelection(ctx context.Context, token, kind string, requ
 	}
 	decoded, err := hex.DecodeString(token)
 	if err != nil || len(decoded) != 32 {
-		return fmt.Errorf("invalid selection_token")
+		return selectionError("invalid_selection_token", "invalid selection_token")
 	}
 	root, err := os.OpenRoot(s.selectionDirectory())
+	if errors.Is(err, fs.ErrNotExist) {
+		return selectionError("selection_expired", "selection_token not found; search again")
+	}
 	if err != nil {
 		return err
 	}
 	defer root.Close()
 	data, err := root.ReadFile(token + ".json")
+	if errors.Is(err, fs.ErrNotExist) {
+		return selectionError("selection_expired", "selection_token not found; search again")
+	}
 	if err != nil {
-		return fmt.Errorf("selection_token not found: %w", err)
+		return err
 	}
 	var record selectionRecord
 	if err = json.Unmarshal(data, &record); err != nil {
-		return err
+		return selectionError("selection_expired", "selection_token is unreadable; search again")
 	}
 	expected, err := json.Marshal(request)
 	if err != nil {
 		return err
 	}
 	if record.Kind != kind || !bytes.Equal(record.Request, expected) {
-		return fmt.Errorf("selection_token does not match the original request")
+		return selectionError("selection_mismatch", "selection_token does not match the original request")
 	}
 	for _, allowed := range record.URLs {
 		if allowed == url && url != "" {
 			return nil
 		}
 	}
-	return fmt.Errorf("candidate_url is not present in the selected candidate set")
+	return selectionError("candidate_not_listed", "candidate_url is not present in the selected candidate set")
 }
 func (s Service) TrackCandidates(ctx context.Context, request TrackRequest) (*Selection[*acquire.TrackResult], error) {
 	result, err := s.Client.TrackCandidates(ctx, request.Query, request.Options)
