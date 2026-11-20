@@ -129,6 +129,21 @@ Usage: `engine-cli tag value delete <id> [flags]`.
 - `--plan-token` (string; default ``): Exact deletion review token; required without --dry-run.
 - `--revision` (string; default ``): Current custom-tag revision from category list; rejects concurrent changes.
 
+## `engine-cli tag value merge`
+
+Review, then move a value's tracks to another value of its category and delete it
+
+Usage: `engine-cli tag value merge <id> [flags]`.
+
+Fold a duplicate or misspelled value into the value it was meant to be: review with `--dry-run`, then apply the same options with the review's `--plan-token`. Both values must belong to one category (`tag_merge_invalid` otherwise). Tracks that already hold `--into` keep one assignment. Apply is Desktop-protected, snapshotted and one undoable change; a changed impact requires a new review (`tag_plan_stale`).
+
+- `--into` (string; default ``): ID of the value of the same category that takes its tracks.
+- `--revision` (string; default ``): Current custom-tag revision.
+- `--dry-run` (bool; default `false`): Review affected tracks without changing the library.
+- `--plan-token` (string; default ``): Exact merge review token; required without --dry-run.
+- `--help, -h` (bool; default `false`): help for merge.
+- `--json` (bool; default `false`): Print compact structured results.
+
 ## `engine-cli tag value move`
 
 Move a custom tag value before another, or to the end

@@ -27,6 +27,12 @@ func newCustomTagsCommand() *cobra.Command {
 		group.command.AddCommand(acquisitionCommand("tag."+group.subject+".move", "move <id>", "Move a custom tag "+group.subject+" before another, or to the end", "id", []acquisitionFlag{revision, {"before", "string", "ID of the " + group.subject + " to move before; omit to move to the end"}}))
 		group.command.AddCommand(acquisitionCommand("tag."+group.subject+".delete", "delete <id>", "Review and delete a custom tag "+group.subject+" and its assignments", "id", []acquisitionFlag{revision, {"dry-run", "bool", "Review affected tracks and assignments without changing the library"}, {"plan-token", "string", "Exact deletion review token; required without --dry-run"}}))
 	}
+	value.AddCommand(acquisitionCommand("tag.value.merge", "merge <id>", "Review, then move a value's tracks to another value of its category and delete it", "id", []acquisitionFlag{
+		{"into", "string", "ID of the value of the same category that takes its tracks"},
+		{"revision", "string", "Current custom-tag revision"},
+		{"dry-run", "bool", "Review affected tracks without changing the library"},
+		{"plan-token", "string", "Exact merge review token; required without --dry-run"},
+	}))
 	category.AddCommand(acquisitionCommand("tag.category.mode", "mode <id>", "Make a category multiple-choice or single-choice, one value per track", "id", []acquisitionFlag{{"revision", "string", "Current custom-tag revision"}, {"mode", "string", "multiple or single"}}))
 	root.AddCommand(category, value)
 	root.AddCommand(acquisitionCommand("tag.reconcile", "reconcile", "Review and remove assignments for tracks removed outside Engine CLI", "", []acquisitionFlag{{"revision", "string", "Current custom-tag revision"}, {"dry-run", "bool", "Review unavailable tracks without changing assignments"}, {"plan-token", "string", "Exact reconciliation review token; required without --dry-run"}}))
@@ -97,6 +103,9 @@ func printCustomTags(command *cobra.Command, result any) (bool, error) {
 		return true, err
 	case *tags.Deletion:
 		_, err := fmt.Fprintf(output, "Custom tag: %s\nAffected tracks: %d\nRemoved assignments: %d\nRemoved values: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.ID, value.AffectedTracks, value.RemovedAssignments, value.RemovedValues, value.Applied, value.Revision, value.PlanToken)
+		return true, err
+	case *tags.Merge:
+		_, err := fmt.Fprintf(output, "Merged value: %s\nInto value: %s\nAffected tracks: %d\nMoved assignments: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.ID, value.Into, value.AffectedTracks, value.MovedAssignments, value.Applied, value.Revision, value.PlanToken)
 		return true, err
 	case *tags.Reconciliation:
 		_, err := fmt.Fprintf(output, "Unavailable tracks: %d\nRemoved assignments: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.UnavailableTracks, value.RemovedAssignments, value.Applied, value.Revision, value.PlanToken)

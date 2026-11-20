@@ -36,6 +36,12 @@ func (p tagValueUpdateParams) edit() tags.Edit {
 	return tags.Edit{ID: p.ID, Name: p.Name, Revision: p.Revision}
 }
 
+type tagMergeParams tags.MergeOptions
+
+func (p tagMergeParams) operationPreview() bool { return p.DryRun }
+
+func (p tagMergeParams) operationCollectionRead() bool { return p.DryRun }
+
 type tagMoveParams tags.MoveOptions
 type tagModeParams tags.ModeOptions
 
@@ -125,6 +131,11 @@ func (s *Server) tagOperations() []operation {
 		tagEditOperation[tagValueUpdateParams](s, "tag.value.update", []string{"id", "name", "revision"}, false),
 		s.tagDeleteOperation(false),
 		s.tagMoveOperation(false),
+		defineChecked("tag.value.merge", "collection", []string{"id", "into", "revision"}, func(ctx context.Context, p tagMergeParams, _ *boundOperation) error {
+			return tags.CheckMerge(ctx, s.config.LibraryDir, tags.MergeOptions(p))
+		}, func(ctx context.Context, p tagMergeParams) (any, error) {
+			return tags.MergeValue(ctx, s.config.LibraryDir, tags.MergeOptions(p))
+		}),
 		defineCollectionRead("track.custom-tags.inspect", []string{"track"}, func(ctx context.Context, p trackCustomTagsParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return tags.InspectTrack(ctx, d, s.config.LibraryDir, p.Track) })
 		}),

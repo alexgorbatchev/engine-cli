@@ -22,6 +22,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli tag value":                       {Summary: "Manage custom named values within categories"},
 	"engine-cli tag value create":                {Summary: "Create a named value within a custom tag category", Args: []cobrahelptree.ArgSpec{{Name: "<name>"}}, MutatesDB: true, AutoBackup: true},
 	"engine-cli tag value update":                {Summary: "Rename a custom named value at the reviewed revision", Args: []cobrahelptree.ArgSpec{{Name: "<id>"}}, MutatesDB: true, AutoBackup: true},
+	"engine-cli tag value merge":                 {Summary: "Review a value's tracks moving to another value of its category, then apply exactly that plan", Args: []cobrahelptree.ArgSpec{{Name: "<id>"}}, MutatesDB: true, AutoBackup: true},
 	"engine-cli tag value delete":                {Summary: "Preview or apply exact reviewed value deletion and assignment impact", Args: []cobrahelptree.ArgSpec{{Name: "<id>"}}, MutatesDB: true, AutoBackup: true},
 	"engine-cli track custom-tags":               {Summary: "Inspect or replace one track's library-local custom values"},
 	"engine-cli track custom-tags list":          {Summary: "List taxonomy and current track assignments from one library revision"},

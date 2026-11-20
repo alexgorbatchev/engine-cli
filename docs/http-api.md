@@ -611,6 +611,7 @@ submission/result envelope. Category and value IDs are opaque UUID strings.
 | `tag.category.move`, `tag.value.move` | `id`, `revision`, optional `before` | `{id,revision,changed}` |
 | `tag.category.mode` | `id`, `mode` (`multiple` or `single`), `revision` | `{id,revision,changed}` |
 | `tag.category.delete`, `tag.value.delete` | `id`, `revision`, `dry_run`, optional `plan_token` | `{id,revision,plan_token,affected_tracks,removed_assignments,removed_values,applied}` |
+| `tag.value.merge` | `id`, `into`, `revision`, `dry_run`, optional `plan_token` | `{id,into,revision,plan_token,affected_tracks,moved_assignments,applied}` |
 | `track.custom-tags.list` | None | `{revision,unavailable_tracks,categories:[{id,name,mode,values:[{id,name,track_count}]}],tracks:[{track_id,values:[value_id...]}]}` |
 | `track.custom-tags.inspect` | `track` | `{track_id,revision,values:[value_id...]}` |
 | `track.custom-tags.update` | `track`, `revision`, `values` | `{track_id,revision,values:[value_id...]}` |
@@ -714,14 +715,22 @@ Assigning two values of one single-choice category reports `tag_single_conflict`
 Switching a category to `single` while any track holds two of its values reports
 `tag_mode_conflict`; another mode reports `tag_mode_invalid`.
 
+`tag.value.merge` folds the value `id` into `into`, another value of the same
+category: every track holding `id` holds `into`, and `id` is deleted. A dry run
+counts the present tracks holding `id` (`affected_tracks`) and those of them that
+do not already hold `into` (`moved_assignments`), and returns a plan token bound
+to the values, the revision and those tracks; applying requires it
+(`tag_plan_stale` otherwise). Values in different categories, or a value merged
+into itself, report `tag_merge_invalid`.
+
 List, inspect, batch inspection, batch previews, deletion previews, and reconciliation previews are reads. Actual writes use the collection
 write barrier, fresh Desktop protection, snapshot, and durable history contracts.
 Validation errors include `tag_name_invalid`, `tag_name_exists`,
 `tag_values_required`, `tag_value_duplicate`, `tag_not_found`,
 `tag_track_identity_invalid`, `tag_revision_stale`, `tag_plan_stale`,
 `tag_tracks_invalid`, `tag_actions_overlap`, `tag_no_changes`,
-`tag_move_invalid`, `tag_mode_invalid`, `tag_mode_conflict`, and
-`tag_single_conflict`.
+`tag_move_invalid`, `tag_mode_invalid`, `tag_mode_conflict`,
+`tag_single_conflict`, and `tag_merge_invalid`.
 `track_not_found` retains its existing meaning. Clients must display their safe
 error-code catalog messages rather than raw diagnostic text.
 

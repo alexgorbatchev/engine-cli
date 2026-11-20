@@ -42,6 +42,7 @@ func customTagsPrintResults() map[string]any {
 		"change":         &tags.BatchChange{Revision: "r2", TrackIDs: []int64{4}, Add: []string{"high"}, Remove: []string{}, Replaced: []string{"low"}, PlanToken: "plan", ChangedTracks: 1, AddedAssignments: 1, RemovedAssignments: 1},
 		"mutation":       &tags.Mutation{ID: "energy", Revision: "r3", Changed: true},
 		"deletion":       &tags.Deletion{ID: "low", Revision: "r2", PlanToken: "plan", AffectedTracks: 2, RemovedAssignments: 2, RemovedValues: 1},
+		"merge":          &tags.Merge{ID: "hypnotc", Into: "hypnotic", Revision: "r2", PlanToken: "plan", AffectedTracks: 3, MovedAssignments: 2},
 		"reconciliation": &tags.Reconciliation{Revision: "r2", PlanToken: "plan", UnavailableTracks: 1, RemovedAssignments: 1},
 	}
 }
@@ -56,6 +57,7 @@ func TestPrintCustomTagsStatesModesAndReplacedValues(t *testing.T) {
 		"mutation":       {"Custom tag: energy", "Changed: true", "Revision: r3"},
 		"deletion":       {"Affected tracks: 2", "Removed values: 1"},
 		"reconciliation": {"Unavailable tracks: 1", "Plan token: plan"},
+		"merge":          {"Merged value: hypnotc", "Into value: hypnotic", "Moved assignments: 2"},
 	}
 	for name, result := range customTagsPrintResults() {
 		t.Run(name, func(t *testing.T) {
