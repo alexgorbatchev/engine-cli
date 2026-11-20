@@ -4,7 +4,7 @@ All commands inherit the root flags documented in [SKILL.md](../SKILL.md).
 
 Category/value IDs are opaque UUIDs returned by `tag category list --json`; `<name>` is a name, never an ID selector. Names are trimmed, normalized to NFC, limited to 100 Unicode code points and reject control characters. Names must be unique ignoring case across categories, or within a value's category. Mutations require the current global revision, including create. A stale revision requires reloading the taxonomy and reviewing again.
 
-List output includes categories, their values, current live assignment counts, the global revision and unavailable-track count. `--json` emits the structured result instead of the human summary. Create/rename returns the ID, new revision and whether it changed. Delete previews expose affected tracks, removed assignments/values and an exact plan token; apply must retain the revision, target and token. Counts include stored assignments even when their origins are unavailable, while affected-track counts include currently present origins. Reconcile removes only explicitly reviewed unavailable assignments. These writes use protected companion storage with snapshot and undo; browsing never creates or prunes it.
+List output includes categories, their values, current live assignment counts, the global revision and unavailable-track count. `--json` emits the structured result instead of the human summary. Create/rename returns the ID, new revision and whether it changed. Delete previews expose affected tracks, removed assignments/values and an exact plan token; apply must retain the revision, target and token. Counts include stored assignments even when their origins are unavailable, while affected-track counts include currently present origins. Reconcile removes only explicitly reviewed unavailable assignments. These writes use protected companion storage with snapshot and undo; browsing never creates or prunes it. Categories and values list in their saved order, which `move` changes; new ones go last. A single-choice category (`mode single`) holds at most one value per track: adding one of its values replaces the track's other value in a batch update (reported as `replaced`), assigning two is refused with `tag_single_conflict`, and switching a category to single is refused with `tag_mode_conflict` while any track holds two of its values.
 
 ## `engine-cli tag`
 
@@ -52,6 +52,28 @@ Usage: `engine-cli tag category list [flags]`.
 
 - `--help, -h` (bool; default `false`): help for list.
 - `--json` (bool; default `false`): Print compact structured results.
+
+## `engine-cli tag category mode`
+
+Make a category multiple-choice or single-choice, one value per track
+
+Usage: `engine-cli tag category mode <id> [flags]`.
+
+- `--help, -h` (bool; default `false`): help for mode.
+- `--json` (bool; default `false`): Print compact structured results.
+- `--mode` (string; default ``): multiple or single.
+- `--revision` (string; default ``): Current custom-tag revision.
+
+## `engine-cli tag category move`
+
+Move a custom tag category before another, or to the end
+
+Usage: `engine-cli tag category move <id> [flags]`.
+
+- `--before` (string; default ``): ID of the category to move before; omit to move to the end.
+- `--help, -h` (bool; default `false`): help for move.
+- `--json` (bool; default `false`): Print compact structured results.
+- `--revision` (string; default ``): Current custom-tag revision from category list; rejects concurrent changes.
 
 ## `engine-cli tag category update`
 
@@ -105,6 +127,17 @@ Usage: `engine-cli tag value delete <id> [flags]`.
 - `--help, -h` (bool; default `false`): help for delete.
 - `--json` (bool; default `false`): Print compact structured results.
 - `--plan-token` (string; default ``): Exact deletion review token; required without --dry-run.
+- `--revision` (string; default ``): Current custom-tag revision from category list; rejects concurrent changes.
+
+## `engine-cli tag value move`
+
+Move a custom tag value before another, or to the end
+
+Usage: `engine-cli tag value move <id> [flags]`.
+
+- `--before` (string; default ``): ID of the value to move before; omit to move to the end.
+- `--help, -h` (bool; default `false`): help for move.
+- `--json` (bool; default `false`): Print compact structured results.
 - `--revision` (string; default ``): Current custom-tag revision from category list; rejects concurrent changes.
 
 ## `engine-cli tag value update`

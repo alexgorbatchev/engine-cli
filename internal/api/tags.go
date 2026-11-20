@@ -36,6 +36,9 @@ func (p tagValueUpdateParams) edit() tags.Edit {
 	return tags.Edit{ID: p.ID, Name: p.Name, Revision: p.Revision}
 }
 
+type tagMoveParams tags.MoveOptions
+type tagModeParams tags.ModeOptions
+
 type tagDeleteParams tags.DeleteOptions
 
 func (p tagDeleteParams) operationPreview() bool { return p.DryRun }
@@ -86,6 +89,19 @@ func (s *Server) tagDeleteOperation(category bool) operation {
 	})
 }
 
+func (s *Server) tagMoveOperation(category bool) operation {
+	name := "tag.value.move"
+	if category {
+		name = "tag.category.move"
+	}
+	before := func(ctx context.Context, p tagMoveParams, _ *boundOperation) error {
+		return tags.CheckMove(ctx, s.config.LibraryDir, tags.MoveOptions(p), category)
+	}
+	return defineChecked(name, "collection", []string{"id", "revision"}, before, func(ctx context.Context, p tagMoveParams) (any, error) {
+		return tags.Move(ctx, s.config.LibraryDir, tags.MoveOptions(p), category)
+	})
+}
+
 func (s *Server) tagOperations() []operation {
 	return []operation{
 		defineCollectionRead("tag.category.list", nil, func(ctx context.Context, _ emptyParams) (any, error) {
@@ -99,9 +115,16 @@ func (s *Server) tagOperations() []operation {
 		tagEditOperation[tagCategoryCreateParams](s, "tag.category.create", []string{"name", "revision"}, true),
 		tagEditOperation[tagCategoryUpdateParams](s, "tag.category.update", []string{"id", "name", "revision"}, true),
 		s.tagDeleteOperation(true),
+		s.tagMoveOperation(true),
+		defineChecked("tag.category.mode", "collection", []string{"id", "mode", "revision"}, func(ctx context.Context, p tagModeParams, _ *boundOperation) error {
+			return tags.CheckMode(ctx, s.config.LibraryDir, tags.ModeOptions(p))
+		}, func(ctx context.Context, p tagModeParams) (any, error) {
+			return tags.SetMode(ctx, s.config.LibraryDir, tags.ModeOptions(p))
+		}),
 		tagEditOperation[tagValueCreateParams](s, "tag.value.create", []string{"category", "name", "revision"}, false),
 		tagEditOperation[tagValueUpdateParams](s, "tag.value.update", []string{"id", "name", "revision"}, false),
 		s.tagDeleteOperation(false),
+		s.tagMoveOperation(false),
 		defineCollectionRead("track.custom-tags.inspect", []string{"track"}, func(ctx context.Context, p trackCustomTagsParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) { return tags.InspectTrack(ctx, d, s.config.LibraryDir, p.Track) })
 		}),

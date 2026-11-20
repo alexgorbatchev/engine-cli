@@ -603,17 +603,19 @@ submission/result envelope. Category and value IDs are opaque UUID strings.
 
 | Operation | Parameters | Result |
 | --- | --- | --- |
-| `tag.category.list` | None | `{revision,unavailable_tracks,categories:[{id,name,values:[{id,name,track_count}]}]}` |
+| `tag.category.list` | None | `{revision,unavailable_tracks,categories:[{id,name,mode,values:[{id,name,track_count}]}]}` |
 | `tag.category.create` | `name`, `revision` | `{id,revision,changed}` |
 | `tag.category.update` | `id`, `name`, `revision` | `{id,revision,changed}` |
 | `tag.value.create` | `category`, `name`, `revision` | `{id,revision,changed}` |
 | `tag.value.update` | `id`, `name`, `revision` | `{id,revision,changed}` |
+| `tag.category.move`, `tag.value.move` | `id`, `revision`, optional `before` | `{id,revision,changed}` |
+| `tag.category.mode` | `id`, `mode` (`multiple` or `single`), `revision` | `{id,revision,changed}` |
 | `tag.category.delete`, `tag.value.delete` | `id`, `revision`, `dry_run`, optional `plan_token` | `{id,revision,plan_token,affected_tracks,removed_assignments,removed_values,applied}` |
-| `track.custom-tags.list` | None | `{revision,unavailable_tracks,categories:[{id,name,values:[{id,name,track_count}]}],tracks:[{track_id,values:[value_id...]}]}` |
+| `track.custom-tags.list` | None | `{revision,unavailable_tracks,categories:[{id,name,mode,values:[{id,name,track_count}]}],tracks:[{track_id,values:[value_id...]}]}` |
 | `track.custom-tags.inspect` | `track` | `{track_id,revision,values:[value_id...]}` |
 | `track.custom-tags.update` | `track`, `revision`, `values` | `{track_id,revision,values:[value_id...]}` |
 | `track.custom-tags.batch-inspect` | `tracks` | `{revision,track_ids,categories:[{id,name,values:[{id,name,selected_tracks}]}]}` |
-| `track.custom-tags.batch-update` | `tracks`, `revision`, `add`, `remove`, `dry_run`, optional `plan_token` | `{revision,track_ids,add,remove,plan_token,changed_tracks,added_assignments,removed_assignments,applied}` |
+| `track.custom-tags.batch-update` | `tracks`, `revision`, `add`, `remove`, `dry_run`, optional `plan_token` | `{revision,track_ids,add,remove,replaced,plan_token,changed_tracks,added_assignments,removed_assignments,applied}` |
 | `tag.reconcile` | `revision`, `dry_run`, optional `plan_token` | `{revision,plan_token,unavailable_tracks,removed_assignments,applied}` |
 
 `track.custom-tags.list` reads one library-wide taxonomy and assignment snapshot under
@@ -698,12 +700,28 @@ Unicode case-folded names must be unique across categories in the library, or
 across values within the same category. The normalized display spelling is
 retained. Renaming a value does not move it to another category.
 
+Categories list in their saved order, and each category's values in theirs; new
+ones go last. A move places the category among the categories, or the value among
+its own category's values, before the sibling `before` names, or last without it.
+Moving before itself or before an ID outside those siblings reports
+`tag_move_invalid`.
+
+A category's `mode` is `multiple`, letting a track hold any of its values, or
+`single`, holding at most one per track, as an Energy scale does. Adding a
+single-choice value in a batch update takes the place of the track's other value
+in that category; `replaced` lists those other values, and the plan removes them.
+Assigning two values of one single-choice category reports `tag_single_conflict`.
+Switching a category to `single` while any track holds two of its values reports
+`tag_mode_conflict`; another mode reports `tag_mode_invalid`.
+
 List, inspect, batch inspection, batch previews, deletion previews, and reconciliation previews are reads. Actual writes use the collection
 write barrier, fresh Desktop protection, snapshot, and durable history contracts.
 Validation errors include `tag_name_invalid`, `tag_name_exists`,
 `tag_values_required`, `tag_value_duplicate`, `tag_not_found`,
 `tag_track_identity_invalid`, `tag_revision_stale`, `tag_plan_stale`,
-`tag_tracks_invalid`, `tag_actions_overlap`, and `tag_no_changes`.
+`tag_tracks_invalid`, `tag_actions_overlap`, `tag_no_changes`,
+`tag_move_invalid`, `tag_mode_invalid`, `tag_mode_conflict`, and
+`tag_single_conflict`.
 `track_not_found` retains its existing meaning. Clients must display their safe
 error-code catalog messages rather than raw diagnostic text.
 

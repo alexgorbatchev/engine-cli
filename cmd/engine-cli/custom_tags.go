@@ -24,8 +24,10 @@ func newCustomTagsCommand() *cobra.Command {
 		}
 		group.command.AddCommand(acquisitionCommand("tag."+group.subject+".create", "create <name>", "Create a named custom tag "+group.subject, "name", createFlags))
 		group.command.AddCommand(acquisitionCommand("tag."+group.subject+".update", "update <id>", "Rename a custom tag "+group.subject, "id", []acquisitionFlag{revision, {"name", "string", "New name"}}))
+		group.command.AddCommand(acquisitionCommand("tag."+group.subject+".move", "move <id>", "Move a custom tag "+group.subject+" before another, or to the end", "id", []acquisitionFlag{revision, {"before", "string", "ID of the " + group.subject + " to move before; omit to move to the end"}}))
 		group.command.AddCommand(acquisitionCommand("tag."+group.subject+".delete", "delete <id>", "Review and delete a custom tag "+group.subject+" and its assignments", "id", []acquisitionFlag{revision, {"dry-run", "bool", "Review affected tracks and assignments without changing the library"}, {"plan-token", "string", "Exact deletion review token; required without --dry-run"}}))
 	}
+	category.AddCommand(acquisitionCommand("tag.category.mode", "mode <id>", "Make a category multiple-choice or single-choice, one value per track", "id", []acquisitionFlag{{"revision", "string", "Current custom-tag revision"}, {"mode", "string", "multiple or single"}}))
 	root.AddCommand(category, value)
 	root.AddCommand(acquisitionCommand("tag.reconcile", "reconcile", "Review and remove assignments for tracks removed outside Engine CLI", "", []acquisitionFlag{{"revision", "string", "Current custom-tag revision"}, {"dry-run", "bool", "Review unavailable tracks without changing assignments"}, {"plan-token", "string", "Exact reconciliation review token; required without --dry-run"}}))
 	return root
@@ -59,7 +61,7 @@ func printCustomTags(command *cobra.Command, result any) (bool, error) {
 			return true, err
 		}
 		for _, category := range value.Categories {
-			if _, err := fmt.Fprintf(output, "%s [%s]\n", category.Name, category.ID); err != nil {
+			if _, err := fmt.Fprintf(output, "%s [%s] — %s choice\n", category.Name, category.ID, category.Mode); err != nil {
 				return true, err
 			}
 			for _, v := range category.Values {
@@ -88,7 +90,7 @@ func printCustomTags(command *cobra.Command, result any) (bool, error) {
 		}
 		return true, nil
 	case *tags.BatchChange:
-		_, err := fmt.Fprintf(output, "Selected tracks: %v\nAdd values: %s\nRemove values: %s\nChanged tracks: %d\nAdded assignments: %d\nRemoved assignments: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.TrackIDs, strings.Join(value.Add, ", "), strings.Join(value.Remove, ", "), value.ChangedTracks, value.AddedAssignments, value.RemovedAssignments, value.Applied, value.Revision, value.PlanToken)
+		_, err := fmt.Fprintf(output, "Selected tracks: %v\nAdd values: %s\nRemove values: %s\nReplaced values: %s\nChanged tracks: %d\nAdded assignments: %d\nRemoved assignments: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.TrackIDs, strings.Join(value.Add, ", "), strings.Join(value.Remove, ", "), strings.Join(value.Replaced, ", "), value.ChangedTracks, value.AddedAssignments, value.RemovedAssignments, value.Applied, value.Revision, value.PlanToken)
 		return true, err
 	case *tags.Mutation:
 		_, err := fmt.Fprintf(output, "Custom tag: %s\nChanged: %t\nRevision: %s\n", value.ID, value.Changed, value.Revision)

@@ -1,6 +1,7 @@
 package transfer
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -24,12 +25,13 @@ func readTags(ctx context.Context, c *collection) error {
 		origin := companion.Origin{UUID: a.OriginUUID, ID: a.OriginTrackID}
 		byOrigin[origin] = append(byOrigin[origin], a.ValueID)
 	}
-	for _, category := range s.Categories {
+	// Saved order and single-choice mode travel with the taxonomy.
+	for position, category := range s.Categories {
 		key := "tag_category:" + category.ID
-		c.Entities[key] = &entity{Kind: "tag_category", Key: key, Values: row{"name": category.Name}}
-		for _, value := range category.Values {
+		c.Entities[key] = &entity{Kind: "tag_category", Key: key, Values: row{"name": category.Name, "mode": category.Mode, "position": int64(position)}}
+		for position, value := range category.Values {
 			key := "tag_value:" + value.ID
-			c.Entities[key] = &entity{Kind: "tag_value", Key: key, Values: row{"name": value.Name, "category": category.ID}}
+			c.Entities[key] = &entity{Kind: "tag_value", Key: key, Values: row{"name": value.Name, "category": category.ID, "position": int64(position)}}
 		}
 	}
 	for _, track := range slices.Collect(entityTracks(c)) {
@@ -110,10 +112,16 @@ func (p *plan) plannedTags() tags.State {
 		if e.Kind != "tag_category" {
 			continue
 		}
-		c := tags.Category{ID: strings.TrimPrefix(key, "tag_category:"), Name: str(e.Values["name"]), Values: []tags.Value{}}
+		c := tags.Category{ID: strings.TrimPrefix(key, "tag_category:"), Name: str(e.Values["name"]), Mode: str(e.Values["mode"]), Values: []tags.Value{}}
 		c.Values = append(c.Values, valuesByCategory[c.ID]...)
+		slices.SortStableFunc(c.Values, func(a, b tags.Value) int {
+			return cmp.Compare(number(entities["tag_value:"+a.ID].Values["position"]), number(entities["tag_value:"+b.ID].Values["position"]))
+		})
 		state.Categories = append(state.Categories, c)
 	}
+	slices.SortStableFunc(state.Categories, func(a, b tags.Category) int {
+		return cmp.Compare(number(entities["tag_category:"+a.ID].Values["position"]), number(entities["tag_category:"+b.ID].Values["position"]))
+	})
 	for _, key := range orderedKeys(entities) {
 		e := entities[key]
 		if e.Kind != "tag_assignment" {

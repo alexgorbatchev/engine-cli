@@ -63,7 +63,47 @@ func CheckAssignment(ctx context.Context, engine *sql.DB, library string, edit A
 			return failure("tag_not_found", "a selected custom-tag value no longer exists in this library")
 		}
 	}
+	return checkSingleChoice(s, edit.Values)
+}
+
+// checkSingleChoice refuses two values of one single-choice category on a track.
+func checkSingleChoice(s State, values []string) error {
+	for _, c := range s.Categories {
+		if c.Mode != ModeSingle {
+			continue
+		}
+		held := 0
+		for _, v := range c.Values {
+			if slices.Contains(values, v.ID) {
+				held++
+			}
+		}
+		if held > 1 {
+			return failure("tag_single_conflict", "a single-choice category takes one value per track")
+		}
+	}
 	return nil
+}
+
+// replacedSiblings lists the values an added single-choice value replaces: the rest of
+// its category that the change does not already remove.
+func replacedSiblings(s State, add, remove []string) ([]string, error) {
+	if err := checkSingleChoice(s, add); err != nil {
+		return nil, err
+	}
+	replaced := []string{}
+	for _, c := range s.Categories {
+		if c.Mode != ModeSingle || !slices.ContainsFunc(c.Values, func(v Value) bool { return slices.Contains(add, v.ID) }) {
+			continue
+		}
+		for _, v := range c.Values {
+			if !slices.Contains(add, v.ID) && !slices.Contains(remove, v.ID) {
+				replaced = append(replaced, v.ID)
+			}
+		}
+	}
+	slices.Sort(replaced)
+	return replaced, nil
 }
 
 func CheckDelete(ctx context.Context, library string, options DeleteOptions, category bool) error {

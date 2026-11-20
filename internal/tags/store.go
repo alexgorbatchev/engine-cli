@@ -12,14 +12,15 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 )
 
-const schemaVersion = 1
+const schemaVersion = 2
 
 const schema = `
 CREATE TABLE Metadata (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL);
-INSERT INTO Metadata VALUES(1,1);
-CREATE TABLE Category (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, nameKey TEXT NOT NULL UNIQUE);
+INSERT INTO Metadata VALUES(1,2);
+CREATE TABLE Category (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, nameKey TEXT NOT NULL UNIQUE,
+ position INTEGER NOT NULL DEFAULT 0, mode TEXT NOT NULL DEFAULT 'multiple' CHECK(mode IN ('multiple','single')));
 CREATE TABLE Value (id TEXT NOT NULL PRIMARY KEY, categoryId TEXT NOT NULL REFERENCES Category(id) ON DELETE CASCADE,
- name TEXT NOT NULL, nameKey TEXT NOT NULL, UNIQUE(categoryId,nameKey));
+ name TEXT NOT NULL, nameKey TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, UNIQUE(categoryId,nameKey));
 CREATE TABLE Assignment (originUUID TEXT NOT NULL, originTrackId INTEGER NOT NULL CHECK(originTrackId>0),
  valueId TEXT NOT NULL REFERENCES Value(id) ON DELETE CASCADE, PRIMARY KEY(originUUID,originTrackId,valueId));
 CREATE INDEX Assignment_value ON Assignment(valueId);
@@ -92,17 +93,24 @@ func readState(ctx context.Context, tx *sql.Tx) (State, error) {
 	if err := tx.QueryRowContext(ctx, "SELECT version FROM Metadata WHERE id=1").Scan(&version); err != nil {
 		return s, fmt.Errorf("reading custom-tag schema: %w", err)
 	}
-	if version != schemaVersion {
+	if version != 1 && version != schemaVersion {
 		return s, failure("tag_store_unavailable", "custom-tag storage has an unsupported schema")
 	}
-	rows, err := tx.QueryContext(ctx, "SELECT id,name FROM Category ORDER BY id")
+	// Version 1 stores had no order or mode; they read in identity order as multiple-choice until a write upgrades them.
+	categories, values := "SELECT id,name,'multiple' FROM Category ORDER BY id", `SELECT v.id,v.categoryId,v.name,COUNT(a.valueId) FROM Value v
+ LEFT JOIN Assignment a ON a.valueId=v.id GROUP BY v.id ORDER BY v.id`
+	if version == schemaVersion {
+		categories, values = "SELECT id,name,mode FROM Category ORDER BY position,id", `SELECT v.id,v.categoryId,v.name,COUNT(a.valueId) FROM Value v
+ LEFT JOIN Assignment a ON a.valueId=v.id GROUP BY v.id ORDER BY v.position,v.id`
+	}
+	rows, err := tx.QueryContext(ctx, categories)
 	if err != nil {
 		return s, err
 	}
 	byID := map[string]int{}
 	for rows.Next() {
 		c := Category{Values: []Value{}}
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Mode); err != nil {
 			rows.Close()
 			return s, err
 		}
@@ -112,8 +120,7 @@ func readState(ctx context.Context, tx *sql.Tx) (State, error) {
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return s, err
 	}
-	rows, err = tx.QueryContext(ctx, `SELECT v.id,v.categoryId,v.name,COUNT(a.valueId) FROM Value v
- LEFT JOIN Assignment a ON a.valueId=v.id GROUP BY v.id ORDER BY v.id`)
+	rows, err = tx.QueryContext(ctx, values)
 	if err != nil {
 		return s, err
 	}
@@ -147,6 +154,25 @@ func readState(ctx context.Context, tx *sql.Tx) (State, error) {
 		s.Assignments = append(s.Assignments, a)
 	}
 	return s, rows.Err()
+}
+
+// upgrade brings a version 1 store to the current schema inside a write, keeping its
+// identity order as the saved order and every category multiple-choice.
+func upgrade(ctx context.Context, tx *sql.Tx) error {
+	var version int
+	if err := tx.QueryRowContext(ctx, "SELECT version FROM Metadata WHERE id=1").Scan(&version); err != nil {
+		return err
+	}
+	if version == schemaVersion {
+		return nil
+	}
+	_, err := tx.ExecContext(ctx, `ALTER TABLE Category ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE Category ADD COLUMN mode TEXT NOT NULL DEFAULT 'multiple' CHECK(mode IN ('multiple','single'));
+ALTER TABLE Value ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+UPDATE Category SET position=(SELECT COUNT(*) FROM Category c WHERE c.id<Category.id);
+UPDATE Value SET position=(SELECT COUNT(*) FROM Value v WHERE v.categoryId=Value.categoryId AND v.id<Value.id);
+UPDATE Metadata SET version=2 WHERE id=1;`)
+	return err
 }
 
 func List(ctx context.Context, library string) (*Taxonomy, error) {

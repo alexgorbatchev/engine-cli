@@ -60,6 +60,9 @@ func Assign(ctx context.Context, engine *sql.DB, library string, edit Assignment
 				return "", false, failure("tag_not_found", "a selected custom-tag value no longer exists in this library")
 			}
 		}
+		if err := checkSingleChoice(s, values); err != nil {
+			return "", false, err
+		}
 		previous := []string{}
 		for _, a := range s.Assignments {
 			if a.OriginUUID == origin && a.OriginTrackID == originID {

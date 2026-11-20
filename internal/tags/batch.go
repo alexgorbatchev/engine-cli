@@ -52,7 +52,9 @@ type BatchChange struct {
 	ChangedTracks      int      `json:"changed_tracks"`
 	AddedAssignments   int      `json:"added_assignments"`
 	RemovedAssignments int      `json:"removed_assignments"`
-	Applied            bool     `json:"applied"`
+	// Replaced lists the other values of single-choice categories an added value takes the place of.
+	Replaced []string `json:"replaced"`
+	Applied  bool     `json:"applied"`
 }
 
 type batchTrack struct {
@@ -158,7 +160,11 @@ func batchPlan(state State, tracks []batchTrack, options BatchOptions) (*BatchCh
 			return nil, failure("tag_actions_overlap", "a value cannot be added and removed in the same change")
 		}
 	}
-	result := &BatchChange{Revision: revision(state), TrackIDs: batchTrackIDs(tracks), Add: add, Remove: remove}
+	replaced, err := replacedSiblings(state, add, remove)
+	if err != nil {
+		return nil, err
+	}
+	result := &BatchChange{Revision: revision(state), TrackIDs: batchTrackIDs(tracks), Add: add, Remove: remove, Replaced: replaced}
 	assigned, counted := batchAssignments(state), map[companion.Origin]bool{}
 	for _, track := range tracks {
 		added, removed := 0, 0
@@ -167,7 +173,7 @@ func batchPlan(state State, tracks []batchTrack, options BatchOptions) (*BatchCh
 				added++
 			}
 		}
-		for _, id := range remove {
+		for _, id := range append(slices.Clone(remove), replaced...) {
 			if assigned[track.Origin][id] {
 				removed++
 			}
@@ -183,10 +189,10 @@ func batchPlan(state State, tracks []batchTrack, options BatchOptions) (*BatchCh
 	}
 	// The exact resolved selection and native identities are part of consent.
 	data, err := json.Marshal(struct {
-		Revision    string
-		Tracks      []batchTrack
-		Add, Remove []string
-	}{result.Revision, tracks, add, remove})
+		Revision              string
+		Tracks                []batchTrack
+		Add, Remove, Replaced []string
+	}{result.Revision, tracks, add, remove, replaced})
 	if err != nil {
 		return nil, fmt.Errorf("encode custom-tag batch review: %w", err)
 	}
@@ -245,7 +251,7 @@ func AssignBatch(ctx context.Context, engine *sql.DB, library string, options Ba
 				continue
 			}
 			seen[track.Origin] = true
-			for _, id := range checked.Remove {
+			for _, id := range append(slices.Clone(checked.Remove), checked.Replaced...) {
 				if _, err := tx.ExecContext(ctx, "DELETE FROM Assignment WHERE originUUID=? AND originTrackId=? AND valueId=?", track.Origin.UUID, track.Origin.ID, id); err != nil {
 					return "", false, err
 				}

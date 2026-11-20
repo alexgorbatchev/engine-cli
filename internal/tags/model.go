@@ -17,9 +17,18 @@ import (
 
 const maxNameLength = 100
 
+// Category modes: a multiple-choice category lets a track hold any of its values; a
+// single-choice category, such as an Energy scale, holds at most one per track.
+const (
+	ModeMultiple = "multiple"
+	ModeSingle   = "single"
+)
+
+// Categories and their values are listed in their saved order.
 type Category struct {
 	ID     string  `json:"id"`
 	Name   string  `json:"name"`
+	Mode   string  `json:"mode"`
 	Values []Value `json:"values"`
 }
 

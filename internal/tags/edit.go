@@ -48,6 +48,8 @@ func mutate(ctx context.Context, library, expected string, run func(*sql.Tx, Sta
 		if _, err := tx.ExecContext(ctx, schema); err != nil {
 			return nil, err
 		}
+	} else if err := upgrade(ctx, tx); err != nil {
+		return nil, err
 	}
 	s, err = readState(ctx, tx)
 	if err != nil {
@@ -86,7 +88,8 @@ func EditCategory(ctx context.Context, library string, edit Edit) (*Mutation, er
 		id := edit.ID
 		if id == "" {
 			id = uuid.NewString()
-			_, err = tx.ExecContext(ctx, "INSERT INTO Category(id,name,nameKey) VALUES(?,?,?)", id, name, key)
+			_, err = tx.ExecContext(ctx, `INSERT INTO Category(id,name,nameKey,position)
+ VALUES(?,?,?,(SELECT COALESCE(MAX(position),-1)+1 FROM Category))`, id, name, key)
 		} else {
 			_, err = tx.ExecContext(ctx, "UPDATE Category SET name=?,nameKey=? WHERE id=?", name, key, id)
 		}
@@ -107,7 +110,8 @@ func EditValue(ctx context.Context, library string, edit Edit) (*Mutation, error
 		id := edit.ID
 		if id == "" {
 			id = uuid.NewString()
-			_, err = tx.ExecContext(ctx, "INSERT INTO Value(id,categoryId,name,nameKey) VALUES(?,?,?,?)", id, category, name, key)
+			_, err = tx.ExecContext(ctx, `INSERT INTO Value(id,categoryId,name,nameKey,position)
+ VALUES(?,?,?,?,(SELECT COALESCE(MAX(position),-1)+1 FROM Value WHERE categoryId=?))`, id, category, name, key, category)
 		} else {
 			_, err = tx.ExecContext(ctx, "UPDATE Value SET name=?,nameKey=? WHERE id=?", name, key, id)
 		}
@@ -122,20 +126,24 @@ func Replace(ctx context.Context, library string, expected string, next State) (
 		if _, err := tx.ExecContext(ctx, "DELETE FROM Assignment; DELETE FROM Value; DELETE FROM Category"); err != nil {
 			return "", false, err
 		}
-		for _, c := range next.Categories {
+		for position, c := range next.Categories {
 			name, key, err := normalizedName(c.Name)
 			if err != nil {
 				return "", false, err
 			}
-			if _, err := tx.ExecContext(ctx, "INSERT INTO Category VALUES(?,?,?)", c.ID, name, key); err != nil {
+			mode := c.Mode
+			if mode == "" {
+				mode = ModeMultiple
+			}
+			if _, err := tx.ExecContext(ctx, "INSERT INTO Category(id,name,nameKey,position,mode) VALUES(?,?,?,?,?)", c.ID, name, key, position, mode); err != nil {
 				return "", false, err
 			}
-			for _, v := range c.Values {
+			for position, v := range c.Values {
 				name, key, err := normalizedName(v.Name)
 				if err != nil {
 					return "", false, err
 				}
-				if _, err := tx.ExecContext(ctx, "INSERT INTO Value VALUES(?,?,?,?)", v.ID, c.ID, name, key); err != nil {
+				if _, err := tx.ExecContext(ctx, "INSERT INTO Value(id,categoryId,name,nameKey,position) VALUES(?,?,?,?,?)", v.ID, c.ID, name, key, position); err != nil {
 					return "", false, err
 				}
 			}
