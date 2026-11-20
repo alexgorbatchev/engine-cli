@@ -179,7 +179,7 @@ fields; normal mutation guards, snapshots, and undo apply to that separate opera
 | `POST /v1/jobs/{id}/cancel` | `202` with current status; requests cancellation |
 | `GET /v1/tracks/{id}` | Track metadata with JSON values and nulls |
 | `GET /v1/tracks/{id}/audio` | Original local audio; supports `HEAD` and HTTP byte ranges for seeking |
-| `GET /v1/tracks/{id}/beatgrid` | Saved Engine beat-grid anchors, or `{"grid":null}` when analysis is absent |
+| `GET /v1/tracks/{id}/beatgrid` | Saved Engine beat-grid anchors with `locked`, or `{"grid":null}` when analysis is absent |
 | `GET /v1/tracks/{id}/performance` | Read-only saved hot cues and loops with native slots, names, colors, and positions in seconds |
 | `GET /v1/tracks/overviews?ids=1,2` | Engine's stored overview waveforms for 1–500 tracks in request order; see [Stored overview waveforms](#stored-overview-waveforms) |
 | `GET /v1/sessions` | Played sessions from Engine's play history, newest first; see [Play history](#play-history) |
@@ -417,7 +417,7 @@ The applied result's `operation_id` and job's `history_id` identify undo history
 
 The beat-grid response contains `grid.sampleRate`, `grid.bpm`, and `grid.anchors`. Each anchor has `sample` (sample position, which can be negative for preroll), `beat` (zero-based beat index), and `beatsUntilNext` (the outgoing segment's beat count, `0` on the final anchor). Interpolate the interval between adjacent anchors using `beatsUntilNext`, then divide sample positions by `sampleRate` for seconds. Beats whose index is a multiple of four start bars. The last anchor ends the preceding segment. `bpm` is the whole-grid tempo Engine reports: the beats spanned divided by the grid's duration.
 
-The API reads the adjusted grid Engine plays and edits from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM. Missing analysis, and grids with fewer than two anchors, return `{"grid":null}`. Invalid compressed payloads or inconsistent anchors return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. Encoding and decoding use `djtools` v0.2.0's native `BeatData` codec, which writes the full header, both grids, and the trailing source and reference-sample fields.
+The API reads the adjusted grid Engine plays and edits from `PerformanceData.beatData`; it does not manufacture a grid from a track's BPM. Missing analysis, and grids with fewer than two anchors, return `{"grid":null}`. A saved grid comes with `locked`, `true` when Engine DJ has locked it (`Track.isBeatGridLocked`), so a client can show the lock before it sends an edit that `beatgrid_locked` would refuse. Invalid compressed payloads or inconsistent anchors return `422` with code `invalid_beatgrid`; decoded payloads are limited to 8 MiB. Encoding and decoding use `djtools` v0.2.0's native `BeatData` codec, which writes the full header, both grids, and the trailing source and reference-sample fields.
 
 ## Track analysis
 

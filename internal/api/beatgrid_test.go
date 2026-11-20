@@ -60,6 +60,7 @@ func TestTrackBeatGrid(t *testing.T) {
 	if _, err := database.Exec("CREATE TABLE PerformanceData(trackId INTEGER PRIMARY KEY, beatData BLOB)"); err != nil {
 		t.Fatal(err)
 	}
+	addGridLockColumn(t, database)
 	for _, blob := range [][]byte{nil, {}, compressedGrid(t, gridPayload())} {
 		if _, err := database.Exec("INSERT OR REPLACE INTO PerformanceData VALUES(1,?)", blob); err != nil {
 			t.Fatal(err)
@@ -78,12 +79,27 @@ func TestTrackBeatGrid(t *testing.T) {
 				BeatsUntilNext uint32
 			}
 		}
+		Locked *bool
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
 	if body.Grid.SampleRate != 48000 || len(body.Grid.Anchors) != 3 || body.Grid.Anchors[0].Sample != -24000 || body.Grid.Anchors[1].Beat != 2 || body.Grid.Anchors[1].BeatsUntilNext != 2 {
 		t.Fatalf("grid=%+v", body)
+	}
+	if body.Locked == nil || *body.Locked {
+		t.Fatalf("an unlocked grid must report locked=false: %s", w.Body)
+	}
+	// A grid locked in Engine DJ says so, so clients show the lock before sending an edit Engine would refuse.
+	if _, err := database.Exec("UPDATE Track SET isBeatGridLocked=1 WHERE id=1"); err != nil {
+		t.Fatal(err)
+	}
+	w = requestAPI(t, s, http.MethodGet, "/v1/tracks/1/beatgrid", "")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "\"locked\":true") {
+		t.Fatalf("locked grid: %d %s", w.Code, w.Body)
+	}
+	if _, err := database.Exec("UPDATE Track SET isBeatGridLocked=0 WHERE id=1"); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := database.Exec("UPDATE PerformanceData SET beatData=x'01020304'"); err != nil {
 		t.Fatal(err)
@@ -106,7 +122,16 @@ func gridLibrary(t *testing.T) (*Server, *sql.DB) {
 	if _, err := database.Exec("CREATE TABLE PerformanceData(trackId INTEGER PRIMARY KEY, beatData BLOB)"); err != nil {
 		t.Fatal(err)
 	}
+	addGridLockColumn(t, database)
 	return s, database
+}
+
+// addGridLockColumn gives the minimal test library Engine DJ's beat-grid lock column, which every Engine library has.
+func addGridLockColumn(t *testing.T, database *sql.DB) {
+	t.Helper()
+	if _, err := database.Exec("ALTER TABLE Track ADD COLUMN isBeatGridLocked INTEGER"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestTrackBeatGridRejectsMalformedPayloads(t *testing.T) {
