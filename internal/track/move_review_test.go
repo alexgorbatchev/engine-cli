@@ -33,6 +33,19 @@ func TestPlanMoveReviewsTargetsAndConflicts(t *testing.T) {
 	if again, _ := PlanMove(ctx, d, lib, "1", filepath.Join(lib, "Sorted"), noShare); again.PlanToken != plan.PlanToken {
 		t.Fatal("an unchanged review produced another token")
 	}
+	if plan.Source != filepath.Join(lib, "song.mp3") {
+		t.Fatalf("source %q", plan.Source)
+	}
+	// A relative destination is inside the library folder, as stored paths are.
+	if relative, _ := PlanMove(ctx, d, lib, "1", "Sorted", noShare); relative.Target != plan.Target || relative.PlanToken != plan.PlanToken {
+		t.Fatalf("relative folder %+v", relative)
+	}
+	if relative, _ := PlanMove(ctx, d, lib, "1", "Renamed/new.mp3", noShare); relative.Target != filepath.Join(lib, "Renamed", "new.mp3") || relative.To != "Renamed/new.mp3" {
+		t.Fatalf("relative file %+v", relative)
+	}
+	if relative, _ := PlanMove(ctx, d, lib, "1", "Fresh/", noShare); relative.Target != filepath.Join(lib, "Fresh", "song.mp3") {
+		t.Fatalf("relative new folder %+v", relative)
+	}
 	// A path ending in a separator names a folder that does not exist yet.
 	if next, _ := PlanMove(ctx, d, lib, "1", filepath.Join(lib, "New")+"/", noShare); next.To != "New/song.mp3" || !next.CanApply {
 		t.Fatalf("new folder %+v", next)

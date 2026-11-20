@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/engine-cli/internal/agent"
 	"github.com/alexgorbatchev/engine-cli/internal/artwork"
@@ -258,7 +259,19 @@ Arguments:
 			}
 			defer database.Close()
 
-			t, err := track.MoveTrackFile(cmd.Context(), database, libDirFlag, args[0], args[1])
+			// A relative destination on the command line means the shell's working directory, not the library folder.
+			destination := args[1]
+			if !filepath.IsAbs(destination) {
+				resolved, err := filepath.Abs(destination)
+				if err != nil {
+					return err
+				}
+				if strings.HasSuffix(destination, "/") || strings.HasSuffix(destination, string(filepath.Separator)) {
+					resolved += string(filepath.Separator)
+				}
+				destination = resolved
+			}
+			t, err := track.MoveTrackFile(cmd.Context(), database, libDirFlag, args[0], destination)
 			if err != nil {
 				return err
 			}

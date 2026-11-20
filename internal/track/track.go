@@ -331,7 +331,7 @@ func MoveTrackFile(ctx context.Context, database *sql.DB, libDir string, identif
 		sourcePath = filepath.Join(libDir, sourcePath)
 	}
 
-	targetPath := moveTarget(sourcePath, destPath)
+	targetPath := moveTarget(libDir, sourcePath, destPath)
 
 	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 		return nil, fmt.Errorf("creating destination folder: %w", err)

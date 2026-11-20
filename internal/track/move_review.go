@@ -21,13 +21,14 @@ import (
 type SharedLookup func(ctx context.Context, file string) (shared, unavailable []string, err error)
 
 // MovePlan reviews moving one track's audio file: where it is and where it
-// goes, as stored paths and the absolute target, and every reason it cannot
-// move now. Applying requires its token.
+// goes, as stored paths and absolute paths, and every reason it cannot move
+// now. Applying requires its token.
 type MovePlan struct {
 	TrackID     int64    `json:"track_id"`
 	Title       string   `json:"title,omitempty"`
 	From        string   `json:"from"`
 	To          string   `json:"to"`
+	Source      string   `json:"source"`
 	Target      string   `json:"target"`
 	Conflicts   []string `json:"conflicts"`
 	SharedWith  []string `json:"shared_with"`
@@ -38,7 +39,8 @@ type MovePlan struct {
 }
 
 // PlanMove reviews moving a track's audio file to destination, a file path or
-// a folder (an existing folder, or a path ending in a separator). It reads
+// a folder (an existing folder, or a path ending in a separator). A relative
+// destination is inside the library folder, as stored paths are. It reads
 // only. Conflicts: move_unchanged (the file is already there),
 // move_source_missing, move_target_exists (another file has that name),
 // move_shared_file (another known library uses the file) and
@@ -58,12 +60,12 @@ func PlanMove(ctx context.Context, d *sql.DB, lib, identifier, destination strin
 	if !filepath.IsAbs(source) {
 		source = filepath.Join(lib, source)
 	}
-	target := moveTarget(source, destination)
+	target := moveTarget(lib, source, destination)
 	stored := target
 	if rel, err := filepath.Rel(lib, target); err == nil && filepath.IsLocal(rel) {
 		stored = filepath.ToSlash(rel)
 	}
-	plan := &MovePlan{TrackID: t.ID, Title: t.Title.String, From: t.PathString(), To: stored, Target: target, Conflicts: []string{}, SharedWith: []string{}, Unavailable: []string{}}
+	plan := &MovePlan{TrackID: t.ID, Title: t.Title.String, From: t.PathString(), To: stored, Source: source, Target: target, Conflicts: []string{}, SharedWith: []string{}, Unavailable: []string{}}
 	info, err := os.Stat(source)
 	switch {
 	case os.IsNotExist(err):
@@ -121,11 +123,17 @@ func CheckMove(ctx context.Context, d *sql.DB, lib, identifier, destination, tok
 	return nil
 }
 
-func moveTarget(source, destination string) string {
-	if info, err := os.Stat(destination); err == nil && info.IsDir() {
-		return filepath.Join(destination, filepath.Base(source))
+// moveTarget resolves where a move puts source: into destination when it is
+// an existing folder or ends in a separator, else at destination itself. A
+// relative destination resolves against the library folder, like the stored
+// paths a client reads from track listings, never against the process's own
+// working directory.
+func moveTarget(lib, source, destination string) string {
+	folder := strings.HasSuffix(destination, "/") || strings.HasSuffix(destination, "\\")
+	if !filepath.IsAbs(destination) {
+		destination = filepath.Join(lib, destination)
 	}
-	if strings.HasSuffix(destination, "/") || strings.HasSuffix(destination, "\\") {
+	if info, err := os.Stat(destination); folder || (err == nil && info.IsDir()) {
 		return filepath.Join(destination, filepath.Base(source))
 	}
 	return filepath.Clean(destination)
