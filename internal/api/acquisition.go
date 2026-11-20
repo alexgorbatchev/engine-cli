@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/engine-cli/internal/acquire"
 	"github.com/alexgorbatchev/engine-cli/internal/acquisition"
 	"github.com/alexgorbatchev/engine-cli/internal/duplicate"
+	"github.com/alexgorbatchev/engine-cli/internal/history"
 	"github.com/alexgorbatchev/engine-cli/internal/progress"
 	"github.com/alexgorbatchev/engine-cli/internal/staging"
 )
@@ -28,6 +29,9 @@ type fetchParams struct {
 	JSRuntime          string  `json:"js_runtime"`
 	Import             bool    `json:"import"`
 	ToPlaylist         string  `json:"to_playlist"`
+	// IfOwned decides an import whose download is already in the collection:
+	// "stage" (the default) keeps it in Staging, "import" imports it anyway.
+	IfOwned string `json:"if_owned"`
 }
 
 func (p fetchParams) options() acquire.TrackOptions {
@@ -36,6 +40,9 @@ func (p fetchParams) options() acquire.TrackOptions {
 func (p fetchParams) validate() error {
 	if p.ToPlaylist != "" && !p.Import {
 		return fmt.Errorf("to_playlist requires import")
+	}
+	if p.IfOwned != "" && p.IfOwned != "stage" && p.IfOwned != "import" {
+		return fmt.Errorf("if_owned must be stage or import")
 	}
 	return p.options().Validate()
 }
@@ -147,6 +154,17 @@ func (s *Server) acquisitionOperations() []operation {
 			if err != nil || !p.Import || r.Item.Status != "ready" {
 				return r, err
 			}
+			if p.IfOwned != "import" {
+				owned, err := s.ownedCopies(ctx, r)
+				if err != nil {
+					return r, err
+				}
+				if len(owned) > 0 {
+					// The download stays staged; its history records only the staged files.
+					history.LeaveCollection(ctx)
+					return map[string]any{"acquisition": r, "import_withheld": map[string]any{"reason": "in_collection", "matches": owned}}, nil
+				}
+			}
 			return s.importAcquisition(ctx, r.Item.ID, p.ToPlaylist, r)
 		}),
 		defineEffect("mix.inspect", "read", []string{"query"}, func(ctx context.Context, p mixLookupParams) (any, error) {
@@ -200,6 +218,40 @@ func matchCandidates(ctx context.Context, d *sql.DB, query string, candidates []
 		}
 	}
 	return result, nil
+}
+
+// ownedCopies returns the collection tracks a finished download already is:
+// the same artist and title, versions in parentheses aside, and a decoded
+// length within the same-length tolerance. Another edit of the title, with
+// another length, is not an owned copy.
+func (s *Server) ownedCopies(ctx context.Context, r *acquisition.TrackReport) ([]duplicate.CollectionMatch, error) {
+	artist, title := r.Item.Artist, r.Item.Title
+	duration := 0.0
+	if r.Result != nil {
+		if r.Result.Metadata != nil {
+			artist, title = cmp.Or(r.Result.Metadata.Artist, artist), cmp.Or(r.Result.Metadata.Title, title)
+		}
+		if r.Result.Verification != nil {
+			duration = r.Result.Verification.DurationSeconds
+		}
+	}
+	matched, err := s.database(ctx, func(d *sql.DB) (any, error) {
+		index, err := duplicate.ReadCollectionIndex(ctx, d)
+		if err != nil {
+			return nil, err
+		}
+		owned := []duplicate.CollectionMatch{}
+		for _, match := range index.Match(artist, title, duration) {
+			if match.SameLength {
+				owned = append(owned, match)
+			}
+		}
+		return owned, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return matched.([]duplicate.CollectionMatch), nil
 }
 
 func (s *Server) importAcquisition(ctx context.Context, id, playlist string, result any) (any, error) {

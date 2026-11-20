@@ -317,7 +317,13 @@ func runLocked(ctx context.Context, lib, dir, operation, undoOf string, scope Sc
 	}
 	r.mu.Lock()
 	workspaces := r.workspaces
+	leftCollection := r.leftCollection
 	r.mu.Unlock()
+	if leftCollection && scope.capturesDatabases() && sameDatabases(e.Before, e.After) {
+		if err := keepFilesOnly(e, work); err != nil {
+			return e, errors.Join(runErr, err)
+		}
+	}
 	// Refusals and failures confined to retryable workspaces have no library change to undo.
 	if runErr != nil && onlyWorkspaceChanges(e, workspaces) {
 		if err = discard(dir, e); err != nil {

@@ -15,6 +15,21 @@ type recorder struct {
 	dir              string
 	workspaces       []string
 	recoveryRequired bool
+	leftCollection   bool
+}
+
+// LeaveCollection reports that the running collection operation decided not
+// to change the collection, such as a fetch that kept its download in Staging.
+// If no database changed either, its history entry records only the files it
+// changed, so undoing it never restores a database snapshot over later edits.
+func LeaveCollection(ctx context.Context) {
+	r, _ := ctx.Value(recorderKey{}).(*recorder)
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	r.leftCollection = true
+	r.mu.Unlock()
 }
 
 // RequireRecovery retains the already durable pending entry when one part of a
