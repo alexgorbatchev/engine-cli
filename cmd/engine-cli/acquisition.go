@@ -74,6 +74,10 @@ func addAcquisitionCommands(root *cobra.Command) {
 	tags.AddCommand(acquisitionCommand("track.tags.update", "update [path|identifier...]", "Update embedded tags while preserving original audio and collection metadata", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), tagFlags...)))
 	track.AddCommand(tags)
 	artwork, _, _ := track.Find([]string{"artwork"})
+	artwork.AddCommand(acquisitionCommand("track.artwork.import", "import [identifier...]", "Set library covers from the art embedded in each track's audio file, without rewriting audio", "identifiers", []acquisitionFlag{
+		{"dry-run", "bool", "Review each track's file cover and whether it replaces the library's, without changing anything"},
+		{"plan-token", "string", "Apply only the review that returned this token"},
+	}))
 	artwork.AddCommand(acquisitionCommand("track.artwork.embed", "embed [path|identifier...]", "Embed artwork without re-encoding audio", "identifiers", append(append([]acquisitionFlag{}, targetFlags...), acquisitionFlag{"artwork", "string", "Artwork file path or URL"}, acquisitionFlag{"auto-install", "bool", "Install missing or outdated tag tools"})))
 	mix := &cobra.Command{Use: "mix", Short: "Extract tracklists and acquire ordered mixes", Args: cobra.NoArgs}
 	for _, action := range []string{"inspect", "candidates", "fetch"} {

@@ -33,6 +33,7 @@ func TestCatalogPublishesBatchLimits(t *testing.T) {
 		"track.analyze":                   {"identifiers": 500},
 		"track.tags.inspect":              media,
 		"track.tags.update":               media,
+		"track.artwork.import":            {"identifiers": 200},
 		"track.artwork.embed":             media,
 		"track.tags.edit":                 {"edits": 200},
 		"track.suggest":                   {"tracks": 500, "playlists": 500},

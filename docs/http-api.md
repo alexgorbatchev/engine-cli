@@ -269,6 +269,9 @@ Progress events, acquisition results (including per-track, tag-file, and depende
 | `file_tags_plan_stale` | A file changed since the reviewed tag edit was planned. Review again and write the new plan. Nothing was changed. |
 | `file_tags_unchanged` | The files already have the reviewed values. Nothing was changed. |
 | `invalid_tag_date` | A tag date is not `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. Nothing was read or changed. |
+| `artwork_import_plan_stale` | A file or library cover changed since the cover import was reviewed. Review again and import the new plan. Nothing was changed. |
+| `artwork_import_unchanged` | The library already shows the files' covers. Nothing was changed. |
+| `file_no_artwork` | The audio file has no embedded cover to use. |
 | `move_plan_stale` | The track, its file or the destination changed since the move was reviewed. Review again; nothing was moved. |
 | `move_target_exists` | Another file already has the destination's name. Choose another name or folder; nothing was moved. |
 | `move_unchanged` | The file is already at the destination. Nothing was moved. |
@@ -894,6 +897,8 @@ Tag updates support nullable string overrides `artist`, `title`, `album`, `date`
 
 `track.move` moves one track's audio file to `destination`, a file path or a folder (an existing folder, or a path ending in a separator, keeps the file name); a relative destination is inside the library folder, as stored paths are. `dry_run:true` is a read that returns `{track_id,title,from,to,source,target,conflicts,shared_with,unavailable,can_apply,plan_token}`: the stored path now and after, the absolute `source` and `target`, and every reason it cannot move now as stable codes (`move_unchanged`, `move_source_missing`, `move_target_exists`, `move_shared_file` when another known library uses the file, listed in `shared_with`, and `move_shared_unknown` when a known library listed in `unavailable` could not be read). With `plan_token`, the move applies only that review: a changed track, file or destination is refused with `move_plan_stale` and a review with conflicts with its first conflict code, both before Desktop checks, snapshots or history. Without a token it moves at once, as before. One undo restores the file and the stored path.
 
+`track.artwork.import` sets each track's library cover from the art embedded in its own audio file, without rewriting the audio, for `identifiers` (1–200 tracks). `dry_run:true` is a read that returns `{tracks,changed,replaced,can_apply,plan_token}`, where each track has `identifier`, `track_id`, `title`, `replaces` (the library shows another cover now), `unchanged` (the library cover already is the file's cover), and `error` and `error_code` for a track it cannot use, such as `file_no_artwork`, `file_not_found` or `not_found`. The import requires the same `identifiers` with that `plan_token`: a file or library cover that changed since review is refused with `artwork_import_plan_stale`, and a plan with nothing to change with `artwork_import_unchanged`, both before Desktop checks, snapshots or history. It stores each cover the way an uploaded cover is stored (cropped to a centered square) and returns `{track_ids,changed}`; one undo restores every library cover it changed. The CLI is `track artwork import [identifier...] [--dry-run] [--plan-token <token>]`.
+
 `library.folders` lists the folders a track's audio may move into: `{roots,path,parent?,folders}`, where `roots` are the library's own folder (`Library`) and the computer's Music folder (`Music`) when they exist, `path` the listed folder (the first root when `path` is omitted), `parent` the folder above it while still inside a root, and `folders` its visible child folders by name. A path outside every root is refused with `folder_outside_roots`. It is a read.
 
 Raw file mutations resolve collection ownership, including symlink and hard-link aliases, before execution. Collection files use the normal desktop guard, snapshot, metadata update, and undo workflow. Staged files update their manifests and retain staging undo. Other files use durable file history. Collection and other files are rewritten in place, only after verifying compressed audio packets are unchanged: the new bytes go to a temporary file in the same folder that takes the original's mode and owner, then rename over it atomically, so the path and file name never change and no second copy is left behind. History keeps the original bytes, and undo restores them at the same path. A file that changed since its bytes were preserved is refused and left alone.
@@ -1172,6 +1177,7 @@ Fields marked `?` are optional. Playlist identifiers are positive numeric IDs en
 | `track.rm` | `tracks` array, `delete_file?` |
 | `track.move` | `identifier`, `destination`, `dry_run?`, `plan_token?`; see reviewed track moves below |
 | `library.folders` | `path?`; the folders a track's audio may move into |
+| `track.artwork.import` | `identifiers` (1–200), `dry_run?`, `plan_token?`; library covers from each file's embedded art |
 | `track.relocate` | `from`, `to` |
 | `track.upgrade` | `identifier`, `query?`, `keep_timing?`, `clear_timing?`, acquisition options, `selection_token?`, `candidate_url?`; see upgrade workflow above |
 | `track.artwork.normalize` | `{}` |

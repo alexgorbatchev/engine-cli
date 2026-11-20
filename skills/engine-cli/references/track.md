@@ -94,6 +94,19 @@ Usage: `engine-cli track artwork embed [path|identifier...] [flags]`.
 - `--staging-id` (string; default ``): Select a staged item.
 - `--staging-ids` (stringSlice; default `[]`): Select staged items; repeat or separate with commas.
 
+## `engine-cli track artwork import`
+
+Set library covers from the art embedded in each track's audio file, without rewriting audio
+
+Usage: `engine-cli track artwork import [identifier...] [flags]`.
+
+Review first with `--dry-run`: each track reports whether its file has a cover, whether it replaces the library's cover or already matches it, and the plan token. Apply with `--plan-token <token>`; a file or cover that changed since the review refuses with `artwork_import_plan_stale`. The audio files are only read. One undo restores every library cover the import changed.
+
+- `--dry-run` (bool; default `false`): Review each track's file cover and whether it replaces the library's, without changing anything.
+- `--help, -h` (bool; default `false`): help for import.
+- `--json` (bool; default `false`): Print compact structured results.
+- `--plan-token` (string; default ``): Apply only the review that returned this token.
+
 ## `engine-cli track artwork normalize`
 
 Crop album cover art to 1:1 square for DJ jog wheels and player displays
