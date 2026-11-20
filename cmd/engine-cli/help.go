@@ -10,6 +10,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	"engine-cli track color list":                {Summary: "List assigned live tracks, unavailable origins and the color revision"},
 	"engine-cli track color inspect":             {Summary: "Inspect one track's color and current revision", Args: []cobrahelptree.ArgSpec{{Name: "<track>"}}},
 	"engine-cli track color update":              {Summary: "Set or explicitly clear one track's color at its inspected revision", Args: []cobrahelptree.ArgSpec{{Name: "<track>"}}, MutatesDB: true, AutoBackup: true},
+	"engine-cli track color batch-update":        {Summary: "Review each selected track's color change, then apply exactly that plan", MutatesDB: true, AutoBackup: true},
 	"engine-cli track color reconcile":           {Summary: "Review or remove colors for unavailable origins with exact consent", MutatesDB: true, AutoBackup: true},
 	"engine-cli tag":                             {Summary: "Manage library-local custom tag categories and named values"},
 	"engine-cli tag category":                    {Summary: "Manage custom tag categories"},

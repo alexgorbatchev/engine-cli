@@ -21,6 +21,12 @@ type updateTrackColorParams struct {
 	Color    string `json:"color" allowempty:"true"`
 }
 
+type batchTrackColorParams colors.BatchOptions
+
+func (p batchTrackColorParams) operationPreview() bool { return p.DryRun }
+
+func (p batchTrackColorParams) operationCollectionRead() bool { return p.DryRun }
+
 func (p updateTrackColorParams) edit() colors.Edit {
 	return colors.Edit{Track: p.Track, Revision: p.Revision, Color: p.Color}
 }
@@ -48,6 +54,20 @@ func (s *Server) colorOperations() []operation {
 		defineCollectionRead("track.color.inspect", []string{"track"}, func(ctx context.Context, p trackColorParams) (any, error) {
 			return s.database(ctx, func(d *sql.DB) (any, error) {
 				result, err := colors.InspectTrack(ctx, d, s.config.LibraryDir, p.Track)
+				if err != nil {
+					return nil, err
+				}
+				return result, nil
+			})
+		}),
+		defineChecked("track.color.batch-update", "collection", []string{"tracks", "revision", "color"}, func(ctx context.Context, p batchTrackColorParams, _ *boundOperation) error {
+			_, err := s.database(ctx, func(d *sql.DB) (any, error) {
+				return nil, colors.CheckBatch(ctx, d, s.config.LibraryDir, colors.BatchOptions(p))
+			})
+			return err
+		}, func(ctx context.Context, p batchTrackColorParams) (any, error) {
+			return s.database(ctx, func(d *sql.DB) (any, error) {
+				result, err := colors.AssignBatch(ctx, d, s.config.LibraryDir, colors.BatchOptions(p))
 				if err != nil {
 					return nil, err
 				}

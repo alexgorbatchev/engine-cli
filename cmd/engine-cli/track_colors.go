@@ -15,12 +15,26 @@ func newTrackColorCommand() *cobra.Command {
 		{"color", "string", "Color as #RRGGBB; explicit empty clears the current color"},
 		{"revision", "string", "Current color revision from list or inspection"},
 	}))
+	root.AddCommand(acquisitionCommand("track.color.batch-update", "batch-update", "Review, then set or clear one color on several tracks", "", []acquisitionFlag{
+		{"tracks", "strings", "Selected track IDs or selectors, in selection order (1–500)"},
+		{"color", "string", "Color as #RRGGBB; explicit empty clears the selected tracks' colors"},
+		{"revision", "string", "Current color revision from list or inspection"},
+		{"dry-run", "bool", "Review each track's color change without changing the library"},
+		{"plan-token", "string", "Exact batch review token; required without --dry-run"},
+	}))
 	root.AddCommand(acquisitionCommand("track.color.reconcile", "reconcile", "Review and remove colors for tracks removed outside Engine CLI", "", []acquisitionFlag{
 		{"revision", "string", "Current color revision"},
 		{"dry-run", "bool", "Review unavailable-track colors without changing the library"},
 		{"plan-token", "string", "Exact reconciliation review token; required without --dry-run"},
 	}))
 	return root
+}
+
+func colorLabel(color string) string {
+	if color == "" {
+		return "none"
+	}
+	return color
 }
 
 func printTrackColors(command *cobra.Command, result any) (bool, error) {
@@ -43,6 +57,20 @@ func printTrackColors(command *cobra.Command, result any) (bool, error) {
 		}
 		_, err := fmt.Fprintf(output, "Track: %d\nColor: %s\nChanged: %t\nRevision: %s\n", value.TrackID, color, value.Changed, value.Revision)
 		return true, err
+	case *colors.BatchChange:
+		color := value.Color
+		if color == "" {
+			color = "cleared"
+		}
+		if _, err := fmt.Fprintf(output, "Selected tracks: %v\nColor: %s\nChanged tracks: %d\nCleared tracks: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.TrackIDs, color, value.ChangedTracks, value.ClearedTracks, value.Applied, value.Revision, value.PlanToken); err != nil {
+			return true, err
+		}
+		for _, track := range value.Tracks {
+			if _, err := fmt.Fprintf(output, "Track %d: %s -> %s\n", track.TrackID, colorLabel(track.Before), colorLabel(track.After)); err != nil {
+				return true, err
+			}
+		}
+		return true, nil
 	case *colors.Reconciliation:
 		_, err := fmt.Fprintf(output, "Unavailable tracks: %d\nRemoved colors: %d\nApplied: %t\nRevision: %s\nPlan token: %s\n", value.UnavailableTracks, value.RemovedAssignments, value.Applied, value.Revision, value.PlanToken)
 		return true, err

@@ -341,6 +341,20 @@ Use the revision from list or inspection. Colors use `#RRGGBB`, accepted case-in
 - `--help, -h` (bool; default `false`): help for update.
 - `--json` (bool; default `false`): Print compact structured results.
 
+## `engine-cli track color batch-update`
+
+Usage: `engine-cli track color batch-update --tracks <track...> --revision <revision> --color <color> --dry-run [flags]`.
+
+Review one color for 1–500 selected tracks, or `--color=` to clear theirs: the review lists each track's color before and after and returns a plan token. Apply the same options without `--dry-run`, supplying its exact `--plan-token`. Preview is read-only; apply is Desktop-protected, snapshotted and one undoable change. A changed selection, color or revision requires a new review (`color_plan_stale`); a plan that changes nothing is rejected with `color_no_changes`.
+
+- `--tracks` (stringSlice; default `[]`): Selected track IDs or selectors, in selection order (1–500).
+- `--color` (string; default ``): Color as #RRGGBB; explicit empty clears the selected tracks' colors.
+- `--revision` (string; default ``): Current color revision from list or inspection.
+- `--dry-run` (bool; default `false`): Review each track's color change without changing the library.
+- `--plan-token` (string; default ``): Exact batch review token; required without --dry-run.
+- `--help, -h` (bool; default `false`): help for batch-update.
+- `--json` (bool; default `false`): Print compact structured results.
+
 ## `engine-cli track color reconcile`
 
 Usage: `engine-cli track color reconcile --revision <revision> --dry-run [flags]`.

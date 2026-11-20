@@ -747,6 +747,7 @@ library's local row ID.
 | `track.color.list` | None | `{revision,unavailable_tracks,tracks:[{track_id,color}]}` |
 | `track.color.inspect` | `track` | `{track_id,color,revision,changed}` |
 | `track.color.update` | `track`, `revision`, `color` | `{track_id,color,revision,changed}` |
+| `track.color.batch-update` | `tracks`, `revision`, `color`, `dry_run`, optional `plan_token` | `{revision,track_ids,color,plan_token,changed_tracks,cleared_tracks,tracks:[{track_id,before,after}],applied}` |
 | `track.color.reconcile` | `revision`, `dry_run`, optional `plan_token` | `{revision,plan_token,unavailable_tracks,removed_assignments,applied}` |
 
 These operations use the selected library endpoint and ordinary job envelope.
@@ -762,6 +763,17 @@ counts unavailable assigned origins. List and inspect do not create storage,
 remove assignments, or create backup/history records. Update requires fresh
 Desktop protection and creates one undoable collection change. An unchanged
 update is rejected with `color_no_changes` before backup or history enrollment.
+
+`track.color.batch-update` sets one color on 1–500 selected tracks, or clears
+theirs with `color:""`. Selectors resolve in order and duplicates collapse to
+their first occurrence. A dry run lists each selected track's color before and
+after, counts the tracks it changes and clears, and returns a plan token that
+binds the resolved native identities, the stored revision and the color.
+Applying requires the same tracks, revision, color and that token; any other
+token, or a selection that resolves differently, is refused with
+`color_plan_stale`, and a plan that changes nothing with `color_no_changes`.
+The write is Desktop-protected and one undoable collection change; a dry run is
+a read. An empty or oversized selection reports `color_tracks_invalid`.
 
 Colors for externally removed tracks remain recoverable until explicit consent.
 Review reconciliation with `dry_run:true`, then apply the same revision and exact
@@ -793,15 +805,16 @@ after Engine changes retains pending history and reports
 `history_recovery_required` for explicit forced Undo recovery.
 
 Validation and recovery codes are `color_invalid`, `color_revision_stale`,
-`color_track_identity_invalid`, `color_plan_stale`, `color_no_changes`,
+`color_track_identity_invalid`, `color_tracks_invalid`, `color_plan_stale`, `color_no_changes`,
 `color_store_unavailable`, `color_merge_conflict`, and `color_assignments_stale`.
 `track_not_found` retains its existing meaning. Render safe catalog guidance
 rather than raw diagnostics.
 
 The corresponding commands are `track color list`, `track color inspect <track>`,
 `track color update <track> --revision <revision> --color <#RRGGBB>`, and
-`track color reconcile --revision <revision> --dry-run`, followed by the same
-revision and `--plan-token <token>` to apply. Use `--color=` for explicit clearing.
+`track color batch-update --tracks <track...> --revision <revision> --color <#RRGGBB> --dry-run`
+and `track color reconcile --revision <revision> --dry-run`, each followed by the same
+options and `--plan-token <token>` to apply. Use `--color=` for explicit clearing.
 
 ## Library health checks
 
