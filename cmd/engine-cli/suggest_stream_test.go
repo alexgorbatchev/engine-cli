@@ -73,7 +73,7 @@ func TestSuggestionCLIStreamsBatches(t *testing.T) {
 					}
 				}
 				script := `#!/bin/sh
-if [ "$1" = --version ]; then echo 1.0.0; exit; fi
+if [ "$1" = --version ]; then echo 2.0.0; exit; fi
 cat > /dev/null
 cd "$ENGINE_CLI_SUGGEST_FIXTURE"
 if [ ! -f first ]; then : > first; cat 1; exit; fi
@@ -86,7 +86,7 @@ if [ "$ENGINE_CLI_SUGGEST_OUTCOME" = failed ]; then
 fi
 cat 26
 `
-				if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, "agent-ask"), []byte(script), 0700); err != nil {
 					t.Fatal(err)
 				}
 				t.Setenv("AGENT", "0")

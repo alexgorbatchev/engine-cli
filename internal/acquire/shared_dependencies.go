@@ -74,7 +74,7 @@ func aggregateTools(tools []*Tool) *ToolsInspection {
 			Tool: managedApp, Installed: tool.Available, DetectedVersion: tool.Version,
 			MinimumVersion: tool.MinimumVersion, Satisfied: tool.Satisfied, ErrorCode: tool.ErrorCode,
 		})
-		if tool.Name == "agent-ask-cli" {
+		if tool.Name == agentAskTool {
 			continue
 		}
 		if tool.Dependencies == nil || !tool.NativeJSON {

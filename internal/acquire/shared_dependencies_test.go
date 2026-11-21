@@ -156,7 +156,7 @@ func sharedRunner(t *testing.T, action func(string, []string) ([]byte, error)) C
 		}
 		if slices.Equal(args, []string{"--json", "dependencies"}) {
 			deps := []Dependency{}
-			if tool != "agent-ask-cli" {
+			if tool != "agent-ask" {
 				deps = append(deps, Dependency{Name: "shared", Installed: tool != "fetch-mix", DetectedVersion: "1.0", MinVersion: "2.0"})
 			}
 			return json.Marshal(Dependencies{Status: "ok", Dependencies: deps, Changed: []string{}})

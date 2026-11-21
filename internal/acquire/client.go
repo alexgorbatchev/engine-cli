@@ -195,7 +195,7 @@ func (c Client) execute(ctx context.Context, tool string, args []string, result 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = append(os.Environ(), "AGENT=1")
-	if _, managed := requirements[name]; managed && name != "agent-ask-cli" {
+	if _, managed := requirements[name]; managed && name != agentAskTool {
 		binDir, err := godeps.GetManagedBinDir(name)
 		if err != nil {
 			return nil, fmt.Errorf("resolving %s dependency directory: %w", name, err)

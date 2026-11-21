@@ -1,6 +1,7 @@
 package acquire
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -15,6 +16,11 @@ const managedApp = "engine-cli"
 
 const releaseOwner = "alexgorbatchev"
 
+const (
+	agentAskTool       = "agent-ask-cli" // Engine tool identifier used by clients.
+	agentAskExecutable = "agent-ask"
+)
+
 // requirement is the oldest release providing the machine interfaces Engine
 // consumes, and the repository that publishes the tool's releases. Fetch Track
 // 1.12.1 is the first release whose quality verdict (meets_minimum and
@@ -25,13 +31,18 @@ const releaseOwner = "alexgorbatchev"
 type requirement struct {
 	minVersion string
 	repo       string
+	binary     string
+}
+
+func (r requirement) executable(tool string) string {
+	return cmp.Or(r.binary, tool)
 }
 
 var requirements = map[string]requirement{
-	"agent-ask-cli": {minVersion: "1.0.0", repo: "agent-ask-cli"},
-	"fetch-track":   {minVersion: "1.12.1", repo: "fetch-track-cli"},
-	"fetch-mix":     {minVersion: "2.1.4", repo: "fetch-mix-cli"},
-	"tag-track":     {minVersion: "1.2.0", repo: "tag-track-cli"},
+	agentAskTool:  {minVersion: "2.0.0", repo: "agent-ask-cli", binary: agentAskExecutable},
+	"fetch-track": {minVersion: "1.12.1", repo: "fetch-track-cli"},
+	"fetch-mix":   {minVersion: "2.1.4", repo: "fetch-mix-cli"},
+	"tag-track":   {minVersion: "1.2.0", repo: "tag-track-cli"},
 }
 
 // UseManagedTools selects satisfying external or managed releases at startup.
@@ -49,12 +60,13 @@ func (c Client) toolManager(tools ...string) *godeps.Manager {
 	deps := make([]godeps.Dependency, 0, len(tools))
 	for _, tool := range tools {
 		req := requirements[tool]
+		binary := req.executable(tool)
 		installer := c.Installer
 		if installer == nil {
-			installer = godeps.GitHubReleaseGoBinary(releaseOwner, req.repo, tool)
+			installer = godeps.GitHubReleaseGoBinary(releaseOwner, req.repo, binary)
 		}
 		deps = append(deps, godeps.Dependency{
-			Name:       tool,
+			Name:       binary,
 			MinVersion: req.minVersion,
 			InstallURL: "https://github.com/" + releaseOwner + "/" + req.repo,
 			Installer:  installer,
@@ -74,15 +86,15 @@ func requirementReport(ctx context.Context, m *godeps.Manager) godeps.Dependency
 	return reports[0]
 }
 
-func requirementError(r godeps.DependencyReport) error {
+func requirementError(tool string, r godeps.DependencyReport) error {
 	if !r.Installed {
-		return &progress.Error{Code: "tool_unavailable", Cause: fmt.Errorf("%s is unavailable (%s); install it with `engine-cli tool upgrade %s`", r.Name, r.Error, r.Name)}
+		return &progress.Error{Code: "tool_unavailable", Cause: fmt.Errorf("%s is unavailable (%s); install it with `engine-cli tool upgrade %s`", r.Name, r.Error, tool)}
 	}
 	found := "version " + r.DetectedVersion
 	if r.DetectedVersion == "" {
 		found = "an unrecognized version"
 	}
-	return &progress.Error{Code: "tool_outdated", Cause: fmt.Errorf("%s reports %s but requires %s or newer; update it with `engine-cli tool upgrade %s`", r.Name, found, r.MinVersion, r.Name)}
+	return &progress.Error{Code: "tool_outdated", Cause: fmt.Errorf("%s reports %s but requires %s or newer; update it with `engine-cli tool upgrade %s`", r.Name, found, r.MinVersion, tool)}
 }
 
 // RequireTool applies the managed-tool requirement for a caller that runs the
@@ -101,7 +113,8 @@ func (c Client) RequireTool(ctx context.Context, name string, autoInstall bool) 
 // release providing Engine's machine interfaces. When the caller requested
 // auto_install, it installs a missing tool or updates an outdated one first.
 func (c Client) requireTool(ctx context.Context, name string) error {
-	if _, managed := requirements[name]; !managed {
+	req, managed := requirements[name]
+	if !managed {
 		return nil
 	}
 	m := c.toolManager(name)
@@ -113,7 +126,7 @@ func (c Client) requireTool(ctx context.Context, name string) error {
 		return nil
 	}
 	if !c.autoInstall {
-		return requirementError(r)
+		return requirementError(name, r)
 	}
 	progress.Emit(ctx, progress.Event{Type: "phase_start", Phase: "tools.install", Subphase: name})
 	installer := c.managedTools()
@@ -121,7 +134,7 @@ func (c Client) requireTool(ctx context.Context, name string) error {
 	if r.Installed {
 		install = installer.Update
 	}
-	_, err := verifyInstalled(ctx, m, name, install(ctx, name))
+	_, err := verifyInstalled(ctx, m, name, install(ctx, req.executable(name)))
 	return err
 }
 
@@ -139,7 +152,7 @@ func verifyInstalled(ctx context.Context, m *godeps.Manager, name string, instal
 		return r, ctx.Err()
 	}
 	if !r.Satisfied {
-		return r, requirementError(r)
+		return r, requirementError(name, r)
 	}
 	return r, nil
 }

@@ -64,7 +64,7 @@ func askFixture(t *testing.T, responses ...string) string {
 		}
 	}
 	script := `#!/bin/sh
-if [ "$1" = --version ]; then echo 1.0.0; exit 0; fi
+if [ "$1" = --version ]; then echo 2.0.0; exit 0; fi
 cd "$ENGINE_ASK_FIXTURE"
 n=0
 if [ -f count ]; then read n < count; fi
@@ -73,7 +73,7 @@ printf '%s\n' "$@" > args
 cat > input
 cat "$n"
 `
-	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask"), []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("ENGINE_ASK_FIXTURE", dir)
@@ -270,8 +270,8 @@ func TestBatchInputLimits(t *testing.T) {
 func TestSuggestionCancellation(t *testing.T) {
 	_, lib := suggestionLibrary(t)
 	dir := askFixture(t)
-	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.0.0; exit; fi\ntrap 'exit 130' INT\necho started > \"$ENGINE_ASK_FIXTURE/started\"\nwhile :; do :; done\n"
-	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 2.0.0; exit; fi\ntrap 'exit 130' INT\necho started > \"$ENGINE_ASK_FIXTURE/started\"\nwhile :; do :; done\n"
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask"), []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())

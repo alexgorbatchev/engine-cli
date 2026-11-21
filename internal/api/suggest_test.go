@@ -31,8 +31,8 @@ func TestSuggestionHTTPJob(t *testing.T) {
 		t.Skip("POSIX process fixture")
 	}
 	dir := t.TempDir()
-	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.0.0; exit; fi\ncat > /dev/null\nprintf '{\"harness\":\"codex\",\"output_kind\":\"json\",\"output\":{\"items\":[{\"id\":1,\"title\":\"Song\",\"artist\":\"Artist\",\"reason\":\"Removed duplicated artist\"}]}}'\n"
-	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 2.0.0; exit; fi\ncat > /dev/null\nprintf '{\"harness\":\"codex\",\"output_kind\":\"json\",\"output\":{\"items\":[{\"id\":1,\"title\":\"Song\",\"artist\":\"Artist\",\"reason\":\"Removed duplicated artist\"}]}}'\n"
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask"), []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -65,7 +65,7 @@ func TestSuggestionHTTPJob(t *testing.T) {
 	if err := d.QueryRow("SELECT title FROM Track WHERE id=1").Scan(&title); err != nil || title != "Artist - Song" {
 		t.Fatalf("changed title: %s %v", title, err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.0.0; exit; fi\necho '{\"error\":{\"code\":\"harness_unavailable\",\"message\":\"Install Codex\"}}' >&2\nexit 1\n"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 2.0.0; exit; fi\necho '{\"error\":{\"code\":\"harness_unavailable\",\"message\":\"Install Codex\"}}' >&2\nexit 1\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	job := awaitAPIJob(t, s, submitAPIJob(t, s, "track.suggest", `{"tracks":["1"],"harness":"codex"}`))

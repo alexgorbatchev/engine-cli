@@ -63,8 +63,8 @@ func (c Client) Dependencies(ctx context.Context, tool, action string, names []s
 	if err := validTool(tool); err != nil {
 		return nil, err
 	}
-	if tool == "agent-ask-cli" {
-		return nil, fmt.Errorf("agent-ask-cli does not expose dependency management; configure Claude Code or Codex directly")
+	if tool == agentAskTool {
+		return nil, fmt.Errorf("agent-ask does not expose dependency management; configure Claude Code or Codex directly")
 	}
 	args := []string{"dependencies"}
 	if action != "inspect" {
@@ -98,7 +98,7 @@ func (c Client) Upgrade(ctx context.Context, tool string) (*Upgrade, error) {
 	if !before.Installed {
 		install = installer.Install
 	}
-	after, err := verifyInstalled(ctx, m, tool, install(ctx, tool))
+	after, err := verifyInstalled(ctx, m, tool, install(ctx, requirements[tool].executable(tool)))
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -126,12 +126,12 @@ func (c Client) InspectTool(ctx context.Context, tool string) (*Tool, error) {
 	}
 	result := &Tool{Name: tool, Version: r.DetectedVersion, MinimumVersion: r.MinVersion, Available: r.Installed, Satisfied: r.Satisfied}
 	if !r.Satisfied {
-		err := requirementError(r)
+		err := requirementError(tool, r)
 		result.Error = err.Error()
 		result.ErrorCode = progress.ErrorCode(err)
 		return result, nil
 	}
-	if tool == "agent-ask-cli" {
+	if tool == agentAskTool {
 		result.NativeJSON = true
 		return result, nil
 	}

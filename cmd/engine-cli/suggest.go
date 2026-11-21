@@ -20,8 +20,8 @@ func addAskFlags(c *cobra.Command, options *acquire.AskOptions) {
 	c.Flags().StringVar(&options.HarnessConfigMode, "harness-config-mode", "", "Harness configuration: inherit (default) or clean")
 	c.Flags().StringVar(&options.HarnessConfigFile, "harness-config-file", "", "Native harness configuration file")
 	c.Flags().StringVar(&options.HarnessHomeDir, "harness-home-dir", "", "Alternate harness configuration and authentication directory")
-	c.Flags().StringVar(&options.Timeout, "timeout", "", "Timeout per batch, such as 5m (default: agent-ask-cli's 5m)")
-	c.Flags().BoolVar(&options.AutoInstall, "auto-install", false, "Install or update agent-ask-cli when needed")
+	c.Flags().StringVar(&options.Timeout, "timeout", "", "Timeout per batch, such as 5m (default: agent-ask's 5m)")
+	c.Flags().BoolVar(&options.AutoInstall, "auto-install", false, "Install or update agent-ask when needed")
 }
 
 func newSuggestionCommand() *cobra.Command {
@@ -29,7 +29,7 @@ func newSuggestionCommand() *cobra.Command {
 	var playlists []string
 	var asJSON bool
 	c := &cobra.Command{Use: "suggest [id|ref...]", Short: "Suggest title and artist fixes for review", Args: cobra.MaximumNArgs(details.MaxItems),
-		Long: "Review AI suggestions for title and artist cleanup. Choose track IDs/references or --playlists and --harness claude|codex. Selected title, artist, album, and filename are sent through agent-ask-cli using the harness's existing authentication. Your library and audio files remain unchanged.",
+		Long: "Review AI suggestions for title and artist cleanup. Choose track IDs/references or --playlists and --harness claude|codex. Selected title, artist, album, and filename are sent through agent-ask using the harness's existing authentication. Your library and audio files remain unchanged.",
 		RunE: func(c *cobra.Command, args []string) error {
 			selection := suggest.Selection{Tracks: args, Playlists: playlists}
 			publish := func(batch suggest.Report) error {

@@ -557,11 +557,11 @@ Suggest title and artist fixes for review
 
 Usage: `engine-cli track suggest [id|ref...] [flags]`.
 
-Review AI suggestions for title and artist cleanup. Choose track IDs/references or --playlists and --harness claude|codex. Selected title, artist, album, and filename are sent through agent-ask-cli using the harness's existing authentication. Your library and audio files remain unchanged.
+Review AI suggestions for title and artist cleanup. Choose track IDs/references or --playlists and --harness claude|codex. Selected title, artist, album, and filename are sent through agent-ask using the harness's existing authentication. Your library and audio files remain unchanged.
 
-Use track arguments or --playlists with up to 500 IDs/references. All direct playlist members are included and deduplicated. Choose --harness claude or codex; optional --model, --effort, --thinking and --harness-config-* options follow agent-ask-cli. Returns original metadata and reviewable suggestions; no backup or history is created.
+Use track arguments or --playlists with up to 500 IDs/references. All direct playlist members are included and deduplicated. Choose --harness claude or codex; optional --model, --effort, --thinking and --harness-config-* options follow agent-ask. Returns original metadata and reviewable suggestions; no backup or history is created.
 
-- `--auto-install` (bool; default `false`): Install or update agent-ask-cli when needed.
+- `--auto-install` (bool; default `false`): Install or update agent-ask when needed.
 - `--effort` (string; default ``): Native harness reasoning effort.
 - `--harness` (string; default ``): Authenticated harness: claude or codex.
 - `--harness-config-file` (string; default ``): Native harness configuration file.
@@ -572,7 +572,7 @@ Use track arguments or --playlists with up to 500 IDs/references. All direct pla
 - `--model` (string; default ``): Harness model (default: harness configuration).
 - `--playlists` (stringSlice; default `[]`): Suggest fixes for direct members of these playlist IDs/references (comma-separated or repeated).
 - `--thinking` (string; default ``): Native harness thinking: auto, on, or off.
-- `--timeout` (string; default ``): Timeout per batch, such as 5m (default: agent-ask-cli's 5m).
+- `--timeout` (string; default ``): Timeout per batch, such as 5m (default: agent-ask's 5m).
 
 ## `engine-cli track tags`
 

@@ -21,8 +21,8 @@ func askProcess(t *testing.T, body string) string {
 		t.Skip("POSIX process fixture")
 	}
 	dir := t.TempDir()
-	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 1.0.0; exit; fi\n" + body
-	if err := os.WriteFile(filepath.Join(dir, "agent-ask-cli"), []byte(script), 0700); err != nil {
+	script := "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 2.0.0; exit; fi\n" + body
+	if err := os.WriteFile(filepath.Join(dir, "agent-ask"), []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -56,7 +56,7 @@ printf '{"harness":"claude","output_kind":"json","output":{"items":[]},"session_
 		t.Fatal("temporary working directory retained", work, err)
 	}
 	tool, err := (Client{}).InspectTool(t.Context(), "agent-ask-cli")
-	if err != nil || !tool.Satisfied || !tool.NativeJSON || tool.Dependencies != nil {
+	if err != nil || tool.Name != "agent-ask-cli" || tool.MinimumVersion != "2.0.0" || !tool.Satisfied || !tool.NativeJSON || tool.Dependencies != nil {
 		t.Fatal(tool, err)
 	}
 	if _, err := (Client{}).Dependencies(t.Context(), "agent-ask-cli", "inspect", nil); err == nil {
@@ -88,7 +88,7 @@ func TestAskValidationAndFailures(t *testing.T) {
 	t.Run("missing tool", func(t *testing.T) {
 		t.Setenv("PATH", t.TempDir())
 		_, err := (Client{}).Ask(t.Context(), AskOptions{Harness: "codex"}, "", "", "")
-		if progress.ErrorCode(err) != "tool_unavailable" {
+		if progress.ErrorCode(err) != "tool_unavailable" || !strings.Contains(err.Error(), "engine-cli tool upgrade agent-ask-cli") {
 			t.Fatal(err)
 		}
 	})
@@ -131,10 +131,10 @@ func TestAskOutputBound(t *testing.T) {
 func TestAskAutoInstallsManagedRelease(t *testing.T) {
 	askProcess(t, `cat > /dev/null; echo '{"harness":"codex","output_kind":"json","output":{}}'`)
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
-	version := "0.9.0"
-	installer := &recordingInstaller{install: func() { version = "1.0.0" }}
+	version := "1.1.0"
+	installer := &recordingInstaller{install: func() { version = "2.0.0" }}
 	c := Client{Installer: installer, Runner: func(_ context.Context, name string, args ...string) ([]byte, error) {
-		if name != "agent-ask-cli" || len(args) != 1 || args[0] != "--version" {
+		if name != "agent-ask" || len(args) != 1 || args[0] != "--version" {
 			t.Fatalf("unexpected managed probe %s %v", name, args)
 		}
 		return []byte(version), nil
@@ -146,5 +146,9 @@ func TestAskAutoInstallsManagedRelease(t *testing.T) {
 	managed, managedErr := godeps.GetManagedBinDir("engine-cli")
 	if err != nil || string(output) != "{}" || managedErr != nil || installer.target != managed || installer.method != "update" {
 		t.Fatal(string(output), err, managedErr, installer)
+	}
+	result, err := c.Upgrade(t.Context(), "agent-ask-cli")
+	if err != nil || result.Status != "current" || result.Version != "2.0.0" {
+		t.Fatal(result, err)
 	}
 }
